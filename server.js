@@ -1,27 +1,24 @@
-const express = require("express");
+cconst express = require("express");
 const cors = require("cors");
 const path = require("path");
-require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.get("/test", (req, res) => {
-  res.json({ message: "Server läuft" });
+  res.json({ message: "läuft" });
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
+  console.log("Server läuft");
 });
-
 function getLanguageName(lang) {
   if (lang === "tr") return "Türkisch";
   if (lang === "bg") return "Bulgarisch";
