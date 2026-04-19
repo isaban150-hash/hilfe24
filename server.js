@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fetch = require("node-fetch");
 require("dotenv").config();
 
 const app = express();
