@@ -1,24 +1,4 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-require("dotenv").config();
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Route für Startseite
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
-});
-
-// Test Route
-app.get("/test", (req, res) => {
-  res.json({ message: "Server läuft sauber" });
-});
+cfortunate-rebirth
 
 // Server starten
 app.listen(PORT, () => {
