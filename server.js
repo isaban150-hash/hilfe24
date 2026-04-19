@@ -1,23 +1,28 @@
-cconst express = require("express");
+const express = require("express");
 const cors = require("cors");
 const path = require("path");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// Route für Startseite
 app.get("/", (req, res) => {
- res.sendFile(__dirname + "/index.html");
+  res.sendFile(__dirname + "/index.html");
 });
 
+// Test Route
 app.get("/test", (req, res) => {
-  res.json({ message: "läuft" });
+  res.json({ message: "Server läuft sauber" });
 });
 
+// Server starten
 app.listen(PORT, () => {
-  console.log("Server läuft");
+  console.log("Server läuft auf Port " + PORT);
 });
 function getLanguageName(lang) {
   if (lang === "tr") return "Türkisch";
