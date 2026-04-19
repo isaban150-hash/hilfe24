@@ -13,30 +13,32 @@
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: linear-gradient(180deg, #f4f7fb 0%, #eef3f9 100%);
+      background: #f4f7fb;
       color: #1f2937;
       display: flex;
       justify-content: center;
-      padding: 30px 14px 50px;
+      padding: 16px;
     }
 
-    .container {
+    .app {
       width: 100%;
       max-width: 560px;
       background: #ffffff;
-      border-radius: 18px;
+      border-radius: 20px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-      padding: 22px;
+      overflow: hidden;
     }
 
-    .top {
-      margin-bottom: 18px;
+    .header {
+      padding: 22px 18px 12px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border-bottom: 1px solid #e5e7eb;
     }
 
-    .brand {
+    .title {
+      margin: 0;
       font-size: 30px;
       font-weight: 700;
-      margin: 0;
       color: #0f172a;
     }
 
@@ -47,44 +49,77 @@
       line-height: 1.4;
     }
 
-    .section {
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 14px;
-      margin-top: 14px;
+    .content {
+      padding: 16px;
     }
 
-    .section-title {
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
       margin: 0 0 10px;
       font-size: 16px;
       font-weight: 700;
       color: #0f172a;
     }
 
+    .lang-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .lang-btn {
+      border: 1px solid #cbd5e1;
+      background: white;
+      border-radius: 14px;
+      padding: 12px 8px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .lang-btn.active {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .flag {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+
     label {
       display: block;
-      margin: 8px 0 6px;
+      margin: 10px 0 6px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 700;
       color: #334155;
     }
 
-    select,
     textarea,
-    input {
+    input[type="file"] {
       width: 100%;
       border: 1px solid #cbd5e1;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 12px;
       font-size: 15px;
       background: white;
       outline: none;
     }
 
-    select:focus,
     textarea:focus,
-    input:focus {
+    input[type="file"]:focus {
       border-color: #3b82f6;
       box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
     }
@@ -95,62 +130,67 @@
     }
 
     .small-textarea {
-      min-height: 95px;
+      min-height: 96px;
     }
 
-    .buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
+    .hint {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.4;
     }
 
-    button {
-      flex: 1;
-      min-width: 130px;
+    .primary-btn,
+    .secondary-btn,
+    .ghost-btn,
+    .share-btn,
+    .email-btn {
+      width: 100%;
       border: none;
-      border-radius: 12px;
-      padding: 12px 14px;
-      font-size: 15px;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 16px;
       font-weight: 700;
       cursor: pointer;
-      transition: transform 0.08s ease, opacity 0.2s ease;
-      color: white;
+      margin-top: 10px;
+    }
+
+    .primary-btn {
       background: #2563eb;
+      color: white;
     }
 
-    button:hover {
-      opacity: 0.95;
-    }
-
-    button:active {
-      transform: scale(0.99);
-    }
-
-    .secondary {
+    .secondary-btn {
       background: #0f766e;
+      color: white;
     }
 
-    .dark {
-      background: #334155;
-    }
-
-    .light-btn {
+    .ghost-btn {
       background: #475569;
+      color: white;
     }
 
     .share-btn {
       background: #16a34a;
+      color: white;
     }
 
     .email-btn {
       background: #7c3aed;
+      color: white;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
     }
 
     .status {
-      margin-top: 14px;
-      padding: 10px 12px;
-      border-radius: 12px;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 14px;
       background: #eff6ff;
       color: #1d4ed8;
       font-size: 14px;
@@ -158,9 +198,9 @@
     }
 
     .result {
-      margin-top: 14px;
+      margin-top: 12px;
       padding: 14px;
-      border-radius: 14px;
+      border-radius: 16px;
       background: #f1f5f9;
       border: 1px solid #dbeafe;
       white-space: pre-wrap;
@@ -169,306 +209,382 @@
       font-size: 15px;
     }
 
+    .ocr-box {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      font-size: 13px;
+      color: #475569;
+      display: none;
+    }
+
     .divider {
       height: 1px;
-      background: #e2e8f0;
-      margin: 18px 0;
+      background: #e5e7eb;
+      margin: 16px 0;
       border: none;
     }
 
-    .hint {
-      margin-top: 8px;
-      color: #64748b;
-      font-size: 13px;
-      line-height: 1.4;
+    .hidden {
+      display: none;
     }
 
     @media (max-width: 520px) {
-      .container {
-        padding: 16px;
+      .button-row {
+        grid-template-columns: 1fr;
       }
 
-      .brand {
+      .lang-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .title {
         font-size: 26px;
-      }
-
-      button {
-        width: 100%;
       }
     }
   </style>
 </head>
 <body>
-
-<div class="container">
-  <div class="top">
-    <h1 class="brand">Hilfe24</h1>
-    <p class="subtitle" id="subtitle">Briefe einfach verstehen. Fragen stellen. Hilfe finden.</p>
-  </div>
-
-  <div class="section">
-    <h2 class="section-title" id="mainSectionTitle">Brief verstehen</h2>
-
-    <label for="language" id="languageLabel">Sprache</label>
-    <select id="language">
-      <option value="de">Deutsch</option>
-      <option value="tr">Türkisch</option>
-      <option value="bg">Bulgarisch</option>
-    </select>
-
-    <label for="imageInput" id="imageLabel">Brief als Bild hochladen</label>
-    <input type="file" id="imageInput" accept="image/*">
-
-    <label for="input" id="textLabel">Brieftext</label>
-    <textarea id="input" placeholder="Text hier einfügen..."></textarea>
-
-    <div class="buttons">
-      <button id="explainBtn" onclick="sendText()">Jetzt erklären</button>
-      <button id="answerBtn" class="secondary" onclick="writeAnswer()">Antwort schreiben</button>
+  <div class="app">
+    <div class="header">
+      <h1 class="title">Hilfe24</h1>
+      <p class="subtitle" id="subtitle">Foto machen oder Text einfügen. Dann einfach erklären lassen.</p>
     </div>
 
-    <div class="buttons">
-      <button id="speakBtn" class="dark" onclick="speakOutput()">🔊 Vorlesen</button>
-      <button id="stopBtn" class="light-btn" onclick="stopSpeaking()">⏹ Stop</button>
-    </div>
+    <div class="content">
+      <div class="card">
+        <h2 class="card-title" id="languageTitle">Sprache wählen</h2>
 
-    <div id="status" class="status"></div>
-    <div id="output" class="result"></div>
+        <div class="lang-grid">
+          <button type="button" class="lang-btn active" id="langDe" onclick="setLang('de')">
+            <span class="flag">🇩🇪</span>
+            Deutsch
+          </button>
 
-    <div class="buttons">
-      <button id="emailBtn" class="email-btn" onclick="createEmail()">📧 E-Mail</button>
-      <button id="waBtn" class="share-btn" onclick="shareWhatsApp()">🟢 WhatsApp</button>
-    </div>
+          <button type="button" class="lang-btn" id="langTr" onclick="setLang('tr')">
+            <span class="flag">🇹🇷</span>
+            Türkçe
+          </button>
 
-    <p class="hint" id="shareHint">Du kannst das Ergebnis direkt per E-Mail oder WhatsApp weiterleiten.</p>
-  </div>
-
-  <div class="section">
-    <h3 class="section-title" id="questionTitle">Frage zum Brief</h3>
-    <textarea id="questionInput" class="small-textarea" placeholder="Stelle hier deine Frage zum Brief..."></textarea>
-    <div class="buttons">
-      <button id="questionBtn" onclick="askQuestion()">Frage stellen</button>
-    </div>
-  </div>
-
-  <div class="section">
-    <h3 class="section-title" id="generalTitle">Allgemeine Frage</h3>
-    <textarea id="generalInput" class="small-textarea" placeholder="Stelle hier deine allgemeine Frage..."></textarea>
-    <div class="buttons">
-      <button id="generalBtn" onclick="askGeneral()">Frage senden</button>
-    </div>
-    <p class="hint" id="generalHint">Zum Beispiel: Bekomme ich vielleicht noch Hilfe oder kann ich etwas beantragen?</p>
-  </div>
-</div>
-
-<script>
-  const statusBox = document.getElementById("status");
-  const outputBox = document.getElementById("output");
-  const inputBox = document.getElementById("input");
-  const languageBox = document.getElementById("language");
-  const imageInput = document.getElementById("imageInput");
-
-  let availableVoices = [];
-
-  const translations = {
-    de: {
-      subtitle: "Briefe einfach verstehen. Fragen stellen. Hilfe finden.",
-      mainSectionTitle: "Brief verstehen",
-      languageLabel: "Sprache",
-      imageLabel: "Brief als Bild hochladen",
-      textLabel: "Brieftext",
-      inputPlaceholder: "Text hier einfügen...",
-      explainBtn: "Jetzt erklären",
-      answerBtn: "Antwort schreiben",
-      speakBtn: "🔊 Vorlesen",
-      stopBtn: "⏹ Stop",
-      emailBtn: "📧 E-Mail",
-      waBtn: "🟢 WhatsApp",
-      shareHint: "Du kannst das Ergebnis direkt per E-Mail oder WhatsApp weiterleiten.",
-      questionTitle: "Frage zum Brief",
-      questionPlaceholder: "Stelle hier deine Frage zum Brief...",
-      questionBtn: "Frage stellen",
-      generalTitle: "Allgemeine Frage",
-      generalPlaceholder: "Stelle hier deine allgemeine Frage...",
-      generalBtn: "Frage senden",
-      generalHint: "Zum Beispiel: Bekomme ich vielleicht noch Hilfe oder kann ich etwas beantragen?",
-      statusNoText: "Bitte Text eingeben.",
-      statusReadingImage: "Bild wird gelesen...",
-      statusImageDone: "Text übernommen!",
-      statusImageError: "Fehler beim Bildlesen.",
-      statusExplaining: "Text wird erklärt...",
-      statusExplainDone: "Erklärung fertig.",
-      statusAnswering: "Antwort wird erstellt...",
-      statusAnswerDone: "Antwort fertig.",
-      statusQuestionEmpty: "Bitte Frage eingeben.",
-      statusQuestionLoading: "Antwort wird erstellt...",
-      statusQuestionDone: "Antwort fertig.",
-      statusError: "Fehler bei Antwort.",
-      statusReading: "Text wird vorgelesen...",
-      statusReadDone: "Vorlesen beendet.",
-      statusReadStop: "Vorlesen gestoppt.",
-      statusReadNotSupported: "Vorlesen wird auf diesem Gerät nicht unterstützt.",
-      statusNoReadText: "Kein Text zum Vorlesen vorhanden.",
-      statusNoVoice: "Für diese Sprache ist auf diesem Gerät keine passende Stimme verfügbar.",
-      statusNoShareText: "Kein Text zum Teilen vorhanden."
-    },
-    tr: {
-      subtitle: "Mektupları kolay anla. Soru sor. Yardım bul.",
-      mainSectionTitle: "Mektubu anla",
-      languageLabel: "Dil",
-      imageLabel: "Mektubu resim olarak yükle",
-      textLabel: "Mektup metni",
-      inputPlaceholder: "Metni buraya yaz...",
-      explainBtn: "Şimdi açıkla",
-      answerBtn: "Cevap yaz",
-      speakBtn: "🔊 Oku",
-      stopBtn: "⏹ Durdur",
-      emailBtn: "📧 E-Posta",
-      waBtn: "🟢 WhatsApp",
-      shareHint: "Sonucu doğrudan e-posta veya WhatsApp ile paylaşabilirsin.",
-      questionTitle: "Mektupla ilgili soru",
-      questionPlaceholder: "Mektupla ilgili sorunu buraya yaz...",
-      questionBtn: "Soru sor",
-      generalTitle: "Genel soru",
-      generalPlaceholder: "Genel sorunu buraya yaz...",
-      generalBtn: "Soruyu gönder",
-      generalHint: "Örnek: Acaba yardım alabilir miyim veya bir şey başvurabilir miyim?",
-      statusNoText: "Lütfen metin gir.",
-      statusReadingImage: "Resim okunuyor...",
-      statusImageDone: "Metin alındı!",
-      statusImageError: "Resim okunurken hata oldu.",
-      statusExplaining: "Metin açıklanıyor...",
-      statusExplainDone: "Açıklama hazır.",
-      statusAnswering: "Cevap hazırlanıyor...",
-      statusAnswerDone: "Cevap hazır.",
-      statusQuestionEmpty: "Lütfen soru yaz.",
-      statusQuestionLoading: "Cevap hazırlanıyor...",
-      statusQuestionDone: "Cevap hazır.",
-      statusError: "Cevapta hata oldu.",
-      statusReading: "Metin okunuyor...",
-      statusReadDone: "Okuma bitti.",
-      statusReadStop: "Okuma durduruldu.",
-      statusReadNotSupported: "Bu cihazda sesli okuma desteklenmiyor.",
-      statusNoReadText: "Okunacak metin yok.",
-      statusNoVoice: "Bu dil için cihazda uygun ses yok.",
-      statusNoShareText: "Paylaşılacak metin yok."
-    },
-    bg: {
-      subtitle: "Разбери писмата лесно. Задай въпрос. Намери помощ.",
-      mainSectionTitle: "Разбери писмото",
-      languageLabel: "Език",
-      imageLabel: "Качи писмото като снимка",
-      textLabel: "Текст на писмото",
-      inputPlaceholder: "Въведи текста тук...",
-      explainBtn: "Обясни сега",
-      answerBtn: "Напиши отговор",
-      speakBtn: "🔊 Прочети",
-      stopBtn: "⏹ Стоп",
-      emailBtn: "📧 Имейл",
-      waBtn: "🟢 WhatsApp",
-      shareHint: "Можеш да изпратиш резултата директно по имейл или WhatsApp.",
-      questionTitle: "Въпрос за писмото",
-      questionPlaceholder: "Напиши въпроса си за писмото тук...",
-      questionBtn: "Задай въпрос",
-      generalTitle: "Общ въпрос",
-      generalPlaceholder: "Напиши общия си въпрос тук...",
-      generalBtn: "Изпрати въпрос",
-      generalHint: "Пример: Мога ли да получа помощ или да подам нещо?",
-      statusNoText: "Моля, въведи текст.",
-      statusReadingImage: "Изображението се чете...",
-      statusImageDone: "Текстът е взет!",
-      statusImageError: "Грешка при четене на изображението.",
-      statusExplaining: "Текстът се обяснява...",
-      statusExplainDone: "Обяснението е готово.",
-      statusAnswering: "Отговорът се подготвя...",
-      statusAnswerDone: "Отговорът е готов.",
-      statusQuestionEmpty: "Моля, напиши въпрос.",
-      statusQuestionLoading: "Отговорът се подготвя...",
-      statusQuestionDone: "Отговорът е готов.",
-      statusError: "Грешка при отговора.",
-      statusReading: "Текстът се чете...",
-      statusReadDone: "Четенето приключи.",
-      statusReadStop: "Четенето е спряно.",
-      statusReadNotSupported: "Това устройство не поддържа четене.",
-      statusNoReadText: "Няма текст за четене.",
-      statusNoVoice: "Няма подходящ глас за този език.",
-      statusNoShareText: "Няма текст за споделяне."
-    }
-  };
-
-  function getT() {
-    return translations[languageBox.value] || translations.de;
-  }
-
-  function setStatus(text) {
-    statusBox.innerText = text;
-  }
-
-  function escapeHtml(text) {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
-
-  function detectUrgencyColor(text) {
-    const t = text.toLowerCase();
-
-    if (t.includes("hoch") || t.includes("yüksek") || t.includes("висока")) return "#ff4d4d";
-    if (t.includes("mittel") || t.includes("orta") || t.includes("средна")) return "#f59e0b";
-    if (t.includes("niedrig") || t.includes("düşük") || t.includes("ниска")) return "#22c55e";
-
-    return "#64748b";
-  }
-
-  function renderOutput(text) {
-    const color = detectUrgencyColor(text);
-
-    outputBox.innerHTML = `
-      <div style="padding:10px; border-radius:10px; background:${color}; color:white; font-weight:bold; margin-bottom:12px;">
-        Dringlichkeit erkannt
+          <button type="button" class="lang-btn" id="langBg" onclick="setLang('bg')">
+            <span class="flag">🇧🇬</span>
+            Български
+          </button>
+        </div>
       </div>
-      <div>${escapeHtml(text).replace(/\n/g, "<br>")}</div>
-    `;
-  }
 
-  function updateInterfaceLanguage() {
-    const t = getT();
+      <div class="card">
+        <h2 class="card-title" id="mainTitle">Brief verstehen</h2>
 
-    document.getElementById("subtitle").innerText = t.subtitle;
-    document.getElementById("mainSectionTitle").innerText = t.mainSectionTitle;
-    document.getElementById("languageLabel").innerText = t.languageLabel;
-    document.getElementById("imageLabel").innerText = t.imageLabel;
-    document.getElementById("textLabel").innerText = t.textLabel;
-    document.getElementById("input").placeholder = t.inputPlaceholder;
-    document.getElementById("explainBtn").innerText = t.explainBtn;
-    document.getElementById("answerBtn").innerText = t.answerBtn;
-    document.getElementById("speakBtn").innerText = t.speakBtn;
-    document.getElementById("stopBtn").innerText = t.stopBtn;
-    document.getElementById("emailBtn").innerText = t.emailBtn;
-    document.getElementById("waBtn").innerText = t.waBtn;
-    document.getElementById("shareHint").innerText = t.shareHint;
-    document.getElementById("questionTitle").innerText = t.questionTitle;
-    document.getElementById("questionInput").placeholder = t.questionPlaceholder;
-    document.getElementById("questionBtn").innerText = t.questionBtn;
-    document.getElementById("generalTitle").innerText = t.generalTitle;
-    document.getElementById("generalInput").placeholder = t.generalPlaceholder;
-    document.getElementById("generalBtn").innerText = t.generalBtn;
-    document.getElementById("generalHint").innerText = t.generalHint;
-  }
+        <label for="imageInput" id="imageLabel">Foto oder mehrere Seiten hochladen</label>
+        <input type="file" id="imageInput" accept="image/*" multiple>
+        <div class="hint" id="imageHint">Du kannst ein oder mehrere Fotos auswählen.</div>
 
-  imageInput.addEventListener("change", async function () {
-    const file = this.files[0];
-    if (!file) return;
+        <div id="ocrInfo" class="ocr-box"></div>
 
-    const t = getT();
-    setStatus(t.statusReadingImage);
+        <label for="input" id="textLabel">Oder Text einfügen</label>
+        <textarea id="input" placeholder="Text hier einfügen..."></textarea>
 
-    const reader = new FileReader();
+        <button class="primary-btn" id="explainBtn" onclick="sendText()">Jetzt erklären</button>
 
-    reader.onload = async function () {
-      try {
-        const base64 = reader.result.split(",")[1];
+        <div id="status" class="status"></div>
+        <div id="output" class="result"></div>
+
+        <div class="button-row">
+          <button class="secondary-btn" id="answerBtn" onclick="writeAnswer()">Antwort schreiben</button>
+          <button class="ghost-btn" id="speakBtn" onclick="speakOutput()">🔊 Vorlesen</button>
+        </div>
+
+        <div class="button-row">
+          <button class="ghost-btn" id="stopBtn" onclick="stopSpeaking()">⏹ Stop</button>
+          <button class="email-btn" id="emailBtn" onclick="createEmail()">📧 E-Mail</button>
+        </div>
+
+        <button class="share-btn" id="waBtn" onclick="shareWhatsApp()">🟢 WhatsApp teilen</button>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title" id="questionTitle">Frage zu diesem Brief</h3>
+        <textarea id="questionInput" class="small-textarea" placeholder="Stelle hier deine Frage zum Brief..."></textarea>
+        <button class="secondary-btn" id="questionBtn" onclick="askQuestion()">Frage stellen</button>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title" id="generalTitle">Allgemeine Frage</h3>
+        <textarea id="generalInput" class="small-textarea" placeholder="Stelle hier deine allgemeine Frage..."></textarea>
+        <div class="hint" id="generalHint">Zum Beispiel: Gibt es noch Hilfe, Unterstützung oder einen Antrag?</div>
+        <button class="secondary-btn" id="generalBtn" onclick="askGeneral()">Frage senden</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const statusBox = document.getElementById("status");
+    const outputBox = document.getElementById("output");
+    const inputBox = document.getElementById("input");
+    const imageInput = document.getElementById("imageInput");
+    const ocrInfo = document.getElementById("ocrInfo");
+
+    let currentLang = "de";
+    let availableVoices = [];
+
+    const translations = {
+      de: {
+        subtitle: "Foto machen oder Text einfügen. Dann einfach erklären lassen.",
+        languageTitle: "Sprache wählen",
+        mainTitle: "Brief verstehen",
+        imageLabel: "Foto oder mehrere Seiten hochladen",
+        imageHint: "Du kannst ein oder mehrere Fotos auswählen.",
+        textLabel: "Oder Text einfügen",
+        inputPlaceholder: "Text hier einfügen...",
+        explainBtn: "Jetzt erklären",
+        answerBtn: "Antwort schreiben",
+        speakBtn: "🔊 Vorlesen",
+        stopBtn: "⏹ Stop",
+        emailBtn: "📧 E-Mail",
+        waBtn: "🟢 WhatsApp teilen",
+        questionTitle: "Frage zu diesem Brief",
+        questionPlaceholder: "Stelle hier deine Frage zum Brief...",
+        questionBtn: "Frage stellen",
+        generalTitle: "Allgemeine Frage",
+        generalPlaceholder: "Stelle hier deine allgemeine Frage...",
+        generalHint: "Zum Beispiel: Gibt es noch Hilfe, Unterstützung oder einen Antrag?",
+        generalBtn: "Frage senden",
+        statusNoInput: "Bitte Text eingeben oder Foto hochladen.",
+        statusReadingImages: "Fotos werden gelesen...",
+        statusImageDone: "Fotos erfolgreich gelesen.",
+        statusImageError: "Fehler beim Lesen der Fotos.",
+        statusExplaining: "Text wird erklärt...",
+        statusExplainDone: "Erklärung fertig.",
+        statusAnswering: "Antwort wird erstellt...",
+        statusAnswerDone: "Antwort fertig.",
+        statusQuestionEmpty: "Bitte Frage eingeben.",
+        statusQuestionLoading: "Antwort wird erstellt...",
+        statusQuestionDone: "Antwort fertig.",
+        statusError: "Fehler bei Antwort.",
+        statusReading: "Text wird vorgelesen...",
+        statusReadDone: "Vorlesen beendet.",
+        statusReadStop: "Vorlesen gestoppt.",
+        statusReadNotSupported: "Vorlesen wird auf diesem Gerät nicht unterstützt.",
+        statusNoReadText: "Kein Text zum Vorlesen vorhanden.",
+        statusNoVoice: "Für diese Sprache ist auf diesem Gerät keine passende Stimme verfügbar.",
+        statusNoShareText: "Kein Text zum Teilen vorhanden.",
+        ocrOneImage: "1 Foto ausgewählt.",
+        ocrManyImages: "Fotos ausgewählt: "
+      },
+      tr: {
+        subtitle: "Foto çek veya metni yapıştır. Sonra kolayca açıkla.",
+        languageTitle: "Dil seç",
+        mainTitle: "Mektubu anla",
+        imageLabel: "Fotoğraf veya birkaç sayfa yükle",
+        imageHint: "Bir veya birden fazla fotoğraf seçebilirsin.",
+        textLabel: "Veya metni yapıştır",
+        inputPlaceholder: "Metni buraya yaz...",
+        explainBtn: "Şimdi açıkla",
+        answerBtn: "Cevap yaz",
+        speakBtn: "🔊 Oku",
+        stopBtn: "⏹ Durdur",
+        emailBtn: "📧 E-Posta",
+        waBtn: "🟢 WhatsApp paylaş",
+        questionTitle: "Bu mektupla ilgili soru",
+        questionPlaceholder: "Mektupla ilgili sorunu buraya yaz...",
+        questionBtn: "Soru sor",
+        generalTitle: "Genel soru",
+        generalPlaceholder: "Genel sorunu buraya yaz...",
+        generalHint: "Örnek: Yardım, destek veya başvuru var mı?",
+        generalBtn: "Soruyu gönder",
+        statusNoInput: "Lütfen metin gir veya fotoğraf yükle.",
+        statusReadingImages: "Fotoğraflar okunuyor...",
+        statusImageDone: "Fotoğraflar başarıyla okundu.",
+        statusImageError: "Fotoğraflar okunurken hata oldu.",
+        statusExplaining: "Metin açıklanıyor...",
+        statusExplainDone: "Açıklama hazır.",
+        statusAnswering: "Cevap hazırlanıyor...",
+        statusAnswerDone: "Cevap hazır.",
+        statusQuestionEmpty: "Lütfen soru yaz.",
+        statusQuestionLoading: "Cevap hazırlanıyor...",
+        statusQuestionDone: "Cevap hazır.",
+        statusError: "Cevapta hata oldu.",
+        statusReading: "Metin okunuyor...",
+        statusReadDone: "Okuma bitti.",
+        statusReadStop: "Okuma durduruldu.",
+        statusReadNotSupported: "Bu cihazda sesli okuma desteklenmiyor.",
+        statusNoReadText: "Okunacak metin yok.",
+        statusNoVoice: "Bu dil için cihazda uygun ses yok.",
+        statusNoShareText: "Paylaşılacak metin yok.",
+        ocrOneImage: "1 fotoğraf seçildi.",
+        ocrManyImages: "Seçilen fotoğraf sayısı: "
+      },
+      bg: {
+        subtitle: "Снимай или постави текст. После получи лесно обяснение.",
+        languageTitle: "Избери език",
+        mainTitle: "Разбери писмото",
+        imageLabel: "Качи снимка или няколко страници",
+        imageHint: "Можеш да избереш една или няколко снимки.",
+        textLabel: "Или постави текст",
+        inputPlaceholder: "Въведи текста тук...",
+        explainBtn: "Обясни сега",
+        answerBtn: "Напиши отговор",
+        speakBtn: "🔊 Прочети",
+        stopBtn: "⏹ Стоп",
+        emailBtn: "📧 Имейл",
+        waBtn: "🟢 WhatsApp споделяне",
+        questionTitle: "Въпрос за това писмо",
+        questionPlaceholder: "Напиши въпроса си за писмото тук...",
+        questionBtn: "Задай въпрос",
+        generalTitle: "Общ въпрос",
+        generalPlaceholder: "Напиши общия си въпрос тук...",
+        generalHint: "Пример: Има ли помощ, подкрепа или заявление?",
+        generalBtn: "Изпрати въпрос",
+        statusNoInput: "Моля, въведи текст или качи снимка.",
+        statusReadingImages: "Снимките се четат...",
+        statusImageDone: "Снимките са прочетени успешно.",
+        statusImageError: "Грешка при четене на снимките.",
+        statusExplaining: "Текстът се обяснява...",
+        statusExplainDone: "Обяснението е готово.",
+        statusAnswering: "Отговорът се подготвя...",
+        statusAnswerDone: "Отговорът е готов.",
+        statusQuestionEmpty: "Моля, напиши въпрос.",
+        statusQuestionLoading: "Отговорът се подготвя...",
+        statusQuestionDone: "Отговорът е готов.",
+        statusError: "Грешка при отговора.",
+        statusReading: "Текстът се чете...",
+        statusReadDone: "Четенето приключи.",
+        statusReadStop: "Четенето е спряно.",
+        statusReadNotSupported: "Това устройство не поддържа четене.",
+        statusNoReadText: "Няма текст за четене.",
+        statusNoVoice: "Няма подходящ глас за този език.",
+        statusNoShareText: "Няма текст за споделяне.",
+        ocrOneImage: "Избрана е 1 снимка.",
+        ocrManyImages: "Избрани снимки: "
+      }
+    };
+
+    function getT() {
+      return translations[currentLang] || translations.de;
+    }
+
+    function setLang(lang) {
+      currentLang = lang;
+
+      document.getElementById("langDe").classList.remove("active");
+      document.getElementById("langTr").classList.remove("active");
+      document.getElementById("langBg").classList.remove("active");
+
+      if (lang === "de") document.getElementById("langDe").classList.add("active");
+      if (lang === "tr") document.getElementById("langTr").classList.add("active");
+      if (lang === "bg") document.getElementById("langBg").classList.add("active");
+
+      updateInterfaceLanguage();
+    }
+
+    function updateInterfaceLanguage() {
+      const t = getT();
+
+      document.getElementById("subtitle").innerText = t.subtitle;
+      document.getElementById("languageTitle").innerText = t.languageTitle;
+      document.getElementById("mainTitle").innerText = t.mainTitle;
+      document.getElementById("imageLabel").innerText = t.imageLabel;
+      document.getElementById("imageHint").innerText = t.imageHint;
+      document.getElementById("textLabel").innerText = t.textLabel;
+      document.getElementById("input").placeholder = t.inputPlaceholder;
+      document.getElementById("explainBtn").innerText = t.explainBtn;
+      document.getElementById("answerBtn").innerText = t.answerBtn;
+      document.getElementById("speakBtn").innerText = t.speakBtn;
+      document.getElementById("stopBtn").innerText = t.stopBtn;
+      document.getElementById("emailBtn").innerText = t.emailBtn;
+      document.getElementById("waBtn").innerText = t.waBtn;
+      document.getElementById("questionTitle").innerText = t.questionTitle;
+      document.getElementById("questionInput").placeholder = t.questionPlaceholder;
+      document.getElementById("questionBtn").innerText = t.questionBtn;
+      document.getElementById("generalTitle").innerText = t.generalTitle;
+      document.getElementById("generalInput").placeholder = t.generalPlaceholder;
+      document.getElementById("generalHint").innerText = t.generalHint;
+      document.getElementById("generalBtn").innerText = t.generalBtn;
+      updateSelectedImagesInfo();
+    }
+
+    function setStatus(text) {
+      statusBox.innerText = text;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function detectUrgencyColor(text) {
+      const t = text.toLowerCase();
+
+      if (t.includes("hoch") || t.includes("yüksek") || t.includes("висока")) return "#ef4444";
+      if (t.includes("mittel") || t.includes("orta") || t.includes("средна")) return "#f59e0b";
+      if (t.includes("niedrig") || t.includes("düşük") || t.includes("ниска")) return "#22c55e";
+
+      return "#64748b";
+    }
+
+    function renderOutput(text) {
+      const color = detectUrgencyColor(text);
+
+      outputBox.innerHTML = `
+        <div style="padding:10px; border-radius:10px; background:${color}; color:white; font-weight:bold; margin-bottom:12px;">
+          Dringlichkeit erkannt
+        </div>
+        <div>${escapeHtml(text).replace(/\n/g, "<br>")}</div>
+      `;
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result.split(",")[1];
+          resolve(result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function updateSelectedImagesInfo() {
+      const t = getT();
+      const files = imageInput.files;
+
+      if (!files || files.length === 0) {
+        ocrInfo.style.display = "none";
+        ocrInfo.innerText = "";
+        return;
+      }
+
+      ocrInfo.style.display = "block";
+
+      if (files.length === 1) {
+        ocrInfo.innerText = t.ocrOneImage;
+      } else {
+        ocrInfo.innerText = t.ocrManyImages + files.length;
+      }
+    }
+
+    imageInput.addEventListener("change", updateSelectedImagesInfo);
+
+    async function extractTextFromImages() {
+      const files = imageInput.files;
+      const t = getT();
+
+      if (!files || files.length === 0) {
+        return "";
+      }
+
+      setStatus(t.statusReadingImages);
+
+      let allTexts = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const base64 = await fileToBase64(files[i]);
 
         const res = await fetch("/scan", {
           method: "POST",
@@ -479,276 +595,279 @@
         });
 
         const text = await res.text();
-        inputBox.value = text;
+
+        if (text && text.trim()) {
+          allTexts.push(text.trim());
+        }
+      }
+
+      const finalText = allTexts.join("\n\n---\n\n").trim();
+
+      if (finalText) {
         setStatus(t.statusImageDone);
-      } catch (error) {
-        console.log(error);
+      } else {
         setStatus(t.statusImageError);
       }
-    };
 
-    reader.readAsDataURL(file);
-  });
-
-  async function sendText() {
-    const text = inputBox.value.trim();
-    const lang = languageBox.value;
-    const t = getT();
-
-    if (!text) {
-      setStatus(t.statusNoText);
-      return;
+      return finalText;
     }
 
-    setStatus(t.statusExplaining);
+    async function sendText() {
+      const t = getT();
+      let text = inputBox.value.trim();
 
-    try {
-      const res = await fetch("/test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text, lang })
+      if (!text && imageInput.files.length > 0) {
+        text = await extractTextFromImages();
+        inputBox.value = text;
+      }
+
+      if (!text) {
+        setStatus(t.statusNoInput);
+        return;
+      }
+
+      setStatus(t.statusExplaining);
+
+      try {
+        const res = await fetch("/test", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text, lang: currentLang })
+        });
+
+        const data = await res.text();
+        renderOutput(data);
+        setStatus(t.statusExplainDone);
+      } catch (error) {
+        console.log(error);
+        setStatus(t.statusError);
+      }
+    }
+
+    async function writeAnswer() {
+      const t = getT();
+      const text = inputBox.value.trim();
+
+      if (!text) {
+        setStatus(t.statusNoInput);
+        return;
+      }
+
+      setStatus(t.statusAnswering);
+
+      try {
+        const res = await fetch("/antwort", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text, lang: currentLang })
+        });
+
+        const data = await res.text();
+        renderOutput(data);
+        setStatus(t.statusAnswerDone);
+      } catch (error) {
+        console.log(error);
+        setStatus(t.statusError);
+      }
+    }
+
+    async function askQuestion() {
+      const t = getT();
+      const question = document.getElementById("questionInput").value.trim();
+      const text = inputBox.value.trim();
+
+      if (!question) {
+        setStatus(t.statusQuestionEmpty);
+        return;
+      }
+
+      setStatus(t.statusQuestionLoading);
+
+      try {
+        const res = await fetch("/frage", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text, question, lang: currentLang })
+        });
+
+        const data = await res.text();
+        renderOutput(data);
+        setStatus(t.statusQuestionDone);
+      } catch (error) {
+        console.log(error);
+        setStatus(t.statusError);
+      }
+    }
+
+    async function askGeneral() {
+      const t = getT();
+      const question = document.getElementById("generalInput").value.trim();
+
+      if (!question) {
+        setStatus(t.statusQuestionEmpty);
+        return;
+      }
+
+      setStatus(t.statusQuestionLoading);
+
+      try {
+        const res = await fetch("/general", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ question, lang: currentLang })
+        });
+
+        const data = await res.text();
+        renderOutput(data);
+        setStatus(t.statusQuestionDone);
+      } catch (error) {
+        console.log(error);
+        setStatus(t.statusError);
+      }
+    }
+
+    function cleanTextForSpeech(text) {
+      return text
+        .replace(/\*\*/g, "")
+        .replace(/#/g, "")
+        .replace(/-/g, "")
+        .replace(/\n+/g, ". ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function loadVoices() {
+      availableVoices = window.speechSynthesis.getVoices();
+    }
+
+    function getLangCode(lang) {
+      if (lang === "tr") return "tr-TR";
+      if (lang === "bg") return "bg-BG";
+      return "de-DE";
+    }
+
+    function findMatchingVoice(langCode) {
+      const normalizedLangCode = langCode.toLowerCase().replace("_", "-");
+      const shortLang = normalizedLangCode.split("-")[0];
+
+      let exactVoice = availableVoices.find((voice) => {
+        return voice.lang.toLowerCase().replace("_", "-") === normalizedLangCode;
       });
 
-      const data = await res.text();
-      renderOutput(data);
-      setStatus(t.statusExplainDone);
-    } catch (error) {
-      console.log(error);
-      setStatus(t.statusError);
-    }
-  }
+      if (exactVoice) return exactVoice;
 
-  async function writeAnswer() {
-    const text = inputBox.value.trim();
-    const lang = languageBox.value;
-    const t = getT();
-
-    if (!text) {
-      setStatus(t.statusNoText);
-      return;
-    }
-
-    setStatus(t.statusAnswering);
-
-    try {
-      const res = await fetch("/antwort", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text, lang })
+      let shortVoice = availableVoices.find((voice) => {
+        return voice.lang.toLowerCase().replace("_", "-").startsWith(shortLang);
       });
 
-      const data = await res.text();
-      renderOutput(data);
-      setStatus(t.statusAnswerDone);
-    } catch (error) {
-      console.log(error);
-      setStatus(t.statusError);
-    }
-  }
+      if (shortVoice) return shortVoice;
 
-  async function askQuestion() {
-    const question = document.getElementById("questionInput").value.trim();
-    const text = inputBox.value.trim();
-    const lang = languageBox.value;
-    const t = getT();
-
-    if (!question) {
-      setStatus(t.statusQuestionEmpty);
-      return;
+      return null;
     }
 
-    setStatus(t.statusQuestionLoading);
-
-    try {
-      const res = await fetch("/frage", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text, question, lang })
-      });
-
-      const data = await res.text();
-      renderOutput(data);
-      setStatus(t.statusQuestionDone);
-    } catch (error) {
-      console.log(error);
-      setStatus(t.statusError);
-    }
-  }
-
-  async function askGeneral() {
-    const question = document.getElementById("generalInput").value.trim();
-    const lang = languageBox.value;
-    const t = getT();
-
-    if (!question) {
-      setStatus(t.statusQuestionEmpty);
-      return;
+    function getOutputTextOnly() {
+      return outputBox.innerText.trim();
     }
 
-    setStatus(t.statusQuestionLoading);
+    function speakOutput() {
+      let text = getOutputTextOnly();
+      text = cleanTextForSpeech(text);
 
-    try {
-      const res = await fetch("/general", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ question, lang })
-      });
+      const t = getT();
 
-      const data = await res.text();
-      renderOutput(data);
-      setStatus(t.statusQuestionDone);
-    } catch (error) {
-      console.log(error);
-      setStatus(t.statusError);
-    }
-  }
+      if (!("speechSynthesis" in window)) {
+        setStatus(t.statusReadNotSupported);
+        return;
+      }
 
-  function cleanTextForSpeech(text) {
-    return text
-      .replace(/\*\*/g, "")
-      .replace(/#/g, "")
-      .replace(/-/g, "")
-      .replace(/\n+/g, ". ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
+      if (!text) {
+        setStatus(t.statusNoReadText);
+        return;
+      }
 
-  function loadVoices() {
-    availableVoices = window.speechSynthesis.getVoices();
-  }
+      loadVoices();
 
-  function getLangCode(lang) {
-    if (lang === "tr") return "tr-TR";
-    if (lang === "bg") return "bg-BG";
-    return "de-DE";
-  }
+      const langCode = getLangCode(currentLang);
+      const matchedVoice = findMatchingVoice(langCode);
 
-  function findMatchingVoice(langCode) {
-    const normalizedLangCode = langCode.toLowerCase().replace("_", "-");
-    const shortLang = normalizedLangCode.split("-")[0];
+      if (!matchedVoice) {
+        setStatus(t.statusNoVoice);
+        return;
+      }
 
-    let exactVoice = availableVoices.find((voice) => {
-      return voice.lang.toLowerCase().replace("_", "-") === normalizedLangCode;
-    });
+      window.speechSynthesis.cancel();
 
-    if (exactVoice) return exactVoice;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = langCode;
+      utterance.voice = matchedVoice;
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
 
-    let shortVoice = availableVoices.find((voice) => {
-      return voice.lang.toLowerCase().replace("_", "-").startsWith(shortLang);
-    });
+      utterance.onstart = function () {
+        setStatus(t.statusReading);
+      };
 
-    if (shortVoice) return shortVoice;
+      utterance.onend = function () {
+        setStatus(t.statusReadDone);
+      };
 
-    return null;
-  }
+      utterance.onerror = function () {
+        setStatus(t.statusError);
+      };
 
-  function getOutputTextOnly() {
-    return outputBox.innerText.trim();
-  }
-
-  function speakOutput() {
-    let text = getOutputTextOnly();
-    text = cleanTextForSpeech(text);
-
-    const lang = languageBox.value;
-    const t = getT();
-
-    if (!("speechSynthesis" in window)) {
-      setStatus(t.statusReadNotSupported);
-      return;
+      window.speechSynthesis.speak(utterance);
     }
 
-    if (!text) {
-      setStatus(t.statusNoReadText);
-      return;
+    function stopSpeaking() {
+      const t = getT();
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      setStatus(t.statusReadStop);
+    }
+
+    function createEmail() {
+      const t = getT();
+      const text = outputBox.innerText.trim();
+
+      if (!text) {
+        setStatus(t.statusNoShareText);
+        return;
+      }
+
+      const subject = "Hilfe24 Anfrage";
+      const body = encodeURIComponent(text);
+
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`;
+    }
+
+    function shareWhatsApp() {
+      const t = getT();
+      const text = outputBox.innerText.trim();
+
+      if (!text) {
+        setStatus(t.statusNoShareText);
+        return;
+      }
+
+      const message = encodeURIComponent(text);
+      window.open(`https://wa.me/?text=${message}`, "_blank");
     }
 
     loadVoices();
+    updateInterfaceLanguage();
 
-    const langCode = getLangCode(lang);
-    const matchedVoice = findMatchingVoice(langCode);
-
-    if (!matchedVoice) {
-      setStatus(t.statusNoVoice);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = langCode;
-    utterance.voice = matchedVoice;
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-
-    utterance.onstart = function () {
-      setStatus(t.statusReading);
-    };
-
-    utterance.onend = function () {
-      setStatus(t.statusReadDone);
-    };
-
-    utterance.onerror = function () {
-      setStatus(t.statusError);
-    };
-
-    window.speechSynthesis.speak(utterance);
-  }
-
-  function stopSpeaking() {
-    const t = getT();
     if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
+      window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
     }
-    setStatus(t.statusReadStop);
-  }
-
-  function createEmail() {
-    const t = getT();
-    const text = outputBox.innerText.trim();
-
-    if (!text) {
-      setStatus(t.statusNoShareText);
-      return;
-    }
-
-    const subject = "Hilfe24 Anfrage";
-    const body = encodeURIComponent(text);
-
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`;
-  }
-
-  function shareWhatsApp() {
-    const t = getT();
-    const text = outputBox.innerText.trim();
-
-    if (!text) {
-      setStatus(t.statusNoShareText);
-      return;
-    }
-
-    const message = encodeURIComponent(text);
-    window.open(`https://wa.me/?text=${message}`, "_blank");
-  }
-
-  languageBox.addEventListener("change", updateInterfaceLanguage);
-
-  loadVoices();
-  updateInterfaceLanguage();
-
-  if ("speechSynthesis" in window) {
-    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
-  }
-</script>
-
+  </script>
 </body>
 </html>
