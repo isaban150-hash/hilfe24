@@ -123,24 +123,24 @@
       ergebnis.innerHTML = "";
 
       try {
-        const response = await fetch("/api/brief", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ text: text })
-        });
+       const response = await fetch("/api/brief", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ text })
+});
 
-        const data = await response.json();
+const data = await response.json();
 
-        if (!response.ok) {
-          status.innerHTML = '<div class="error">' + (data.error || "Fehler beim Laden.") + '</div>';
-          return;
-        }
+if (!response.ok) {
+  status.innerHTML = `<div class="error">${data.error || "Fehler beim Laden"}</div>`;
+  ergebnis.innerHTML = "";
+  return;
+}
 
-        status.innerHTML = "";
-        ergebnis.innerHTML = '<div class="result-box">' + (data.result || "Keine Antwort erhalten.") + '</div>';
-      } catch (error) {
+status.innerHTML = "";
+ergebnis.innerHTML = data.result;{
         status.innerHTML = '<div class="error">Fehler beim Laden.</div>';
         ergebnis.innerHTML = "";
         console.error(error);
