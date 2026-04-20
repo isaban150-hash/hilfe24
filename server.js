@@ -21,24 +21,36 @@ app.post("/api/brief", async (req, res) => {
   try {
     const text = req.body.text;
 
-    if (!text) {
-      return res.status(400).json({ error: "Kein Text gesendet" });
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Text gesendet"
+      });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({
+        ok: false,
+        error: "GEMINI_API_KEY fehlt auf dem Server"
+      });
     }
 
     const prompt = `
-Erkläre diesen Brief ganz einfach in normalem Text.
+Erkläre diesen Brief ganz einfach in normalem, natürlichem Deutsch.
 
 Schreibe wie ein Mensch.
 Keine Überschriften.
 Keine Aufzählung.
-Einfach erklären, was der Brief sagt und was die Person machen soll.
+Einfach erklären, was der Brief sagt und was die Person jetzt tun muss.
 
 Brief:
 ${text}
 `;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -48,9 +60,7 @@ ${text}
           contents: [
             {
               parts: [
-                {
-                  text: prompt
-                }
+                { text: prompt }
               ]
             }
           ]
@@ -61,22 +71,44 @@ ${text}
     const data = await response.json();
 
     if (!response.ok) {
-      console.log("Gemini Fehler:", data);
-      return res.status(500).json({ error: "Gemini API Fehler" });
+      console.error("Gemini Fehler:", data);
+
+      return res.status(response.status).json({
+        ok: false,
+        error:
+          data?.error?.message ||
+          "Gemini API Fehler"
+      });
     }
 
     const result =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Keine Antwort von Gemini erhalten.";
+      data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    res.json({ result });
+    if (!result) {
+      console.error("Gemini leere Antwort:", data);
+
+      return res.status(500).json({
+        ok: false,
+        error: "Keine Antwort von Gemini erhalten"
+      });
+    }
+
+    return res.json({
+      ok: true,
+      result
+    });
   } catch (error) {
     console.error("Serverfehler:", error);
-    res.status(500).json({ error: "Serverfehler" });
+
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Unbekannter Serverfehler"
+    });
   }
 });
 
 const PORT = process.env.PORT || 8080;
+
 app.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
 });
