@@ -1,10 +1,12 @@
 const express = require("express");
+const cors = require("cors");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 8080;
 
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
@@ -19,34 +21,41 @@ app.post("/api/brief", async (req, res) => {
   try {
     const text = req.body.text;
 
-    if (!text) {
-      return res.status(400).json({ error: "Kein Text gesendet" });
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        error: "Kein Brieftext gesendet"
+      });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error: "GEMINI_API_KEY fehlt"
+      });
     }
 
     const prompt = `
+Du bist ein Helfer für Menschen, die Briefe nicht verstehen.
+
 Erkläre diesen Brief in einfachem Deutsch.
-
-Bitte antworte in dieser Struktur:
-
-Was ist das?
-...
-Was wird verlangt?
-...
-Was musst du tun?
-...
-Wie dringend ist es?
-...
 
 Brief:
 ${text}
+
+Antworte NUR als JSON in genau diesem Format:
+
+{
+  "was": "Was ist das für ein Brief?",
+  "bedeutung": "Was bedeutet der Brief einfach erklärt?",
+  "tun": "Was muss die Person jetzt tun?",
+  "dringlichkeit": "rot"
+}
+
+Nutze bei dringlichkeit nur eines von diesen Wörtern:
+rot, gelb, grün
 `;
 
     const response = await fetch(
-if (!response.ok) {
-  return res.json({
-    result: "Fehler von Gemini: " + JSON.stringify(data)
-  });
-}      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -56,7 +65,9 @@ if (!response.ok) {
           contents: [
             {
               parts: [
-                { text: prompt }
+                {
+                  text: prompt
+                }
               ]
             }
           ]
@@ -66,27 +77,49 @@ if (!response.ok) {
 
     const data = await response.json();
 
-console.log("STATUS:", response.status);
-console.log("GEMINI RAW:", JSON.stringify(data, null, 2));
+    if (!response.ok) {
+      console.error("GEMINI FEHLER:", data);
+      return res.status(500).json({
+        error: "Gemini API Fehler",
+        details: data
+      });
+    }
 
+    const output =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    const result =
-      data.candidates &&
-      data.candidates[0] &&
-      data.candidates[0].content &&
-      data.candidates[0].content.parts &&
-      data.candidates[0].content.parts[0] &&
-      data.candidates[0].content.parts[0].text
-        ? data.candidates[0].content.parts[0].text
-        : "Keine Antwort von Gemini erhalten.";
+    if (!output) {
+      console.error("GEMINI LEERE ANTWORT:", data);
+      return res.status(500).json({
+        error: "Keine Antwort von Gemini erhalten"
+      });
+    }
 
-    res.json({ result });
+    let parsed;
+
+    try {
+      parsed = JSON.parse(output);
+    } catch (e) {
+      console.error("JSON PARSE FEHLER:", output);
+      parsed = {
+        was: "Unklar",
+        bedeutung: output,
+        tun: "Bitte Antwort prüfen",
+        dringlichkeit: "gelb"
+      };
+    }
+
+    res.json(parsed);
   } catch (error) {
-    console.error("Serverfehler:", error);
-    res.status(500).json({ error: "Server Fehler" });
+    console.error("SERVERFEHLER:", error);
+    res.status(500).json({
+      error: "Serverfehler"
+    });
   }
 });
 
+const PORT = process.env.PORT || 8080;
+
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
+  console.log(`Server läuft auf Port ${PORT}`);
 });
