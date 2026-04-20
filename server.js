@@ -20,15 +20,15 @@ app.get("/test", (req, res) => {
 
 app.post("/api/brief", async (req, res) => {
   const text = req.body.text;
-  const API_KEY = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
   if (!text) {
     return res.json({ result: "Bitte füge einen Brief ein." });
   }
 
   try {
-   
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${API_KEY}`,
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + apiKey,
       {
         method: "POST",
         headers: {
@@ -39,18 +39,16 @@ app.post("/api/brief", async (req, res) => {
             {
               parts: [
                 {
-                  text: `Erkläre diesen Brief extrem einfach.
-
-Struktur:
-1. Was ist das?
-2. Was bedeutet das?
-3. Was musst du tun?
-4. Dringlichkeit (Grün, Gelb oder Rot)
-
-Kurze Sätze. Keine Fachwörter.
-
-Brief:
-${text}`
+                  text:
+                    "Erkläre diesen Brief extrem einfach.\n\n" +
+                    "Struktur:\n" +
+                    "1. Was ist das?\n" +
+                    "2. Was bedeutet das?\n" +
+                    "3. Was musst du tun?\n" +
+                    "4. Dringlichkeit (Grün, Gelb oder Rot)\n\n" +
+                    "Kurze Sätze. Keine Fachwörter.\n\n" +
+                    "Brief:\n" +
+                    text
                 }
               ]
             }
@@ -62,11 +60,12 @@ ${text}`
     const data = await response.json();
 
     const result =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Ich konnte den Brief nicht verstehen.";
 
     res.json({ result });
   } catch (error) {
+    console.error(error);
     res.json({ result: "Fehler bei der Verarbeitung." });
   }
 });
