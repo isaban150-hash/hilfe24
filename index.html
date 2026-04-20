@@ -6,52 +6,51 @@
   <title>Hilfe24 – Brief erklären</title>
   <style>
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      background: #f3f4f6;
-      color: #111827;
+      background: #f6f6f6;
+      margin: 0;
+      padding: 40px 20px;
     }
 
-    .wrap {
-      max-width: 760px;
-      margin: 60px auto;
+    .box {
+      max-width: 800px;
+      margin: 0 auto;
       background: white;
+      padding: 30px;
       border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
 
     h1 {
+      margin-top: 0;
       font-size: 42px;
-      margin: 0 0 10px 0;
     }
 
     p {
-      font-size: 22px;
-      color: #4b5563;
-      margin-top: 0;
+      color: #555;
+      font-size: 18px;
     }
 
     textarea {
       width: 100%;
       min-height: 260px;
-      margin-top: 20px;
       padding: 16px;
       font-size: 18px;
-      border: 1px solid #d1d5db;
-      border-radius: 12px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
       resize: vertical;
       box-sizing: border-box;
+      margin-top: 16px;
     }
 
     button {
-      margin-top: 18px;
+      margin-top: 16px;
       background: #111827;
       color: white;
       border: none;
       padding: 14px 22px;
-      border-radius: 12px;
       font-size: 18px;
+      border-radius: 10px;
       cursor: pointer;
     }
 
@@ -60,55 +59,50 @@
     }
 
     #status {
-      margin-top: 18px;
+      margin-top: 16px;
+      font-size: 18px;
+    }
+
+    #ergebnis {
+      margin-top: 20px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 18px;
+      white-space: pre-wrap;
+      font-size: 18px;
+      line-height: 1.6;
     }
 
     .error {
       background: #fee2e2;
       color: #991b1b;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 18px;
+      padding: 12px;
+      border-radius: 8px;
     }
 
     .loading {
-      background: #e0f2fe;
-      color: #075985;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 18px;
-    }
-
-    .result-box {
-      margin-top: 18px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 18px;
-      font-size: 19px;
-      line-height: 1.6;
-      white-space: pre-wrap;
+      color: #374151;
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="box">
     <h1>📄 Brief erklären</h1>
     <p>Füge hier deinen Brief ein. Hilfe24 erklärt ihn dir einfach.</p>
 
-    <textarea
-      id="briefText"
-      placeholder="Füge deinen Brief hier ein..."
-    ></textarea>
+    <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
 
-    <button onclick="erklaeren()">📨 Brief erklären</button>
+    <button id="erklaerBtn">📨 Brief erklären</button>
 
     <div id="status"></div>
     <div id="ergebnis"></div>
   </div>
 
   <script>
-    async function erklaeren() {
+    const button = document.getElementById("erklaerBtn");
+
+    button.addEventListener("click", async function () {
       const text = document.getElementById("briefText").value.trim();
       const status = document.getElementById("status");
       const ergebnis = document.getElementById("ergebnis");
@@ -123,29 +117,27 @@
       ergebnis.innerHTML = "";
 
       try {
-       const response = await fetch("/api/brief", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({ text })
-});
+        const response = await fetch("/api/brief", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text: text })
+        });
 
-const data = await response.json();
+        const data = await response.json();
 
-if (!response.ok) {
-  status.innerHTML = `<div class="error">${data.error || "Fehler beim Laden"}</div>`;
-  ergebnis.innerHTML = "";
-  return;
-}
+        if (!response.ok) {
+          status.innerHTML = '<div class="error">' + (data.error || "Fehler beim Laden") + '</div>';
+          return;
+        }
 
-status.innerHTML = "";
-ergebnis.innerHTML = data.result;{
-        status.innerHTML = '<div class="error">Fehler beim Laden.</div>';
-        ergebnis.innerHTML = "";
-        console.error(error);
+        status.innerHTML = "";
+        ergebnis.textContent = data.result || "Keine Antwort erhalten.";
+      } catch (error) {
+        status.innerHTML = '<div class="error">Verbindung zum Server fehlgeschlagen.</div>';
       }
-    }
+    });
   </script>
 </body>
 </html>
