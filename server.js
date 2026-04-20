@@ -38,12 +38,16 @@ app.post("/api/brief", async (req, res) => {
     }
 
     const prompt = `
-Erkläre diesen Brief ganz einfach in normalem, natürlichem Deutsch.
+const prompt = `
+Erkläre diesen Brief ganz einfach.
 
-Schreibe wie ein Mensch.
-Keine Überschriften.
-Keine Aufzählung.
-Einfach erklären, was der Brief sagt und was die Person jetzt tun muss.
+Schreibe kurz und direkt wie ein normaler Mensch.
+
+Sag klar, was der Brief bedeutet und was ich jetzt tun muss.
+
+Keine Einleitung.
+Keine Wiederholungen.
+Keine unnötigen Sätze.
 
 Brief:
 ${text}
