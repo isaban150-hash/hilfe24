@@ -1,29 +1,20 @@
-import express from "express";
-import fetch from "node-fetch";
-import path from "path";
-import { fileURLToPath } from "url";
+const express = require("express");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// nötig für __dirname bei ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Startseite
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// Test-Route
 app.get("/test", (req, res) => {
   res.json({ ok: true, message: "Server läuft sauber" });
 });
 
-// 👉 HIER passiert die KI-Erklärung
 app.post("/api/brief", async (req, res) => {
   try {
     const text = req.body.text;
@@ -35,10 +26,16 @@ app.post("/api/brief", async (req, res) => {
     const prompt = `
 Erkläre diesen Brief in einfachem Deutsch.
 
-- Was ist das?
-- Was wird verlangt?
-- Was musst du tun?
-- Wie dringend ist es?
+Bitte antworte in dieser Struktur:
+
+Was ist das?
+...
+Was wird verlangt?
+...
+Was musst du tun?
+...
+Wie dringend ist es?
+...
 
 Brief:
 ${text}
@@ -54,7 +51,9 @@ ${text}
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: prompt }]
+              parts: [
+                { text: prompt }
+              ]
             }
           ]
         })
@@ -64,18 +63,22 @@ ${text}
     const data = await response.json();
 
     const result =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Keine Antwort von KI.";
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts &&
+      data.candidates[0].content.parts[0] &&
+      data.candidates[0].content.parts[0].text
+        ? data.candidates[0].content.parts[0].text
+        : "Keine Antwort von Gemini erhalten.";
 
     res.json({ result });
-
   } catch (error) {
-    console.error("FEHLER:", error);
+    console.error("Serverfehler:", error);
     res.status(500).json({ error: "Server Fehler" });
   }
 });
 
-// Server starten
 app.listen(PORT, () => {
   console.log("Server läuft auf Port " + PORT);
 });
