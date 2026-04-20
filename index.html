@@ -2,197 +2,67 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brief erklären - Hilfe24</title>
+  <title>Hilfe24</title>
+
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 30px auto;
+      font-family: Arial;
+      max-width: 700px;
+      margin: 40px auto;
       padding: 20px;
-      background: #f7f7f7;
-      color: #222;
+      background: #f5f5f5;
     }
 
     h1 {
-      margin-bottom: 10px;
-    }
-
-    p.info {
-      margin-bottom: 20px;
-      color: #555;
+      font-size: 28px;
     }
 
     textarea {
       width: 100%;
-      min-height: 220px;
-      padding: 12px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      resize: vertical;
-      box-sizing: border-box;
+      height: 200px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 14px;
     }
 
     button {
-      margin-top: 15px;
-      padding: 12px 18px;
+      margin-top: 10px;
+      padding: 10px 15px;
       font-size: 16px;
-      border: none;
-      border-radius: 10px;
       cursor: pointer;
-      background: #111;
-      color: white;
-    }
-
-    button:hover {
-      opacity: 0.9;
-    }
-
-    .result-box {
-      margin-top: 30px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-
-    .card h3 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 18px;
-    }
-
-    .ampel {
-      font-weight: bold;
-      display: inline-block;
-      padding: 8px 12px;
-      border-radius: 999px;
-    }
-
-    .gruen {
-      background: #d4f7d4;
-      color: #146814;
-    }
-
-    .gelb {
-      background: #fff3bf;
-      color: #8a6d00;
-    }
-
-    .rot {
-      background: #ffd6d6;
-      color: #a30000;
     }
 
     .loading {
-      margin-top: 20px;
-      font-weight: bold;
+      color: orange;
     }
 
     .error {
+      color: red;
+    }
+
+    .result-box {
       margin-top: 20px;
-      color: #a30000;
-      font-weight: bold;
+      padding: 15px;
+      background: white;
+      border-radius: 5px;
+      white-space: pre-line;
     }
   </style>
 </head>
+
 <body>
 
-  <h1>📄 Brief erklären</h1>
-  <p class="info">Füge hier deinen Brief ein. Hilfe24 erklärt ihn dir einfach.</p>
+<h1>📄 Brief erklären</h1>
+<p>Füge hier deinen Brief ein. Hilfe24 erklärt ihn dir einfach.</p>
 
-  <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
-  <button onclick="erklaeren()">➡️ Brief erklären</button>
+<textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
 
-  <div id="status"></div>
-  <div id="ergebnis" class="result-box"></div>
+<button onclick="erklaeren()">📨 Brief erklären</button>
 
-  <script>
-    function escapeHtml(text) {
-      return text
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
+<div id="status"></div>
+<div id="ergebnis" class="result-box"></div>
 
-    function parseAntwort(text) {
-      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-
-      let wasIstDas = "";
-      let wasBedeutetDas = "";
-      let wasMusstDuTun = "";
-      let dringlichkeit = "";
-
-      for (const line of lines) {
-        if (line.startsWith("WAS_IST_DAS:")) {
-          wasIstDas = line.replace("WAS_IST_DAS:", "").trim();
-        } else if (line.startsWith("WAS_BEDEUTET_DAS:")) {
-          wasBedeutetDas = line.replace("WAS_BEDEUTET_DAS:", "").trim();
-        } else if (line.startsWith("WAS_MUSST_DU_TUN:")) {
-          wasMusstDuTun = line.replace("WAS_MUSST_DU_TUN:", "").trim();
-        } else if (line.startsWith("DRINGLICHKEIT:")) {
-          dringlichkeit = line.replace("DRINGLICHKEIT:", "").trim();
-        }
-      }
-
-      return {
-        wasIstDas,
-        wasBedeutetDas,
-        wasMusstDuTun,
-        dringlichkeit
-      };
-    }
-
-    function renderAntwort(data) {
-      const { wasIstDas, wasBedeutetDas, wasMusstDuTun, dringlichkeit } = data;
-
-      let ampelClass = "";
-      let ampelText = dringlichkeit || "Unklar";
-
-      const d = (dringlichkeit || "").toLowerCase();
-
-      if (d.includes("grün") || d.includes("gruen")) {
-        ampelClass = "gruen";
-        ampelText = "Grün";
-      } else if (d.includes("gelb")) {
-        ampelClass = "gelb";
-        ampelText = "Gelb";
-      } else if (d.includes("rot")) {
-        ampelClass = "rot";
-        ampelText = "Rot";
-      }
-
-      return `
-        <div class="card">
-          <h3>📌 Was ist das?</h3>
-          <div>${escapeHtml(wasIstDas || "Keine Antwort")}</div>
-        </div>
-
-        <div class="card">
-          <h3>🧠 Was bedeutet das?</h3>
-          <div>${escapeHtml(wasBedeutetDas || "Keine Antwort")}</div>
-        </div>
-
-        <div class="card">
-          <h3>✅ Was musst du tun?</h3>
-          <div>${escapeHtml(wasMusstDuTun || "Keine Antwort")}</div>
-        </div>
-
-        <div class="card">
-          <h3>🚨 Dringlichkeit</h3>
-          <div class="ampel ${ampelClass}">${escapeHtml(ampelText)}</div>
-        </div>
-      `;
-    }
-
-    <script>
+<script>
 async function erklaeren() {
   const text = document.getElementById("briefText").value.trim();
   const status = document.getElementById("status");
@@ -217,46 +87,14 @@ async function erklaeren() {
     });
 
     const data = await response.json();
-    console.log("API Antwort:", data);
-
-    if (!response.ok) {
-      status.innerHTML = '<div class="error">Serverfehler beim Laden.</div>';
-      return;
-    }
-
-    const result = data.result || data;
-
-    if (!result) {
-      status.innerHTML = '<div class="error">Keine gültige Antwort erhalten.</div>';
-      return;
-    }
 
     status.innerHTML = "";
+    ergebnis.innerText = data.result || "Keine Antwort";
 
-    ergebnis.innerHTML = `
-      <div class="card">
-        <h3>📌 Was ist das?</h3>
-        <p>${result.was || "Keine Antwort"}</p>
-      </div>
-
-      <div class="card">
-        <h3>🧠 Was bedeutet das?</h3>
-        <p>${result.bedeutung || "Keine Antwort"}</p>
-      </div>
-
-      <div class="card">
-        <h3>✅ Was musst du tun?</h3>
-        <p>${result.tun || "Keine Antwort"}</p>
-      </div>
-
-      <div class="card">
-        <h3>🚨 Dringlichkeit</h3>
-        <p>${result.dringlichkeit || "Unklar"}</p>
-      </div>
-    `;
   } catch (error) {
-    console.error("Frontend-Fehler:", error);
+    console.error(error);
     status.innerHTML = '<div class="error">Fehler beim Laden.</div>';
+    ergebnis.innerHTML = "";
   }
 }
 </script>
