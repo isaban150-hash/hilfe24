@@ -29,7 +29,7 @@ app.post("/api/brief", async (req, res) => {
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           contents: [
@@ -39,9 +39,11 @@ app.post("/api/brief", async (req, res) => {
                   text: `
 Du bist ein Helfer für Menschen, die Briefe nicht verstehen.
 
-Erkläre diesen Brief ganz einfach.
+Erkläre diesen Brief ganz einfach:
 
-Antworte NUR in diesem JSON-Format:
+"${text}"
+
+Antworte nur in JSON:
 
 {
   "was": "...",
@@ -49,52 +51,37 @@ Antworte NUR in diesem JSON-Format:
   "tun": "...",
   "dringlichkeit": "rot/gelb/grün"
 }
-
-Brief:
-${text}
-`
-                }
-              ]
-            }
-          ]
-        })
+                  `,
+                },
+              ],
+            },
+          ],
+        }),
       }
     );
 
     const data = await response.json();
-    const output = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    const output =
+      data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     let parsed;
 
     try {
       parsed = JSON.parse(output);
-    } catch {
+    } catch (e) {
       parsed = {
         was: "Fehler",
-        bedeutung: output || "Keine Antwort von Gemini.",
+        bedeutung: output,
         tun: "Unklar",
-        dringlichkeit: "gelb"
+        dringlichkeit: "gelb",
       };
     }
 
     res.json({ result: parsed });
+
   } catch (err) {
-    console.error("Serverfehler:", err);
-    res.status(500).json({
-      result: {
-        was: "Fehler",
-        bedeutung: "Serverfehler",
-        tun: "Bitte später erneut versuchen.",
-        dringlichkeit: "gelb"
-      }
-    });
+    console.error(err);
+    res.status(500).json({ error: "Serverfehler" });
   }
-});
-
-app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
-});
-
-app.listen(3000, () => {
-  console.log("Server läuft auf Port 8080");
 });
