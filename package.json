@@ -1,12 +1,12 @@
-{
-  "name": "hilfe24",
-  "version": "1.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
-  }
-}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hilfe24</title>
+</head>
+<body>
+  <h1>Hilfe24 läuft</h1>
+  <p>Server und Seite sind online.</p>
+</body>
+</html>
