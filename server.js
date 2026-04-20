@@ -42,7 +42,11 @@ ${text}
 `;
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY,
+if (!response.ok) {
+  return res.json({
+    result: "Fehler von Gemini: " + JSON.stringify(data)
+  });
+}      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY,
       {
         method: "POST",
         headers: {
@@ -61,7 +65,9 @@ ${text}
     );
 
     const data = await response.json();
-console.log("GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+
+console.log("STATUS:", response.status);
+console.log("GEMINI RAW:", JSON.stringify(data, null, 2));
 
 
     const result =
