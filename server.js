@@ -48,7 +48,9 @@ ${text}
           contents: [
             {
               parts: [
-                { text: prompt }
+                {
+                  text: prompt
+                }
               ]
             }
           ]
@@ -60,10 +62,7 @@ ${text}
 
     if (!response.ok) {
       console.log("Gemini Fehler:", data);
-      return res.status(500).json({
-        error: "Gemini API Fehler",
-        details: data
-      });
+      return res.status(500).json({ error: "Gemini API Fehler" });
     }
 
     const result =
@@ -71,10 +70,9 @@ ${text}
       "Keine Antwort von Gemini erhalten.";
 
     res.json({ result });
-
-  } catch (err) {
-    console.error("Serverfehler:", err);
-    res.status(500).json({ error: "Server Fehler" });
+  } catch (error) {
+    console.error("Serverfehler:", error);
+    res.status(500).json({ error: "Serverfehler" });
   }
 });
 
