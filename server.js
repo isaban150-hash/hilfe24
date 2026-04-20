@@ -40,15 +40,20 @@ app.post("/api/brief", async (req, res) => {
               parts: [
                 {
                   text:
-                    "Erkläre diesen Brief extrem einfach.\n\n" +
-                    "Struktur:\n" +
-                    "1. Was ist das?\n" +
-                    "2. Was bedeutet das?\n" +
-                    "3. Was musst du tun?\n" +
-                    "4. Dringlichkeit (Grün, Gelb oder Rot)\n\n" +
-                    "Kurze Sätze. Keine Fachwörter.\n\n" +
-                    "Brief:\n" +
-                    text
+  "Erkläre diesen Brief extrem einfach.\n\n" +
+  "Antworte GENAU in diesem Format:\n\n" +
+  "WAS_IST_DAS: ...\n" +
+  "WAS_BEDEUTET_DAS: ...\n" +
+  "WAS_MUSST_DU_TUN: ...\n" +
+  "DRINGLICHKEIT: Grün, Gelb oder Rot\n\n" +
+  "Regeln:\n" +
+  "- sehr einfache Sprache\n" +
+  "- kurze Sätze\n" +
+  "- keine Fachwörter\n" +
+  "- pro Punkt nur 1 bis 3 kurze Sätze\n" +
+  "- bei DRINGLICHKEIT nur Grün, Gelb oder Rot schreiben\n\n" +
+  "Brief:\n" +
+  text
                 }
               ]
             }
