@@ -1,48 +1,29 @@
-const express = require("express");
-const path = require("path");
+import express from "express";
+import fetch from "node-fetch";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
+const PORT = process.env.PORT || 8080;
+
+// nötig für __dirname bei ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
+// Startseite
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// Test-Route
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server laeuft sauber" });
+  res.json({ ok: true, message: "Server läuft sauber" });
 });
 
-app.post("/api/brief", async (req, res) => {
-  try {
-    const text = req.body.text;
-
-    if (!text) {
-      return res.status(400).json({ error: "Kein Text gesendet" });
-    }
-
-    const antwort = `Erklaerung:
-
-Das Jobcenter sagt:
-- Deine Unterlagen wurden geprueft
-- Es fehlen noch:
-  - Kontoauszuege der letzten 3 Monate
-  - Mietvertrag
-
-Was du tun musst:
-Reiche die Unterlagen bis spaetestens 30.04.2026 ein.
-
-Wenn du nichts schickst:
-Dein Antrag kann nicht weiter bearbeitet werden.`;
-
-    res.json({ result: antwort });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server Fehler" });
-  }
-});
+// 👉 HIER passiert die KI-Erklärung
 app.post("/api/brief", async (req, res) => {
   try {
     const text = req.body.text;
@@ -52,27 +33,14 @@ app.post("/api/brief", async (req, res) => {
     }
 
     const prompt = `
-Du bist ein Helfer für Menschen, die Briefe nicht verstehen.
+Erkläre diesen Brief in einfachem Deutsch.
 
-Erkläre diesen Brief in sehr einfachem Deutsch.
+- Was ist das?
+- Was wird verlangt?
+- Was musst du tun?
+- Wie dringend ist es?
 
-Antworte in genau diesem Format:
-
-Erklaerung:
-
-Das sagt der Brief:
-...
-
-Was bedeutet das:
-...
-
-Was du tun musst:
-...
-
-Wie dringend ist das:
-...
-
-Hier ist der Brief:
+Brief:
 ${text}
 `;
 
@@ -86,11 +54,7 @@ ${text}
         body: JSON.stringify({
           contents: [
             {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
+              parts: [{ text: prompt }]
             }
           ]
         })
@@ -101,16 +65,17 @@ ${text}
 
     const result =
       data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Keine Antwort von Gemini erhalten.";
+      "Keine Antwort von KI.";
 
     res.json({ result });
+
   } catch (error) {
-    console.error(error);
+    console.error("FEHLER:", error);
     res.status(500).json({ error: "Server Fehler" });
   }
 });
-const PORT = process.env.PORT || 3000;
 
+// Server starten
 app.listen(PORT, () => {
-  console.log("Server laeuft auf Port " + PORT);
+  console.log("Server läuft auf Port " + PORT);
 });
