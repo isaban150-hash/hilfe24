@@ -1,80 +1,72 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 8080;
-
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber" });
-});
-
-app.post("/api/brief", async (req, res) => {
-  const text = req.body.text;
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!text) {
-    return res.json({ result: "Bitte füge einen Brief ein." });
-  }
-
+app.post("/api/erklaeren", async (req, res) => {
   try {
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + apiKey,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text:
-  "Erkläre diesen Brief extrem einfach.\n\n" +
-  "Antworte GENAU in diesem Format:\n\n" +
-  "WAS_IST_DAS: ...\n" +
-  "WAS_BEDEUTET_DAS: ...\n" +
-  "WAS_MUSST_DU_TUN: ...\n" +
-  "DRINGLICHKEIT: Grün, Gelb oder Rot\n\n" +
-  "Regeln:\n" +
-  "- sehr einfache Sprache\n" +
-  "- kurze Sätze\n" +
-  "- keine Fachwörter\n" +
-  "- pro Punkt nur 1 bis 3 kurze Sätze\n" +
-  "- bei DRINGLICHKEIT nur Grün, Gelb oder Rot schreiben\n\n" +
-  "Brief:\n" +
-  text
-                }
-              ]
-            }
-          ]
-        })
-      }
-    );
+    const { text } = req.body;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `
+Du bist ein Helfer für Menschen, die Briefe nicht verstehen.
+
+Erkläre diesen Brief ganz einfach:
+
+"${text}"
+
+Antworte nur in JSON:
+
+{
+  "was": "...",
+  "bedeutung": "...",
+  "tun": "...",
+  "dringlichkeit": "rot/gelb/grün"
+}
+`
+              }
+            ]
+          }
+        ]
+      })
+    });
 
     const data = await response.json();
 
-    const result =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Ich konnte den Brief nicht verstehen.";
+    const output =
+      data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    res.json({ result });
-  } catch (error) {
-    console.error(error);
-    res.json({ result: "Fehler bei der Verarbeitung." });
+    let parsed;
+
+    try {
+      parsed = JSON.parse(output);
+    } catch {
+      parsed = {
+        was: "Fehler",
+        bedeutung: output,
+        tun: "Unklar",
+        dringlichkeit: "gelb"
+      };
+    }
+
+    res.json(parsed);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Serverfehler" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
+app.listen(3000, () => {
+  console.log("Server läuft auf Port 3000");
 });
