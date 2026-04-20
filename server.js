@@ -78,6 +78,13 @@ rot, gelb, grün
     const data = await response.json();
 
     if (!response.ok) {
+  console.error("GEMINI FEHLER KOMPLETT:", JSON.stringify(data, null, 2));
+
+  return res.status(500).json({
+    error: "Gemini API Fehler",
+    details: data
+  });
+}
       console.error("GEMINI FEHLER:", data);
       return res.status(500).json({
         error: "Gemini API Fehler",
