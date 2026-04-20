@@ -13,25 +13,14 @@
 <textarea id="briefText" rows="10" cols="50"></textarea>
 <br><br>
 
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hilfe24</title>
-</head>
-<body>
-  <h1>Hilfe24 läuft</h1>
-  <p>Server und Seite sind online.</p>
-</body>
-</html>
-</a>
+<button onclick="erklaeren()">➡️ Brief erklären</button>
+
 <hr>
 
 <div id="ergebnis"></div>
 
 <script>
-function erklaeren() {
+async function erklaeren() {
   const text = document.getElementById("briefText").value;
 
   if (!text) {
@@ -40,20 +29,19 @@ function erklaeren() {
     return;
   }
 
-  // TEST-Antwort (noch keine echte KI)
-  document.getElementById("ergebnis").innerHTML = `
-    <h3>🟢 Was ist das?</h3>
-    <p>Das ist ein Test-Brief.</p>
+  document.getElementById("ergebnis").innerHTML = "Lade...";
 
-    <h3>🟡 Was bedeutet das?</h3>
-    <p>Das ist nur eine Beispiel-Erklärung.</p>
+  const response = await fetch("/api/brief", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ text })
+  });
 
-    <h3>🔴 Was musst du tun?</h3>
-    <p>Du musst später echte Daten anzeigen.</p>
+  const data = await response.json();
 
-    <h3>🚨 Dringlichkeit</h3>
-    <p>Gelb. Kümmere dich bald darum.</p>
-  `;
+  document.getElementById("ergebnis").innerHTML = data.result;
 }
 </script>
 
