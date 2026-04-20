@@ -192,40 +192,74 @@
       `;
     }
 
-    async function erklaeren() {
-      const text = document.getElementById("briefText").value.trim();
-      const status = document.getElementById("status");
-      const ergebnis = document.getElementById("ergebnis");
+    <script>
+async function erklaeren() {
+  const text = document.getElementById("briefText").value.trim();
+  const status = document.getElementById("status");
+  const ergebnis = document.getElementById("ergebnis");
 
-      if (!text) {
-        status.innerHTML = `<div class="error">Bitte füge einen Brief ein.</div>`;
-        ergebnis.innerHTML = "";
-        return;
-      }
+  if (!text) {
+    status.innerHTML = '<div class="error">Bitte füge einen Brief ein.</div>';
+    ergebnis.innerHTML = "";
+    return;
+  }
 
-      status.innerHTML = `<div class="loading">Lade...</div>`;
-      ergebnis.innerHTML = "";
+  status.innerHTML = '<div class="loading">Lade...</div>';
+  ergebnis.innerHTML = "";
 
-      try {
-        const response = await fetch("/api/brief", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ text })
-        });
+  try {
+    const response = await fetch("/api/brief", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text })
+    });
 
-        const data = await response.json();
+    const data = await response.json();
+    console.log("API Antwort:", data);
 
-        status.innerHTML = "";
-        const parsed = parseAntwort(data.result || "");
-        ergebnis.innerHTML = renderAntwort(parsed);
-      } catch (error) {
-        status.innerHTML = `<div class="error">Fehler beim Laden.</div>`;
-        ergebnis.innerHTML = "";
-      }
+    if (!response.ok) {
+      status.innerHTML = '<div class="error">Serverfehler beim Laden.</div>';
+      return;
     }
-  </script>
+
+    const result = data.result || data;
+
+    if (!result) {
+      status.innerHTML = '<div class="error">Keine gültige Antwort erhalten.</div>';
+      return;
+    }
+
+    status.innerHTML = "";
+
+    ergebnis.innerHTML = `
+      <div class="card">
+        <h3>📌 Was ist das?</h3>
+        <p>${result.was || "Keine Antwort"}</p>
+      </div>
+
+      <div class="card">
+        <h3>🧠 Was bedeutet das?</h3>
+        <p>${result.bedeutung || "Keine Antwort"}</p>
+      </div>
+
+      <div class="card">
+        <h3>✅ Was musst du tun?</h3>
+        <p>${result.tun || "Keine Antwort"}</p>
+      </div>
+
+      <div class="card">
+        <h3>🚨 Dringlichkeit</h3>
+        <p>${result.dringlichkeit || "Unklar"}</p>
+      </div>
+    `;
+  } catch (error) {
+    console.error("Frontend-Fehler:", error);
+    status.innerHTML = '<div class="error">Fehler beim Laden.</div>';
+  }
+}
+</script>
 
 </body>
 </html>
