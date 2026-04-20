@@ -12,48 +12,30 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber" });
+  res.json({ ok: true, message: "Server laeuft sauber" });
 });
 
 app.post("/api/brief", async (req, res) => {
   try {
-    const { text } = req.body;
+    const text = req.body.text;
 
     if (!text) {
       return res.status(400).json({ error: "Kein Text gesendet" });
     }
 
-    const antwort = `
-📄 Erklärung:
+    const antwort = `Erklaerung:
 
 Das Jobcenter sagt:
-- Deine Unterlagen wurden geprüft
+- Deine Unterlagen wurden geprueft
 - Es fehlen noch:
-  • Kontoauszüge der letzten 3 Monate
-  • Mietvertrag
+  - Kontoauszuege der letzten 3 Monate
+  - Mietvertrag
 
-👉 Was du tun musst:
-Reiche die Unterlagen bis spätestens 30.04.2026 ein.
+Was du tun musst:
+Reiche die Unterlagen bis spaetestens 30.04.2026 ein.
 
-⚠️ Wenn du nichts schickst:
-Dein Antrag kann nicht weiter bearbeitet werden.
-`;
-
-    res.json({ result: antwort });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server Fehler" });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
-});
-⚠️ Wenn du nichts schickst:
-Dein Antrag kann nicht weiter bearbeitet werden.
-`;
+Wenn du nichts schickst:
+Dein Antrag kann nicht weiter bearbeitet werden.`;
 
     res.json({ result: antwort });
   } catch (error) {
@@ -65,31 +47,5 @@ Dein Antrag kann nicht weiter bearbeitet werden.
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
-});  • Kontoauszüge (3 Monate)
-  • Mietvertrag
-
-👉 Was du tun musst:
-Schick die Unterlagen bis zum 30.04.2026.
-
-⚠️ Wenn du nichts schickst:
-Dein Antrag wird NICHT bearbeitet.
-`;
-
-    res.json({ result: antwort });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server Fehler" });
-  }
-});
-
-// Server starten
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
-});
-
-app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
+  console.log("Server laeuft auf Port " + PORT);
 });
