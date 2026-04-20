@@ -43,7 +43,72 @@ Dein Antrag kann nicht weiter bearbeitet werden.`;
     res.status(500).json({ error: "Server Fehler" });
   }
 });
+app.post("/api/brief", async (req, res) => {
+  try {
+    const text = req.body.text;
 
+    if (!text) {
+      return res.status(400).json({ error: "Kein Text gesendet" });
+    }
+
+    const prompt = `
+Du bist ein Helfer für Menschen, die Briefe nicht verstehen.
+
+Erkläre diesen Brief in sehr einfachem Deutsch.
+
+Antworte in genau diesem Format:
+
+Erklaerung:
+
+Das sagt der Brief:
+...
+
+Was bedeutet das:
+...
+
+Was du tun musst:
+...
+
+Wie dringend ist das:
+...
+
+Hier ist der Brief:
+${text}
+`;
+
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    const result =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Keine Antwort von Gemini erhalten.";
+
+    res.json({ result });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server Fehler" });
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
