@@ -50,6 +50,22 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log("Server läuft auf Port " + PORT);
+});
+⚠️ Wenn du nichts schickst:
+Dein Antrag kann nicht weiter bearbeitet werden.
+`;
+
+    res.json({ result: antwort });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server Fehler" });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server läuft auf Port " + PORT);
 });  • Kontoauszüge (3 Monate)
   • Mietvertrag
 
