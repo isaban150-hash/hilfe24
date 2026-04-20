@@ -13,6 +13,10 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+app.get("/test", (req, res) => {
+  res.json({ ok: true, message: "Server läuft sauber" });
+});
+
 app.post("/api/brief", async (req, res) => {
   try {
     const text = req.body.text;
@@ -20,6 +24,18 @@ app.post("/api/brief", async (req, res) => {
     if (!text) {
       return res.status(400).json({ error: "Kein Text gesendet" });
     }
+
+    const prompt = `
+Erkläre diesen Brief ganz einfach in normalem Text.
+
+Schreibe wie ein Mensch.
+Keine Überschriften.
+Keine Aufzählung.
+Einfach erklären, was der Brief sagt und was die Person machen soll.
+
+Brief:
+${text}
+`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -32,9 +48,7 @@ app.post("/api/brief", async (req, res) => {
           contents: [
             {
               parts: [
-                {
-                  text: `Erkläre diesen Brief einfach:\n\n${text}`
-                }
+                { text: prompt }
               ]
             }
           ]
@@ -45,30 +59,26 @@ app.post("/api/brief", async (req, res) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(data);
+      console.log("Gemini Fehler:", data);
       return res.status(500).json({
-        error: "Gemini API Fehler"
+        error: "Gemini API Fehler",
+        details: data
       });
     }
 
-    const output =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text || "Keine Antwort";
+    const result =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Keine Antwort von Gemini erhalten.";
 
-    res.json({
-      was: "Brief vom Amt",
-      bedeutung: output,
-      tun: "Bitte lesen und ggf. Unterlagen einreichen",
-      dringlichkeit: "gelb"
-    });
+    res.json({ result });
 
   } catch (err) {
-    console.error("SERVER FEHLER:", err);
-    res.status(500).json({ error: "Serverfehler" });
+    console.error("Serverfehler:", err);
+    res.status(500).json({ error: "Server Fehler" });
   }
 });
 
 const PORT = process.env.PORT || 8080;
-
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
+  console.log(`Server läuft auf Port ${PORT}`);
 });
