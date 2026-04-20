@@ -1,12 +1,50 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hilfe24</title>
+  <meta charset="UTF-8">
+  <title>Brief erklären - Hilfe24</title>
 </head>
 <body>
-  <h1>Hilfe24 läuft</h1>
-  <p>Server und Seite sind online.</p>
+
+<h1>📄 Brief erklären</h1>
+
+<p>Füge deinen Brief ein:</p>
+
+<textarea id="briefText" rows="10" cols="50"></textarea>
+<br><br>
+
+<button onclick="erklaeren()">➡️ Brief erklären</button>
+
+<hr>
+
+<div id="ergebnis"></div>
+
+<script>
+function erklaeren() {
+  const text = document.getElementById("briefText").value;
+
+  if (!text) {
+    document.getElementById("ergebnis").innerHTML =
+      "Bitte füge einen Brief ein.";
+    return;
+  }
+
+  // TEST-Antwort (noch keine echte KI)
+  document.getElementById("ergebnis").innerHTML = `
+    <h3>🟢 Was ist das?</h3>
+    <p>Das ist ein Test-Brief.</p>
+
+    <h3>🟡 Was bedeutet das?</h3>
+    <p>Das ist nur eine Beispiel-Erklärung.</p>
+
+    <h3>🔴 Was musst du tun?</h3>
+    <p>Du musst später echte Daten anzeigen.</p>
+
+    <h3>🚨 Dringlichkeit</h3>
+    <p>Gelb. Kümmere dich bald darum.</p>
+  `;
+}
+</script>
+
 </body>
 </html>
