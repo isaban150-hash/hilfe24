@@ -2,48 +2,230 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brief erklären - Hilfe24</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    p.info {
+      margin-bottom: 20px;
+      color: #555;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 12px 18px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #111;
+      color: white;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .result-box {
+      margin-top: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .ampel {
+      font-weight: bold;
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    .gruen {
+      background: #d4f7d4;
+      color: #146814;
+    }
+
+    .gelb {
+      background: #fff3bf;
+      color: #8a6d00;
+    }
+
+    .rot {
+      background: #ffd6d6;
+      color: #a30000;
+    }
+
+    .loading {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    .error {
+      margin-top: 20px;
+      color: #a30000;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 
-<h1>📄 Brief erklären</h1>
+  <h1>📄 Brief erklären</h1>
+  <p class="info">Füge hier deinen Brief ein. Hilfe24 erklärt ihn dir einfach.</p>
 
-<p>Füge deinen Brief ein:</p>
+  <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
+  <button onclick="erklaeren()">➡️ Brief erklären</button>
 
-<textarea id="briefText" rows="10" cols="50"></textarea>
-<br><br>
+  <div id="status"></div>
+  <div id="ergebnis" class="result-box"></div>
 
-<button onclick="erklaeren()">➡️ Brief erklären</button>
+  <script>
+    function escapeHtml(text) {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
-<hr>
+    function parseAntwort(text) {
+      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
 
-<div id="ergebnis"></div>
+      let wasIstDas = "";
+      let wasBedeutetDas = "";
+      let wasMusstDuTun = "";
+      let dringlichkeit = "";
 
-<script>
-async function erklaeren() {
-  const text = document.getElementById("briefText").value;
+      for (const line of lines) {
+        if (line.startsWith("WAS_IST_DAS:")) {
+          wasIstDas = line.replace("WAS_IST_DAS:", "").trim();
+        } else if (line.startsWith("WAS_BEDEUTET_DAS:")) {
+          wasBedeutetDas = line.replace("WAS_BEDEUTET_DAS:", "").trim();
+        } else if (line.startsWith("WAS_MUSST_DU_TUN:")) {
+          wasMusstDuTun = line.replace("WAS_MUSST_DU_TUN:", "").trim();
+        } else if (line.startsWith("DRINGLICHKEIT:")) {
+          dringlichkeit = line.replace("DRINGLICHKEIT:", "").trim();
+        }
+      }
 
-  if (!text) {
-    document.getElementById("ergebnis").innerHTML =
-      "Bitte füge einen Brief ein.";
-    return;
-  }
+      return {
+        wasIstDas,
+        wasBedeutetDas,
+        wasMusstDuTun,
+        dringlichkeit
+      };
+    }
 
-  document.getElementById("ergebnis").innerHTML = "Lade...";
+    function renderAntwort(data) {
+      const { wasIstDas, wasBedeutetDas, wasMusstDuTun, dringlichkeit } = data;
 
-  const response = await fetch("/api/brief", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ text })
-  });
+      let ampelClass = "";
+      let ampelText = dringlichkeit || "Unklar";
 
-  const data = await response.json();
+      const d = (dringlichkeit || "").toLowerCase();
 
-  document.getElementById("ergebnis").innerHTML = data.result;
-}
-</script>
+      if (d.includes("grün") || d.includes("gruen")) {
+        ampelClass = "gruen";
+        ampelText = "Grün";
+      } else if (d.includes("gelb")) {
+        ampelClass = "gelb";
+        ampelText = "Gelb";
+      } else if (d.includes("rot")) {
+        ampelClass = "rot";
+        ampelText = "Rot";
+      }
+
+      return `
+        <div class="card">
+          <h3>📌 Was ist das?</h3>
+          <div>${escapeHtml(wasIstDas || "Keine Antwort")}</div>
+        </div>
+
+        <div class="card">
+          <h3>🧠 Was bedeutet das?</h3>
+          <div>${escapeHtml(wasBedeutetDas || "Keine Antwort")}</div>
+        </div>
+
+        <div class="card">
+          <h3>✅ Was musst du tun?</h3>
+          <div>${escapeHtml(wasMusstDuTun || "Keine Antwort")}</div>
+        </div>
+
+        <div class="card">
+          <h3>🚨 Dringlichkeit</h3>
+          <div class="ampel ${ampelClass}">${escapeHtml(ampelText)}</div>
+        </div>
+      `;
+    }
+
+    async function erklaeren() {
+      const text = document.getElementById("briefText").value.trim();
+      const status = document.getElementById("status");
+      const ergebnis = document.getElementById("ergebnis");
+
+      if (!text) {
+        status.innerHTML = `<div class="error">Bitte füge einen Brief ein.</div>`;
+        ergebnis.innerHTML = "";
+        return;
+      }
+
+      status.innerHTML = `<div class="loading">Lade...</div>`;
+      ergebnis.innerHTML = "";
+
+      try {
+        const response = await fetch("/api/brief", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await response.json();
+
+        status.innerHTML = "";
+        const parsed = parseAntwort(data.result || "");
+        ergebnis.innerHTML = renderAntwort(parsed);
+      } catch (error) {
+        status.innerHTML = `<div class="error">Fehler beim Laden.</div>`;
+        ergebnis.innerHTML = "";
+      }
+    }
+  </script>
 
 </body>
 </html>
