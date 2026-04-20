@@ -61,8 +61,8 @@ ${text}
     );
 
     const data = await response.json();
-
 console.log("GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+
 
     const result =
       data.candidates &&
