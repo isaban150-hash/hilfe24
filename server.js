@@ -37,8 +37,7 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
-    const prompt = `
-const prompt = `
+ const prompt = `
 Erkläre diesen Brief ganz einfach.
 
 Schreibe kurz und direkt wie ein normaler Mensch.
