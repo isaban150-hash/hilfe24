@@ -6,8 +6,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber" });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
@@ -29,21 +27,18 @@ app.post("/api/brief", async (req, res) => {
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           contents: [
             {
               parts: [
                 {
-                  text: `
-Du bist ein Helfer für Menschen, die Briefe nicht verstehen.
+                  text: `Du bist ein Helfer für Menschen, die Briefe nicht verstehen.
 
-Erkläre diesen Brief ganz einfach:
+Erkläre diesen Brief ganz einfach.
 
-"${text}"
-
-Antworte nur in JSON:
+Antworte NUR in diesem JSON-Format:
 
 {
   "was": "...",
@@ -51,19 +46,19 @@ Antworte nur in JSON:
   "tun": "...",
   "dringlichkeit": "rot/gelb/grün"
 }
-                  `,
-                },
-              ],
-            },
-          ],
-        }),
+
+Brief:
+${text}`
+                }
+              ]
+            }
+          ]
+        })
       }
     );
 
     const data = await response.json();
-
-    const output =
-      data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const output = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     let parsed;
 
@@ -72,16 +67,26 @@ Antworte nur in JSON:
     } catch (e) {
       parsed = {
         was: "Fehler",
-        bedeutung: output,
+        bedeutung: output || "Keine Antwort von Gemini.",
         tun: "Unklar",
-        dringlichkeit: "gelb",
+        dringlichkeit: "gelb"
       };
     }
 
     res.json({ result: parsed });
-
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Serverfehler" });
+    console.error("Serverfehler:", err);
+    res.status(500).json({
+      result: {
+        was: "Fehler",
+        bedeutung: "Serverfehler",
+        tun: "Bitte später erneut versuchen.",
+        dringlichkeit: "gelb"
+      }
+    });
   }
+});
+
+app.listen(PORT, () => {
+  console.log("Server läuft auf Port " + PORT);
 });
