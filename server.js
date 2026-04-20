@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const fetch = require("node-fetch");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -23,8 +22,12 @@ app.post("/api/brief", async (req, res) => {
   const text = req.body.text;
   const API_KEY = process.env.GEMINI_API_KEY;
 
+  if (!text) {
+    return res.json({ result: "Bitte füge einen Brief ein." });
+  }
+
   try {
-    const response = await fetch(
+   
       `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${API_KEY}`,
       {
         method: "POST",
@@ -36,8 +39,7 @@ app.post("/api/brief", async (req, res) => {
             {
               parts: [
                 {
-                  text: `
-Erkläre diesen Brief extrem einfach.
+                  text: `Erkläre diesen Brief extrem einfach.
 
 Struktur:
 1. Was ist das?
@@ -48,8 +50,7 @@ Struktur:
 Kurze Sätze. Keine Fachwörter.
 
 Brief:
-${text}
-                  `
+${text}`
                 }
               ]
             }
