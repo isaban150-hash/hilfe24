@@ -43,6 +43,34 @@
       margin-top: 16px;
     }
 
+    .topRow {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .langBox {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .langBox label {
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    select {
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      background: white;
+    }
+
     .uploadBox {
       margin-top: 16px;
       padding: 16px;
@@ -63,8 +91,14 @@
       font-size: 16px;
     }
 
-    button {
+    .buttonRow {
       margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
       background: #111827;
       color: white;
       border: none;
@@ -76,6 +110,14 @@
 
     button:hover {
       background: #1f2937;
+    }
+
+    .stoppBtn {
+      background: #6b7280;
+    }
+
+    .stoppBtn:hover {
+      background: #4b5563;
     }
 
     #status {
@@ -110,21 +152,6 @@
       margin-top: 8px;
       font-size: 14px;
       color: #666;
-    }
-
-    .audioButtons {
-      margin-top: 12px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .stoppBtn {
-      background: #6b7280;
-    }
-
-    .stoppBtn:hover {
-      background: #4b5563;
     }
 
     .highlight-red {
@@ -165,20 +192,31 @@
 </head>
 <body>
   <div class="box">
-    <h1>Brief erklären</h1>
-    <p>Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.</p>
+    <h1 id="titleText">Brief erklären</h1>
+    <p id="subText">Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.</p>
 
     <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
 
-    <div class="uploadBox">
-      <label class="uploadLabel" for="briefBild">Oder Foto vom Brief hochladen</label>
-      <input type="file" id="briefBild" accept="image/*,.jpg,.jpeg,.png,.webp" multiple />
-      <div class="small">Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.</div>
+    <div class="topRow">
+      <div class="langBox">
+        <label id="langLabel" for="langSelect">Sprache</label>
+        <select id="langSelect">
+          <option value="de">Deutsch</option>
+          <option value="tr">Türkçe</option>
+          <option value="bg">Български</option>
+          <option value="ar">العربية</option>
+        </select>
+      </div>
     </div>
 
-    <button id="erklaerBtn" type="button">📄 Brief erklären</button>
+    <div class="uploadBox">
+      <label class="uploadLabel" id="uploadLabel" for="briefBild">Oder Foto vom Brief hochladen</label>
+      <input type="file" id="briefBild" accept="image/*,.jpg,.jpeg,.png,.webp" multiple />
+      <div class="small" id="uploadHint">Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.</div>
+    </div>
 
-    <div class="audioButtons">
+    <div class="buttonRow">
+      <button id="erklaerBtn" type="button">📄 Brief erklären</button>
       <button id="vorlesenBtn" type="button">🔊 Vorlesen</button>
       <button id="stoppBtn" type="button" class="stoppBtn">⏹ Stopp</button>
     </div>
@@ -195,8 +233,114 @@
     const stoppBtn = document.getElementById("stoppBtn");
     const statusBox = document.getElementById("status");
     const ergebnisBox = document.getElementById("ergebnis");
+    const langSelect = document.getElementById("langSelect");
+
+    const titleText = document.getElementById("titleText");
+    const subText = document.getElementById("subText");
+    const langLabel = document.getElementById("langLabel");
+    const uploadLabel = document.getElementById("uploadLabel");
+    const uploadHint = document.getElementById("uploadHint");
 
     let aktuelleSprachausgabe = null;
+
+    const uiText = {
+      de: {
+        title: "Brief erklären",
+        sub: "Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.",
+        placeholder: "Füge deinen Brief hier ein...",
+        lang: "Sprache",
+        upload: "Oder Foto vom Brief hochladen",
+        hint: "Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.",
+        explain: "📄 Brief erklären",
+        read: "🔊 Vorlesen",
+        stop: "⏹ Stopp",
+        wait: "Bitte kurz warten...",
+        noInput: "Bitte Text einfügen oder mindestens ein Bild hochladen.",
+        noReadText: "Es gibt noch keinen Text zum Vorlesen.",
+        noReadSupport: "Vorlesen wird auf diesem Gerät oder Browser nicht unterstützt.",
+        readFail: "Vorlesen hat nicht funktioniert.",
+        reading: "Die Erklärung wird vorgelesen...",
+        unknownError: "Unbekannter Fehler"
+      },
+      tr: {
+        title: "Mektubu açıkla",
+        sub: "Mektubu buraya yapıştır veya fotoğraf yükle. Hilfe24 sana basitçe açıklar.",
+        placeholder: "Mektubu buraya yapıştır...",
+        lang: "Dil",
+        upload: "Veya mektubun fotoğrafını yükle",
+        hint: "Aynı mektuba ait bir veya birkaç fotoğraf yükleyebilirsin. PDF işini sonra ekleriz.",
+        explain: "📄 Mektubu açıkla",
+        read: "🔊 Sesli oku",
+        stop: "⏹ Durdur",
+        wait: "Lütfen kısa bir süre bekle...",
+        noInput: "Lütfen metin ekle veya en az bir fotoğraf yükle.",
+        noReadText: "Sesli okunacak bir metin yok.",
+        noReadSupport: "Sesli okuma bu cihazda veya tarayıcıda desteklenmiyor.",
+        readFail: "Sesli okuma çalışmadı.",
+        reading: "Açıklama sesli okunuyor...",
+        unknownError: "Bilinmeyen hata"
+      },
+      bg: {
+        title: "Обясни писмото",
+        sub: "Постави писмото тук или качи снимки. Hilfe24 ще ти го обясни лесно.",
+        placeholder: "Постави писмото тук...",
+        lang: "Език",
+        upload: "Или качи снимка на писмото",
+        hint: "Можеш да качиш една или няколко снимки на едно и също писмо. PDF ще добавим по-късно.",
+        explain: "📄 Обясни писмото",
+        read: "🔊 Прочети",
+        stop: "⏹ Стоп",
+        wait: "Моля, изчакай малко...",
+        noInput: "Моля, въведи текст или качи поне една снимка.",
+        noReadText: "Няма текст за прочитане.",
+        noReadSupport: "Гласовото четене не се поддържа на това устройство или браузър.",
+        readFail: "Четенето не проработи.",
+        reading: "Обяснението се чете...",
+        unknownError: "Неизвестна грешка"
+      },
+      ar: {
+        title: "اشرح الرسالة",
+        sub: "ألصق الرسالة هنا أو ارفع صورًا لها. Hilfe24 يشرحها لك بشكل بسيط.",
+        placeholder: "ألصق الرسالة هنا...",
+        lang: "اللغة",
+        upload: "أو ارفع صورة للرسالة",
+        hint: "يمكنك رفع صورة واحدة أو عدة صور لنفس الرسالة. سنضيف PDF لاحقًا.",
+        explain: "📄 اشرح الرسالة",
+        read: "🔊 قراءة",
+        stop: "⏹ إيقاف",
+        wait: "انتظر قليلًا من فضلك...",
+        noInput: "من فضلك أضف نصًا أو ارفع صورة واحدة على الأقل.",
+        noReadText: "لا يوجد نص ليتم قراءته.",
+        noReadSupport: "القراءة الصوتية غير مدعومة على هذا الجهاز أو المتصفح.",
+        readFail: "القراءة الصوتية لم تعمل.",
+        reading: "يتم الآن قراءة الشرح...",
+        unknownError: "خطأ غير معروف"
+      }
+    };
+
+    function getUi() {
+      return uiText[langSelect.value] || uiText.de;
+    }
+
+    function updateUiLanguage() {
+      const t = getUi();
+      titleText.textContent = t.title;
+      subText.textContent = t.sub;
+      briefText.placeholder = t.placeholder;
+      langLabel.textContent = t.lang;
+      uploadLabel.textContent = t.upload;
+      uploadHint.textContent = t.hint;
+      erklaerBtn.textContent = t.explain;
+      vorlesenBtn.textContent = t.read;
+      stoppBtn.textContent = t.stop;
+      document.documentElement.lang = langSelect.value === "ar" ? "ar" : "de";
+      document.body.dir = langSelect.value === "ar" ? "rtl" : "ltr";
+      briefText.dir = langSelect.value === "ar" ? "rtl" : "ltr";
+      ergebnisBox.dir = langSelect.value === "ar" ? "rtl" : "ltr";
+    }
+
+    langSelect.addEventListener("change", updateUiLanguage);
+    updateUiLanguage();
 
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
@@ -229,7 +373,7 @@
 
         for (const item of sorted) {
           const escaped = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const regex = new RegExp(`(^|[^\\wÄÖÜäöüß])(${escaped})(?=[^\\wÄÖÜäöüß]|$)`, "gi");
+          const regex = new RegExp(`(^|[^\\wÄÖÜäöüßА-Яа-яء-ي])(${escaped})(?=[^\\wÄÖÜäöüßА-Яа-яء-ي]|$)`, "gi");
           input = input.replace(regex, `$1<span class="${className}">$2</span>`);
         }
 
@@ -321,10 +465,25 @@
       aktuelleSprachausgabe = null;
     }
 
-    function vorlesenDeutsch(text) {
+    function getSpeechLang() {
+      switch (langSelect.value) {
+        case "tr":
+          return "tr-TR";
+        case "bg":
+          return "bg-BG";
+        case "ar":
+          return "ar-SA";
+        default:
+          return "de-DE";
+      }
+    }
+
+    function vorlesenText(text) {
+      const t = getUi();
+
       if (!("speechSynthesis" in window)) {
         statusBox.className = "error";
-        statusBox.textContent = "Vorlesen wird auf diesem Gerät oder Browser nicht unterstützt.";
+        statusBox.textContent = t.noReadSupport;
         return;
       }
 
@@ -333,18 +492,18 @@
       const saubererText = text.trim();
       if (!saubererText) {
         statusBox.className = "error";
-        statusBox.textContent = "Es gibt noch keinen Text zum Vorlesen.";
+        statusBox.textContent = t.noReadText;
         return;
       }
 
       const utterance = new SpeechSynthesisUtterance(saubererText);
-      utterance.lang = "de-DE";
+      utterance.lang = getSpeechLang();
       utterance.rate = 0.95;
       utterance.pitch = 1;
 
       utterance.onstart = () => {
         statusBox.className = "loading";
-        statusBox.textContent = "Die Erklärung wird vorgelesen...";
+        statusBox.textContent = t.reading;
       };
 
       utterance.onend = () => {
@@ -355,7 +514,7 @@
 
       utterance.onerror = () => {
         statusBox.className = "error";
-        statusBox.textContent = "Vorlesen hat nicht funktioniert.";
+        statusBox.textContent = t.readFail;
         aktuelleSprachausgabe = null;
       };
 
@@ -364,13 +523,16 @@
     }
 
     erklaerBtn.addEventListener("click", async () => {
+      const t = getUi();
+
       try {
         const text = briefText.value.trim();
         const files = briefBild.files;
+        const lang = langSelect.value;
 
         stopVorlesen();
         statusBox.className = "loading";
-        statusBox.textContent = "Bitte kurz warten...";
+        statusBox.textContent = t.wait;
         ergebnisBox.innerHTML = "";
 
         let response;
@@ -381,7 +543,7 @@
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({ text })
+            body: JSON.stringify({ text, lang })
           });
         } else if (files && files.length > 0) {
           const bilder = await Promise.all(
@@ -399,18 +561,18 @@
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({ bilder })
+            body: JSON.stringify({ bilder, lang })
           });
         } else {
           statusBox.className = "error";
-          statusBox.textContent = "Bitte Text einfügen oder mindestens ein Bild hochladen.";
+          statusBox.textContent = t.noInput;
           return;
         }
 
         const data = await response.json();
 
         if (!response.ok || !data.ok) {
-          throw new Error(data.error || "Unbekannter Fehler");
+          throw new Error(data.error || t.unknownError);
         }
 
         statusBox.className = "";
@@ -418,13 +580,13 @@
         ergebnisBox.innerHTML = highlightAntwort(data.erklaerung);
       } catch (error) {
         statusBox.className = "error";
-        statusBox.textContent = error.message || "Fehler";
+        statusBox.textContent = error.message || getUi().unknownError;
       }
     });
 
     vorlesenBtn.addEventListener("click", () => {
       const textZumVorlesen = getPlainTextFromHtml(ergebnisBox.innerHTML);
-      vorlesenDeutsch(textZumVorlesen);
+      vorlesenText(textZumVorlesen);
     });
 
     stoppBtn.addEventListener("click", () => {
