@@ -89,9 +89,9 @@
       border: 1px solid #e5e7eb;
       border-radius: 10px;
       padding: 18px;
-      white-space: pre-wrap;
+      white-space: normal;
       font-size: 18px;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     .error {
@@ -105,52 +105,51 @@
       color: #374151;
     }
 
+    .small {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #666;
+    }
 
- .small {
-  margin-top: 8px;
-  font-size: 14px;
-  color: #666;
-}
+    .highlight-red {
+      background: #ffe2e2;
+      color: #a11a1a;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
 
-.highlight-red {
-  background: #ffe2e2;
-  color: #a11a1a;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-weight: 600;
-}
+    .highlight-orange {
+      background: #fff1dd;
+      color: #a45a00;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
 
-.highlight-orange {
-  background: #fff1dd;
-  color: #a45a00;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-weight: 600;
-}
+    .highlight-blue {
+      background: #e3f0ff;
+      color: #1457a8;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
 
-.highlight-blue {
-  background: #e3f0ff;
-  color: #1457a8;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.highlight-green {
-  background: #e3f7e8;
-  color: #1f7a35;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-weight: 700;
-  display: inline-block;
-  margin-top: 6px;
-}
+    .highlight-green {
+      background: #e3f7e8;
+      color: #1f7a35;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      display: inline-block;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
   <div class="box">
     <h1>Brief erklären</h1>
-    <p>Füge hier deinen Brief ein. Hilfe24 erklärt ihn dir einfach.</p>
+    <p>Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.</p>
 
     <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
 
@@ -172,35 +171,7 @@
     const erklaerBtn = document.getElementById("erklaerBtn");
     const statusBox = document.getElementById("status");
     const ergebnisBox = document.getElementById("ergebnis");
-function highlightAntwort(text) {
-  if (!text) return "";
 
-  let html = text;
-
-  html = html.replace(
-    /(bis spätestens\s+\d{1,2}\.\d{1,2}\.\d{4}|bis zum\s+\d{1,2}\.\d{1,2}\.\d{4}|Frist|gekürzt oder ganz wegfallen|gekürzt oder ganz eingestellt|kann das Jobcenter dein Geld kürzen oder ganz stoppen|kann das Jobcenter Ihre Leistungen kürzen oder ganz einstellen)/gi,
-    '<span class="highlight-red">$1</span>'
-  );
-
-  html = html.replace(
-    /(nur Kopien, keine Originale|nur Kopien|keine Originale|Abmeldung von Asen bei der Stadt Bad Salzuflen|Einstellungsbescheid für Kindergeld für Asen|Einstellungsbescheid für das Kindergeld für Asen)/gi,
-    '<span class="highlight-orange">$1</span>'
-  );
-
-  html = html.replace(
-    /(per Post|per E-Mail|per Email|Einwurf|online|hochladen)/gi,
-    '<span class="highlight-blue">$1</span>'
-  );
-
-  html = html.replace(
-    /(Du musst jetzt nur[^.]*\.)/gi,
-    '<span class="highlight-green">$1</span>'
-  );
-
-  html = html.replace(/\n/g, "<br>");
-
-  return html;
-}
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -216,6 +187,36 @@ function highlightAntwort(text) {
       });
     }
 
+    function highlightAntwort(text) {
+      if (!text) return "";
+
+      let html = text;
+
+      html = html.replace(
+        /(bis spätestens\s+\d{1,2}\.\d{1,2}\.\d{4}|bis zum\s+\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{1,2}\.\d{4}|Frist|Termin|Mahnung|Sperre|gekürzt|Kürzung|eingestellt|Einstellung|stoppen|gestoppt|wegfallen|sonst|wenn du nichts machst|wenn du das nicht machst)/gi,
+        '<span class="highlight-red">$1</span>'
+      );
+
+      html = html.replace(
+        /(Unterlagen|Nachweise|Nachweis|Bescheid|Bescheinigung|Kontoauszüge|Mietvertrag|Lohnabrechnung|Abrechnung|Abmeldung|Meldebescheinigung|Kindergeld|Kindergeldbescheid|Einstellungsbescheid|Vertrag|Kopie|Kopien|Originale)/gi,
+        '<span class="highlight-orange">$1</span>'
+      );
+
+      html = html.replace(
+        /(per Post|Post|per E-Mail|per Email|E-Mail|Email|Einwurf|online|hochladen|Upload|persönlich|Portal|App)/gi,
+        '<span class="highlight-blue">$1</span>'
+      );
+
+      html = html.replace(
+        /(Du musst jetzt nur[^.]*\.)/gi,
+        '<span class="highlight-green">$1</span>'
+      );
+
+      html = html.replace(/\n/g, "<br>");
+
+      return html;
+    }
+
     erklaerBtn.addEventListener("click", async () => {
       try {
         const text = briefText.value.trim();
@@ -223,7 +224,7 @@ function highlightAntwort(text) {
 
         statusBox.className = "loading";
         statusBox.textContent = "Bitte kurz warten...";
-        ergebnisBox.textContent = "";
+        ergebnisBox.innerHTML = "";
 
         let response;
 
