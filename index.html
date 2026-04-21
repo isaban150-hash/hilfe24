@@ -152,6 +152,26 @@
       bilder
     })
   });
+} else if (briefBild.files.length > 0) {
+  const bilder = await Promise.all(
+    Array.from(briefBild.files).map(async (file) => {
+      const imageData = await fileToBase64(file);
+      return {
+        imageData,
+        mimeType: file.type
+      };
+    })
+  );
+
+  response = await fetch("/api/brief-bild", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      bilder
+    })
+  });
 } else {
   statusBox.className = "error";
   statusBox.textContent = "Bitte Text einfügen oder mindestens ein Bild hochladen.";
