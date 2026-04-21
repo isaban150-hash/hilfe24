@@ -141,10 +141,9 @@ Dieser letzte Satz soll in einem einzigen kurzen Satz ganz konkret sagen, was je
 
 app.post("/api/brief-bild", async (req, res) => {
   try {
-    const imageData = req.body.imageData;
-    const mimeType = req.body.mimeType;
+    const bilder = req.body.bilder;
 
-    if (!imageData || !mimeType) {
+    if (!Array.isArray(bilder) || bilder.length === 0) {
       return res.status(400).json({
         ok: false,
         error: "Kein Bild gesendet"
@@ -152,48 +151,84 @@ app.post("/api/brief-bild", async (req, res) => {
     }
 
     const prompt = `
-Du siehst ein Foto von einem Brief oder Dokument aus Deutschland.
+Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
 
 Deine Aufgabe:
-Lies den Brief so gut wie möglich und erkläre ihn dann extrem einfach, klar, direkt und menschlich.
+Lies alle Bilder zusammen als einen einzigen Brief, wenn sie zusammengehören, und erkläre den Inhalt dann sehr einfach, klar, direkt und menschlich.
 
 Wichtig:
-- Verwende nur Informationen, die auf dem Bild wirklich lesbar sind.
+- Verwende nur Informationen, die auf den Bildern wirklich lesbar sind.
 - Erfinde nichts dazu.
-- Wenn etwas nicht gut lesbar ist, sag klar: "Ein Teil des Briefes ist auf dem Bild nicht gut lesbar."
-- Schreibe auf Deutsch.
-- Schreibe sehr einfach.
-- Kein Beamtendeutsch.
-- Keine Fachsprache.
-- Keine Überschriften.
-- Keine Aufzählungen mit 1., 2., 3.
-- Kein Markdown.
-- Keine Einleitung wie "Gerne helfe ich dir".
-- Keine Wiederholungen.
-- Keine unnötigen Sätze.
+- Vermute nichts, wenn etwas unklar ist.
+- Wenn ein Teil fehlt oder nicht gut lesbar ist, sag das klar.
+- Wenn mehrere Seiten zu demselben Brief gehören, verbinde die Informationen sinnvoll.
+- Bleib so nah wie möglich am echten Inhalt des Briefes.
 
-Die Erklärung soll als normaler Text sagen:
-- Worum es in dem Brief geht
-- Was jetzt gemacht werden muss
-- Ob Unterlagen, Geld, Antwort oder ein Termin wichtig sind
-- Bis wann etwas erledigt werden muss
-- Was passiert, wenn man nichts macht
+Schreibe:
+- auf Deutsch
+- in sehr einfachen, normalen Sätzen
+- wie ein echter Mensch
+- ohne Überschriften
+- ohne Aufzählung mit 1., 2., 3.
+- ohne Markdown
+- ohne Einleitung wie "Gerne helfe ich dir"
+- ohne unnötige Wiederholungen
+- ohne Fachsprache, wenn es einfacher geht
+- ohne Beamtendeutsch, wenn es einfacher geht
 
-Wenn es ein wichtiger Termin, eine Frist, ein Gericht, Jugendamt, Jobcenter, Krankenkasse, Kündigung, Mahnung oder Vertrag ist, sag das klar und deutlich.
+Die Erklärung soll als normaler Fließtext klar sagen:
+- worum es in dem Brief geht
+- was die Person jetzt tun muss
+- welche Unterlagen, Nachweise, Termine oder Antworten verlangt werden
+- bis wann etwas erledigt werden muss
+- was passiert, wenn man nichts macht
 
-Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz:
+Ganz wichtig:
+- Wenn der Brief eine Frist enthält, nenne sie genau.
+- Wenn der Brief nur Kopien verlangt, sag klar: nur Kopien, keine Originale.
+- Wenn Geld, Leistungen, Wohnung, Antrag, Vertrag, Mahnung, Gericht, Jugendamt, Krankenkasse oder Jobcenter betroffen sind, sag das klar und einfach.
+- Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
+- Wenn nur eine Folgeseite zu sehen ist, sag klar, dass wichtige Infos fehlen können.
+- Schreibe nur das als sicher, was wirklich aus den Bildern hervorgeht.
+
+Stil:
+Die Antwort soll ruhig, hilfreich, klar und menschlich klingen.
+Nicht künstlich.
+Nicht trocken.
+Nicht übertrieben.
+Nicht wie vom Amt.
+
+Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
 "Du musst jetzt nur ..."
 `;
 
-    const erklaerung = await callGemini([
-      { text: prompt },
-      {
+    const parts = [{ text: prompt }];
+
+    for (const bild of bilder) {
+      if (!bild.imageData || !bild.mimeType) continue;
+
+      parts.push({
         inline_data: {
-          mime_type: mimeType,
-          data: imageData
+          mime_type: bild.mimeType,
+          data: bild.imageData
         }
-      }
-    ]);
+      });
+    }
+
+    const erklaerung = await callGemini(parts);
+
+    res.json({
+      ok: true,
+      erklaerung
+    });
+  } catch (error) {
+    console.error("Fehler /api/brief-bild:", error);
+    res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
+  }
+});
 
     res.json({
       ok: true,
