@@ -186,56 +186,79 @@ app.post("/api/brief-bild", async (req, res) => {
       });
     }
 
-    const prompt = `
+     const prompt = `
 Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
 
 Deine Aufgabe:
-Lies alle Bilder zusammen als einen einzigen Brief, wenn sie zusammengehören, und erkläre den Inhalt dann sehr einfach, klar, direkt und menschlich.
+Lies alle Bilder zusammen und erkläre den Brief sehr einfach, klar, kurz und menschlich.
 
 Wichtig:
-- Verwende nur Informationen, die auf den Bildern wirklich lesbar sind.
-- Erfinde nichts dazu.
-- Vermute nichts, wenn etwas unklar ist.
-- Wenn ein Teil fehlt oder nicht gut lesbar ist, sag das klar.
-- Wenn mehrere Seiten zu demselben Brief gehören, verbinde die Informationen sinnvoll.
-- Bleib so nah wie möglich am echten Inhalt des Briefes.
+Benutze nur Informationen, die auf den Bildern wirklich lesbar sind.
+Erfinde nichts.
+Rate nichts.
+Wenn etwas fehlt, unscharf oder abgeschnitten ist, sag das offen und klar.
 
-Schreibe:
-- auf Deutsch
-- in sehr einfachen, normalen Sätzen
-- wie ein echter Mensch
-- ohne Überschriften
-- ohne Aufzählung mit 1., 2., 3.
-- ohne Markdown
-- ohne Einleitung wie "Gerne helfe ich dir"
-- ohne unnötige Wiederholungen
-- ohne Fachsprache, wenn es einfacher geht
-- ohne Beamtendeutsch, wenn es einfacher geht
+Schreibe so, wie du einem Freund den Brief erklären würdest.
+Nicht wie ein Amt.
+Nicht wie ein Anwalt.
+Nicht wie eine Behörde.
+Nicht wie ChatGPT.
 
-Die Erklärung soll als normaler Fließtext klar sagen:
-- worum es in dem Brief geht
-- was die Person jetzt tun muss
-- welche Unterlagen, Nachweise, Termine oder Antworten verlangt werden
-- bis wann etwas erledigt werden muss
-- was passiert, wenn man nichts macht
+Regeln:
+- Schreibe auf Deutsch.
+- Sprich die Person immer mit "du" an.
+- Schreibe nur normalen Fließtext.
+- Maximal 6 kurze Sätze.
+- Jeder Satz soll leicht verständlich sein.
+- Keine Überschriften.
+- Keine Listen.
+- Keine Aufzählungszeichen.
+- Keine Nummerierungen.
+- Keine Sternchen.
+- Kein Markdown.
+- Kein Fettdruck.
+- Keine Fachsprache.
+- Kein Beamtendeutsch.
+- Keine formellen Sätze wie:
+  "Dieses Schreiben ..."
+  "Es geht darum, dass ..."
+  "fordert Sie auf ..."
+  "zur Prüfung ..."
+  "im Rahmen von ..."
+  "für Rückfragen ..."
+- Keine Wiederholungen.
+- Keine erfundenen Infos.
+- Keine Frist nennen, wenn sie nicht klar lesbar ist.
 
-Ganz wichtig:
-- Wenn der Brief eine Frist enthält, nenne sie genau.
-- Wenn der Brief nur Kopien verlangt, sag klar: nur Kopien, keine Originale.
-- Wenn Geld, Leistungen, Wohnung, Antrag, Vertrag, Mahnung, Gericht, Jugendamt, Krankenkasse oder Jobcenter betroffen sind, sag das klar und einfach.
-- Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
-- Wenn nur eine Folgeseite zu sehen ist, sag klar, dass wichtige Infos fehlen können.
-- Schreibe nur das als sicher, was wirklich aus den Bildern hervorgeht.
+Wenn etwas auf dem Bild nicht gut lesbar ist, schreibe genau:
+Ein Teil des Briefes ist auf dem Bild nicht gut lesbar.
 
-Stil:
-Die Antwort soll ruhig, hilfreich, klar und menschlich klingen.
-Nicht künstlich.
-Nicht trocken.
-Nicht übertrieben.
-Nicht wie vom Amt.
+Wenn ein wichtiger Teil fehlt, schreibe genau:
+Ein wichtiger Teil des Briefes fehlt auf dem Bild.
 
-Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
-"Du musst jetzt nur ..."
+Wenn mehrere Bilder zu demselben Brief gehören, verbinde die Informationen sinnvoll.
+
+Die Antwort muss immer enthalten:
+- worum es im Brief geht
+- was du jetzt tun musst
+- welche Unterlagen, Termine oder Antworten verlangt werden
+- bis wann du etwas machen musst
+- was passiert, wenn du nichts machst
+
+Schreibe möglichst in dieser Art:
+"Das Jobcenter will noch ..."
+"Du sollst jetzt ..."
+"Das musst du bis ... machen."
+"Wichtig ist: ..."
+"Wenn du nichts machst, kann ..."
+
+Wenn nur Kopien verlangt werden, schreibe klar:
+nur Kopien, keine Originale
+
+Ganz am Ende schreibe immer genau einen einzigen kurzen Satz mit:
+Du musst jetzt nur ...
+
+Bilder:
 `;
 
     const parts = [{ text: prompt }];
