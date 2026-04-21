@@ -132,52 +132,7 @@
   </div>
 
   <script>
-    const briefText = document.getElementById("briefText");
-    const briefBild = document.getElementById("briefBild");
-    const erklaerBtn = document.getElementById("erklaerBtn");
-    const statusBox = document.getElementById("status");
-    const ergebnisBox = document.getElementById("ergebnis");
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-
-        reader.onload = () => {
-          const result = reader.result;
-          const base64 = result.split(",")[1];
-          resolve(base64);
-        };
-
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    erklaerBtn.addEventListener("click", async () => {
-      const text = briefText.value.trim();
-let response;
-let data;
-
-      statusBox.className = "loading";
-      statusBox.textContent = "Bitte kurz warten...";
-      ergebnisBox.textContent = "";
-
-      try {
-        let response;
-        let data;
-
-        if (text) {
-          response = await fetch("/api/brief", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ text })
-          });
-        } else if (file) {
-          const imageData = await fileToBase64(file);
-
-          } else if (briefBild.files.length > 0) {
+    } else if (briefBild.files.length > 0) {
   const bilder = await Promise.all(
     Array.from(briefBild.files).map(async (file) => {
       const imageData = await fileToBase64(file);
@@ -202,31 +157,6 @@ let data;
   statusBox.textContent = "Bitte Text einfügen oder mindestens ein Bild hochladen.";
   return;
 }
-            body: JSON.stringify({
-              imageData,
-              mimeType: file.type
-            })
-          });
-        } else {
-          statusBox.className = "error";
-          statusBox.textContent = "Bitte Text einfügen oder ein Bild hochladen.";
-          return;
-        }
-
-        data = await response.json();
-
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || "Unbekannter Fehler");
-        }
-
-        statusBox.className = "";
-        statusBox.textContent = "";
-        ergebnisBox.textContent = data.erklaerung;
-      } catch (error) {
-        statusBox.className = "error";
-        statusBox.textContent = error.message || "Fehler";
-      }
-    });
   </script>
 </body>
 </html>
