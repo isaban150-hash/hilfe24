@@ -37,6 +37,7 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
+    const prompt = `
 Du bist ein Helfer für einfache Brief-Erklärungen in Deutschland.
 
 Deine Aufgabe:
@@ -89,8 +90,10 @@ Dieser letzte Satz soll in einem einzigen kurzen Satz sagen, was jetzt konkret z
 
 Brief:
 ${text}
+`;
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -112,26 +115,15 @@ ${text}
 
     if (!response.ok) {
       console.error("Gemini Fehler:", data);
-
       return res.status(response.status).json({
         ok: false,
-        error:
-          data?.error?.message ||
-          "Gemini API Fehler"
+        error: data?.error?.message || "Gemini API Fehler"
       });
     }
 
     const result =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    if (!result) {
-      console.error("Gemini leere Antwort:", data);
-
-      return res.status(500).json({
-        ok: false,
-        error: "Keine Antwort von Gemini erhalten"
-      });
-    }
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Keine Antwort von Gemini erhalten.";
 
     return res.json({
       ok: true,
@@ -139,7 +131,6 @@ ${text}
     });
   } catch (error) {
     console.error("Serverfehler:", error);
-
     return res.status(500).json({
       ok: false,
       error: error.message || "Unbekannter Serverfehler"
