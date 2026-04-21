@@ -192,28 +192,28 @@
     function highlightAntwort(text) {
       if (!text) return "";
 
-      let html = text;
-
       const escapeHtml = (str) =>
         str
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
 
-      html = escapeHtml(html);
+      let html = escapeHtml(text);
 
       const highlightList = (input, items, className) => {
         const sorted = [...items].sort((a, b) => b.length - a.length);
+
         for (const item of sorted) {
           const escaped = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const regex = new RegExp(`(^|[^\\wÄÖÜäöüß])(${escaped})(?=[^\\wÄÖÜäöüß]|$)`, "gi");
           input = input.replace(regex, `$1<span class="${className}">$2</span>`);
         }
+
         return input;
       };
 
       html = html.replace(
-        /\b(bis spätestens\s+\d{1,2}\.\d{1,2}\.\d{4}|bis zum\s+\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{1,2}\.\d{4})\b/gi,
+        /\b(bis spätestens\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis spätestens\s+\d{1,2}\.\d{1,2}\.\d{4}|bis zum\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis zum\s+\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{1,2}\.\d{4})\b/gi,
         '<span class="highlight-red">$1</span>'
       );
 
@@ -229,10 +229,12 @@
         "gestoppt",
         "stoppen",
         "wegfallen",
+        "kein Geld mehr",
         "Leistungen gekürzt",
         "Leistungen eingestellt",
-        "Geld mehr bekommen",
-        "kein Geld mehr bekommen"
+        "Leistungen gestrichen",
+        "Geld gestrichen",
+        "dringend"
       ], "highlight-red");
 
       html = highlightList(html, [
@@ -275,7 +277,7 @@
       ], "highlight-blue");
 
       html = html.replace(
-        /(Du musst jetzt nur[\s\S]*?)(?=<br><br>|$)/i,
+        /(Du musst jetzt nur[\s\S]*?)(?=\n\n|$)/i,
         '<span class="highlight-green">$1</span>'
       );
 
