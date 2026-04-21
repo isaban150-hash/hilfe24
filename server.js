@@ -136,19 +136,7 @@ Dieser letzte Satz soll in einem einzigen kurzen Satz ganz konkret sagen, was je
       ok: false,
       error: error.message || "Serverfehler"
     });
-  }
-});
-
-app.post("/api/brief-bild", async (req, res) => {
-  try {
-    const bilder = req.body.bilder;
-
-    if (!Array.isArray(bilder) || bilder.length === 0) {
-      return res.status(400).json({
-        ok: false,
-        error: "Kein Bild gesendet"
-      });
-    }
+ 
 
     const prompt = `
 Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
