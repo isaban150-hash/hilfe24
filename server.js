@@ -255,9 +255,11 @@ Schreibe möglichst in dieser Art:
 Wenn nur Kopien verlangt werden, schreibe klar:
 nur Kopien, keine Originale
 
-Ganz am Ende schreibe immer genau einen einzigen kurzen Satz mit:
-Du musst jetzt nur ...
-
+Ganz am Ende schreibe immer genau einen einzigen kurzen Satz.
+Dieser Satz muss die echten Unterlagen und die echte Frist aus dem Brief enthalten.
+Schreibe nie allgemeine Wörter wie "Stichtag", wenn im Brief ein genaues Datum steht.
+Beispiel:
+Du musst jetzt nur die Abmeldung von Asen und den Einstellungsbescheid für das Kindergeld bis zum 23.01.2026 als Kopie einreichen.
 Bilder:
 `;
 
