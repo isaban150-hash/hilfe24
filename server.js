@@ -205,9 +205,7 @@ Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
     const parts = [{ text: prompt }];
 
     for (const bild of bilder) {
-      if (!bild.imageData || !bild.mimeType) {
-        continue;
-      }
+      if (!bild.imageData || !bild.mimeType) continue;
 
       parts.push({
         inline_data: {
@@ -215,6 +213,23 @@ Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
           data: bild.imageData
         }
       });
+    }
+
+    const erklaerung = await callGemini(parts);
+
+    return res.json({
+      ok: true,
+      erklaerung
+    });
+  } catch (error) {
+    console.error("Fehler /api/brief-bild:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
+  }
+});
     }
 
     const erklaerung = await callGemini(parts);
