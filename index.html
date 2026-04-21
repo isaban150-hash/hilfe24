@@ -112,6 +112,21 @@
       color: #666;
     }
 
+    .audioButtons {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stoppBtn {
+      background: #6b7280;
+    }
+
+    .stoppBtn:hover {
+      background: #4b5563;
+    }
+
     .highlight-red {
       background: #fee2e2;
       color: #991b1b;
@@ -161,7 +176,12 @@
       <div class="small">Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.</div>
     </div>
 
-    <button id="erklaerBtn">📄 Brief erklären</button>
+    <button id="erklaerBtn" type="button">📄 Brief erklären</button>
+
+    <div class="audioButtons">
+      <button id="vorlesenBtn" type="button">🔊 Vorlesen</button>
+      <button id="stoppBtn" type="button" class="stoppBtn">⏹ Stopp</button>
+    </div>
 
     <div id="status"></div>
     <div id="ergebnis"></div>
@@ -171,8 +191,12 @@
     const briefText = document.getElementById("briefText");
     const briefBild = document.getElementById("briefBild");
     const erklaerBtn = document.getElementById("erklaerBtn");
+    const vorlesenBtn = document.getElementById("vorlesenBtn");
+    const stoppBtn = document.getElementById("stoppBtn");
     const statusBox = document.getElementById("status");
     const ergebnisBox = document.getElementById("ergebnis");
+
+    let aktuelleSprachausgabe = null;
 
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
@@ -286,11 +310,65 @@
       return html;
     }
 
+    function getPlainTextFromHtml(html) {
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+      return (temp.textContent || temp.innerText || "").trim();
+    }
+
+    function stopVorlesen() {
+      window.speechSynthesis.cancel();
+      aktuelleSprachausgabe = null;
+    }
+
+    function vorlesenDeutsch(text) {
+      if (!("speechSynthesis" in window)) {
+        statusBox.className = "error";
+        statusBox.textContent = "Vorlesen wird auf diesem Gerät oder Browser nicht unterstützt.";
+        return;
+      }
+
+      stopVorlesen();
+
+      const saubererText = text.trim();
+      if (!saubererText) {
+        statusBox.className = "error";
+        statusBox.textContent = "Es gibt noch keinen Text zum Vorlesen.";
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(saubererText);
+      utterance.lang = "de-DE";
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+
+      utterance.onstart = () => {
+        statusBox.className = "loading";
+        statusBox.textContent = "Die Erklärung wird vorgelesen...";
+      };
+
+      utterance.onend = () => {
+        statusBox.className = "";
+        statusBox.textContent = "";
+        aktuelleSprachausgabe = null;
+      };
+
+      utterance.onerror = () => {
+        statusBox.className = "error";
+        statusBox.textContent = "Vorlesen hat nicht funktioniert.";
+        aktuelleSprachausgabe = null;
+      };
+
+      aktuelleSprachausgabe = utterance;
+      window.speechSynthesis.speak(utterance);
+    }
+
     erklaerBtn.addEventListener("click", async () => {
       try {
         const text = briefText.value.trim();
         const files = briefBild.files;
 
+        stopVorlesen();
         statusBox.className = "loading";
         statusBox.textContent = "Bitte kurz warten...";
         ergebnisBox.innerHTML = "";
@@ -342,6 +420,17 @@
         statusBox.className = "error";
         statusBox.textContent = error.message || "Fehler";
       }
+    });
+
+    vorlesenBtn.addEventListener("click", () => {
+      const textZumVorlesen = getPlainTextFromHtml(ergebnisBox.innerHTML);
+      vorlesenDeutsch(textZumVorlesen);
+    });
+
+    stoppBtn.addEventListener("click", () => {
+      stopVorlesen();
+      statusBox.className = "";
+      statusBox.textContent = "";
     });
   </script>
 </body>
