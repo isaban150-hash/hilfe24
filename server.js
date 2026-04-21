@@ -32,7 +32,7 @@ async function callGemini(parts) {
       body: JSON.stringify({
         contents: [
           {
-            parts: parts
+            parts
           }
         ]
       })
@@ -71,72 +71,86 @@ app.post("/api/brief", async (req, res) => {
     }
 
     const prompt = `
-Du siehst ein Foto von einem Brief oder Dokument aus Deutschland.
+Du bist ein Helfer für einfache Brief-Erklärungen in Deutschland.
 
 Deine Aufgabe:
-Lies den Brief so genau wie möglich und erkläre ihn dann sehr einfach, klar, direkt und menschlich.
+Erkläre den Brief extrem einfach, klar, direkt und menschlich.
 
-Wichtig:
-- Verwende nur Informationen, die auf dem Bild wirklich lesbar sind.
-- Erfinde nichts dazu.
-- Vermute nichts, wenn etwas unklar ist.
-- Wenn ein Wort oder Satz nicht sicher lesbar ist, sag klar: "Ein Teil des Briefes ist auf dem Bild nicht gut lesbar."
-- Wenn ein Begriff im Brief rechtlich oder inhaltlich wichtig ist, gib ihn in der Bedeutung korrekt wieder.
-- Deute nichts um.
-- Bleib so nah wie möglich am echten Inhalt des Briefes.
+Schreibe so, dass auch ein Mensch mit wenig Deutsch oder wenig Erfahrung mit Behörden sofort versteht, worum es geht.
 
-Schreibe:
-- auf Deutsch
-- in sehr einfachen, normalen Sätzen
-- wie ein echter Mensch
-- ohne Überschriften
-- ohne Aufzählung mit 1., 2., 3.
-- ohne Markdown
-- ohne Einleitung wie "Gerne helfe ich dir"
-- ohne unnötige Wiederholungen
-- ohne Fachsprache, wenn es einfacher geht
-- ohne Beamtendeutsch, wenn es einfacher geht
+Regeln:
+- Schreibe auf Deutsch.
+- Schreibe in sehr einfachen, normalen Sätzen.
+- Schreibe wie ein echter Mensch, nicht wie eine KI.
+- Kein Beamtendeutsch.
+- Keine Fachsprache.
+- Keine Einleitung wie "Gerne helfe ich dir".
+- Keine Wiederholungen.
+- Keine unnötigen Sätze.
+- Keine Aufzählung mit 1., 2., 3.
+- Keine Überschriften wie "Zusammenfassung", "Analyse", "Fazit".
+- Kein Markdown.
+- Kein Sternchen-Text.
+- Keine erfundenen Infos.
+- Keine Frist erfinden, wenn keine im Brief steht.
+- Wenn etwas im Brief unklar ist, sag klar: "Das ist im Brief nicht ganz klar."
 
-Die Erklärung soll als normaler Fließtext klar sagen:
-- worum es in dem Brief geht
-- was die Person jetzt tun muss
-- welche Unterlagen, Nachweise, Termine oder Antworten verlangt werden
-- bis wann etwas erledigt werden muss
-- was passiert, wenn die Person nichts macht
+Die Antwort muss diese Punkte verständlich abdecken, aber als normaler Fließtext:
+- Was der Brief insgesamt bedeutet
+- Was die Person jetzt tun muss
+- Welche Unterlagen oder Nachweise fehlen
+- Bis wann etwas erledigt werden muss
+- Was passiert, wenn die Person nichts macht
 
-Ganz wichtig:
-- Wenn der Brief eine Frist enthält, nenne sie genau.
-- Wenn der Brief nur Kopien verlangt, sag klar: nur Kopien, keine Originale.
-- Wenn Geld, Leistungen, Wohnung, Antrag, Vertrag, Mahnung, Gericht, Jugendamt, Krankenkasse oder Jobcenter betroffen sind, sag das klar und einfach.
+Zusatzregeln:
+- Wenn der Brief dringend ist, sag das klar.
+- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist oder rechtliche Probleme in Gefahr sind, sag das deutlich und einfach.
+- Wenn die Person antworten, Unterlagen schicken, bezahlen oder irgendwo erscheinen muss, sag das direkt.
 - Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
-- Wenn eine Folge im Brief nur vorsichtig formuliert ist, übertreibe sie nicht.
-- Schreibe nur das als sicher, was wirklich aus dem Brief hervorgeht.
+- Wenn der Brief freundlich klingt, aber trotzdem wichtig ist, sag trotzdem klar, dass man ihn ernst nehmen muss.
 
-Stil:
-Die Antwort soll ruhig, hilfreich, klar und menschlich klingen.
-Nicht künstlich.
+Wichtig für den Stil:
+Die Antwort soll ruhig, menschlich und hilfreich klingen.
 Nicht trocken.
+Nicht künstlich.
 Nicht übertrieben.
 Nicht wie vom Amt.
+Nicht wie ChatGPT.
 
-Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
+Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz in dieser Art:
 "Du musst jetzt nur ..."
-Dieser letzte Satz soll in einem einzigen kurzen Satz ganz konkret sagen, was jetzt zu tun ist.
+Dieser letzte Satz soll in einem einzigen kurzen Satz sagen, was jetzt konkret zu tun ist.
+
+Brief:
+${text}
 `;
 
     const erklaerung = await callGemini([{ text: prompt }]);
 
-    res.json({
+    return res.json({
       ok: true,
-      erklaerung: erklaerung
+      erklaerung
     });
   } catch (error) {
     console.error("Fehler /api/brief:", error);
-    res.status(500).json({
+
+    return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
     });
- 
+  }
+});
+
+app.post("/api/brief-bild", async (req, res) => {
+  try {
+    const bilder = req.body.bilder;
+
+    if (!Array.isArray(bilder) || bilder.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Bild gesendet"
+      });
+    }
 
     const prompt = `
 Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
@@ -193,7 +207,9 @@ Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
     const parts = [{ text: prompt }];
 
     for (const bild of bilder) {
-      if (!bild.imageData || !bild.mimeType) continue;
+      if (!bild.imageData || !bild.mimeType) {
+        continue;
+      }
 
       parts.push({
         inline_data: {
@@ -218,52 +234,7 @@ Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
     });
   }
 });
-    }
-
-    const erklaerung = await callGemini(parts);
-
-    return res.json({
-      ok: true,
-      erklaerung
-    });
-  } catch (error) {
-    console.error("Fehler /api/brief-bild:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
-});
-
-    const erklaerung = await callGemini(parts);
-
-    res.json({
-      ok: true,
-      erklaerung
-    });
-  } catch (error) {
-    console.error("Fehler /api/brief-bild:", error);
-    res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
-});
-
-    res.json({
-      ok: true,
-      erklaerung: erklaerung
-    });
-  } catch (error) {
-    console.error("Fehler /api/brief-bild:", error);
-    res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
-});
 
 app.listen(PORT, () => {
-  console.log(`Server läuft auf Port ${PORT}`);
+  console.log("Server läuft auf Port " + PORT);
 });
