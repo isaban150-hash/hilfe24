@@ -14,7 +14,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok:  true, message: "Server läuft sauber" });
+  res.json({ ok: true, message: "Server läuft sauber" });
 });
 
 async function callGemini(parts) {
@@ -58,6 +58,7 @@ async function callGemini(parts) {
 
   return text;
 }
+
 function cleanAntwort(text) {
   if (!text) return "";
 
@@ -74,6 +75,7 @@ function cleanAntwort(text) {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
 app.post("/api/brief", async (req, res) => {
   try {
     const text = req.body.text;
@@ -85,82 +87,69 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
- const prompt = `
-Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
+    const prompt = `
+Du bist ein sehr guter Helfer für einfache Brief-Erklärungen in Deutschland.
 
 Deine Aufgabe:
-Lies alle Bilder zusammen und erkläre den Brief sehr einfach, klar, kurz und menschlich.
+Erkläre den Brief extrem einfach, klar, direkt und menschlich.
+
+Schreibe so, dass auch ein Mensch mit wenig Deutsch, wenig Schulbildung oder wenig Erfahrung mit Behörden sofort versteht, worum es geht.
 
 Wichtig:
-Benutze nur Informationen, die auf den Bildern wirklich lesbar sind.
-Erfinde nichts.
-Rate nichts.
-Wenn etwas fehlt, unscharf oder abgeschnitten ist, sag das offen und klar.
-
-Schreibe so, wie du einem Freund den Brief erklären würdest.
-Nicht wie ein Amt.
-Nicht wie ein Anwalt.
-Nicht wie eine Behörde.
-Nicht wie ChatGPT.
+Benutze nur Informationen, die wirklich im Brief stehen.
+Erfinde nichts dazu.
+Wenn etwas fehlt oder unklar ist, sage das offen und einfach.
 
 Regeln:
 - Schreibe auf Deutsch.
-- Sprich die Person immer mit "du" an.
-- Schreibe nur normalen Fließtext.
-- Maximal 6 kurze Sätze.
-- Jeder Satz soll leicht verständlich sein.
-- Keine Überschriften.
-- Keine Listen.
-- Keine Aufzählungszeichen.
-- Keine Nummerierungen.
-- Keine Sternchen.
-- Kein Markdown.
-- Kein Fettdruck.
-- Keine Fachsprache.
+- Schreibe in sehr einfachen, normalen Sätzen.
+- Schreibe wie ein echter Mensch, nicht wie eine KI.
 - Kein Beamtendeutsch.
-- Keine formellen Sätze wie:
-  "Dieses Schreiben ..."
-  "Es geht darum, dass ..."
-  "fordert Sie auf ..."
-  "zur Prüfung ..."
-  "im Rahmen von ..."
-  "für Rückfragen ..."
+- Keine Fachsprache.
+- Keine Einleitung wie "Gerne helfe ich dir".
 - Keine Wiederholungen.
+- Keine unnötigen Sätze.
+- Keine Überschriften.
+- Keine Aufzählung mit 1., 2., 3.
+- Kein Markdown.
+- Kein Sternchen-Text.
 - Keine erfundenen Infos.
-- Keine Frist nennen, wenn sie nicht klar lesbar ist.
+- Keine Frist erfinden, wenn keine im Brief steht.
+- Wenn etwas im Brief nicht ganz klar ist, sage klar: "Das ist im Brief nicht ganz klar."
 
-Wenn etwas auf dem Bild nicht gut lesbar ist, schreibe genau:
-Ein Teil des Briefes ist auf dem Bild nicht gut lesbar.
+Die Antwort soll als normaler Fließtext diese Punkte abdecken:
+- Was der Brief insgesamt bedeutet
+- Was die Person jetzt tun muss
+- Welche Unterlagen, Nachweise, Termine oder Antworten verlangt werden
+- Bis wann etwas erledigt werden muss
+- Was passiert, wenn die Person nichts macht
 
-Wenn ein wichtiger Teil fehlt, schreibe genau:
-Ein wichtiger Teil des Briefes fehlt auf dem Bild.
+Zusatzregeln:
+- Wenn der Brief dringend ist, sag das klar.
+- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist, Mahnung, Gericht, Jugendamt, Krankenkasse oder Jobcenter betroffen sind, sag das deutlich und einfach.
+- Wenn die Person etwas schicken, zahlen, erscheinen, anrufen oder antworten muss, sag das direkt.
+- Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
+- Wenn der Brief freundlich klingt, aber trotzdem wichtig ist, sag trotzdem klar, dass man ihn ernst nehmen muss.
+- Wenn der Brief nur Kopien verlangt, sag klar: nur Kopien, keine Originale.
 
-Wenn mehrere Bilder zu demselben Brief gehören, verbinde die Informationen sinnvoll.
+Stil:
+Die Antwort soll ruhig, menschlich, hilfreich und natürlich klingen.
+Nicht trocken.
+Nicht künstlich.
+Nicht übertrieben.
+Nicht wie vom Amt.
+Nicht wie ChatGPT.
 
-Die Antwort muss immer enthalten:
-- worum es im Brief geht
-- was du jetzt tun musst
-- welche Unterlagen, Termine oder Antworten verlangt werden
-- bis wann du etwas machen musst
-- was passiert, wenn du nichts machst
+Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
+"Du musst jetzt nur ..."
 
-Schreibe möglichst in dieser Art:
-"Das Jobcenter will noch ..."
-"Du sollst jetzt ..."
-"Das musst du bis ... machen."
-"Wichtig ist: ..."
-"Wenn du nichts machst, kann ..."
-
-Wenn nur Kopien verlangt werden, schreibe klar:
-nur Kopien, keine Originale
-
-Ganz am Ende schreibe immer genau einen einzigen kurzen Satz mit:
-Du musst jetzt nur ...
-
-Bilder:
+Brief:
+${text}
 `;
+
     const raw = await callGemini([{ text: prompt }]);
-const erklaerung = cleanAntwort(raw);
+    const erklaerung = cleanAntwort(raw);
+
     return res.json({
       ok: true,
       erklaerung
@@ -186,49 +175,33 @@ app.post("/api/brief-bild", async (req, res) => {
       });
     }
 
-     const prompt = `
+    const prompt = `
 Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
 
 Deine Aufgabe:
-Lies alle Bilder zusammen und erkläre den Brief sehr einfach, klar, kurz und menschlich.
-
-Wichtig:
-Benutze nur Informationen, die auf den Bildern wirklich lesbar sind.
-Erfinde nichts.
-Rate nichts.
-Wenn etwas fehlt, unscharf oder abgeschnitten ist, sag das offen und klar.
-
-Schreibe so, wie du einem Freund den Brief erklären würdest.
-Nicht wie ein Amt.
-Nicht wie ein Anwalt.
-Nicht wie eine Behörde.
-Nicht wie ChatGPT.
+Lies alle Bilder zusammen und erkläre den Brief extrem einfach, kurz, klar und menschlich.
 
 Regeln:
 - Schreibe auf Deutsch.
-- Sprich die Person immer mit "du" an.
-- Schreibe nur normalen Fließtext.
-- Maximal 6 kurze Sätze.
-- Jeder Satz soll leicht verständlich sein.
-- Keine Überschriften.
-- Keine Listen.
-- Keine Aufzählungszeichen.
-- Keine Nummerierungen.
-- Keine Sternchen.
-- Kein Markdown.
-- Kein Fettdruck.
+- Schreibe so, wie du mit einem normalen Menschen sprichst.
+- Schreibe mit "du", nie mit "Sie".
+- Schreibe sehr einfach.
 - Keine Fachsprache.
 - Kein Beamtendeutsch.
-- Keine formellen Sätze wie:
-  "Dieses Schreiben ..."
-  "Es geht darum, dass ..."
-  "fordert Sie auf ..."
-  "zur Prüfung ..."
-  "im Rahmen von ..."
-  "für Rückfragen ..."
+- Keine Überschriften.
+- Keine Einleitung.
+- Keine Aufzählung mit 1., 2., 3.
+- Keine Sternchen.
 - Keine Wiederholungen.
-- Keine erfundenen Infos.
-- Keine Frist nennen, wenn sie nicht klar lesbar ist.
+- Keine unnötigen Sätze.
+- Kein Satz wie: "Im Brief steht, dass ..."
+- Kein Satz wie: "Ihr Ansprechpartner ist ..."
+- Nenne nur Dinge, die für die Person wirklich wichtig sind.
+- Wenn nur Kopien verlangt werden, sag klar: nur Kopien, keine Originale.
+- Wenn eine Frist drinsteht, sag sie klar.
+- Wenn etwas passieren kann, sag es klar und direkt.
+- Wenn etwas auf dem Bild fehlt oder nicht lesbar ist, sag das offen.
+- Erfinde nichts dazu.
 
 Wenn etwas auf dem Bild nicht gut lesbar ist, schreibe genau:
 Ein Teil des Briefes ist auf dem Bild nicht gut lesbar.
@@ -238,28 +211,18 @@ Ein wichtiger Teil des Briefes fehlt auf dem Bild.
 
 Wenn mehrere Bilder zu demselben Brief gehören, verbinde die Informationen sinnvoll.
 
-Die Antwort muss immer enthalten:
-- worum es im Brief geht
-- was du jetzt tun musst
-- welche Unterlagen, Termine oder Antworten verlangt werden
-- bis wann du etwas machen musst
-- was passiert, wenn du nichts machst
-
-Schreibe möglichst in dieser Art:
-"Das Jobcenter will noch ..."
-"Du sollst jetzt ..."
-"Das musst du bis ... machen."
-"Wichtig ist: ..."
-"Wenn du nichts machst, kann ..."
-
-Wenn nur Kopien verlangt werden, schreibe klar:
-nur Kopien, keine Originale
+Die Antwort soll in normalem Fließtext sein und genau diese Punkte enthalten:
+- Was der Brief bedeutet
+- Was die Person jetzt tun muss
+- Bis wann
+- Was passiert, wenn sie nichts macht
 
 Ganz am Ende schreibe immer genau einen einzigen kurzen Satz.
 Dieser Satz muss die echten Unterlagen und die echte Frist aus dem Brief enthalten.
 Schreibe nie allgemeine Wörter wie "Stichtag", wenn im Brief ein genaues Datum steht.
 Beispiel:
 Du musst jetzt nur die Abmeldung von Asen und den Einstellungsbescheid für das Kindergeld bis zum 23.01.2026 als Kopie einreichen.
+
 Bilder:
 `;
 
@@ -278,7 +241,8 @@ Bilder:
       });
     }
 
-    const erklaerung = await callGemini(parts);
+    const raw = await callGemini(parts);
+    const erklaerung = cleanAntwort(raw);
 
     return res.json({
       ok: true,
