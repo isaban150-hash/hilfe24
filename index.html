@@ -1,182 +1,240 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hilfe24 - Brief erklären</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f6f6f6;
-      margin: 0;
-      padding: 40px 20px;
+const express = require("express");
+const path = require("path");
+
+const app = express();
+const PORT = process.env.PORT || 8080;
+const apiKey = process.env.GEMINI_API_KEY;
+const MODEL = "gemini-2.5-flash";
+
+app.use(express.json({ limit: "20mb" }));
+app.use(express.static(__dirname));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+app.get("/test", (req, res) => {
+  res.json({ ok: true, message: "Server läuft sauber" });
+});
+
+async function callGemini(parts) {
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY fehlt auf dem Server");
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts
+          }
+        ]
+      })
     }
-
-    .box {
-      max-width: 900px;
-      margin: 0 auto;
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    }
-
-    h1 {
-      margin-top: 0;
-      font-size: 42px;
-    }
-
-    p {
-      color: #555;
-      font-size: 18px;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 260px;
-      padding: 16px;
-      font-size: 18px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      resize: vertical;
-      box-sizing: border-box;
-      margin-top: 16px;
-    }
-
-    .uploadBox {
-      margin-top: 16px;
-      padding: 16px;
-      border: 1px dashed #bbb;
-      border-radius: 10px;
-      background: #fafafa;
-    }
-
-    .uploadLabel {
-      display: block;
-      margin-bottom: 10px;
-      font-size: 16px;
-      color: #333;
-      font-weight: bold;
-    }
-
-    input[type="file"] {
-      font-size: 16px;
-    }
-
-    button {
-      margin-top: 16px;
-      background: #111827;
-      color: white;
-      border: none;
-      padding: 14px 22px;
-      font-size: 18px;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #1f2937;
-    }
-
-    #status {
-      margin-top: 16px;
-      font-size: 18px;
-    }
-
-    #ergebnis {
-      margin-top: 20px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 18px;
-      white-space: pre-wrap;
-      font-size: 18px;
-      line-height: 1.6;
-    }
-
-    .error {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px;
-      border-radius: 8px;
-    }
-
-    .loading {
-      color: #374151;
-    }
-
-    .small {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #666;
-    }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <h1>Brief erklären</h1>
-    <p>Füge hier deinen Brief ein. Hilfe24 erklärt ihn dir einfach.</p>
-
-    <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
-
-    <div class="uploadBox">
-      <label class="uploadLabel" for="briefBild">Oder Foto vom Brief hochladen</label>
-      <input type="file" id="briefBild" accept="image/*,.jpg,.jpeg,.png,.webp" multiple />
-      <div class="small">Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.</div>
-    </div>
-
-    <button id="erklaerBtn">📄 Brief erklären</button>
-
-    <div id="status"></div>
-    <div id="ergebnis"></div>
-  </div>
-
-  <script>
-    } else if (briefBild.files.length > 0) {
-  const bilder = await Promise.all(
-    Array.from(briefBild.files).map(async (file) => {
-      const imageData = await fileToBase64(file);
-      return {
-        imageData,
-        mimeType: file.type
-      };
-    })
   );
 
-  response = await fetch("/api/brief-bild", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      bilder
-    })
-  });
-} else if (briefBild.files.length > 0) {
-  const bilder = await Promise.all(
-    Array.from(briefBild.files).map(async (file) => {
-      const imageData = await fileToBase64(file);
-      return {
-        imageData,
-        mimeType: file.type
-      };
-    })
-  );
+  const data = await response.json();
 
-  response = await fetch("/api/brief-bild", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      bilder
-    })
-  });
-} else {
-  statusBox.className = "error";
-  statusBox.textContent = "Bitte Text einfügen oder mindestens ein Bild hochladen.";
-  return;
+  if (!response.ok) {
+    console.error("Gemini Fehler:", data);
+    throw new Error(data?.error?.message || "Gemini API Fehler");
+  }
+
+  const text =
+    data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("\n")
+      .trim() || "";
+
+  if (!text) {
+    throw new Error("Keine Antwort von Gemini erhalten");
+  }
+
+  return text;
 }
-  </script>
-</body>
-</html>
+
+app.post("/api/brief", async (req, res) => {
+  try {
+    const text = req.body.text;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Brieftext gesendet"
+      });
+    }
+
+    const prompt = `
+Du bist ein Helfer für einfache Brief-Erklärungen in Deutschland.
+
+Deine Aufgabe:
+Erkläre den Brief extrem einfach, klar, direkt und menschlich.
+
+Schreibe so, dass auch ein Mensch mit wenig Deutsch oder wenig Erfahrung mit Behörden sofort versteht, worum es geht.
+
+Regeln:
+- Schreibe auf Deutsch.
+- Schreibe in sehr einfachen, normalen Sätzen.
+- Schreibe wie ein echter Mensch, nicht wie eine KI.
+- Kein Beamtendeutsch.
+- Keine Fachsprache.
+- Keine Einleitung wie "Gerne helfe ich dir".
+- Keine Wiederholungen.
+- Keine unnötigen Sätze.
+- Keine Aufzählung mit 1., 2., 3.
+- Keine Überschriften wie "Zusammenfassung", "Analyse", "Fazit".
+- Kein Markdown.
+- Kein Sternchen-Text.
+- Keine erfundenen Infos.
+- Keine Frist erfinden, wenn keine im Brief steht.
+- Wenn etwas im Brief unklar ist, sag klar: "Das ist im Brief nicht ganz klar."
+
+Die Antwort muss diese Punkte verständlich abdecken, aber als normaler Fließtext:
+- Was der Brief insgesamt bedeutet
+- Was die Person jetzt tun muss
+- Welche Unterlagen oder Nachweise fehlen
+- Bis wann etwas erledigt werden muss
+- Was passiert, wenn die Person nichts macht
+
+Zusatzregeln:
+- Wenn der Brief dringend ist, sag das klar.
+- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist oder rechtliche Probleme in Gefahr sind, sag das deutlich und einfach.
+- Wenn die Person antworten, Unterlagen schicken, bezahlen oder irgendwo erscheinen muss, sag das direkt.
+- Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
+- Wenn der Brief freundlich klingt, aber trotzdem wichtig ist, sag trotzdem klar, dass man ihn ernst nehmen muss.
+
+Wichtig für den Stil:
+Die Antwort soll ruhig, menschlich und hilfreich klingen.
+Nicht trocken.
+Nicht künstlich.
+Nicht übertrieben.
+Nicht wie vom Amt.
+Nicht wie ChatGPT.
+
+Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz in dieser Art:
+"Du musst jetzt nur ..."
+Dieser letzte Satz soll in einem einzigen kurzen Satz sagen, was jetzt konkret zu tun ist.
+
+Brief:
+${text}
+`;
+
+    const erklaerung = await callGemini([{ text: prompt }]);
+
+    return res.json({
+      ok: true,
+      erklaerung
+    });
+  } catch (error) {
+    console.error("Fehler /api/brief:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
+  }
+});
+
+app.post("/api/brief-bild", async (req, res) => {
+  try {
+    const bilder = req.body.bilder;
+
+    if (!Array.isArray(bilder) || bilder.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Bild gesendet"
+      });
+    }
+
+    const prompt = `
+Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
+
+Deine Aufgabe:
+Lies alle Bilder zusammen als einen einzigen Brief, wenn sie zusammengehören, und erkläre den Inhalt dann sehr einfach, klar, direkt und menschlich.
+
+Wichtig:
+- Verwende nur Informationen, die auf den Bildern wirklich lesbar sind.
+- Erfinde nichts dazu.
+- Vermute nichts, wenn etwas unklar ist.
+- Wenn ein Teil fehlt oder nicht gut lesbar ist, sag das klar.
+- Wenn mehrere Seiten zu demselben Brief gehören, verbinde die Informationen sinnvoll.
+- Bleib so nah wie möglich am echten Inhalt des Briefes.
+
+Schreibe:
+- auf Deutsch
+- in sehr einfachen, normalen Sätzen
+- wie ein echter Mensch
+- ohne Überschriften
+- ohne Aufzählung mit 1., 2., 3.
+- ohne Markdown
+- ohne Einleitung wie "Gerne helfe ich dir"
+- ohne unnötige Wiederholungen
+- ohne Fachsprache, wenn es einfacher geht
+- ohne Beamtendeutsch, wenn es einfacher geht
+
+Die Erklärung soll als normaler Fließtext klar sagen:
+- worum es in dem Brief geht
+- was die Person jetzt tun muss
+- welche Unterlagen, Nachweise, Termine oder Antworten verlangt werden
+- bis wann etwas erledigt werden muss
+- was passiert, wenn man nichts macht
+
+Ganz wichtig:
+- Wenn der Brief eine Frist enthält, nenne sie genau.
+- Wenn der Brief nur Kopien verlangt, sag klar: nur Kopien, keine Originale.
+- Wenn Geld, Leistungen, Wohnung, Antrag, Vertrag, Mahnung, Gericht, Jugendamt, Krankenkasse oder Jobcenter betroffen sind, sag das klar und einfach.
+- Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
+- Wenn nur eine Folgeseite zu sehen ist, sag klar, dass wichtige Infos fehlen können.
+- Schreibe nur das als sicher, was wirklich aus den Bildern hervorgeht.
+
+Stil:
+Die Antwort soll ruhig, hilfreich, klar und menschlich klingen.
+Nicht künstlich.
+Nicht trocken.
+Nicht übertrieben.
+Nicht wie vom Amt.
+
+Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
+"Du musst jetzt nur ..."
+`;
+
+    const parts = [{ text: prompt }];
+
+    for (const bild of bilder) {
+      if (!bild.imageData || !bild.mimeType) {
+        continue;
+      }
+
+      parts.push({
+        inline_data: {
+          mime_type: bild.mimeType,
+          data: bild.imageData
+        }
+      });
+    }
+
+    const erklaerung = await callGemini(parts);
+
+    return res.json({
+      ok: true,
+      erklaerung
+    });
+  } catch (error) {
+    console.error("Fehler /api/brief-bild:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log("Server läuft auf Port " + PORT);
+});
