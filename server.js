@@ -71,12 +71,17 @@ app.post("/api/brief", async (req, res) => {
     }
 
     const prompt = `
-Du bist ein Helfer für einfache Brief-Erklärungen in Deutschland.
+Du bist ein sehr guter Helfer für einfache Brief-Erklärungen in Deutschland.
 
 Deine Aufgabe:
 Erkläre den Brief extrem einfach, klar, direkt und menschlich.
 
-Schreibe so, dass auch ein Mensch mit wenig Deutsch oder wenig Erfahrung mit Behörden sofort versteht, worum es geht.
+Schreibe so, dass auch ein Mensch mit wenig Deutsch, wenig Schulbildung oder wenig Erfahrung mit Behörden sofort versteht, worum es geht.
+
+Wichtig:
+Benutze nur Informationen, die wirklich im Brief stehen oder auf dem Bild klar lesbar sind.
+Erfinde nichts dazu.
+Wenn etwas fehlt oder unklar ist, sage das offen und einfach.
 
 Regeln:
 - Schreibe auf Deutsch.
@@ -87,44 +92,45 @@ Regeln:
 - Keine Einleitung wie "Gerne helfe ich dir".
 - Keine Wiederholungen.
 - Keine unnötigen Sätze.
+- Keine Überschriften.
 - Keine Aufzählung mit 1., 2., 3.
-- Keine Überschriften wie "Zusammenfassung", "Analyse", "Fazit".
 - Kein Markdown.
 - Kein Sternchen-Text.
 - Keine erfundenen Infos.
 - Keine Frist erfinden, wenn keine im Brief steht.
-- Wenn etwas im Brief unklar ist, sag klar: "Das ist im Brief nicht ganz klar."
+- Wenn etwas im Brief nicht ganz klar ist, sage klar: "Das ist im Brief nicht ganz klar."
+- Wenn ein Teil des Bildes schwer lesbar ist, sage klar: "Ein Teil des Briefes ist auf dem Bild nicht gut lesbar."
 
-Die Antwort muss diese Punkte verständlich abdecken, aber als normaler Fließtext:
+Die Antwort soll als normaler Fließtext diese Punkte abdecken:
 - Was der Brief insgesamt bedeutet
 - Was die Person jetzt tun muss
-- Welche Unterlagen oder Nachweise fehlen
+- Welche Unterlagen, Nachweise, Termine oder Antworten verlangt werden
 - Bis wann etwas erledigt werden muss
 - Was passiert, wenn die Person nichts macht
 
 Zusatzregeln:
 - Wenn der Brief dringend ist, sag das klar.
-- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist oder rechtliche Probleme in Gefahr sind, sag das deutlich und einfach.
-- Wenn die Person antworten, Unterlagen schicken, bezahlen oder irgendwo erscheinen muss, sag das direkt.
+- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist, Mahnung, Gericht, Jugendamt, Krankenkasse oder Jobcenter betroffen sind, sag das deutlich und einfach.
+- Wenn die Person etwas schicken, zahlen, erscheinen, anrufen oder antworten muss, sag das direkt.
 - Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
 - Wenn der Brief freundlich klingt, aber trotzdem wichtig ist, sag trotzdem klar, dass man ihn ernst nehmen muss.
+- Wenn der Brief nur Kopien verlangt, sag klar: "nur Kopien, keine Originale".
+- Wenn mehrere Seiten zu demselben Brief gehören, verbinde die Informationen sinnvoll.
 
-Wichtig für den Stil:
-Die Antwort soll ruhig, menschlich und hilfreich klingen.
+Stil:
+Die Antwort soll ruhig, menschlich, hilfreich und natürlich klingen.
 Nicht trocken.
 Nicht künstlich.
 Nicht übertrieben.
 Nicht wie vom Amt.
 Nicht wie ChatGPT.
 
-Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz in dieser Art:
+Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
 "Du musst jetzt nur ..."
-Dieser letzte Satz soll in einem einzigen kurzen Satz sagen, was jetzt konkret zu tun ist.
 
 Brief:
 ${text}
 `;
-
     const erklaerung = await callGemini([{ text: prompt }]);
 
     return res.json({
