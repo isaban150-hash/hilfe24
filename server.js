@@ -4,10 +4,6 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 8080;
 const apiKey = process.env.GEMINI_API_KEY;
-
-// Wichtig:
-// Wenn deine aktuelle Modell-Version funktioniert, lass sie so.
-// Wenn nicht, kannst du hier später nur den Modellnamen ändern.
 const MODEL = "gemini-2.5-flash";
 
 app.use(express.json({ limit: "20mb" }));
@@ -36,7 +32,7 @@ async function callGemini(parts) {
       body: JSON.stringify({
         contents: [
           {
-            parts
+            parts: parts
           }
         ]
       })
@@ -47,9 +43,7 @@ async function callGemini(parts) {
 
   if (!response.ok) {
     console.error("Gemini Fehler:", data);
-    throw new Error(
-      data?.error?.message || "Gemini API Fehler"
-    );
+    throw new Error(data?.error?.message || "Gemini API Fehler");
   }
 
   const text =
@@ -135,7 +129,7 @@ ${text}
 
     res.json({
       ok: true,
-      erklaerung
+      erklaerung: erklaerung
     });
   } catch (error) {
     console.error("Fehler /api/brief:", error);
@@ -204,7 +198,7 @@ Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz:
 
     res.json({
       ok: true,
-      erklaerung
+      erklaerung: erklaerung
     });
   } catch (error) {
     console.error("Fehler /api/brief-bild:", error);
@@ -214,95 +208,6 @@ Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz:
     });
   }
 });
-
-app.listen(PORT, () => {
-  console.log(`Server läuft auf Port ${PORT}`);
-});- Keine unnötigen Sätze.
-- Keine Aufzählung mit 1., 2., 3.
-- Keine Überschriften wie "Zusammenfassung", "Analyse", "Fazit".
-- Kein Markdown.
-- Kein Sternchen-Text.
-- Keine erfundenen Infos.
-- Keine Frist erfinden, wenn keine im Brief steht.
-- Wenn etwas im Brief unklar ist, sag klar: "Das ist im Brief nicht ganz klar."
-
-Die Antwort muss diese Punkte verständlich abdecken, aber als normaler Fließtext:
-- Was der Brief insgesamt bedeutet
-- Was die Person jetzt tun muss
-- Welche Unterlagen oder Nachweise fehlen
-- Bis wann etwas erledigt werden muss
-- Was passiert, wenn die Person nichts macht
-
-Zusatzregeln:
-- Wenn der Brief dringend ist, sag das klar.
-- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist oder rechtliche Probleme in Gefahr sind, sag das deutlich und einfach.
-- Wenn die Person antworten, Unterlagen schicken, bezahlen oder irgendwo erscheinen muss, sag das direkt.
-- Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
-- Wenn der Brief freundlich klingt, aber trotzdem wichtig ist, sag trotzdem klar, dass man ihn ernst nehmen muss.
-
-Wichtig für den Stil:
-Die Antwort soll ruhig, menschlich und hilfreich klingen.
-Nicht trocken.
-Nicht künstlich.
-Nicht übertrieben.
-Nicht wie vom Amt.
-Nicht wie ChatGPT.
-
-Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz in dieser Art:
-"Du musst jetzt nur ..."
-Dieser letzte Satz soll in einem einzigen kurzen Satz sagen, was jetzt konkret zu tun ist.
-
-Brief:
-${text}
-`;
-
-    const response = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: prompt }
-          ]
-        }
-      ]
-    })
-  }
-);
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("Gemini Fehler:", data);
-      return res.status(response.status).json({
-        ok: false,
-        error: data?.error?.message || "Gemini API Fehler"
-      });
-    }
-
-    const result =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Keine Antwort von Gemini erhalten.";
-
-    return res.json({
-      ok: true,
-      result
-    });
-  } catch (error) {
-    console.error("Serverfehler:", error);
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Unbekannter Serverfehler"
-    });
-  }
-});
-
-const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
