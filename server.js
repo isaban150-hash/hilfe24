@@ -14,7 +14,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber" });
+  res.json({ ok:  true, message: "Server läuft sauber" });
 });
 
 async function callGemini(parts) {
@@ -58,7 +58,22 @@ async function callGemini(parts) {
 
   return text;
 }
+function cleanAntwort(text) {
+  if (!text) return "";
 
+  return text
+    .replace(/Es geht darum, dass\s*/gi, "")
+    .replace(/In dem Brief geht es darum, dass\s*/gi, "")
+    .replace(/Ganz konkret werden von dir .*?verlangt:\s*/gi, "")
+    .replace(/Für Fragen können.*$/gim, "")
+    .replace(/\*\*/g, "")
+    .replace(/^\s*1\.\s*/gm, "")
+    .replace(/^\s*2\.\s*/gm, "")
+    .replace(/^\s*3\.\s*/gm, "")
+    .replace(/^\s*-\s*/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 app.post("/api/brief", async (req, res) => {
   try {
     const text = req.body.text;
@@ -144,8 +159,8 @@ Du musst jetzt nur ...
 
 Bilder:
 `;
-    const erklaerung = await callGemini([{ text: prompt }]);
-
+    const raw = await callGemini([{ text: prompt }]);
+const erklaerung = cleanAntwort(raw);
     return res.json({
       ok: true,
       erklaerung
