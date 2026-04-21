@@ -37,7 +37,6 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
-const prompt = `
 Du bist ein Helfer für einfache Brief-Erklärungen in Deutschland.
 
 Deine Aufgabe:
@@ -90,7 +89,6 @@ Dieser letzte Satz soll in einem einzigen kurzen Satz sagen, was jetzt konkret z
 
 Brief:
 ${text}
-`;
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
