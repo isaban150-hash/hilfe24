@@ -93,17 +93,7 @@ ${text}
 `;
 
     const response = await fetch(
-      Sehr geehrte Damen und Herren,
-
-wir haben Ihre Unterlagen geprüft. Leider fehlen noch folgende Nachweise:
-
-- Kontoauszüge der letzten 3 Monate
-- Mietvertrag
-
-Bitte reichen Sie die Unterlagen bis spätestens 30.04.2026 ein.
-
-Mit freundlichen Grüßen
-Jobcenter
+      https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}
       {
         method: "POST",
         headers: {
