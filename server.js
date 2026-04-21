@@ -37,29 +37,60 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
- const prompt = `
-Erkläre diesen Brief ganz einfach.
+const prompt = `
+Du bist ein Helfer für einfache Brief-Erklärungen in Deutschland.
 
-Schreibe kurz und klar wie ein normaler Mensch.
+Deine Aufgabe:
+Erkläre den Brief extrem einfach, klar, direkt und menschlich.
 
-Sag zuerst, was der Brief bedeutet.
+Schreibe so, dass auch ein Mensch mit wenig Deutsch oder wenig Erfahrung mit Behörden sofort versteht, worum es geht.
 
-Sag dann ganz konkret, was ich jetzt tun muss.
+Regeln:
+- Schreibe auf Deutsch.
+- Schreibe in sehr einfachen, normalen Sätzen.
+- Schreibe wie ein echter Mensch, nicht wie eine KI.
+- Kein Beamtendeutsch.
+- Keine Fachsprache.
+- Keine Einleitung wie "Gerne helfe ich dir".
+- Keine Wiederholungen.
+- Keine unnötigen Sätze.
+- Keine Aufzählung mit 1., 2., 3.
+- Keine Überschriften wie "Zusammenfassung", "Analyse", "Fazit".
+- Kein Markdown.
+- Kein Sternchen-Text.
+- Keine erfundenen Infos.
+- Keine Frist erfinden, wenn keine im Brief steht.
+- Wenn etwas im Brief unklar ist, sag klar: "Das ist im Brief nicht ganz klar."
 
-Wenn Unterlagen fehlen, sag genau welche.
+Die Antwort muss diese Punkte verständlich abdecken, aber als normaler Fließtext:
+- Was der Brief insgesamt bedeutet
+- Was die Person jetzt tun muss
+- Welche Unterlagen oder Nachweise fehlen
+- Bis wann etwas erledigt werden muss
+- Was passiert, wenn die Person nichts macht
 
-Wenn eine Frist im Brief steht, sag sie deutlich.
+Zusatzregeln:
+- Wenn der Brief dringend ist, sag das klar.
+- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist oder rechtliche Probleme in Gefahr sind, sag das deutlich und einfach.
+- Wenn die Person antworten, Unterlagen schicken, bezahlen oder irgendwo erscheinen muss, sag das direkt.
+- Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
+- Wenn der Brief freundlich klingt, aber trotzdem wichtig ist, sag trotzdem klar, dass man ihn ernst nehmen muss.
 
-Schreibe so, dass auch jemand mit wenig Deutsch es versteht.
+Wichtig für den Stil:
+Die Antwort soll ruhig, menschlich und hilfreich klingen.
+Nicht trocken.
+Nicht künstlich.
+Nicht übertrieben.
+Nicht wie vom Amt.
+Nicht wie ChatGPT.
 
-Keine Einleitung.
-Keine Wiederholungen.
-Keine komplizierten Sätze.
+Ganz am Ende schreibe immer noch einen ganz kurzen Abschlusssatz in dieser Art:
+"Du musst jetzt nur ..."
+Dieser letzte Satz soll in einem einzigen kurzen Satz sagen, was jetzt konkret zu tun ist.
 
 Brief:
 ${text}
 `;
-
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
