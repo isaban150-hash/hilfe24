@@ -121,8 +121,8 @@
 
     <div class="uploadBox">
       <label class="uploadLabel" for="briefBild">Oder Foto vom Brief hochladen</label>
-      <input type="file" id="briefBild" accept="image/*" />
-      <div class="small">Im Moment gehen Bilder. PDF bauen wir danach ein.</div>
+      <input type="file" id="briefBild" accept="image/*,.jpg,.jpeg,.png,.webp" multiple />
+      <div class="small">Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.</div>
     </div>
 
     <button id="erklaerBtn">📄 Brief erklären</button>
@@ -155,7 +155,8 @@
 
     erklaerBtn.addEventListener("click", async () => {
       const text = briefText.value.trim();
-      const file = briefBild.files[0];
+let response;
+let data;
 
       statusBox.className = "loading";
       statusBox.textContent = "Bitte kurz warten...";
@@ -176,11 +177,31 @@
         } else if (file) {
           const imageData = await fileToBase64(file);
 
-          response = await fetch("/api/brief-bild", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
+          } else if (briefBild.files.length > 0) {
+  const bilder = await Promise.all(
+    Array.from(briefBild.files).map(async (file) => {
+      const imageData = await fileToBase64(file);
+      return {
+        imageData,
+        mimeType: file.type
+      };
+    })
+  );
+
+  response = await fetch("/api/brief-bild", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      bilder
+    })
+  });
+} else {
+  statusBox.className = "error";
+  statusBox.textContent = "Bitte Text einfügen oder mindestens ein Bild hochladen.";
+  return;
+}
             body: JSON.stringify({
               imageData,
               mimeType: file.type
