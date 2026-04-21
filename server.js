@@ -70,66 +70,79 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
-    const prompt = `
-Du bist ein sehr guter Helfer für einfache Brief-Erklärungen in Deutschland.
+  const prompt = `
+Du siehst ein oder mehrere Fotos von einem Brief oder Dokument aus Deutschland.
 
 Deine Aufgabe:
-Erkläre den Brief extrem einfach, klar, direkt und menschlich.
-
-Schreibe so, dass auch ein Mensch mit wenig Deutsch, wenig Schulbildung oder wenig Erfahrung mit Behörden sofort versteht, worum es geht.
+Lies alle Bilder zusammen und erkläre den Brief danach sehr einfach, kurz, klar und menschlich.
 
 Wichtig:
-Benutze nur Informationen, die wirklich im Brief stehen oder auf dem Bild klar lesbar sind.
-Erfinde nichts dazu.
-Wenn etwas fehlt oder unklar ist, sage das offen und einfach.
+Benutze nur Informationen, die auf den Bildern wirklich lesbar sind.
+Erfinde nichts.
+Rate nichts.
+Wenn etwas fehlt, abgeschnitten oder unscharf ist, sag das offen.
 
-Regeln:
+Schreibe so, wie du es einem normalen Menschen im Alltag erklären würdest.
+Nicht wie ein Amt.
+Nicht wie ein Anwalt.
+Nicht wie eine Behörde.
+Nicht wie ChatGPT.
+
+Sehr wichtige Stilregeln:
 - Schreibe auf Deutsch.
-- Schreibe in sehr einfachen, normalen Sätzen.
-- Schreibe wie ein echter Mensch, nicht wie eine KI.
+- Schreibe sehr einfach.
+- Schreibe kurz.
+- Schreibe direkt.
+- Schreibe natürlich.
 - Kein Beamtendeutsch.
 - Keine Fachsprache.
-- Keine Einleitung wie "Gerne helfe ich dir".
+- Keine Förmlichkeit wie "Dieses Schreiben", "hierbei", "handelt von", "fordert Sie auf", "zur Prüfung".
+- Keine Überschriften.
+- Keine Listen mit 1., 2., 3.
+- Kein Markdown.
+- Keine Sternchen.
+- Kein Fettdruck.
 - Keine Wiederholungen.
 - Keine unnötigen Sätze.
-- Keine Überschriften.
-- Keine Aufzählung mit 1., 2., 3.
-- Kein Markdown.
-- Kein Sternchen-Text.
+- Keine langen Sätze.
 - Keine erfundenen Infos.
-- Keine Frist erfinden, wenn keine im Brief steht.
-- Wenn etwas im Brief nicht ganz klar ist, sage klar: "Das ist im Brief nicht ganz klar."
-- Wenn ein Teil des Bildes schwer lesbar ist, sage klar: "Ein Teil des Briefes ist auf dem Bild nicht gut lesbar."
+- Keine Frist nennen, wenn sie nicht klar lesbar ist.
 
-Die Antwort soll als normaler Fließtext diese Punkte abdecken:
-- Was der Brief insgesamt bedeutet
-- Was die Person jetzt tun muss
-- Welche Unterlagen, Nachweise, Termine oder Antworten verlangt werden
-- Bis wann etwas erledigt werden muss
-- Was passiert, wenn die Person nichts macht
+Wenn etwas nicht gut lesbar ist, schreibe genau:
+"Ein Teil des Briefes ist auf dem Bild nicht gut lesbar."
+
+Wenn ein wichtiger Teil fehlt, schreibe genau:
+"Ein wichtiger Teil des Briefes fehlt auf dem Bild."
+
+Wenn mehrere Bilder zu demselben Brief gehören, verbinde die Informationen sinnvoll.
+
+Die Antwort muss als normaler Fließtext diese Punkte enthalten:
+- worum es im Brief geht
+- was die Person jetzt tun muss
+- welche Unterlagen, Termine oder Antworten verlangt werden
+- bis wann etwas erledigt werden muss
+- was passiert, wenn die Person nichts macht
 
 Zusatzregeln:
 - Wenn der Brief dringend ist, sag das klar.
-- Wenn Geld, Leistungen, Wohnung, Vertrag, Antrag, Frist, Mahnung, Gericht, Jugendamt, Krankenkasse oder Jobcenter betroffen sind, sag das deutlich und einfach.
-- Wenn die Person etwas schicken, zahlen, erscheinen, anrufen oder antworten muss, sag das direkt.
+- Wenn es um Geld, Jobcenter, Bürgergeld, Krankenkasse, Jugendamt, Gericht, Frist, Mahnung, Wohnung oder Vertrag geht, sag das klar und einfach.
+- Wenn die Person etwas schicken, zahlen, abgeben, anrufen, erscheinen oder antworten muss, sag das direkt.
+- Wenn der Brief nur Kopien verlangt, sag klar: nur Kopien, keine Originale.
 - Wenn mehrere Dinge verlangt werden, erkläre sie in einfacher Reihenfolge.
-- Wenn der Brief freundlich klingt, aber trotzdem wichtig ist, sag trotzdem klar, dass man ihn ernst nehmen muss.
-- Wenn der Brief nur Kopien verlangt, sag klar: "nur Kopien, keine Originale".
-- Wenn mehrere Seiten zu demselben Brief gehören, verbinde die Informationen sinnvoll.
 
-Stil:
-Die Antwort soll ruhig, menschlich, hilfreich und natürlich klingen.
-Nicht trocken.
-Nicht künstlich.
-Nicht übertrieben.
-Nicht wie vom Amt.
-Nicht wie ChatGPT.
+Ganz wichtig:
+Schreibe nicht: "Das Jobcenter fordert Sie auf".
+Schreibe stattdessen so:
+"Das Jobcenter will noch ..."
+oder
+"Du sollst jetzt ..."
 
-Ganz am Ende schreibe immer genau einen kurzen Abschlusssatz mit:
+Sprich die Person immer mit "du" an.
+
+Ganz am Ende schreibe immer genau einen einzigen kurzen Satz mit:
 "Du musst jetzt nur ..."
 
-Brief:
-${text}
+Bilder:
 `;
     const erklaerung = await callGemini([{ text: prompt }]);
 
