@@ -283,6 +283,8 @@ Wichtig:
 - In Türkisch darf eine Maßnahme nur dann als Pflicht formuliert werden, wenn sie in den Daten ausdrücklich als Handlung steht.
 - Wenn eine Handlung nicht ganz sicher oder nicht ausdrücklich gefordert ist, formuliere sie nicht als Pflicht.
 - Wenn "was_ist_zu_tun" leer oder unsicher ist, schreibe keinen "Du musst"-Satz außer für einen möglichen Widerspruch oder eine Prüfung des Inhalts.
+- Wiederhole am Ende nicht noch einmal allgemein, dass der Brief etwas zusammenfasst oder informiert.
+- Vermeide leere Abschlusssätze ohne echten Nutzen.
 
 Nutze nur diese Informationen:
 ${JSON.stringify(info, null, 2)}
