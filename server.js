@@ -17,60 +17,69 @@ app.get("/test", (req, res) => {
   res.json({ ok: true, message: "Server läuft sauber" });
 });
 
-function getLanguageMeta(lang) {
-  switch ((lang || "de").toLowerCase()) {
-    case "tr":
-  return {
-    code: "tr",
-    label: "Türkisch",
-    instruction: `
-Schreibe auf natürlichem, leicht verständlichem Türkisch.
-Nicht wörtlich.
-Nicht steif.
-Nicht wie Google Translate.
-Bleibe sehr nah an den vorgegebenen Informationen.
-Ändere keine Bedeutung.
-Formuliere vorsichtig.
-Mache aus Zielen, Planungen oder Unterstützungsangeboten keine festen Pflichten.
-Wenn etwas im Deutschen neutral formuliert ist, muss es auch im Türkischen neutral bleiben.
-Wenn etwas nicht sicher ist, darf es nicht als sichere Tatsache erscheinen.
-Vermeide im Türkischen unnötig harte Pflichtwörter wie "gerekmektedir", "zorundadır", "mutlaka", wenn die Information nicht eindeutig eine Pflicht ist.
-Wenn etwas nur geplant, besprochen oder vorgesehen ist, formuliere weicher und natürlicher.
-`
-  };
-    case "bg":
-      return {
-        code: "bg",
-        label: "Bulgarisch",
-        instruction: `
-Schreibe auf natürlichem, leicht verständlichem Bulgarisch.
-Nicht wörtlich.
-Nicht steif.
-Nicht wie Google Translate.
-Bleibe sehr nah an den vorgegebenen Informationen.
-};
-    case "ar":
-      return {
-        code: "ar",
-        label: "Arabisch",
-        instruction: `
-Schreibe auf natürlichem, leicht verständlichem Arabisch.
-Nicht wörtlich.
-Nicht steif.
-Nicht wie Google Translate.
-Bleibe sehr nah an den vorgegebenen Informationen.
-`
-      };
-    default:
-      return {
-        code: "de",
-        label: "Deutsch",
-        instruction: `
-Schreibe auf natürlichem, einfachem Deutsch.
-`
-      };
-  }
-}
+2026-04-22T15:43:16.158358688Z [err]      at Object..js (node:internal/modules/cjs/loader:1838:10)
+2026-04-22T15:43:16.158362486Z [err]  Node.js v22.22.2
+2026-04-22T15:43:16.158365094Z [err]      at Module.load (node:internal/modules/cjs/loader:1441:32)
+2026-04-22T15:43:16.158370405Z [err]      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+2026-04-22T15:43:16.158373092Z [err]      at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+2026-04-22T15:43:16.158374474Z [err]  ^^^^^^^^
+2026-04-22T15:43:16.158377445Z [err]      at node:internal/main/run_main_module:36:49
+2026-04-22T15:43:16.158380240Z [err]  
+2026-04-22T15:43:16.158388207Z [err]  SyntaxError: Unexpected identifier 'Schreibe'
+2026-04-22T15:43:16.158388314Z [err]      at Function._load (node:internal/modules/cjs/loader:1263:12)
+2026-04-22T15:43:16.158390960Z [err]      at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-04-22T15:43:16.158391415Z [err]  
+2026-04-22T15:43:16.158397636Z [err]      at wrapSafe (node:internal/modules/cjs/loader:1637:18)
+2026-04-22T15:43:16.158400437Z [err]  npm warn config production Use `--omit=dev` instead.
+2026-04-22T15:43:16.158401042Z [err]      at Module._compile (node:internal/modules/cjs/loader:1679:20)
+2026-04-22T15:43:16.158404655Z [inf]  
+2026-04-22T15:43:16.158408196Z [inf]  > hilfe24@1.0.0 start
+2026-04-22T15:43:16.158411585Z [inf]  > node server.js
+2026-04-22T15:43:16.158417279Z [inf]  
+2026-04-22T15:43:16.158420839Z [err]  /app/server.js:57
+2026-04-22T15:43:16.158425275Z [err]  Schreibe auf natürlichem, leicht verständlichem Arabisch.
+2026-04-22T15:43:16.161010108Z [err]  npm warn config production Use `--omit=dev` instead.
+2026-04-22T15:43:16.162099896Z [inf]  
+2026-04-22T15:43:16.162105956Z [inf]  > hilfe24@1.0.0 start
+2026-04-22T15:43:16.162111854Z [inf]  > node server.js
+2026-04-22T15:43:16.162114009Z [inf]  
+2026-04-22T15:43:16.164723583Z [err]  /app/server.js:57
+2026-04-22T15:43:16.164724390Z [err]  ^^^^^^^^
+2026-04-22T15:43:16.164730739Z [err]  Schreibe auf natürlichem, leicht verständlichem Arabisch.
+2026-04-22T15:43:16.164733373Z [err]  
+2026-04-22T15:43:16.164738247Z [err]  SyntaxError: Unexpected identifier 'Schreibe'
+2026-04-22T15:43:16.164743012Z [err]      at wrapSafe (node:internal/modules/cjs/loader:1637:18)
+2026-04-22T15:43:16.164747248Z [err]      at Module._compile (node:internal/modules/cjs/loader:1679:20)
+2026-04-22T15:43:16.164751699Z [err]      at Object..js (node:internal/modules/cjs/loader:1838:10)
+2026-04-22T15:43:16.164756578Z [err]      at Module.load (node:internal/modules/cjs/loader:1441:32)
+2026-04-22T15:43:16.164760847Z [err]      at Function._load (node:internal/modules/cjs/loader:1263:12)
+2026-04-22T15:43:16.164765312Z [err]      at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-04-22T15:43:16.164770085Z [err]      at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+2026-04-22T15:43:16.164774242Z [err]      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+2026-04-22T15:43:16.164779336Z [err]      at node:internal/main/run_main_module:36:49
+2026-04-22T15:43:16.164783725Z [err]  
+2026-04-22T15:43:16.164789885Z [err]  Node.js v22.22.2
+2026-04-22T15:43:16.373464187Z [err]  npm warn config production Use `--omit=dev` instead.
+2026-04-22T15:43:16.392202507Z [inf]  
+2026-04-22T15:43:16.392205667Z [inf]  > hilfe24@1.0.0 start
+2026-04-22T15:43:16.392210175Z [inf]  > node server.js
+2026-04-22T15:43:16.392213148Z [inf]  
+2026-04-22T15:43:16.417126277Z [err]  /app/server.js:57
+2026-04-22T15:43:16.417133327Z [err]  Schreibe auf natürlichem, leicht verständlichem Arabisch.
+2026-04-22T15:43:16.417137945Z [err]  ^^^^^^^^
+2026-04-22T15:43:16.417141768Z [err]  
+2026-04-22T15:43:16.417145427Z [err]  SyntaxError: Unexpected identifier 'Schreibe'
+2026-04-22T15:43:16.417149071Z [err]      at wrapSafe (node:internal/modules/cjs/loader:1637:18)
+2026-04-22T15:43:16.417152279Z [err]      at Module._compile (node:internal/modules/cjs/loader:1679:20)
+2026-04-22T15:43:16.417155317Z [err]      at Object..js (node:internal/modules/cjs/loader:1838:10)
+2026-04-22T15:43:16.417159166Z [err]      at Module.load (node:internal/modules/cjs/loader:1441:32)
+2026-04-22T15:43:16.417162427Z [err]      at Function._load (node:internal/modules/cjs/loader:1263:12)
+2026-04-22T15:43:16.417166000Z [err]      at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-04-22T15:43:16.417169179Z [err]      at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+2026-04-22T15:43:16.417172577Z [err]      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+2026-04-22T15:43:16.417176756Z [err]      at node:internal/main/run_main_module:36:49
+2026-04-22T15:43:16.417179529Z [err]  
+2026-04-22T15:43:16.417183006Z [err]  Node.js v22.22.2
 
 async function callGemini(parts) {
   if (!apiKey) {
