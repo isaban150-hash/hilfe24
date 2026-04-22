@@ -24,20 +24,18 @@ function getLanguageMeta(lang) {
         code: "tr",
         label: "Türkisch",
         instruction: `
-Schreibe auf natürlichem, leicht verständlichem Türkisch.
+Übersetze den deutschen Basistext in natürliches, leicht verständliches Türkisch.
 Nicht wörtlich.
 Nicht steif.
 Nicht wie Google Translate.
-Bleibe sehr nah an den vorgegebenen Informationen.
+Bleibe sehr nah an der Bedeutung des deutschen Textes.
 Ändere keine Bedeutung.
 Formuliere vorsichtig.
 Mache aus Zielen, Planungen oder Unterstützungsangeboten keine festen Pflichten.
 Wenn etwas im Deutschen neutral formuliert ist, muss es auch im Türkischen neutral bleiben.
 Wenn etwas nicht sicher ist, darf es nicht als sichere Tatsache erscheinen.
-Vermeide im Türkischen unnötig harte Pflichtwörter wie "gerekmektedir", "zorundadır", "mutlaka", wenn die Information nicht eindeutig eine Pflicht ist.
-Wenn etwas nur geplant, besprochen oder vorgesehen ist, formuliere weicher und natürlicher.
 Türkische Sätze sollen möglichst einfach, direkt und alltagstauglich klingen.
-Vermeide unnötig formelle Wörter wie "rica olunur" oder zu amtliche Wörter wie "önlemler", wenn es einfacher gesagt werden kann.
+Vermeide unnötig formelle Wörter wie "rica olunur" oder zu amtliche Wörter, wenn es einfacher gesagt werden kann.
 `
       };
     case "bg":
@@ -45,11 +43,12 @@ Vermeide unnötig formelle Wörter wie "rica olunur" oder zu amtliche Wörter wi
         code: "bg",
         label: "Bulgarisch",
         instruction: `
-Schreibe auf natürlichem, leicht verständlichem Bulgarisch.
+Übersetze den deutschen Basistext in natürliches, leicht verständliches Bulgarisch.
 Nicht wörtlich.
 Nicht steif.
 Nicht wie Google Translate.
-Bleibe sehr nah an den vorgegebenen Informationen.
+Bleibe sehr nah an der Bedeutung des deutschen Textes.
+Ändere keine Bedeutung.
 `
       };
     case "ar":
@@ -57,11 +56,12 @@ Bleibe sehr nah an den vorgegebenen Informationen.
         code: "ar",
         label: "Arabisch",
         instruction: `
-Schreibe auf natürlichem, leicht verständlichem Arabisch.
+Übersetze den deutschen Basistext in natürliches, leicht verständliches Arabisch.
 Nicht wörtlich.
 Nicht steif.
 Nicht wie Google Translate.
-Bleibe sehr nah an den vorgegebenen Informationen.
+Bleibe sehr nah an der Bedeutung des deutschen Textes.
+Ändere keine Bedeutung.
 `
       };
     default:
@@ -69,7 +69,7 @@ Bleibe sehr nah an den vorgegebenen Informationen.
         code: "de",
         label: "Deutsch",
         instruction: `
-Schreibe auf natürlichem, einfachem Deutsch.
+Gib den Basistext in natürlichem, einfachem Deutsch aus.
 `
       };
   }
@@ -147,7 +147,6 @@ function normalizeInfo(info) {
     frist: info.frist || "",
     folge_wenn_nichts: info.folge_wenn_nichts || "",
     wichtige_termine: Array.isArray(info.wichtige_termine) ? info.wichtige_termine : [],
-    praktische_tipps: Array.isArray(info.praktische_tipps) ? info.praktische_tipps : [],
     unsicherheiten: Array.isArray(info.unsicherheiten) ? info.unsicherheiten : [],
     abschlusssatz: info.abschlusssatz || ""
   };
@@ -178,24 +177,21 @@ Du sollst genau diese Felder zurückgeben:
   "frist": "",
   "folge_wenn_nichts": "",
   "wichtige_termine": [],
-  "praktische_tipps": [],
   "unsicherheiten": [],
   "abschlusssatz": ""
 }
 
 Regeln für die Felder:
-- "absender": nur wenn klar lesbar oder eindeutig erkennbar, z. B. "Jugendamt Bad Salzuflen", "Jobcenter Lippe", "AOK", "Familienkasse"
-- Wenn der Absender nicht klar lesbar ist, dann lass "absender" leer.
-- "art_des_briefs": sehr kurz, z. B. "Jobcenter-Brief", "Hilfeplan-Protokoll", "Mahnung"
+- "absender": nur wenn klar lesbar oder eindeutig erkennbar
+- "art_des_briefs": sehr kurz
 - "worum_geht_es": 1 kurzer Satz
 - "was_ist_zu_tun": nur Handlungen, die im Brief ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
 - Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
-- "wichtige_termine": nur Termine, die im Brief klar stehen
-- "praktische_tipps": höchstens 2 kurze Tipps, aber nur wenn sie direkt aus dem Brief sinnvoll folgen
-- "unsicherheiten": Dinge, die im Brief nicht ganz klar oder eventuell unklar sind
-- "abschlusssatz": immer ein einziger kurzer Satz, möglichst mit "Du musst jetzt nur ...", aber nur passend zum Brief
+- "wichtige_termine": nur klare Termine aus dem Brief
+- "unsicherheiten": Dinge, die nicht ganz klar sind
+- "abschlusssatz": immer ein sehr kurzer Satz. Wenn keine klare Pflicht da ist, dann eher in Richtung: "Du musst jetzt nur prüfen, ob du einverstanden bist."
 
 Brief:
 ${text}
@@ -227,24 +223,21 @@ Du sollst genau diese Felder zurückgeben:
   "frist": "",
   "folge_wenn_nichts": "",
   "wichtige_termine": [],
-  "praktische_tipps": [],
   "unsicherheiten": [],
   "abschlusssatz": ""
 }
 
 Regeln für die Felder:
-- "absender": nur wenn auf den Bildern klar lesbar oder eindeutig erkennbar
-- Wenn der Absender nicht klar lesbar ist, dann lass "absender" leer.
+- "absender": nur wenn klar lesbar oder eindeutig erkennbar
 - "art_des_briefs": sehr kurz
 - "worum_geht_es": 1 kurzer Satz
 - "was_ist_zu_tun": nur Handlungen, die auf den Bildern ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
 - Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
-- "wichtige_termine": nur Termine, die klar auf den Bildern stehen
-- "praktische_tipps": höchstens 2 kurze Tipps, aber nur wenn sie direkt aus dem Brief sinnvoll folgen
+- "wichtige_termine": nur klare Termine aus den Bildern
 - "unsicherheiten": Dinge, die nicht ganz klar oder nicht gut lesbar sind
-- "abschlusssatz": immer ein kurzer Schlusssatz, passend zum Brief
+- "abschlusssatz": immer ein sehr kurzer Satz. Wenn keine klare Pflicht da ist, dann eher in Richtung: "Du musst jetzt nur prüfen, ob du einverstanden bist."
 
 Gib nur JSON zurück.
 
@@ -252,17 +245,11 @@ Bilder:
 `;
 }
 
-function buildFinalAnswerPrompt(info, langMeta) {
+function buildGermanBasePrompt(info) {
   return `
 Du bist Hilfe24.
 
-Aus den folgenden strukturierten Informationen sollst du jetzt eine sehr kurze, einfache und verlässliche Erklärung schreiben.
-
-Antwortsprache:
-${langMeta.label}
-
-Sprachregel:
-${langMeta.instruction}
+Aus diesen strukturierten Informationen sollst du jetzt eine sehr kurze, sichere und einfache Erklärung auf Deutsch schreiben.
 
 Wichtig:
 - Bleibe extrem nah an den Daten.
@@ -272,19 +259,12 @@ Wichtig:
 - Mache aus keiner Info eine Pflicht, wenn sie nicht eindeutig in den Daten steht.
 - Wenn eine Information nur als Ziel, Planung, Unterstützung oder nächster Schritt beschrieben ist, formuliere sie nicht als harte Pflicht.
 - Vermeide Wörter wie "muss", "soll", "ist erforderlich", wenn die Daten das nicht eindeutig als Pflicht zeigen.
-- Formuliere in solchen Fällen weicher, zum Beispiel mit "es ist vorgesehen", "es ist geplant", "dabei soll geholfen werden" oder "im Protokoll steht".
+- Formuliere in solchen Fällen weicher, zum Beispiel mit "im Protokoll steht", "es ist vorgesehen", "es ist geplant" oder "dabei soll geholfen werden".
 - Keine freien Zusatzgedanken.
 - Keine Ausschmückung.
 - Keine Überschriften.
 - Kein Markdown.
-- Keine Listen mit 1., 2., 3.
-- Höchstens 5 kurze Sätze plus 1 Abschlusssatz.
-- Wenn "was_ist_zu_tun" leer ist, schreibe keinen Satz mit einer Pflicht oder Aufgabe.
-- Ziele, Unterstützungsangebote oder geplante Maßnahmen dürfen nicht als direkte Pflicht für die Person formuliert werden.
-- In Türkisch dürfen Ziele, Vorhaben, Unterstützungsangebote oder Gesprächsinhalte nicht wie feste Pflichten klingen.
-- In Türkisch darf eine Maßnahme nur dann als Pflicht formuliert werden, wenn sie in den Daten ausdrücklich als Handlung steht.
-- Wenn eine Handlung nicht ganz sicher oder nicht ausdrücklich gefordert ist, formuliere sie nicht als Pflicht.
-- Wenn "was_ist_zu_tun" leer oder unsicher ist, schreibe keinen "Du musst"-Satz außer für einen möglichen Widerspruch oder eine Prüfung des Inhalts.
+- Keine Listen.
 - Wiederhole am Ende nicht noch einmal allgemein, dass der Brief etwas zusammenfasst oder informiert.
 - Vermeide leere Abschlusssätze ohne echten Nutzen.
 
@@ -300,12 +280,39 @@ Regeln für den Aufbau:
 - Satz 6: nur wenn klar vorhanden: was passiert, wenn man nichts macht
 - Danach genau 1 einzelner sehr kurzer Abschlusssatz in einem eigenen letzten Satz.
 - Der Abschlusssatz darf nur 1 Satz sein und keine weiteren Erklärungen enthalten.
-- Beispiel: "Du musst jetzt nur prüfen, ob du mit dem Protokoll einverstanden bist."
-- Wenn "absender" vorhanden ist, beginne möglichst mit: "Der Brief ist von ..."
-- Wenn "absender" leer ist, erfinde keinen Absender
+- Wenn "was_ist_zu_tun" leer ist, schreibe keinen harten Pflichtsatz.
+- Wenn "absender" leer ist, erfinde keinen Absender.
 
-Wenn "unsicherheiten" vorhanden sind, dann nenne sie nicht als Tatsache.
+Wenn "unsicherheiten" vorhanden sind, nenne sie nicht als Tatsache.
 Wenn etwas nicht sicher ist, lass es lieber weg.
+`;
+}
+
+function buildTranslationPrompt(germanBase, langMeta) {
+  return `
+Du bist Hilfe24.
+
+Unten steht ein fertiger deutscher Basistext.
+Deine Aufgabe ist nur:
+übersetze ihn sauber in ${langMeta.label}.
+
+Wichtig:
+${langMeta.instruction}
+
+Regeln:
+- Bleibe sehr nah am deutschen Text.
+- Erfinde nichts dazu.
+- Lass nichts Wichtiges weg.
+- Ändere keine Bedeutung.
+- Wenn der deutsche Text vorsichtig formuliert ist, muss die Übersetzung auch vorsichtig bleiben.
+- Mache aus neutralen Aussagen keine harten Pflichten.
+- Keine zusätzlichen Sätze.
+- Keine Ausschmückung.
+- Keine Wiederholung.
+- Kein Markdown.
+
+Deutscher Basistext:
+${germanBase}
 `;
 }
 
@@ -318,11 +325,20 @@ async function buildFinalAnswerFromText(text, lang) {
 
   const info = normalizeInfo(extractJson(rawJson));
 
-  const finalText = await callGemini([
-    { text: buildFinalAnswerPrompt(info, langMeta) }
+  const germanBaseRaw = await callGemini([
+    { text: buildGermanBasePrompt(info) }
+  ]);
+  const germanBase = cleanAntwort(germanBaseRaw);
+
+  if (langMeta.code === "de") {
+    return germanBase;
+  }
+
+  const translatedRaw = await callGemini([
+    { text: buildTranslationPrompt(germanBase, langMeta) }
   ]);
 
-  return cleanAntwort(finalText);
+  return cleanAntwort(translatedRaw);
 }
 
 async function buildFinalAnswerFromImages(bilder, lang) {
@@ -344,11 +360,20 @@ async function buildFinalAnswerFromImages(bilder, lang) {
   const rawJson = await callGemini(parts);
   const info = normalizeInfo(extractJson(rawJson));
 
-  const finalText = await callGemini([
-    { text: buildFinalAnswerPrompt(info, langMeta) }
+  const germanBaseRaw = await callGemini([
+    { text: buildGermanBasePrompt(info) }
+  ]);
+  const germanBase = cleanAntwort(germanBaseRaw);
+
+  if (langMeta.code === "de") {
+    return germanBase;
+  }
+
+  const translatedRaw = await callGemini([
+    { text: buildTranslationPrompt(germanBase, langMeta) }
   ]);
 
-  return cleanAntwort(finalText);
+  return cleanAntwort(translatedRaw);
 }
 
 app.post("/api/brief", async (req, res) => {
