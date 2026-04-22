@@ -36,6 +36,8 @@ Wenn etwas im Deutschen neutral formuliert ist, muss es auch im Türkischen neut
 Wenn etwas nicht sicher ist, darf es nicht als sichere Tatsache erscheinen.
 Vermeide im Türkischen unnötig harte Pflichtwörter wie "gerekmektedir", "zorundadır", "mutlaka", wenn die Information nicht eindeutig eine Pflicht ist.
 Wenn etwas nur geplant, besprochen oder vorgesehen ist, formuliere weicher und natürlicher.
+Türkische Sätze sollen möglichst einfach, direkt und alltagstauglich klingen.
+Vermeide unnötig formelle Wörter wie "rica olunur" oder zu amtliche Wörter wie "önlemler", wenn es einfacher gesagt werden kann.
 `
       };
     case "bg":
