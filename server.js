@@ -70,18 +70,7 @@ async function callGemini(parts) {
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY fehlt auf dem Server");
   }
-function cleanAntwort(text) {
-  if (!text) return "";
 
-  return text
-    .replace(/\*\*/g, "")
-    .replace(/^\s*1\.\s*/gm, "")
-    .replace(/^\s*2\.\s*/gm, "")
-    .replace(/^\s*3\.\s*/gm, "")
-    .replace(/^\s*-\s*/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
     {
@@ -117,6 +106,19 @@ function cleanAntwort(text) {
   }
 
   return text;
+}
+
+function cleanAntwort(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/\*\*/g, "")
+    .replace(/^\s*1\.\s*/gm, "")
+    .replace(/^\s*2\.\s*/gm, "")
+    .replace(/^\s*3\.\s*/gm, "")
+    .replace(/^\s*-\s*/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function extractJson(text) {
@@ -178,7 +180,7 @@ Regeln für die Felder:
 - "folge_wenn_nichts": nur wenn klar genannt
 - "wichtige_termine": nur Termine, die im Brief klar stehen
 - "praktische_tipps": höchstens 2 kurze Tipps, aber nur wenn sie direkt aus dem Brief sinnvoll folgen
-- "unsicherheiten": Dinge, die im Brief nicht ganz klar oder auf dem Bild evtl. unklar sind
+- "unsicherheiten": Dinge, die im Brief nicht ganz klar oder evtl. unklar sind
 - "abschlusssatz": immer ein einziger kurzer Satz, möglichst mit "Du musst jetzt nur ...", aber nur passend zum Brief
 
 Brief:
