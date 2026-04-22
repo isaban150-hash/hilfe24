@@ -70,7 +70,18 @@ async function callGemini(parts) {
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY fehlt auf dem Server");
   }
+function cleanAntwort(text) {
+  if (!text) return "";
 
+  return text
+    .replace(/\*\*/g, "")
+    .replace(/^\s*1\.\s*/gm, "")
+    .replace(/^\s*2\.\s*/gm, "")
+    .replace(/^\s*3\.\s*/gm, "")
+    .replace(/^\s*-\s*/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
     {
