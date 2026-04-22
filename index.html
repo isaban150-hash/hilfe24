@@ -1,607 +1,364 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hilfe24 - Brief erklären</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f6f6f6;
-      margin: 0;
-      padding: 40px 20px;
-    }
+const express = require("express");
+const path = require("path");
 
-    .box {
-      max-width: 900px;
-      margin: 0 auto;
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    }
+const app = express();
+const PORT = process.env.PORT || 8080;
+const apiKey = process.env.GEMINI_API_KEY;
+const MODEL = "gemini-2.5-flash";
 
-    h1 {
-      margin-top: 0;
-      font-size: 42px;
-    }
+app.use(express.json({ limit: "20mb" }));
+app.use(express.static(__dirname));
 
-    p {
-      color: #555;
-      font-size: 18px;
-    }
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
-    textarea {
-      width: 100%;
-      min-height: 260px;
-      padding: 16px;
-      font-size: 18px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      resize: vertical;
-      box-sizing: border-box;
-      margin-top: 16px;
-    }
+app.get("/test", (req, res) => {
+  res.json({ ok: true, message: "Server läuft sauber" });
+});
 
-    .topRow {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-top: 16px;
-    }
+function getLanguageMeta(lang) {
+  switch ((lang || "de").toLowerCase()) {
+    case "tr":
+      return {
+        code: "tr",
+        label: "Türkisch",
+        instruction: `
+Schreibe auf natürlichem, leicht verständlichem Türkisch.
+Nicht wörtlich.
+Nicht steif.
+Nicht wie Google Translate.
+Bleibe sehr nah an den vorgegebenen Informationen.
+`
+      };
+    case "bg":
+      return {
+        code: "bg",
+        label: "Bulgarisch",
+        instruction: `
+Schreibe auf natürlichem, leicht verständlichem Bulgarisch.
+Nicht wörtlich.
+Nicht steif.
+Nicht wie Google Translate.
+Bleibe sehr nah an den vorgegebenen Informationen.
+`
+      };
+    case "ar":
+      return {
+        code: "ar",
+        label: "Arabisch",
+        instruction: `
+Schreibe auf natürlichem, leicht verständlichem Arabisch.
+Nicht wörtlich.
+Nicht steif.
+Nicht wie Google Translate.
+Bleibe sehr nah an den vorgegebenen Informationen.
+`
+      };
+    default:
+      return {
+        code: "de",
+        label: "Deutsch",
+        instruction: `
+Schreibe auf natürlichem, einfachem Deutsch.
+`
+      };
+  }
+}
 
-    .langBox {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+async function callGemini(parts) {
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY fehlt auf dem Server");
+  }
 
-    .langBox label {
-      font-size: 14px;
-      font-weight: bold;
-      color: #333;
-    }
-
-    select {
-      padding: 10px 12px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      background: white;
-    }
-
-    .uploadBox {
-      margin-top: 16px;
-      padding: 16px;
-      border: 1px dashed #bbb;
-      border-radius: 10px;
-      background: #fafafa;
-    }
-
-    .uploadLabel {
-      display: block;
-      margin-bottom: 10px;
-      font-size: 16px;
-      color: #333;
-      font-weight: bold;
-    }
-
-    input[type="file"] {
-      font-size: 16px;
-    }
-
-    .buttonRow {
-      margin-top: 16px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      background: #111827;
-      color: white;
-      border: none;
-      padding: 14px 22px;
-      font-size: 18px;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #1f2937;
-    }
-
-    .stoppBtn {
-      background: #6b7280;
-    }
-
-    .stoppBtn:hover {
-      background: #4b5563;
-    }
-
-    #status {
-      margin-top: 16px;
-      font-size: 18px;
-    }
-
-    #ergebnis {
-      margin-top: 20px;
-      background: #fcfcfc;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 22px;
-      white-space: normal;
-      font-size: 20px;
-      line-height: 1.8;
-      color: #1f2937;
-    }
-
-    .error {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px;
-      border-radius: 8px;
-    }
-
-    .loading {
-      color: #374151;
-    }
-
-    .small {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #666;
-    }
-
-    .highlight-red {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-weight: 700;
-    }
-
-    .highlight-orange {
-      background: #ffedd5;
-      color: #9a3412;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-weight: 700;
-    }
-
-    .highlight-blue {
-      background: #dbeafe;
-      color: #1d4ed8;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-weight: 700;
-    }
-
-    .highlight-green {
-      display: inline-block;
-      margin-top: 10px;
-      background: #dcfce7;
-      color: #166534;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-weight: 700;
-      line-height: 1.5;
-    }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <h1 id="titleText">Brief erklären</h1>
-    <p id="subText">Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.</p>
-
-    <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
-
-    <div class="topRow">
-      <div class="langBox">
-        <label id="langLabel" for="langSelect">Sprache</label>
-        <select id="langSelect">
-          <option value="de">Deutsch</option>
-          <option value="tr">Türkçe</option>
-          <option value="bg">Български</option>
-          <option value="ar">العربية</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="uploadBox">
-      <label class="uploadLabel" id="uploadLabel" for="briefBild">Oder Foto vom Brief hochladen</label>
-      <input type="file" id="briefBild" accept="image/*,.jpg,.jpeg,.png,.webp" multiple />
-      <div class="small" id="uploadHint">Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.</div>
-    </div>
-
-    <div class="buttonRow">
-      <button id="erklaerBtn" type="button">📄 Brief erklären</button>
-      <button id="vorlesenBtn" type="button">🔊 Vorlesen</button>
-      <button id="stoppBtn" type="button" class="stoppBtn">⏹ Stopp</button>
-    </div>
-
-    <div id="status"></div>
-    <div id="ergebnis"></div>
-  </div>
-
-  <script>
-    const briefText = document.getElementById("briefText");
-    const briefBild = document.getElementById("briefBild");
-    const erklaerBtn = document.getElementById("erklaerBtn");
-    const vorlesenBtn = document.getElementById("vorlesenBtn");
-    const stoppBtn = document.getElementById("stoppBtn");
-    const statusBox = document.getElementById("status");
-    const ergebnisBox = document.getElementById("ergebnis");
-    const langSelect = document.getElementById("langSelect");
-
-    const titleText = document.getElementById("titleText");
-    const subText = document.getElementById("subText");
-    const langLabel = document.getElementById("langLabel");
-    const uploadLabel = document.getElementById("uploadLabel");
-    const uploadHint = document.getElementById("uploadHint");
-
-    let aktuelleSprachausgabe = null;
-
-    const uiText = {
-      de: {
-        title: "Brief erklären",
-        sub: "Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.",
-        placeholder: "Füge deinen Brief hier ein...",
-        lang: "Sprache",
-        upload: "Oder Foto vom Brief hochladen",
-        hint: "Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.",
-        explain: "📄 Brief erklären",
-        read: "🔊 Vorlesen",
-        stop: "⏹ Stopp",
-        wait: "Bitte kurz warten...",
-        noInput: "Bitte Text einfügen oder mindestens ein Bild hochladen.",
-        noReadText: "Es gibt noch keinen Text zum Vorlesen.",
-        noReadSupport: "Vorlesen wird auf diesem Gerät oder Browser nicht unterstützt.",
-        readFail: "Vorlesen hat nicht funktioniert.",
-        reading: "Die Erklärung wird vorgelesen...",
-        unknownError: "Unbekannter Fehler"
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
       },
-      tr: {
-        title: "Mektubu açıkla",
-        sub: "Mektubu buraya yapıştır veya fotoğraf yükle. Hilfe24 sana basitçe açıklar.",
-        placeholder: "Mektubu buraya yapıştır...",
-        lang: "Dil",
-        upload: "Veya mektubun fotoğrafını yükle",
-        hint: "Aynı mektuba ait bir veya birkaç fotoğraf yükleyebilirsin. PDF işini sonra ekleriz.",
-        explain: "📄 Mektubu açıkla",
-        read: "🔊 Sesli oku",
-        stop: "⏹ Durdur",
-        wait: "Lütfen kısa bir süre bekle...",
-        noInput: "Lütfen metin ekle veya en az bir fotoğraf yükle.",
-        noReadText: "Sesli okunacak bir metin yok.",
-        noReadSupport: "Sesli okuma bu cihazda veya tarayıcıda desteklenmiyor.",
-        readFail: "Sesli okuma çalışmadı.",
-        reading: "Açıklama sesli okunuyor...",
-        unknownError: "Bilinmeyen hata"
-      },
-      bg: {
-        title: "Обясни писмото",
-        sub: "Постави писмото тук или качи снимки. Hilfe24 ще ти го обясни лесно.",
-        placeholder: "Постави писмото тук...",
-        lang: "Език",
-        upload: "Или качи снимка на писмото",
-        hint: "Можеш да качиш една или няколко снимки на едно и също писмо. PDF ще добавим по-късно.",
-        explain: "📄 Обясни писмото",
-        read: "🔊 Прочети",
-        stop: "⏹ Стоп",
-        wait: "Моля, изчакай малко...",
-        noInput: "Моля, въведи текст или качи поне една снимка.",
-        noReadText: "Няма текст за прочитане.",
-        noReadSupport: "Гласовото четене не се поддържа на това устройство или браузър.",
-        readFail: "Четенето не проработи.",
-        reading: "Обяснението се чете...",
-        unknownError: "Неизвестна грешка"
-      },
-      ar: {
-        title: "اشرح الرسالة",
-        sub: "ألصق الرسالة هنا أو ارفع صورًا لها. Hilfe24 يشرحها لك بشكل بسيط.",
-        placeholder: "ألصق الرسالة هنا...",
-        lang: "اللغة",
-        upload: "أو ارفع صورة للرسالة",
-        hint: "يمكنك رفع صورة واحدة أو عدة صور لنفس الرسالة. سنضيف PDF لاحقًا.",
-        explain: "📄 اشرح الرسالة",
-        read: "🔊 قراءة",
-        stop: "⏹ إيقاف",
-        wait: "انتظر قليلًا من فضلك...",
-        noInput: "من فضلك أضف نصًا أو ارفع صورة واحدة على الأقل.",
-        noReadText: "لا يوجد نص ليتم قراءته.",
-        noReadSupport: "القراءة الصوتية غير مدعومة على هذا الجهاز أو المتصفح.",
-        readFail: "القراءة الصوتية لم تعمل.",
-        reading: "يتم الآن قراءة الشرح...",
-        unknownError: "خطأ غير معروف"
+      body: JSON.stringify({
+        contents: [
+          {
+            parts
+          }
+        ]
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error("Gemini Fehler:", data);
+    throw new Error(data?.error?.message || "Gemini API Fehler");
+  }
+
+  const text =
+    data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("\n")
+      .trim() || "";
+
+  if (!text) {
+    throw new Error("Keine Antwort von Gemini erhalten");
+  }
+
+  return text;
+}
+
+function extractJson(text) {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) {
+    throw new Error("Konnte keine JSON-Antwort lesen");
+  }
+  return JSON.parse(match[0]);
+}
+
+function normalizeInfo(info) {
+  return {
+    art_des_briefs: info.art_des_briefs || "",
+    worum_geht_es: info.worum_geht_es || "",
+    was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun) ? info.was_ist_zu_tun : [],
+    frist: info.frist || "",
+    folge_wenn_nichts: info.folge_wenn_nichts || "",
+    wichtige_termine: Array.isArray(info.wichtige_termine) ? info.wichtige_termine : [],
+    praktische_tipps: Array.isArray(info.praktische_tipps) ? info.praktische_tipps : [],
+    unsicherheiten: Array.isArray(info.unsicherheiten) ? info.unsicherheiten : [],
+    abschlusssatz: info.abschlusssatz || ""
+  };
+}
+
+function buildExtractionPromptForText(text) {
+  return `
+Du bist Hilfe24.
+
+Deine Aufgabe:
+Lies diesen Brief und gib NUR strukturierte Informationen als JSON zurück.
+
+Wichtig:
+- Erfinde nichts.
+- Wenn etwas nicht klar im Brief steht, lass es leer oder setze es in "unsicherheiten".
+- Mache aus einer Möglichkeit keine Pflicht.
+- Mache aus einer Nebeninfo nicht den Hauptpunkt.
+- Keine freien Erklärungen.
+- Keine Sätze außerhalb des JSON.
+- Gib nur gültiges JSON zurück.
+
+Du sollst genau diese Felder zurückgeben:
+{
+  "art_des_briefs": "",
+  "worum_geht_es": "",
+  "was_ist_zu_tun": [],
+  "frist": "",
+  "folge_wenn_nichts": "",
+  "wichtige_termine": [],
+  "praktische_tipps": [],
+  "unsicherheiten": [],
+  "abschlusssatz": ""
+}
+
+Regeln für die Felder:
+- "art_des_briefs": sehr kurz, z. B. "Jobcenter-Brief", "Hilfeplan-Protokoll", "Mahnung"
+- "worum_geht_es": 1 kurzer Satz
+- "was_ist_zu_tun": nur klare Handlungen, die wirklich verlangt oder eindeutig genannt werden
+- "frist": nur wenn klar vorhanden
+- "folge_wenn_nichts": nur wenn klar genannt
+- "wichtige_termine": nur Termine, die im Brief klar stehen
+- "praktische_tipps": höchstens 2 kurze Tipps, aber nur wenn sie direkt aus dem Brief sinnvoll folgen
+- "unsicherheiten": Dinge, die im Brief nicht ganz klar oder auf dem Bild evtl. unklar sind
+- "abschlusssatz": immer ein einziger kurzer Satz, möglichst mit "Du musst jetzt nur ...", aber nur passend zum Brief
+
+Brief:
+${text}
+`;
+}
+
+function buildExtractionPromptForImages() {
+  return `
+Du bist Hilfe24.
+
+Deine Aufgabe:
+Lies die Bilder dieses Briefes und gib NUR strukturierte Informationen als JSON zurück.
+
+Wichtig:
+- Erfinde nichts.
+- Wenn etwas nicht klar lesbar oder nicht sicher ist, schreibe es in "unsicherheiten".
+- Mache aus einer Möglichkeit keine Pflicht.
+- Mache aus einer Nebeninfo nicht den Hauptpunkt.
+- Keine freien Erklärungen.
+- Keine Sätze außerhalb des JSON.
+- Gib nur gültiges JSON zurück.
+
+Du sollst genau diese Felder zurückgeben:
+{
+  "art_des_briefs": "",
+  "worum_geht_es": "",
+  "was_ist_zu_tun": [],
+  "frist": "",
+  "folge_wenn_nichts": "",
+  "wichtige_termine": [],
+  "praktische_tipps": [],
+  "unsicherheiten": [],
+  "abschlusssatz": ""
+}
+
+Regeln für die Felder:
+- "art_des_briefs": sehr kurz
+- "worum_geht_es": 1 kurzer Satz
+- "was_ist_zu_tun": nur klare Handlungen, die wirklich verlangt oder eindeutig genannt werden
+- "frist": nur wenn klar vorhanden
+- "folge_wenn_nichts": nur wenn klar genannt
+- "wichtige_termine": nur Termine, die klar auf den Bildern stehen
+- "praktische_tipps": höchstens 2 kurze Tipps, aber nur wenn sie direkt aus dem Brief sinnvoll folgen
+- "unsicherheiten": Dinge, die nicht ganz klar oder nicht gut lesbar sind
+- "abschlusssatz": immer ein kurzer Schlusssatz, passend zum Brief
+
+Gib nur JSON zurück.
+
+Bilder:
+`;
+}
+
+function buildFinalAnswerPrompt(info, langMeta) {
+  return `
+Du bist Hilfe24.
+
+Aus den folgenden strukturierten Informationen sollst du jetzt eine kurze, natürliche und einfache Erklärung schreiben.
+
+Antwortsprache:
+${langMeta.label}
+
+Sprachregel:
+${langMeta.instruction}
+
+Wichtig:
+- Bleibe sehr nah an den Daten.
+- Erfinde nichts dazu.
+- Lass Nebensachen weg.
+- Mache aus einem Termin keine Hauptpflicht, wenn er nur ein Termin ist.
+- Mache aus einer Info keine feste Pflicht, wenn sie nicht klar als Pflicht in den Daten steht.
+- Schreibe kurz, klar und menschlich.
+- Keine Überschriften.
+- Keine Listen mit 1., 2., 3.
+- Kein Markdown.
+- Keine Sternchen.
+- Normalerweise 4 bis 7 Sätze.
+- Wenn wenig wichtig ist, dann noch kürzer.
+
+Nutze nur diese Informationen:
+${JSON.stringify(info, null, 2)}
+
+Bau die Erklärung ungefähr so:
+- kurz sagen, was das für ein Brief ist und worum es geht
+- dann nur die wirklich wichtigen Handlungen oder Fristen nennen
+- wenn vorhanden, kurz sagen, was passiert, wenn man nichts macht
+- wenn sinnvoll, maximal 1 bis 2 kurze praktische Tipps
+- am Ende genau den Abschlusssatz aus den Daten sinngemäß wiedergeben
+
+Wenn "unsicherheiten" vorhanden sind, nenne sie nur kurz und vorsichtig.
+`;
+}
+
+async function buildFinalAnswerFromText(text, lang) {
+  const langMeta = getLanguageMeta(lang);
+
+  const rawJson = await callGemini([
+    { text: buildExtractionPromptForText(text) }
+  ]);
+
+  const info = normalizeInfo(extractJson(rawJson));
+
+  const finalText = await callGemini([
+    { text: buildFinalAnswerPrompt(info, langMeta) }
+  ]);
+
+  return cleanAntwort(finalText);
+}
+
+async function buildFinalAnswerFromImages(bilder, lang) {
+  const langMeta = getLanguageMeta(lang);
+
+  const parts = [{ text: buildExtractionPromptForImages() }];
+
+  for (const bild of bilder) {
+    if (!bild.imageData || !bild.mimeType) continue;
+
+    parts.push({
+      inline_data: {
+        mime_type: bild.mimeType,
+        data: bild.imageData
       }
-    };
+    });
+  }
 
-    function getUi() {
-      return uiText[langSelect.value] || uiText.de;
-    }
+  const rawJson = await callGemini(parts);
+  const info = normalizeInfo(extractJson(rawJson));
 
-    function updateUiLanguage() {
-      const t = getUi();
-      titleText.textContent = t.title;
-      subText.textContent = t.sub;
-      briefText.placeholder = t.placeholder;
-      langLabel.textContent = t.lang;
-      uploadLabel.textContent = t.upload;
-      uploadHint.textContent = t.hint;
-      erklaerBtn.textContent = t.explain;
-      vorlesenBtn.textContent = t.read;
-      stoppBtn.textContent = t.stop;
-      document.documentElement.lang = langSelect.value === "ar" ? "ar" : "de";
-      document.body.dir = langSelect.value === "ar" ? "rtl" : "ltr";
-      briefText.dir = langSelect.value === "ar" ? "rtl" : "ltr";
-      ergebnisBox.dir = langSelect.value === "ar" ? "rtl" : "ltr";
-    }
+  const finalText = await callGemini([
+    { text: buildFinalAnswerPrompt(info, langMeta) }
+  ]);
 
-    langSelect.addEventListener("change", updateUiLanguage);
-    updateUiLanguage();
+  return cleanAntwort(finalText);
+}
 
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+app.post("/api/brief", async (req, res) => {
+  try {
+    const text = req.body.text;
+    const lang = (req.body.lang || "de").toLowerCase();
 
-        reader.onload = () => {
-          const result = reader.result;
-          const base64 = result.split(",")[1];
-          resolve(base64);
-        };
-
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Brieftext gesendet"
       });
     }
 
-    function shouldHighlight() {
-      return langSelect.value === "de";
-    }
+    const erklaerung = await buildFinalAnswerFromText(text, lang);
 
-    function highlightAntwort(text) {
-      if (!text) return "";
-
-      const escapeHtml = (str) =>
-        str
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-
-      if (!shouldHighlight()) {
-        return escapeHtml(text).replace(/\n/g, "<br>");
-      }
-
-      let html = escapeHtml(text);
-
-      const highlightList = (input, items, className) => {
-        const sorted = [...items].sort((a, b) => b.length - a.length);
-
-        for (const item of sorted) {
-          const escaped = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const regex = new RegExp(`(^|[^\\wÄÖÜäöüß])(${escaped})(?=[^\\wÄÖÜäöüß]|$)`, "gi");
-          input = input.replace(regex, `$1<span class="${className}">$2</span>`);
-        }
-
-        return input;
-      };
-
-      html = html.replace(
-        /\b(bis spätestens\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis spätestens\s+\d{1,2}\.\d{1,2}\.\d{4}|bis zum\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis zum\s+\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{1,2}\.\d{4})\b/gi,
-        '<span class="highlight-red">$1</span>'
-      );
-
-      html = highlightList(html, [
-        "Frist",
-        "Termin",
-        "Mahnung",
-        "Sperre",
-        "Kürzung",
-        "gekürzt",
-        "eingestellt",
-        "Einstellung",
-        "gestoppt",
-        "stoppen",
-        "wegfallen",
-        "kein Geld mehr",
-        "Leistungen gekürzt",
-        "Leistungen eingestellt",
-        "Leistungen gestrichen",
-        "Geld gestrichen",
-        "dringend"
-      ], "highlight-red");
-
-      html = highlightList(html, [
-        "Einstellungsbescheid",
-        "Kindergeldbescheid",
-        "Meldebescheinigung",
-        "Lohnabrechnung",
-        "Kontoauszüge",
-        "Kontoauszug",
-        "Mietvertrag",
-        "Bescheinigung",
-        "Unterlagen",
-        "Unterlage",
-        "Nachweise",
-        "Nachweis",
-        "Bescheid",
-        "Abmeldung",
-        "Kindergeld",
-        "Vertrag",
-        "Kopien",
-        "Kopie",
-        "Originale",
-        "Original"
-      ], "highlight-orange");
-
-      html = highlightList(html, [
-        "per E-Mail",
-        "per Email",
-        "E-Mail",
-        "Email",
-        "per Post",
-        "Post",
-        "Einwurf",
-        "online",
-        "hochladen",
-        "Upload",
-        "persönlich",
-        "Portal",
-        "App"
-      ], "highlight-blue");
-
-      html = html.replace(
-        /(Du musst jetzt nur[\s\S]*?)(?=\n\n|$)/i,
-        '<span class="highlight-green">$1</span>'
-      );
-
-      html = html.replace(/\n/g, "<br>");
-
-      return html;
-    }
-
-    function getPlainTextFromHtml(html) {
-      const temp = document.createElement("div");
-      temp.innerHTML = html;
-      return (temp.textContent || temp.innerText || "").trim();
-    }
-
-    function stopVorlesen() {
-      window.speechSynthesis.cancel();
-      aktuelleSprachausgabe = null;
-    }
-
-    function getSpeechLang() {
-      switch (langSelect.value) {
-        case "tr":
-          return "tr-TR";
-        case "bg":
-          return "bg-BG";
-        case "ar":
-          return "ar-SA";
-        default:
-          return "de-DE";
-      }
-    }
-
-    function vorlesenText(text) {
-      const t = getUi();
-
-      if (!("speechSynthesis" in window)) {
-        statusBox.className = "error";
-        statusBox.textContent = t.noReadSupport;
-        return;
-      }
-
-      stopVorlesen();
-
-      const saubererText = text.trim();
-      if (!saubererText) {
-        statusBox.className = "error";
-        statusBox.textContent = t.noReadText;
-        return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(saubererText);
-      utterance.lang = getSpeechLang();
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
-
-      utterance.onstart = () => {
-        statusBox.className = "loading";
-        statusBox.textContent = t.reading;
-      };
-
-      utterance.onend = () => {
-        statusBox.className = "";
-        statusBox.textContent = "";
-        aktuelleSprachausgabe = null;
-      };
-
-      utterance.onerror = () => {
-        statusBox.className = "error";
-        statusBox.textContent = t.readFail;
-        aktuelleSprachausgabe = null;
-      };
-
-      aktuelleSprachausgabe = utterance;
-      window.speechSynthesis.speak(utterance);
-    }
-
-    erklaerBtn.addEventListener("click", async () => {
-      const t = getUi();
-
-      try {
-        const text = briefText.value.trim();
-        const files = briefBild.files;
-        const lang = langSelect.value;
-
-        stopVorlesen();
-        statusBox.className = "loading";
-        statusBox.textContent = t.wait;
-        ergebnisBox.innerHTML = "";
-
-        let response;
-
-        if (text) {
-          response = await fetch("/api/brief", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ text, lang })
-          });
-        } else if (files && files.length > 0) {
-          const bilder = await Promise.all(
-            Array.from(files).map(async (file) => {
-              const imageData = await fileToBase64(file);
-              return {
-                imageData,
-                mimeType: file.type
-              };
-            })
-          );
-
-          response = await fetch("/api/brief-bild", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ bilder, lang })
-          });
-        } else {
-          statusBox.className = "error";
-          statusBox.textContent = t.noInput;
-          return;
-        }
-
-        const data = await response.json();
-
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || t.unknownError);
-        }
-
-        statusBox.className = "";
-        statusBox.textContent = "";
-        ergebnisBox.innerHTML = highlightAntwort(data.erklaerung);
-      } catch (error) {
-        statusBox.className = "error";
-        statusBox.textContent = error.message || getUi().unknownError;
-      }
+    return res.json({
+      ok: true,
+      erklaerung
     });
+  } catch (error) {
+    console.error("Fehler /api/brief:", error);
 
-    vorlesenBtn.addEventListener("click", () => {
-      const textZumVorlesen = getPlainTextFromHtml(ergebnisBox.innerHTML);
-      vorlesenText(textZumVorlesen);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
     });
+  }
+});
 
-    stoppBtn.addEventListener("click", () => {
-      stopVorlesen();
-      statusBox.className = "";
-      statusBox.textContent = "";
+app.post("/api/brief-bild", async (req, res) => {
+  try {
+    const bilder = req.body.bilder;
+    const lang = (req.body.lang || "de").toLowerCase();
+
+    if (!Array.isArray(bilder) || bilder.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Bild gesendet"
+      });
+    }
+
+    const erklaerung = await buildFinalAnswerFromImages(bilder, lang);
+
+    return res.json({
+      ok: true,
+      erklaerung
     });
-  </script>
-</body>
-</html>
+  } catch (error) {
+    console.error("Fehler /api/brief-bild:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log("Server läuft auf Port " + PORT);
+});
