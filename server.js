@@ -29,6 +29,11 @@ Nicht wörtlich.
 Nicht steif.
 Nicht wie Google Translate.
 Bleibe sehr nah an den vorgegebenen Informationen.
+Ändere keine Bedeutung.
+Formuliere vorsichtig.
+Mache aus Zielen, Planungen oder Unterstützungsangeboten keine festen Pflichten.
+Wenn etwas im Deutschen neutral formuliert ist, muss es auch im Türkischen neutral bleiben.
+Wenn etwas nicht sicher ist, darf es nicht als sichere Tatsache erscheinen.
 `
       };
     case "bg":
@@ -143,6 +148,7 @@ function normalizeInfo(info) {
     abschlusssatz: info.abschlusssatz || ""
   };
 }
+
 function buildExtractionPromptForText(text) {
   return `
 Du bist Hilfe24.
@@ -161,6 +167,7 @@ Wichtig:
 
 Du sollst genau diese Felder zurückgeben:
 {
+  "absender": "",
   "art_des_briefs": "",
   "worum_geht_es": "",
   "was_ist_zu_tun": [],
@@ -173,10 +180,12 @@ Du sollst genau diese Felder zurückgeben:
 }
 
 Regeln für die Felder:
+- "absender": nur wenn klar lesbar oder eindeutig erkennbar, z. B. "Jugendamt Bad Salzuflen", "Jobcenter Lippe", "AOK", "Familienkasse"
+- Wenn der Absender nicht klar lesbar ist, dann lass "absender" leer.
 - "art_des_briefs": sehr kurz, z. B. "Jobcenter-Brief", "Hilfeplan-Protokoll", "Mahnung"
 - "worum_geht_es": 1 kurzer Satz
 - "was_ist_zu_tun": nur Handlungen, die im Brief ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
-- "Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
+- Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
 - "wichtige_termine": nur Termine, die im Brief klar stehen
@@ -207,6 +216,7 @@ Wichtig:
 
 Du sollst genau diese Felder zurückgeben:
 {
+  "absender": "",
   "art_des_briefs": "",
   "worum_geht_es": "",
   "was_ist_zu_tun": [],
@@ -219,10 +229,12 @@ Du sollst genau diese Felder zurückgeben:
 }
 
 Regeln für die Felder:
+- "absender": nur wenn auf den Bildern klar lesbar oder eindeutig erkennbar
+- Wenn der Absender nicht klar lesbar ist, dann lass "absender" leer.
 - "art_des_briefs": sehr kurz
 - "worum_geht_es": 1 kurzer Satz
 - "was_ist_zu_tun": nur Handlungen, die auf den Bildern ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
-
+- Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
 - "wichtige_termine": nur Termine, die klar auf den Bildern stehen
@@ -236,7 +248,8 @@ Bilder:
 `;
 }
 
-function buildFinalAnswerPrompt(info, langMeta) {return `
+function buildFinalAnswerPrompt(info, langMeta) {
+  return `
 Du bist Hilfe24.
 
 Aus den folgenden strukturierten Informationen sollst du jetzt eine sehr kurze, einfache und verlässliche Erklärung schreiben.
@@ -258,65 +271,32 @@ Wichtig:
 - Keine Überschriften.
 - Kein Markdown.
 - Keine Listen mit 1., 2., 3.
+- Höchstens 5 kurze Sätze plus 1 Abschlusssatz.
 - Wenn "was_ist_zu_tun" leer ist, schreibe keinen Satz mit einer Pflicht oder Aufgabe.
-- Ziele, Unterstützungsangebote oder geplante Maßnahmen dürfen nicht als direkte Pflicht für die Person formuliert werden.Höchstens 5 kurze Sätze plus 1 Abschlusssatz.
+- Ziele, Unterstützungsangebote oder geplante Maßnahmen dürfen nicht als direkte Pflicht für die Person formuliert werden.
+- In Türkisch dürfen Ziele, Vorhaben, Unterstützungsangebote oder Gesprächsinhalte nicht wie feste Pflichten klingen.
+- In Türkisch darf eine Maßnahme nur dann als Pflicht formuliert werden, wenn sie in den Daten ausdrücklich als Handlung steht.
+- Wenn eine Handlung nicht ganz sicher oder nicht ausdrücklich gefordert ist, formuliere sie nicht als Pflicht.
+- Wenn "was_ist_zu_tun" leer oder unsicher ist, schreibe keinen "Du musst"-Satz außer für einen möglichen Widerspruch oder eine Prüfung des Inhalts.
 
 Nutze nur diese Informationen:
 ${JSON.stringify(info, null, 2)}
 
 Regeln für den Aufbau:
-- Satz 1: kurz sagen, was das für ein Brief oder Protokoll ist
-- Satz 2: kurz sagen, worum es geht
-- Satz 3: nur wenn klar vorhanden: was man tun muss
-- Satz 4: nur wenn klar vorhanden: Frist oder Termin
-- Satz 5: nur wenn klar vorhanden: was passiert, wenn man nichts macht
-- Danach genau 1 kurzer Abschlusssatz
+- Satz 1: wenn "absender" vorhanden ist, zuerst sagen, von wem der Brief ist
+- Satz 2: kurz sagen, was das für ein Brief oder Protokoll ist
+- Satz 3: kurz sagen, worum es geht
+- Satz 4: nur wenn klar vorhanden: was man tun muss
+- Satz 5: nur wenn klar vorhanden: Frist oder Termin
+- Satz 6: nur wenn klar vorhanden: was passiert, wenn man nichts macht
+- Danach genau 1 einzelner sehr kurzer Abschlusssatz in einem eigenen letzten Satz.
+- Der Abschlusssatz darf nur 1 Satz sein und keine weiteren Erklärungen enthalten.
+- Beispiel: "Du musst jetzt nur prüfen, ob du mit dem Protokoll einverstanden bist."
+- Wenn "absender" vorhanden ist, beginne möglichst mit: "Der Brief ist von ..."
+- Wenn "absender" leer ist, erfinde keinen Absender
 
 Wenn "unsicherheiten" vorhanden sind, dann nenne sie nicht als Tatsache.
 Wenn etwas nicht sicher ist, lass es lieber weg.
-
-Der Abschlusssatz muss sehr kurz sein.
-Wenn eine klare Handlung verlangt wird, beginne mit:
-"Du musst jetzt nur ..."
-Wenn keine klare Handlung verlangt wird, schreibe:
-"Das ist erstmal nur eine Information."
-`;
-  return `
-Du bist Hilfe24.
-
-Aus den folgenden strukturierten Informationen sollst du jetzt eine kurze, natürliche und einfache Erklärung schreiben.
-
-Antwortsprache:
-${langMeta.label}
-
-Sprachregel:
-${langMeta.instruction}
-
-Wichtig:
-- Bleibe sehr nah an den Daten.
-- Erfinde nichts dazu.
-- Lass Nebensachen weg.
-- Mache aus einem Termin keine Hauptpflicht, wenn er nur ein Termin ist.
-- Mache aus einer Info keine feste Pflicht, wenn sie nicht klar als Pflicht in den Daten steht.
-- Schreibe kurz, klar und menschlich.
-- Keine Überschriften.
-- Keine Listen mit 1., 2., 3.
-- Kein Markdown.
-- Keine Sternchen.
-- Normalerweise 4 bis 7 Sätze.
-- Wenn wenig wichtig ist, dann noch kürzer.
-
-Nutze nur diese Informationen:
-${JSON.stringify(info, null, 2)}
-
-Bau die Erklärung ungefähr so:
-- kurz sagen, was das für ein Brief ist und worum es geht
-- dann nur die wirklich wichtigen Handlungen oder Fristen nennen
-- wenn vorhanden, kurz sagen, was passiert, wenn man nichts macht
-- wenn sinnvoll, maximal 1 bis 2 kurze praktische Tipps
-- am Ende genau den Abschlusssatz aus den Daten sinngemäß wiedergeben
-
-Wenn "unsicherheiten" vorhanden sind, nenne sie nur kurz und vorsichtig.
 `;
 }
 
