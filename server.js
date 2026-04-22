@@ -20,10 +20,10 @@ app.get("/test", (req, res) => {
 function getLanguageMeta(lang) {
   switch ((lang || "de").toLowerCase()) {
     case "tr":
-      return {
-        code: "tr",
-        label: "Türkisch",
-        instruction: `
+  return {
+    code: "tr",
+    label: "Türkisch",
+    instruction: `
 Schreibe auf natürlichem, leicht verständlichem Türkisch.
 Nicht wörtlich.
 Nicht steif.
@@ -34,9 +34,10 @@ Formuliere vorsichtig.
 Mache aus Zielen, Planungen oder Unterstützungsangeboten keine festen Pflichten.
 Wenn etwas im Deutschen neutral formuliert ist, muss es auch im Türkischen neutral bleiben.
 Wenn etwas nicht sicher ist, darf es nicht als sichere Tatsache erscheinen.
-`Vermeide im Türkischen unnötig harte Pflichtwörter wie "gerekmektedir", "zorundadır", "mutlaka", wenn die Information nicht eindeutig eine Pflicht ist.
+Vermeide im Türkischen unnötig harte Pflichtwörter wie "gerekmektedir", "zorundadır", "mutlaka", wenn die Information nicht eindeutig eine Pflicht ist.
 Wenn etwas nur geplant, besprochen oder vorgesehen ist, formuliere weicher und natürlicher.
-      };
+`
+  };
     case "bg":
       return {
         code: "bg",
