@@ -234,7 +234,50 @@ Bilder:
 `;
 }
 
-function buildFinalAnswerPrompt(info, langMeta) {
+function buildFinalAnswerPrompt(info, langMeta) {return `
+Du bist Hilfe24.
+
+Aus den folgenden strukturierten Informationen sollst du jetzt eine sehr kurze, einfache und verlässliche Erklärung schreiben.
+
+Antwortsprache:
+${langMeta.label}
+
+Sprachregel:
+${langMeta.instruction}
+
+Wichtig:
+- Bleibe extrem nah an den Daten.
+- Erfinde nichts.
+- Lass alles weg, was nicht sicher ist.
+- Formuliere vorsichtig.
+- Mache aus keiner Info eine Pflicht, wenn sie nicht eindeutig in den Daten steht.
+- Keine freien Zusatzgedanken.
+- Keine Ausschmückung.
+- Keine Überschriften.
+- Kein Markdown.
+- Keine Listen mit 1., 2., 3.
+- Höchstens 5 kurze Sätze plus 1 Abschlusssatz.
+
+Nutze nur diese Informationen:
+${JSON.stringify(info, null, 2)}
+
+Regeln für den Aufbau:
+- Satz 1: kurz sagen, was das für ein Brief oder Protokoll ist
+- Satz 2: kurz sagen, worum es geht
+- Satz 3: nur wenn klar vorhanden: was man tun muss
+- Satz 4: nur wenn klar vorhanden: Frist oder Termin
+- Satz 5: nur wenn klar vorhanden: was passiert, wenn man nichts macht
+- Danach genau 1 kurzer Abschlusssatz
+
+Wenn "unsicherheiten" vorhanden sind, dann nenne sie nicht als Tatsache.
+Wenn etwas nicht sicher ist, lass es lieber weg.
+
+Der Abschlusssatz muss sehr kurz sein.
+Wenn eine klare Handlung verlangt wird, beginne mit:
+"Du musst jetzt nur ..."
+Wenn keine klare Handlung verlangt wird, schreibe:
+"Das ist erstmal nur eine Information."
+`;
   return `
 Du bist Hilfe24.
 
