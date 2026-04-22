@@ -175,7 +175,8 @@ Du sollst genau diese Felder zurückgeben:
 Regeln für die Felder:
 - "art_des_briefs": sehr kurz, z. B. "Jobcenter-Brief", "Hilfeplan-Protokoll", "Mahnung"
 - "worum_geht_es": 1 kurzer Satz
-- "was_ist_zu_tun": nur klare Handlungen, die wirklich verlangt oder eindeutig genannt werden
+- "was_ist_zu_tun": nur Handlungen, die im Brief ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
+- "Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
 - "wichtige_termine": nur Termine, die im Brief klar stehen
@@ -220,7 +221,8 @@ Du sollst genau diese Felder zurückgeben:
 Regeln für die Felder:
 - "art_des_briefs": sehr kurz
 - "worum_geht_es": 1 kurzer Satz
-- "was_ist_zu_tun": nur klare Handlungen, die wirklich verlangt oder eindeutig genannt werden
+- "was_ist_zu_tun": nur Handlungen, die auf den Bildern ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
+
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
 - "wichtige_termine": nur Termine, die klar auf den Bildern stehen
@@ -256,7 +258,8 @@ Wichtig:
 - Keine Überschriften.
 - Kein Markdown.
 - Keine Listen mit 1., 2., 3.
-- Höchstens 5 kurze Sätze plus 1 Abschlusssatz.
+- Wenn "was_ist_zu_tun" leer ist, schreibe keinen Satz mit einer Pflicht oder Aufgabe.
+- Ziele, Unterstützungsangebote oder geplante Maßnahmen dürfen nicht als direkte Pflicht für die Person formuliert werden.Höchstens 5 kurze Sätze plus 1 Abschlusssatz.
 
 Nutze nur diese Informationen:
 ${JSON.stringify(info, null, 2)}
