@@ -34,7 +34,8 @@ Formuliere vorsichtig.
 Mache aus Zielen, Planungen oder Unterstützungsangeboten keine festen Pflichten.
 Wenn etwas im Deutschen neutral formuliert ist, muss es auch im Türkischen neutral bleiben.
 Wenn etwas nicht sicher ist, darf es nicht als sichere Tatsache erscheinen.
-`
+`Vermeide im Türkischen unnötig harte Pflichtwörter wie "gerekmektedir", "zorundadır", "mutlaka", wenn die Information nicht eindeutig eine Pflicht ist.
+Wenn etwas nur geplant, besprochen oder vorgesehen ist, formuliere weicher und natürlicher.
       };
     case "bg":
       return {
@@ -46,8 +47,7 @@ Nicht wörtlich.
 Nicht steif.
 Nicht wie Google Translate.
 Bleibe sehr nah an den vorgegebenen Informationen.
-`
-      };
+};
     case "ar":
       return {
         code: "ar",
@@ -210,6 +210,9 @@ Wichtig:
 - Wenn etwas nicht klar lesbar oder nicht sicher ist, schreibe es in "unsicherheiten".
 - Mache aus einer Möglichkeit keine Pflicht.
 - Mache aus einer Nebeninfo nicht den Hauptpunkt.
+- Wenn eine Information nur als Ziel, Planung, Unterstützung oder nächster Schritt beschrieben ist, formuliere sie nicht als harte Pflicht.
+- Vermeide Wörter wie "muss", "soll", "ist erforderlich", wenn die Daten das nicht eindeutig als Pflicht zeigen.
+- Formuliere in solchen Fällen weicher, zum Beispiel mit "es ist vorgesehen", "es ist geplant", "dabei soll geholfen werden" oder "im Protokoll steht".
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - Gib nur gültiges JSON zurück.
@@ -266,6 +269,8 @@ Wichtig:
 - Lass alles weg, was nicht sicher ist.
 - Formuliere vorsichtig.
 - Mache aus keiner Info eine Pflicht, wenn sie nicht eindeutig in den Daten steht.
+ Vermeide im Türkischen unnötig harte Pflichtwörter wie "gerekmektedir", "zorundadır", "mutlaka", wenn die Information nicht eindeutig eine Pflicht ist.
+ Wenn etwas nur geplant, besprochen oder vorgesehen ist, formuliere weicher und natürlicher.
 - Keine freien Zusatzgedanken.
 - Keine Ausschmückung.
 - Keine Überschriften.
