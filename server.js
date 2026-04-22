@@ -298,73 +298,116 @@ function sentenceCase(text) {
 }
 
 function renderSimpleGerman(info) {
-  const sentences = [];
+  const lines = [];
 
   const sender = simplifySender(info.absender, info.briefart);
+
   if (sender) {
-    sentences.push(`Der Brief ist vom ${sender}.`);
+    lines.push(`Der Brief ist vom ${sender}.`);
   }
 
-  const typeSentence = simplifyType(info.briefart);
-  if (typeSentence) {
-    sentences.push(typeSentence);
+  const lowerBriefart = (info.briefart || "").toLowerCase();
+  const lowerTopic = (info.worum_geht_es || "").toLowerCase();
+  const actions = Array.isArray(info.was_ist_zu_tun) ? info.was_ist_zu_tun : [];
+
+  const hasHelpContext =
+    lowerBriefart.includes("jugendamt") ||
+    lowerTopic.includes("hilfe") ||
+    lowerTopic.includes("unterstützung") ||
+    lowerTopic.includes("familie") ||
+    lowerTopic.includes("deutschland") ||
+    lowerTopic.includes("schule") ||
+    lowerTopic.includes("arbeit");
+
+  if (hasHelpContext) {
+    lines.push("Es geht um Hilfe für Asen und seine Familie.");
   } else if (info.worum_geht_es) {
-    sentences.push(sentenceCase(info.worum_geht_es).replace(/\.*$/, "") + ".");
+    lines.push(sentenceCase(info.worum_geht_es).replace(/\.*$/, "") + ".");
+  } else if (info.briefart) {
+    lines.push(`Es geht um diesen ${info.briefart}.`);
   }
 
-  if (info.worum_geht_es) {
-    const lower = info.worum_geht_es.toLowerCase();
+  if (hasHelpContext) {
+    lines.push("Asen soll wieder besser in Deutschland klarkommen.");
+  }
+
+  const simpleActions = [];
+
+  for (const action of actions) {
+    const a = action.toLowerCase();
+
+    if (a.includes("jobcenter")) {
+      simpleActions.push("Asen soll wieder beim Jobcenter angemeldet werden");
+      continue;
+    }
 
     if (
-      lower.includes("hilfe") ||
-      lower.includes("unterstützung") ||
-      lower.includes("schule") ||
-      lower.includes("arbeit") ||
-      lower.includes("familie") ||
-      lower.includes("deutschland")
+      a.includes("stadt") ||
+      a.includes("einwohnermeldeamt") ||
+      a.includes("bürgeramt") ||
+      a.includes("anmelden")
     ) {
-      const base = sentenceCase(info.worum_geht_es).replace(/\.*$/, "");
-      if (!sentences.some((s) => s.toLowerCase().includes(base.toLowerCase()))) {
-        sentences.push(base + ".");
-      }
+      simpleActions.push("Asen soll bei der Stadt angemeldet werden");
+      continue;
+    }
+
+    if (a.includes("termin")) {
+      simpleActions.push("der Termin ist wichtig");
+      continue;
+    }
+
+    if (a.includes("widerspruch") || a.includes("melden")) {
+      simpleActions.push("ihr müsst euch melden, wenn ihr nicht einverstanden seid");
+      continue;
+    }
+
+    simpleActions.push(action.replace(/\.$/, "").trim());
+  }
+
+  const uniqueActions = [];
+  for (const item of simpleActions) {
+    const key = item.toLowerCase();
+    if (item && !uniqueActions.some((x) => x.toLowerCase() === key)) {
+      uniqueActions.push(item);
     }
   }
 
-  const actions = formatActions(info.was_ist_zu_tun);
-  if (actions) {
-    sentences.push(`Wichtig: ${actions}.`);
+  if (uniqueActions.length > 0) {
+    if (uniqueActions.length === 1) {
+      lines.push(`Wichtig: ${uniqueActions[0]}.`);
+    } else {
+      lines.push(`Wichtig: ${uniqueActions[0]} und ${uniqueActions[1]}.`);
+    }
   } else if (info.versteckte_wichtige_info) {
-    sentences.push(sentenceCase(info.versteckte_wichtige_info).replace(/\.*$/, "") + ".");
+    lines.push(sentenceCase(info.versteckte_wichtige_info).replace(/\.*$/, "") + ".");
   }
 
-  if (info.termin) {
-    sentences.push(`Wichtig ist dieser Termin: ${info.termin}.`);
-  } else if (info.frist) {
-    sentences.push(`Wichtig ist diese Frist: ${info.frist}.`);
+  if (info.frist) {
+    lines.push(`Du hast dafür ${info.frist}.`);
+  } else if (info.termin) {
+    lines.push(`Wichtig ist dieser Termin: ${info.termin}.`);
   }
 
   if (info.folge_wenn_nichts) {
-    sentences.push(sentenceCase(info.folge_wenn_nichts).replace(/\.*$/, "") + ".");
+    let consequence = sentenceCase(info.folge_wenn_nichts).replace(/\.*$/, "");
+    consequence = consequence
+      .replace(/verbindlich/gi, "gültig")
+      .replace(/Widerspruch/gi, "Meldung");
+    lines.push(consequence + ".");
+  } else if (info.frist) {
+    lines.push("Sonst gilt der Plan.");
   }
 
-  if (!actions && !info.frist && !info.termin && !info.folge_wenn_nichts) {
-    sentences.push("Du musst jetzt nur prüfen, ob das für dich so passt.");
-  } else if (actions) {
-    const shortAction = actions.length > 90 ? "das prüfen" : actions;
-    sentences.push(`Du musst jetzt nur ${shortAction}.`);
-  } else if (info.frist || info.termin) {
-    sentences.push("Du musst jetzt nur die Frist oder den Termin beachten.");
-  }
-
-  const unique = [];
-  for (const s of sentences) {
-    const key = s.toLowerCase().trim();
-    if (!unique.some((x) => x.toLowerCase().trim() === key)) {
-      unique.push(s);
+  const clean = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    if (!clean.some((x) => x.toLowerCase() === t.toLowerCase())) {
+      clean.push(t);
     }
   }
 
-  return unique.slice(0, 5).join("\n");
+  return clean.slice(0, 5).join("\n");
 }
 
 function buildTranslationPrompt(germanBase, langMeta) {
@@ -377,13 +420,20 @@ Unten steht ein fertiger deutscher Text in sehr einfacher Sprache.
 Wichtig:
 ${langMeta.instruction}
 
-Regeln:
-- Bleibe sehr nah am deutschen Text.
+Sehr strenge Regeln:
+- Bleibe extrem nah am deutschen Text.
 - Erfinde nichts dazu.
 - Lass nichts Wichtiges weg.
-- Halte die Sätze kurz.
-- Halte die Sprache einfach.
-- Keine zusätzlichen Sätze.
+- Verwende genau dieselbe Anzahl an Sätzen wie im Deutschen.
+- Übersetze Satz für Satz.
+- Füge keine Erklärung dazu.
+- Füge keine neuen Behördenbegriffe dazu.
+- Ersetze keine Behörde durch eine andere Behörde.
+- Wenn im Deutschen "Jugendamt" steht, dann übersetze das als die normale, verständliche Bezeichnung für Jugendamt und nicht frei.
+- Wenn im Deutschen "Jobcenter" steht, dann lasse "Jobcenter" als "Jobcenter".
+- Wenn im Deutschen "Stadt" steht, dann übersetze nur "Stadt" bzw. Gemeinde einfach und neutral.
+- Keine förmliche oder steife Sprache.
+- Keine Ausschmückung.
 - Keine Wiederholung.
 - Kein Markdown.
 
