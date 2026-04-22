@@ -24,18 +24,13 @@ function getLanguageMeta(lang) {
         code: "tr",
         label: "Türkisch",
         instruction: `
-Übersetze den deutschen Basistext in natürliches, leicht verständliches Türkisch.
-Nicht wörtlich.
-Nicht steif.
-Nicht wie Google Translate.
-Bleibe sehr nah an der Bedeutung des deutschen Textes.
+Übersetze den deutschen Basistext in einfaches, natürliches Türkisch.
+Schreibe kurze Sätze.
+Keine schweren Wörter.
+Keine Behördensprache, wenn es einfacher geht.
 Ändere keine Bedeutung.
-Formuliere vorsichtig.
-Mache aus Zielen, Planungen oder Unterstützungsangeboten keine festen Pflichten.
-Wenn etwas im Deutschen neutral formuliert ist, muss es auch im Türkischen neutral bleiben.
-Wenn etwas nicht sicher ist, darf es nicht als sichere Tatsache erscheinen.
-Türkische Sätze sollen möglichst einfach, direkt und alltagstauglich klingen.
-Vermeide unnötig formelle Wörter wie "rica olunur" oder zu amtliche Wörter, wenn es einfacher gesagt werden kann.
+Erfinde nichts dazu.
+Wenn der deutsche Text vorsichtig ist, muss Türkisch auch vorsichtig bleiben.
 `
       };
     case "bg":
@@ -43,12 +38,10 @@ Vermeide unnötig formelle Wörter wie "rica olunur" oder zu amtliche Wörter, w
         code: "bg",
         label: "Bulgarisch",
         instruction: `
-Übersetze den deutschen Basistext in natürliches, leicht verständliches Bulgarisch.
-Nicht wörtlich.
-Nicht steif.
-Nicht wie Google Translate.
-Bleibe sehr nah an der Bedeutung des deutschen Textes.
+Übersetze den deutschen Basistext in einfaches, natürliches Bulgarisch.
+Schreibe kurze Sätze.
 Ändere keine Bedeutung.
+Erfinde nichts dazu.
 `
       };
     case "ar":
@@ -56,12 +49,10 @@ Bleibe sehr nah an der Bedeutung des deutschen Textes.
         code: "ar",
         label: "Arabisch",
         instruction: `
-Übersetze den deutschen Basistext in natürliches, leicht verständliches Arabisch.
-Nicht wörtlich.
-Nicht steif.
-Nicht wie Google Translate.
-Bleibe sehr nah an der Bedeutung des deutschen Textes.
+Übersetze den deutschen Basistext in einfaches, natürliches Arabisch.
+Schreibe kurze Sätze.
 Ändere keine Bedeutung.
+Erfinde nichts dazu.
 `
       };
     default:
@@ -69,7 +60,7 @@ Bleibe sehr nah an der Bedeutung des deutschen Textes.
         code: "de",
         label: "Deutsch",
         instruction: `
-Gib den Basistext in natürlichem, sehr einfachem Deutsch aus.
+Gib den Basistext in sehr einfachem Deutsch aus.
 `
       };
   }
@@ -118,9 +109,7 @@ function cleanAntwort(text) {
 
   return text
     .replace(/\*\*/g, "")
-    .replace(/^\s*1\.\s*/gm, "")
-    .replace(/^\s*2\.\s*/gm, "")
-    .replace(/^\s*3\.\s*/gm, "")
+    .replace(/^\s*\d+\.\s*/gm, "")
     .replace(/^\s*-\s*/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -143,10 +132,8 @@ function normalizeInfo(info) {
     frist: info.frist || "",
     termin: info.termin || "",
     folge_wenn_nichts: info.folge_wenn_nichts || "",
-    dringlichkeit: info.dringlichkeit || "",
     versteckte_wichtige_info: info.versteckte_wichtige_info || "",
-    unsicherheiten: Array.isArray(info.unsicherheiten) ? info.unsicherheiten : [],
-    abschlusssatz: info.abschlusssatz || ""
+    unsicherheiten: Array.isArray(info.unsicherheiten) ? info.unsicherheiten : []
   };
 }
 
@@ -154,21 +141,15 @@ function buildExtractionPromptForText(text) {
   return `
 Du bist Hilfe24.
 
-Deine Aufgabe:
-Lies diesen Brief und gib NUR strukturierte Informationen als JSON zurück.
+Lies diesen Brief und gib NUR JSON zurück.
 
 Wichtig:
 - Erfinde nichts.
-- Wenn etwas nicht klar im Brief steht, lass es leer oder setze es in "unsicherheiten".
-- Mache aus einer Möglichkeit keine Pflicht.
-- Mache aus einer Nebeninfo nicht den Hauptpunkt.
-- Aber: Wenn im Brief konkrete nächste Schritte, Voraussetzungen, Fristen, Termine oder Folgen klar genannt werden, dann müssen sie richtig erkannt werden.
-- "versteckte_wichtige_info" darf nur Dinge enthalten, die nicht groß auffallen, aber klar aus dem Brief folgen.
+- Nur Dinge nennen, die klar im Brief stehen oder sehr klar daraus folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
-- Gib nur gültiges JSON zurück.
 
-Du sollst genau diese Felder zurückgeben:
+Gib genau dieses JSON zurück:
 {
   "absender": "",
   "briefart": "",
@@ -177,26 +158,21 @@ Du sollst genau diese Felder zurückgeben:
   "frist": "",
   "termin": "",
   "folge_wenn_nichts": "",
-  "dringlichkeit": "",
   "versteckte_wichtige_info": "",
-  "unsicherheiten": [],
-  "abschlusssatz": ""
+  "unsicherheiten": []
 }
 
-Regeln für die Felder:
-- "absender": nur wenn klar lesbar oder eindeutig erkennbar
-- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jobcenter-Brief", "Versicherungsbrief", "Jugendamt-Protokoll", "Werbung", "Kündigung", "Rückforderung"
-- "worum_geht_es": 1 sehr kurzer Satz
-- "was_ist_zu_tun": nur konkrete Handlungen, die im Brief ausdrücklich verlangt werden oder sehr klar daraus folgen
-- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Zahlen, Termin wahrnehmen
-- Ziele, Wünsche, allgemeine Förderideen, allgemeine Unterstützungsangebote oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun"
+Regeln:
+- "absender": nur wenn klar erkennbar
+- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jugendamt-Brief", "Versicherung", "Werbung"
+- "worum_geht_es": 1 kurzer Satz
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, schicken, Termin wahrnehmen, widersprechen
+- Ziele und allgemeine Ideen gehören NICHT in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
-- "folge_wenn_nichts": nur wenn klar genannt oder sehr deutlich aus dem Brief folgt
-- "dringlichkeit": nur eines von diesen Wörtern: "hoch", "mittel", "niedrig"
-- "versteckte_wichtige_info": nur 1 kurzer Satz. Nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, z. B. dass ohne Anmeldung keine Hilfe starten kann, dass Mehrkosten drohen, dass Fristversäumnis Folgen haben kann, dass es nur Werbung ist, dass erstmal nichts getan werden muss
-- "unsicherheiten": Dinge, die im Brief nicht ganz klar sind
-- "abschlusssatz": immer 1 sehr kurzer Satz in sehr einfachem Deutsch. Wenn nichts aktiv getan werden muss, dann eher: "Du musst jetzt nichts machen." Wenn etwas zu tun ist, dann sehr kurz mit "Du musst jetzt nur ..."
+- "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
+- "versteckte_wichtige_info": nur 1 kurzer Satz, nur wenn eine wichtige Sache leicht übersehen wird
+- "unsicherheiten": nur wenn wirklich etwas unklar ist
 
 Brief:
 ${text}
@@ -207,21 +183,15 @@ function buildExtractionPromptForImages() {
   return `
 Du bist Hilfe24.
 
-Deine Aufgabe:
-Lies die Bilder dieses Briefes und gib NUR strukturierte Informationen als JSON zurück.
+Lies die Bilder dieses Briefes und gib NUR JSON zurück.
 
 Wichtig:
 - Erfinde nichts.
-- Wenn etwas nicht klar lesbar oder nicht sicher ist, schreibe es in "unsicherheiten".
-- Mache aus einer Möglichkeit keine Pflicht.
-- Mache aus einer Nebeninfo nicht den Hauptpunkt.
-- Aber: Wenn im Brief konkrete nächste Schritte, Voraussetzungen, Fristen, Termine oder Folgen klar genannt werden, dann müssen sie richtig erkannt werden.
-- "versteckte_wichtige_info" darf nur Dinge enthalten, die nicht groß auffallen, aber klar aus dem Brief folgen.
+- Nur Dinge nennen, die klar auf den Bildern stehen oder sehr klar daraus folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
-- Gib nur gültiges JSON zurück.
 
-Du sollst genau diese Felder zurückgeben:
+Gib genau dieses JSON zurück:
 {
   "absender": "",
   "briefart": "",
@@ -230,26 +200,21 @@ Du sollst genau diese Felder zurückgeben:
   "frist": "",
   "termin": "",
   "folge_wenn_nichts": "",
-  "dringlichkeit": "",
   "versteckte_wichtige_info": "",
-  "unsicherheiten": [],
-  "abschlusssatz": ""
+  "unsicherheiten": []
 }
 
-Regeln für die Felder:
-- "absender": nur wenn klar lesbar oder eindeutig erkennbar
+Regeln:
+- "absender": nur wenn klar erkennbar
 - "briefart": sehr kurz
-- "worum_geht_es": 1 sehr kurzer Satz
-- "was_ist_zu_tun": nur konkrete Handlungen, die auf den Bildern ausdrücklich verlangt werden oder sehr klar daraus folgen
-- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Zahlen, Termin wahrnehmen
-- Ziele, Wünsche, allgemeine Förderideen, allgemeine Unterstützungsangebote oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun"
+- "worum_geht_es": 1 kurzer Satz
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, schicken, Termin wahrnehmen, widersprechen
+- Ziele und allgemeine Ideen gehören NICHT in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
-- "folge_wenn_nichts": nur wenn klar genannt oder sehr deutlich aus dem Brief folgt
-- "dringlichkeit": nur eines von diesen Wörtern: "hoch", "mittel", "niedrig"
-- "versteckte_wichtige_info": nur 1 kurzer Satz. Nur dann füllen, wenn eine wichtige Sache leicht übersehen wird
-- "unsicherheiten": Dinge, die nicht ganz klar oder nicht gut lesbar sind
-- "abschlusssatz": immer 1 sehr kurzer Satz in sehr einfachem Deutsch
+- "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
+- "versteckte_wichtige_info": nur 1 kurzer Satz, nur wenn eine wichtige Sache leicht übersehen wird
+- "unsicherheiten": nur wenn wirklich etwas unklar oder schlecht lesbar ist
 
 Gib nur JSON zurück.
 
@@ -261,55 +226,43 @@ function buildGermanBasePrompt(info) {
   return `
 Du bist Hilfe24.
 
-Aus diesen strukturierten Informationen sollst du jetzt eine ultra einfache Erklärung auf Deutsch schreiben.
+Schreibe aus diesen Daten eine ULTRA EINFACHE Erklärung auf Deutsch.
 
 Sehr wichtig:
-- Schreibe so, dass auch Menschen mit wenig Deutsch es schnell verstehen.
-- Schreibe sehr kurze Sätze.
+- Sehr kurze Sätze.
 - Keine Behördensprache.
-- Keine schweren Wörter, wenn es einfacher geht.
-- Kein Wort wie "Protokoll", "Maßnahme", "Voraussetzung", "Integration", wenn es einfacher geht.
-- Sag direkt, was Sache ist.
-- Bleibe extrem nah an den Daten.
+- Keine langen Erklärungen.
+- Keine Nummern.
+- Keine Einleitung wie "Hier ist die Erklärung".
+- Keine Füllsätze.
+- Maximal 5 kurze Sätze.
+- Jeder Satz soll einen klaren Zweck haben.
+- Schreibe so, dass ein Mensch mit wenig Deutsch es versteht.
+- Bleibe sehr nah an den Daten.
 - Erfinde nichts.
-- Lass alles weg, was nicht sicher ist.
-- Mache aus keiner Info eine Pflicht, wenn sie nicht eindeutig in den Daten steht.
-- Wenn eine Information nur als Ziel, Planung, Unterstützung oder nächster Schritt beschrieben ist, formuliere sie nicht als harte Pflicht.
-- Wiederhole am Ende nicht noch einmal allgemein, dass der Brief etwas zusammenfasst oder informiert.
-- Vermeide leere Abschlusssätze ohne echten Nutzen.
-- Höchstens 5 sehr kurze Sätze plus 1 letzter kurzer Satz.
-- Nenne nur die wichtigsten 1 bis 3 Punkte.
-- Lass Nebendetails weg.
-- Wenn in "was_ist_zu_tun" klare konkrete Schritte stehen, dann müssen die wichtigsten davon rein.
-- Wenn "versteckte_wichtige_info" wichtig ist, dann nenne sie kurz und einfach.
+- Wenn etwas unklar ist, lass es weg.
 
 Nutze nur diese Informationen:
 ${JSON.stringify(info, null, 2)}
 
-Baue die Erklärung so:
-- Satz 1: Wer hat den Brief geschickt?
-- Satz 2: Was ist das für ein Brief und worum geht es?
-- Satz 3: Was musst du jetzt machen?
+Schreibe nur in dieser Reihenfolge:
+- Satz 1: Wer schreibt?
+- Satz 2: Worum geht es?
+- Satz 3: Was ist jetzt wichtig?
 - Satz 4: Bis wann oder welcher Termin?
-- Satz 5: Was passiert, wenn du nichts machst?
-- Satz 6: Wenn wichtig, die versteckte wichtige Info
-- Dann 1 sehr kurzer letzter Satz
+- Satz 5: Was passiert sonst?
 
 Regeln:
-- Wenn etwas fehlt, lass den Satz weg.
-- Wenn "was_ist_zu_tun" leer ist, schreibe keinen harten Pflichtsatz.
+- Wenn eine Zeile nicht gebraucht wird, lass sie weg.
 - Wenn "absender" leer ist, erfinde keinen Absender.
-- Wenn "versteckte_wichtige_info" leer ist, lass sie weg.
-- Wenn "unsicherheiten" vorhanden sind, nenne sie nicht als Tatsache.
-- Wenn etwas nicht sicher ist, lass es lieber weg.
-
-Der letzte Satz muss sehr kurz sein.
-Beispiele:
-- "Du musst jetzt nur zahlen."
-- "Du musst jetzt nur den Termin beachten."
-- "Du musst jetzt nur die Unterlagen schicken."
-- "Du musst jetzt nichts machen."
-- "Du musst jetzt nur prüfen, ob das für dich so passt."
+- Wenn "was_ist_zu_tun" leer ist, schreibe keinen Befehl.
+- Wenn "frist" leer ist und "termin" leer ist, lass Satz 4 weg.
+- Wenn "folge_wenn_nichts" leer ist, lass Satz 5 weg.
+- Wenn "versteckte_wichtige_info" wichtig ist, packe sie in Satz 3 oder Satz 5.
+- Statt schwieriger Wörter lieber einfache Wörter.
+- Statt "widersprechen" lieber "melden, wenn du nicht einverstanden bist", wenn das passt.
+- Statt "Protokoll" lieber "Zusammenfassung von einem Gespräch", wenn das passt.
+- Statt "Integration" lieber "wieder besser in Deutschland klarkommen", wenn das passt.
 `;
 }
 
@@ -318,8 +271,7 @@ function buildTranslationPrompt(germanBase, langMeta) {
 Du bist Hilfe24.
 
 Unten steht ein fertiger deutscher Basistext in sehr einfacher Sprache.
-Deine Aufgabe ist nur:
-übersetze ihn sauber in ${langMeta.label}.
+Übersetze ihn sauber in ${langMeta.label}.
 
 Wichtig:
 ${langMeta.instruction}
@@ -328,13 +280,9 @@ Regeln:
 - Bleibe sehr nah am deutschen Text.
 - Erfinde nichts dazu.
 - Lass nichts Wichtiges weg.
-- Ändere keine Bedeutung.
-- Wenn der deutsche Text vorsichtig formuliert ist, muss die Übersetzung auch vorsichtig bleiben.
-- Mache aus neutralen Aussagen keine harten Pflichten.
 - Halte die Sätze kurz.
 - Halte die Sprache einfach.
 - Keine zusätzlichen Sätze.
-- Keine Ausschmückung.
 - Keine Wiederholung.
 - Kein Markdown.
 
