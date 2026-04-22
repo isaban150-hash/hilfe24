@@ -69,7 +69,7 @@ Bleibe sehr nah an der Bedeutung des deutschen Textes.
         code: "de",
         label: "Deutsch",
         instruction: `
-Gib den Basistext in natürlichem, einfachem Deutsch aus.
+Gib den Basistext in natürlichem, sehr einfachem Deutsch aus.
 `
       };
   }
@@ -88,11 +88,7 @@ async function callGemini(parts) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        contents: [
-          {
-            parts
-          }
-        ]
+        contents: [{ parts }]
       })
     }
   );
@@ -141,12 +137,14 @@ function extractJson(text) {
 function normalizeInfo(info) {
   return {
     absender: info.absender || "",
-    art_des_briefs: info.art_des_briefs || "",
+    briefart: info.briefart || "",
     worum_geht_es: info.worum_geht_es || "",
     was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun) ? info.was_ist_zu_tun : [],
     frist: info.frist || "",
+    termin: info.termin || "",
     folge_wenn_nichts: info.folge_wenn_nichts || "",
-    wichtige_termine: Array.isArray(info.wichtige_termine) ? info.wichtige_termine : [],
+    dringlichkeit: info.dringlichkeit || "",
+    versteckte_wichtige_info: info.versteckte_wichtige_info || "",
     unsicherheiten: Array.isArray(info.unsicherheiten) ? info.unsicherheiten : [],
     abschlusssatz: info.abschlusssatz || ""
   };
@@ -164,7 +162,8 @@ Wichtig:
 - Wenn etwas nicht klar im Brief steht, lass es leer oder setze es in "unsicherheiten".
 - Mache aus einer Möglichkeit keine Pflicht.
 - Mache aus einer Nebeninfo nicht den Hauptpunkt.
-- Aber: Wenn im Brief konkrete nächste Schritte oder Voraussetzungen klar genannt werden, dann müssen sie in "was_ist_zu_tun" rein.
+- Aber: Wenn im Brief konkrete nächste Schritte, Voraussetzungen, Fristen, Termine oder Folgen klar genannt werden, dann müssen sie richtig erkannt werden.
+- "versteckte_wichtige_info" darf nur Dinge enthalten, die nicht groß auffallen, aber klar aus dem Brief folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - Gib nur gültiges JSON zurück.
@@ -172,29 +171,32 @@ Wichtig:
 Du sollst genau diese Felder zurückgeben:
 {
   "absender": "",
-  "art_des_briefs": "",
+  "briefart": "",
   "worum_geht_es": "",
   "was_ist_zu_tun": [],
   "frist": "",
+  "termin": "",
   "folge_wenn_nichts": "",
-  "wichtige_termine": [],
+  "dringlichkeit": "",
+  "versteckte_wichtige_info": "",
   "unsicherheiten": [],
   "abschlusssatz": ""
 }
 
 Regeln für die Felder:
 - "absender": nur wenn klar lesbar oder eindeutig erkennbar
-- "art_des_briefs": sehr kurz
-- "worum_geht_es": 1 kurzer Satz
-- "was_ist_zu_tun": nur konkrete Handlungen oder Voraussetzungen, die im Brief ausdrücklich genannt werden
-- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Termin wahrnehmen
-- Ziele, Wünsche, allgemeine Förderideen oder bloße Unterstützungsangebote gehören NICHT in "was_ist_zu_tun"
-- Wenn im Brief steht, dass etwas zunächst wichtig ist oder zuerst gemacht werden soll, gehört das in "was_ist_zu_tun"
+- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jobcenter-Brief", "Versicherungsbrief", "Jugendamt-Protokoll", "Werbung", "Kündigung", "Rückforderung"
+- "worum_geht_es": 1 sehr kurzer Satz
+- "was_ist_zu_tun": nur konkrete Handlungen, die im Brief ausdrücklich verlangt werden oder sehr klar daraus folgen
+- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Zahlen, Termin wahrnehmen
+- Ziele, Wünsche, allgemeine Förderideen, allgemeine Unterstützungsangebote oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
-- "folge_wenn_nichts": nur wenn klar genannt
-- "wichtige_termine": nur klare Termine aus dem Brief
-- "unsicherheiten": Dinge, die nicht ganz klar oder eventuell unklar sind
-- "abschlusssatz": immer ein sehr kurzer Satz. Wenn keine klare Pflicht da ist, dann eher in Richtung: "Du musst jetzt nur prüfen, ob du einverstanden bist."
+- "termin": nur wenn klar vorhanden
+- "folge_wenn_nichts": nur wenn klar genannt oder sehr deutlich aus dem Brief folgt
+- "dringlichkeit": nur eines von diesen Wörtern: "hoch", "mittel", "niedrig"
+- "versteckte_wichtige_info": nur 1 kurzer Satz. Nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, z. B. dass ohne Anmeldung keine Hilfe starten kann, dass Mehrkosten drohen, dass Fristversäumnis Folgen haben kann, dass es nur Werbung ist, dass erstmal nichts getan werden muss
+- "unsicherheiten": Dinge, die im Brief nicht ganz klar sind
+- "abschlusssatz": immer 1 sehr kurzer Satz in sehr einfachem Deutsch. Wenn nichts aktiv getan werden muss, dann eher: "Du musst jetzt nichts machen." Wenn etwas zu tun ist, dann sehr kurz mit "Du musst jetzt nur ..."
 
 Brief:
 ${text}
@@ -213,7 +215,8 @@ Wichtig:
 - Wenn etwas nicht klar lesbar oder nicht sicher ist, schreibe es in "unsicherheiten".
 - Mache aus einer Möglichkeit keine Pflicht.
 - Mache aus einer Nebeninfo nicht den Hauptpunkt.
-- Aber: Wenn im Brief konkrete nächste Schritte oder Voraussetzungen klar genannt werden, dann müssen sie in "was_ist_zu_tun" rein.
+- Aber: Wenn im Brief konkrete nächste Schritte, Voraussetzungen, Fristen, Termine oder Folgen klar genannt werden, dann müssen sie richtig erkannt werden.
+- "versteckte_wichtige_info" darf nur Dinge enthalten, die nicht groß auffallen, aber klar aus dem Brief folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - Gib nur gültiges JSON zurück.
@@ -221,29 +224,32 @@ Wichtig:
 Du sollst genau diese Felder zurückgeben:
 {
   "absender": "",
-  "art_des_briefs": "",
+  "briefart": "",
   "worum_geht_es": "",
   "was_ist_zu_tun": [],
   "frist": "",
+  "termin": "",
   "folge_wenn_nichts": "",
-  "wichtige_termine": [],
+  "dringlichkeit": "",
+  "versteckte_wichtige_info": "",
   "unsicherheiten": [],
   "abschlusssatz": ""
 }
 
 Regeln für die Felder:
 - "absender": nur wenn klar lesbar oder eindeutig erkennbar
-- "art_des_briefs": sehr kurz
-- "worum_geht_es": 1 kurzer Satz
-- "was_ist_zu_tun": nur konkrete Handlungen oder Voraussetzungen, die im Brief ausdrücklich genannt werden
-- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Termin wahrnehmen
-- Ziele, Wünsche, allgemeine Förderideen oder bloße Unterstützungsangebote gehören NICHT in "was_ist_zu_tun"
-- Wenn im Brief steht, dass etwas zunächst wichtig ist oder zuerst gemacht werden soll, gehört das in "was_ist_zu_tun"
+- "briefart": sehr kurz
+- "worum_geht_es": 1 sehr kurzer Satz
+- "was_ist_zu_tun": nur konkrete Handlungen, die auf den Bildern ausdrücklich verlangt werden oder sehr klar daraus folgen
+- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Zahlen, Termin wahrnehmen
+- Ziele, Wünsche, allgemeine Förderideen, allgemeine Unterstützungsangebote oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
-- "folge_wenn_nichts": nur wenn klar genannt
-- "wichtige_termine": nur klare Termine aus den Bildern
+- "termin": nur wenn klar vorhanden
+- "folge_wenn_nichts": nur wenn klar genannt oder sehr deutlich aus dem Brief folgt
+- "dringlichkeit": nur eines von diesen Wörtern: "hoch", "mittel", "niedrig"
+- "versteckte_wichtige_info": nur 1 kurzer Satz. Nur dann füllen, wenn eine wichtige Sache leicht übersehen wird
 - "unsicherheiten": Dinge, die nicht ganz klar oder nicht gut lesbar sind
-- "abschlusssatz": immer ein sehr kurzer Satz. Wenn keine klare Pflicht da ist, dann eher in Richtung: "Du musst jetzt nur prüfen, ob du einverstanden bist."
+- "abschlusssatz": immer 1 sehr kurzer Satz in sehr einfachem Deutsch
 
 Gib nur JSON zurück.
 
@@ -255,44 +261,55 @@ function buildGermanBasePrompt(info) {
   return `
 Du bist Hilfe24.
 
-Aus diesen strukturierten Informationen sollst du jetzt eine sehr kurze, sichere und einfache Erklärung auf Deutsch schreiben.
+Aus diesen strukturierten Informationen sollst du jetzt eine ultra einfache Erklärung auf Deutsch schreiben.
 
-Wichtig:
+Sehr wichtig:
+- Schreibe so, dass auch Menschen mit wenig Deutsch es schnell verstehen.
+- Schreibe sehr kurze Sätze.
+- Keine Behördensprache.
+- Keine schweren Wörter, wenn es einfacher geht.
+- Kein Wort wie "Protokoll", "Maßnahme", "Voraussetzung", "Integration", wenn es einfacher geht.
+- Sag direkt, was Sache ist.
 - Bleibe extrem nah an den Daten.
 - Erfinde nichts.
 - Lass alles weg, was nicht sicher ist.
-- Formuliere vorsichtig.
 - Mache aus keiner Info eine Pflicht, wenn sie nicht eindeutig in den Daten steht.
 - Wenn eine Information nur als Ziel, Planung, Unterstützung oder nächster Schritt beschrieben ist, formuliere sie nicht als harte Pflicht.
-- Vermeide Wörter wie "muss", "soll", "ist erforderlich", wenn die Daten das nicht eindeutig als Pflicht zeigen.
-- Formuliere in solchen Fällen weicher, zum Beispiel mit "im Protokoll steht", "es ist vorgesehen", "es ist geplant" oder "dabei soll geholfen werden".
-- Keine freien Zusatzgedanken.
-- Keine Ausschmückung.
-- Keine Überschriften.
-- Kein Markdown.
-- Keine Listen.
 - Wiederhole am Ende nicht noch einmal allgemein, dass der Brief etwas zusammenfasst oder informiert.
 - Vermeide leere Abschlusssätze ohne echten Nutzen.
-- Höchstens 4 sehr kurze Sätze plus 1 Abschlusssatz.
-- Halte die Erklärung so kurz wie möglich.
+- Höchstens 5 sehr kurze Sätze plus 1 letzter kurzer Satz.
 - Nenne nur die wichtigsten 1 bis 3 Punkte.
 - Lass Nebendetails weg.
+- Wenn in "was_ist_zu_tun" klare konkrete Schritte stehen, dann müssen die wichtigsten davon rein.
+- Wenn "versteckte_wichtige_info" wichtig ist, dann nenne sie kurz und einfach.
 
 Nutze nur diese Informationen:
 ${JSON.stringify(info, null, 2)}
 
-Regeln für den Aufbau:
-- Satz 1: wenn "absender" vorhanden ist, zuerst sagen, von wem der Brief ist
-- Satz 2: kurz sagen, was das für ein Brief oder Protokoll ist und worum es geht
-- Satz 3: nur den wichtigsten nächsten Schritt oder die wichtigste Frist nennen
-- Satz 4: nur wenn wirklich nötig: kurz sagen, was passiert, wenn man nichts macht
-- Danach genau 1 einzelner sehr kurzer Abschlusssatz in einem eigenen letzten Satz.
-- Der Abschlusssatz darf nur 1 Satz sein und keine weiteren Erklärungen enthalten.
+Baue die Erklärung so:
+- Satz 1: Wer hat den Brief geschickt?
+- Satz 2: Was ist das für ein Brief und worum geht es?
+- Satz 3: Was musst du jetzt machen?
+- Satz 4: Bis wann oder welcher Termin?
+- Satz 5: Was passiert, wenn du nichts machst?
+- Satz 6: Wenn wichtig, die versteckte wichtige Info
+- Dann 1 sehr kurzer letzter Satz
+
+Regeln:
+- Wenn etwas fehlt, lass den Satz weg.
 - Wenn "was_ist_zu_tun" leer ist, schreibe keinen harten Pflichtsatz.
 - Wenn "absender" leer ist, erfinde keinen Absender.
+- Wenn "versteckte_wichtige_info" leer ist, lass sie weg.
+- Wenn "unsicherheiten" vorhanden sind, nenne sie nicht als Tatsache.
+- Wenn etwas nicht sicher ist, lass es lieber weg.
 
-Wenn "unsicherheiten" vorhanden sind, nenne sie nicht als Tatsache.
-Wenn etwas nicht sicher ist, lass es lieber weg.
+Der letzte Satz muss sehr kurz sein.
+Beispiele:
+- "Du musst jetzt nur zahlen."
+- "Du musst jetzt nur den Termin beachten."
+- "Du musst jetzt nur die Unterlagen schicken."
+- "Du musst jetzt nichts machen."
+- "Du musst jetzt nur prüfen, ob das für dich so passt."
 `;
 }
 
@@ -300,7 +317,7 @@ function buildTranslationPrompt(germanBase, langMeta) {
   return `
 Du bist Hilfe24.
 
-Unten steht ein fertiger deutscher Basistext.
+Unten steht ein fertiger deutscher Basistext in sehr einfacher Sprache.
 Deine Aufgabe ist nur:
 übersetze ihn sauber in ${langMeta.label}.
 
@@ -314,6 +331,8 @@ Regeln:
 - Ändere keine Bedeutung.
 - Wenn der deutsche Text vorsichtig formuliert ist, muss die Übersetzung auch vorsichtig bleiben.
 - Mache aus neutralen Aussagen keine harten Pflichten.
+- Halte die Sätze kurz.
+- Halte die Sprache einfach.
 - Keine zusätzlichen Sätze.
 - Keine Ausschmückung.
 - Keine Wiederholung.
