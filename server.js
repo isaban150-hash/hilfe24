@@ -135,6 +135,12 @@ Sprachqualität:
 ${langMeta.instruction}
 
 Sehr wichtig zur Übersetzung:
+Wenn die Antwort auf Türkisch, Bulgarisch oder Arabisch ist, dann sei besonders vorsichtig:
+- Formuliere keine Handlung als feste Pflicht, wenn sie im Brief nicht eindeutig als Hauptpflicht genannt wird.
+- Ziehe keine zu starke Schlussfolgerung aus einzelnen Sätzen.
+- Bleibe näher an der wirklichen Aussage des Briefes.
+- Wenn mehrere Dinge im Brief stehen, fasse sie neutral zusammen.
+- Mache aus einer erwähnten Maßnahme oder einem Termin nicht automatisch die wichtigste Aufgabe.
 - Übersetze sinngenau, nicht wörtlich.
 - Schreibe natürlich und flüssig.
 - Verfälsche nie die Bedeutung.
@@ -234,6 +240,8 @@ Keine Tipps, die nicht wirklich zu diesem Brief passen.
 Wenn keine sinnvollen Tipps passen, dann gib keine Tipps.
 
 Bevor du antwortest, prüfe still für dich:
+- Habe ich in der Übersetzung eine Handlung zu eindeutig oder zu streng formuliert?
+- Bin ich in Türkisch, Bulgarisch oder Arabisch näher an der echten Bedeutung geblieben als an einer freien Nacherzählung?
 - Habe ich einen Punkt zu stark betont, obwohl der Brief mehrere wichtige Punkte enthält?
 - Habe ich etwas als sicher dargestellt, das nur wahrscheinlich oder nicht ganz eindeutig ist?
 - Ist die Antwort kürzer möglich, ohne wichtige Bedeutung zu verlieren?
