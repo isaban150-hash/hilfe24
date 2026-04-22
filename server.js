@@ -181,6 +181,9 @@ Halte die Antwort sehr kurz.
 
 Nenne nur die wirklich wichtigen Punkte.
 Erkläre nur diese Sachen, wenn sie im Brief vorkommen:
+Lass Namen, Ansprechpartner, Nebendetails und genaue Zusatzangaben weg, wenn sie für die Person im Moment nicht direkt wichtig sind.
+Nenne ein genaues Datum oder eine genaue Angabe nur dann, wenn sie im Brief klar steht und für das jetzige Handeln wirklich wichtig ist.
+
 - Worum es geht
 - Was man jetzt tun muss
 - Bis wann
