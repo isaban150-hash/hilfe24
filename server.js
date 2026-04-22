@@ -275,8 +275,8 @@ Regeln für den Aufbau:
 - Satz 1: wenn "absender" vorhanden ist, zuerst sagen, von wem der Brief ist
 - Satz 2: kurz sagen, was das für ein Brief oder Protokoll ist
 - Satz 3: kurz sagen, worum es geht
-- Satz 4: nur wenn klar vorhanden: was man tun muss
-- Satz 5: nur wenn klar vorhanden: Frist oder Termin
+- Satz 4: nur den wichtigsten nächsten Schritt oder die wichtigste Frist nennen
+- Satz 5: nur wenn wirklich nötig: kurz sagen, was passiert, wenn man nichts macht
 - Satz 6: nur wenn klar vorhanden: was passiert, wenn man nichts macht
 - Danach genau 1 einzelner sehr kurzer Abschlusssatz in einem eigenen letzten Satz.
 - Der Abschlusssatz darf nur 1 Satz sein und keine weiteren Erklärungen enthalten.
