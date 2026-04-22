@@ -267,17 +267,19 @@ Wichtig:
 - Keine Listen.
 - Wiederhole am Ende nicht noch einmal allgemein, dass der Brief etwas zusammenfasst oder informiert.
 - Vermeide leere Abschlusssätze ohne echten Nutzen.
+- Höchstens 4 sehr kurze Sätze plus 1 Abschlusssatz.
+- Halte die Erklärung so kurz wie möglich.
+- Nenne nur die wichtigsten 1 bis 3 Punkte.
+- Lass Nebendetails weg.
 
 Nutze nur diese Informationen:
 ${JSON.stringify(info, null, 2)}
 
 Regeln für den Aufbau:
 - Satz 1: wenn "absender" vorhanden ist, zuerst sagen, von wem der Brief ist
-- Satz 2: kurz sagen, was das für ein Brief oder Protokoll ist
-- Satz 3: kurz sagen, worum es geht
-- Satz 4: nur den wichtigsten nächsten Schritt oder die wichtigste Frist nennen
-- Satz 5: nur wenn wirklich nötig: kurz sagen, was passiert, wenn man nichts macht
-- Satz 6: nur wenn klar vorhanden: was passiert, wenn man nichts macht
+- Satz 2: kurz sagen, was das für ein Brief oder Protokoll ist und worum es geht
+- Satz 3: nur den wichtigsten nächsten Schritt oder die wichtigste Frist nennen
+- Satz 4: nur wenn wirklich nötig: kurz sagen, was passiert, wenn man nichts macht
 - Danach genau 1 einzelner sehr kurzer Abschlusssatz in einem eigenen letzten Satz.
 - Der Abschlusssatz darf nur 1 Satz sein und keine weiteren Erklärungen enthalten.
 - Wenn "was_ist_zu_tun" leer ist, schreibe keinen harten Pflichtsatz.
