@@ -164,6 +164,7 @@ Wichtig:
 - Wenn etwas nicht klar im Brief steht, lass es leer oder setze es in "unsicherheiten".
 - Mache aus einer Möglichkeit keine Pflicht.
 - Mache aus einer Nebeninfo nicht den Hauptpunkt.
+- Aber: Wenn im Brief konkrete nächste Schritte oder Voraussetzungen klar genannt werden, dann müssen sie in "was_ist_zu_tun" rein.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - Gib nur gültiges JSON zurück.
@@ -185,12 +186,14 @@ Regeln für die Felder:
 - "absender": nur wenn klar lesbar oder eindeutig erkennbar
 - "art_des_briefs": sehr kurz
 - "worum_geht_es": 1 kurzer Satz
-- "was_ist_zu_tun": nur Handlungen, die im Brief ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
-- Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
+- "was_ist_zu_tun": nur konkrete Handlungen oder Voraussetzungen, die im Brief ausdrücklich genannt werden
+- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Termin wahrnehmen
+- Ziele, Wünsche, allgemeine Förderideen oder bloße Unterstützungsangebote gehören NICHT in "was_ist_zu_tun"
+- Wenn im Brief steht, dass etwas zunächst wichtig ist oder zuerst gemacht werden soll, gehört das in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
 - "wichtige_termine": nur klare Termine aus dem Brief
-- "unsicherheiten": Dinge, die nicht ganz klar sind
+- "unsicherheiten": Dinge, die nicht ganz klar oder eventuell unklar sind
 - "abschlusssatz": immer ein sehr kurzer Satz. Wenn keine klare Pflicht da ist, dann eher in Richtung: "Du musst jetzt nur prüfen, ob du einverstanden bist."
 
 Brief:
@@ -210,6 +213,7 @@ Wichtig:
 - Wenn etwas nicht klar lesbar oder nicht sicher ist, schreibe es in "unsicherheiten".
 - Mache aus einer Möglichkeit keine Pflicht.
 - Mache aus einer Nebeninfo nicht den Hauptpunkt.
+- Aber: Wenn im Brief konkrete nächste Schritte oder Voraussetzungen klar genannt werden, dann müssen sie in "was_ist_zu_tun" rein.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - Gib nur gültiges JSON zurück.
@@ -231,8 +235,10 @@ Regeln für die Felder:
 - "absender": nur wenn klar lesbar oder eindeutig erkennbar
 - "art_des_briefs": sehr kurz
 - "worum_geht_es": 1 kurzer Satz
-- "was_ist_zu_tun": nur Handlungen, die auf den Bildern ausdrücklich verlangt werden. Keine Ziele, keine Wünsche, keine geplanten Maßnahmen, keine Empfehlungen, keine allgemeinen Vorhaben.
-- Wenn der Brief nur Ziele, Planungen, Unterstützungsangebote oder Gesprächsinhalte beschreibt, dann darf "was_ist_zu_tun" leer bleiben.
+- "was_ist_zu_tun": nur konkrete Handlungen oder Voraussetzungen, die im Brief ausdrücklich genannt werden
+- Dazu zählen auch klar genannte notwendige Schritte wie Anmeldung, Ummeldung, Widerspruch, Einreichen, Melden, Termin wahrnehmen
+- Ziele, Wünsche, allgemeine Förderideen oder bloße Unterstützungsangebote gehören NICHT in "was_ist_zu_tun"
+- Wenn im Brief steht, dass etwas zunächst wichtig ist oder zuerst gemacht werden soll, gehört das in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt
 - "wichtige_termine": nur klare Termine aus den Bildern
