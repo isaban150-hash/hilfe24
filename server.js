@@ -24,13 +24,13 @@ function getLanguageMeta(lang) {
         code: "tr",
         label: "Türkisch",
         instruction: `
-Übersetze den deutschen Basistext in einfaches, natürliches Türkisch.
+Übersetze den deutschen Text in sehr einfaches, natürliches Türkisch.
 Schreibe kurze Sätze.
 Keine schweren Wörter.
-Keine Behördensprache, wenn es einfacher geht.
+Keine unnötig formelle Sprache.
 Ändere keine Bedeutung.
 Erfinde nichts dazu.
-Wenn der deutsche Text vorsichtig ist, muss Türkisch auch vorsichtig bleiben.
+Wenn der deutsche Text vorsichtig formuliert ist, muss Türkisch auch vorsichtig bleiben.
 `
       };
     case "bg":
@@ -38,7 +38,7 @@ Wenn der deutsche Text vorsichtig ist, muss Türkisch auch vorsichtig bleiben.
         code: "bg",
         label: "Bulgarisch",
         instruction: `
-Übersetze den deutschen Basistext in einfaches, natürliches Bulgarisch.
+Übersetze den deutschen Text in sehr einfaches, natürliches Bulgarisch.
 Schreibe kurze Sätze.
 Ändere keine Bedeutung.
 Erfinde nichts dazu.
@@ -49,7 +49,7 @@ Erfinde nichts dazu.
         code: "ar",
         label: "Arabisch",
         instruction: `
-Übersetze den deutschen Basistext in einfaches, natürliches Arabisch.
+Übersetze den deutschen Text in sehr einfaches, natürliches Arabisch.
 Schreibe kurze Sätze.
 Ändere keine Bedeutung.
 Erfinde nichts dazu.
@@ -60,7 +60,7 @@ Erfinde nichts dazu.
         code: "de",
         label: "Deutsch",
         instruction: `
-Gib den Basistext in sehr einfachem Deutsch aus.
+Gib den Text in sehr einfachem Deutsch aus.
 `
       };
   }
@@ -125,15 +125,24 @@ function extractJson(text) {
 
 function normalizeInfo(info) {
   return {
-    absender: info.absender || "",
-    briefart: info.briefart || "",
-    worum_geht_es: info.worum_geht_es || "",
-    was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun) ? info.was_ist_zu_tun : [],
-    frist: info.frist || "",
-    termin: info.termin || "",
-    folge_wenn_nichts: info.folge_wenn_nichts || "",
-    versteckte_wichtige_info: info.versteckte_wichtige_info || "",
-    unsicherheiten: Array.isArray(info.unsicherheiten) ? info.unsicherheiten : []
+    absender: typeof info.absender === "string" ? info.absender.trim() : "",
+    briefart: typeof info.briefart === "string" ? info.briefart.trim() : "",
+    worum_geht_es: typeof info.worum_geht_es === "string" ? info.worum_geht_es.trim() : "",
+    was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun)
+      ? info.was_ist_zu_tun.map((x) => String(x).trim()).filter(Boolean)
+      : [],
+    frist: typeof info.frist === "string" ? info.frist.trim() : "",
+    termin: typeof info.termin === "string" ? info.termin.trim() : "",
+    folge_wenn_nichts:
+      typeof info.folge_wenn_nichts === "string" ? info.folge_wenn_nichts.trim() : "",
+    dringlichkeit: typeof info.dringlichkeit === "string" ? info.dringlichkeit.trim() : "",
+    versteckte_wichtige_info:
+      typeof info.versteckte_wichtige_info === "string"
+        ? info.versteckte_wichtige_info.trim()
+        : "",
+    unsicherheiten: Array.isArray(info.unsicherheiten)
+      ? info.unsicherheiten.map((x) => String(x).trim()).filter(Boolean)
+      : []
   };
 }
 
@@ -141,13 +150,16 @@ function buildExtractionPromptForText(text) {
   return `
 Du bist Hilfe24.
 
-Lies diesen Brief und gib NUR JSON zurück.
+Lies diesen Brief und gib NUR gültiges JSON zurück.
 
 Wichtig:
 - Erfinde nichts.
-- Nur Dinge nennen, die klar im Brief stehen oder sehr klar daraus folgen.
+- Nenne nur Dinge, die klar im Brief stehen oder sehr klar daraus folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
+- "was_ist_zu_tun" nur für echte konkrete Schritte.
+- Ziele, Wünsche, allgemeine Ideen oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
+- "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
 
 Gib genau dieses JSON zurück:
 {
@@ -158,21 +170,22 @@ Gib genau dieses JSON zurück:
   "frist": "",
   "termin": "",
   "folge_wenn_nichts": "",
+  "dringlichkeit": "",
   "versteckte_wichtige_info": "",
   "unsicherheiten": []
 }
 
 Regeln:
 - "absender": nur wenn klar erkennbar
-- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jugendamt-Brief", "Versicherung", "Werbung"
+- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jobcenter-Brief", "Jugendamt-Brief", "Versicherung", "Werbung"
 - "worum_geht_es": 1 kurzer Satz
 - "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, schicken, Termin wahrnehmen, widersprechen
-- Ziele und allgemeine Ideen gehören NICHT in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
-- "versteckte_wichtige_info": nur 1 kurzer Satz, nur wenn eine wichtige Sache leicht übersehen wird
-- "unsicherheiten": nur wenn wirklich etwas unklar ist
+- "dringlichkeit": nur "hoch", "mittel" oder "niedrig"
+- "versteckte_wichtige_info": nur 1 kurzer Satz
+- "unsicherheiten": nur echte Unklarheiten
 
 Brief:
 ${text}
@@ -183,13 +196,16 @@ function buildExtractionPromptForImages() {
   return `
 Du bist Hilfe24.
 
-Lies die Bilder dieses Briefes und gib NUR JSON zurück.
+Lies die Bilder dieses Briefes und gib NUR gültiges JSON zurück.
 
 Wichtig:
 - Erfinde nichts.
-- Nur Dinge nennen, die klar auf den Bildern stehen oder sehr klar daraus folgen.
+- Nenne nur Dinge, die klar auf den Bildern stehen oder sehr klar daraus folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
+- "was_ist_zu_tun" nur für echte konkrete Schritte.
+- Ziele, Wünsche, allgemeine Ideen oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
+- "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
 
 Gib genau dieses JSON zurück:
 {
@@ -200,6 +216,7 @@ Gib genau dieses JSON zurück:
   "frist": "",
   "termin": "",
   "folge_wenn_nichts": "",
+  "dringlichkeit": "",
   "versteckte_wichtige_info": "",
   "unsicherheiten": []
 }
@@ -209,12 +226,12 @@ Regeln:
 - "briefart": sehr kurz
 - "worum_geht_es": 1 kurzer Satz
 - "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, schicken, Termin wahrnehmen, widersprechen
-- Ziele und allgemeine Ideen gehören NICHT in "was_ist_zu_tun"
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
-- "versteckte_wichtige_info": nur 1 kurzer Satz, nur wenn eine wichtige Sache leicht übersehen wird
-- "unsicherheiten": nur wenn wirklich etwas unklar oder schlecht lesbar ist
+- "dringlichkeit": nur "hoch", "mittel" oder "niedrig"
+- "versteckte_wichtige_info": nur 1 kurzer Satz
+- "unsicherheiten": nur echte Unklarheiten oder schlecht lesbare Stellen
 
 Gib nur JSON zurück.
 
@@ -222,55 +239,139 @@ Bilder:
 `;
 }
 
-function buildGermanBasePrompt(info) {
-  return `
-Du bist Hilfe24.
+function simplifySender(absender, briefart) {
+  if (!absender) return "";
 
-Schreibe aus diesen Daten eine ULTRA EINFACHE Erklärung auf Deutsch.
+  const lower = absender.toLowerCase();
 
-Sehr wichtig:
-- Sehr kurze Sätze.
-- Keine Behördensprache.
-- Keine langen Erklärungen.
-- Keine Nummern.
-- Keine Einleitung wie "Hier ist die Erklärung".
-- Keine Füllsätze.
-- Maximal 5 kurze Sätze.
-- Jeder Satz soll einen klaren Zweck haben.
-- Schreibe so, dass ein Mensch mit wenig Deutsch es versteht.
-- Bleibe sehr nah an den Daten.
-- Erfinde nichts.
-- Wenn etwas unklar ist, lass es weg.
+  if (lower.includes("jugendamt")) return "Jugendamt";
+  if (lower.includes("jobcenter")) return "Jobcenter";
+  if (lower.includes("aok")) return "AOK";
+  if (lower.includes("familienkasse")) return "Familienkasse";
+  if (lower.includes("krankenkasse")) return "Krankenkasse";
+  if (lower.includes("versicherung")) return "Versicherung";
+  if (lower.includes("inkasso")) return "Inkasso";
+  if (lower.includes("gericht")) return "Gericht";
+  if (lower.includes("schule")) return "Schule";
+  if (lower.includes("vermieter")) return "Vermieter";
 
-Nutze nur diese Informationen:
-${JSON.stringify(info, null, 2)}
+  if (briefart && briefart.toLowerCase().includes("jugendamt")) return "Jugendamt";
 
-Schreibe nur in dieser Reihenfolge:
-- Satz 1: Wer schreibt?
-- Satz 2: Worum geht es?
-- Satz 3: Was ist jetzt wichtig?
-- Satz 4: Bis wann oder welcher Termin?
-- Satz 5: Was passiert sonst?
+  return absender;
+}
 
-Regeln:
-- Wenn eine Zeile nicht gebraucht wird, lass sie weg.
-- Wenn "absender" leer ist, erfinde keinen Absender.
-- Wenn "was_ist_zu_tun" leer ist, schreibe keinen Befehl.
-- Wenn "frist" leer ist und "termin" leer ist, lass Satz 4 weg.
-- Wenn "folge_wenn_nichts" leer ist, lass Satz 5 weg.
-- Wenn "versteckte_wichtige_info" wichtig ist, packe sie in Satz 3 oder Satz 5.
-- Statt schwieriger Wörter lieber einfache Wörter.
-- Statt "widersprechen" lieber "melden, wenn du nicht einverstanden bist", wenn das passt.
-- Statt "Protokoll" lieber "Zusammenfassung von einem Gespräch", wenn das passt.
-- Statt "Integration" lieber "wieder besser in Deutschland klarkommen", wenn das passt.
-`;
+function simplifyType(briefart) {
+  if (!briefart) return "";
+
+  const lower = briefart.toLowerCase();
+
+  if (lower.includes("mahnung")) return "Das ist eine Mahnung.";
+  if (lower.includes("rechnung")) return "Das ist eine Rechnung.";
+  if (lower.includes("werbung")) return "Das ist nur Werbung.";
+  if (lower.includes("versicherung")) return "Das ist ein Brief von einer Versicherung.";
+  if (lower.includes("jobcenter")) return "Das ist ein Brief vom Jobcenter.";
+  if (lower.includes("jugendamt")) return "Das ist ein Brief vom Jugendamt.";
+  if (lower.includes("kündigung")) return "Das ist eine Kündigung.";
+  if (lower.includes("rückforderung")) return "Es geht um Geld, das zurückverlangt wird.";
+
+  return "";
+}
+
+function formatActions(actions) {
+  if (!actions || actions.length === 0) return "";
+
+  const cleaned = actions
+    .map((x) => x.replace(/\.$/, "").trim())
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (cleaned.length === 0) return "";
+  if (cleaned.length === 1) return cleaned[0];
+
+  return `${cleaned[0]} und ${cleaned[1]}`;
+}
+
+function sentenceCase(text) {
+  if (!text) return "";
+  const t = text.trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function renderSimpleGerman(info) {
+  const sentences = [];
+
+  const sender = simplifySender(info.absender, info.briefart);
+  if (sender) {
+    sentences.push(`Der Brief ist vom ${sender}.`);
+  }
+
+  const typeSentence = simplifyType(info.briefart);
+  if (typeSentence) {
+    sentences.push(typeSentence);
+  } else if (info.worum_geht_es) {
+    sentences.push(sentenceCase(info.worum_geht_es).replace(/\.*$/, "") + ".");
+  }
+
+  if (info.worum_geht_es) {
+    const lower = info.worum_geht_es.toLowerCase();
+
+    if (
+      lower.includes("hilfe") ||
+      lower.includes("unterstützung") ||
+      lower.includes("schule") ||
+      lower.includes("arbeit") ||
+      lower.includes("familie") ||
+      lower.includes("deutschland")
+    ) {
+      const base = sentenceCase(info.worum_geht_es).replace(/\.*$/, "");
+      if (!sentences.some((s) => s.toLowerCase().includes(base.toLowerCase()))) {
+        sentences.push(base + ".");
+      }
+    }
+  }
+
+  const actions = formatActions(info.was_ist_zu_tun);
+  if (actions) {
+    sentences.push(`Wichtig: ${actions}.`);
+  } else if (info.versteckte_wichtige_info) {
+    sentences.push(sentenceCase(info.versteckte_wichtige_info).replace(/\.*$/, "") + ".");
+  }
+
+  if (info.termin) {
+    sentences.push(`Wichtig ist dieser Termin: ${info.termin}.`);
+  } else if (info.frist) {
+    sentences.push(`Wichtig ist diese Frist: ${info.frist}.`);
+  }
+
+  if (info.folge_wenn_nichts) {
+    sentences.push(sentenceCase(info.folge_wenn_nichts).replace(/\.*$/, "") + ".");
+  }
+
+  if (!actions && !info.frist && !info.termin && !info.folge_wenn_nichts) {
+    sentences.push("Du musst jetzt nur prüfen, ob das für dich so passt.");
+  } else if (actions) {
+    const shortAction = actions.length > 90 ? "das prüfen" : actions;
+    sentences.push(`Du musst jetzt nur ${shortAction}.`);
+  } else if (info.frist || info.termin) {
+    sentences.push("Du musst jetzt nur die Frist oder den Termin beachten.");
+  }
+
+  const unique = [];
+  for (const s of sentences) {
+    const key = s.toLowerCase().trim();
+    if (!unique.some((x) => x.toLowerCase().trim() === key)) {
+      unique.push(s);
+    }
+  }
+
+  return unique.slice(0, 5).join("\n");
 }
 
 function buildTranslationPrompt(germanBase, langMeta) {
   return `
 Du bist Hilfe24.
 
-Unten steht ein fertiger deutscher Basistext in sehr einfacher Sprache.
+Unten steht ein fertiger deutscher Text in sehr einfacher Sprache.
 Übersetze ihn sauber in ${langMeta.label}.
 
 Wichtig:
@@ -286,39 +387,17 @@ Regeln:
 - Keine Wiederholung.
 - Kein Markdown.
 
-Deutscher Basistext:
+Deutscher Text:
 ${germanBase}
 `;
 }
 
-async function buildFinalAnswerFromText(text, lang) {
-  const langMeta = getLanguageMeta(lang);
-
-  const rawJson = await callGemini([
-    { text: buildExtractionPromptForText(text) }
-  ]);
-
-  const info = normalizeInfo(extractJson(rawJson));
-
-  const germanBaseRaw = await callGemini([
-    { text: buildGermanBasePrompt(info) }
-  ]);
-  const germanBase = cleanAntwort(germanBaseRaw);
-
-  if (langMeta.code === "de") {
-    return germanBase;
-  }
-
-  const translatedRaw = await callGemini([
-    { text: buildTranslationPrompt(germanBase, langMeta) }
-  ]);
-
-  return cleanAntwort(translatedRaw);
+async function buildInfoFromText(text) {
+  const rawJson = await callGemini([{ text: buildExtractionPromptForText(text) }]);
+  return normalizeInfo(extractJson(rawJson));
 }
 
-async function buildFinalAnswerFromImages(bilder, lang) {
-  const langMeta = getLanguageMeta(lang);
-
+async function buildInfoFromImages(bilder) {
   const parts = [{ text: buildExtractionPromptForImages() }];
 
   for (const bild of bilder) {
@@ -333,12 +412,11 @@ async function buildFinalAnswerFromImages(bilder, lang) {
   }
 
   const rawJson = await callGemini(parts);
-  const info = normalizeInfo(extractJson(rawJson));
+  return normalizeInfo(extractJson(rawJson));
+}
 
-  const germanBaseRaw = await callGemini([
-    { text: buildGermanBasePrompt(info) }
-  ]);
-  const germanBase = cleanAntwort(germanBaseRaw);
+async function translateIfNeeded(germanBase, lang) {
+  const langMeta = getLanguageMeta(lang);
 
   if (langMeta.code === "de") {
     return germanBase;
@@ -349,6 +427,18 @@ async function buildFinalAnswerFromImages(bilder, lang) {
   ]);
 
   return cleanAntwort(translatedRaw);
+}
+
+async function buildFinalAnswerFromText(text, lang) {
+  const info = await buildInfoFromText(text);
+  const germanBase = cleanAntwort(renderSimpleGerman(info));
+  return translateIfNeeded(germanBase, lang);
+}
+
+async function buildFinalAnswerFromImages(bilder, lang) {
+  const info = await buildInfoFromImages(bilder);
+  const germanBase = cleanAntwort(renderSimpleGerman(info));
+  return translateIfNeeded(germanBase, lang);
 }
 
 app.post("/api/brief", async (req, res) => {
