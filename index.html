@@ -310,4 +310,298 @@
         stop: "⏹ إيقاف",
         wait: "انتظر قليلًا من فضلك...",
         noInput: "من فضلك أضف نصًا أو ارفع صورة واحدة على الأقل.",
-        noReadText: "لا
+        noReadText: "لا يوجد نص ليتم قراءته.",
+        noReadSupport: "القراءة الصوتية غير مدعومة على هذا الجهاز أو المتصفح.",
+        readFail: "القراءة الصوتية لم تعمل.",
+        reading: "يتم الآن قراءة الشرح...",
+        unknownError: "خطأ غير معروف"
+      }
+    };
+
+    function getUi() {
+      return uiText[langSelect.value] || uiText.de;
+    }
+
+    function updateUiLanguage() {
+      const t = getUi();
+      titleText.textContent = t.title;
+      subText.textContent = t.sub;
+      briefText.placeholder = t.placeholder;
+      langLabel.textContent = t.lang;
+      uploadLabel.textContent = t.upload;
+      uploadHint.textContent = t.hint;
+      erklaerBtn.textContent = t.explain;
+      vorlesenBtn.textContent = t.read;
+      stoppBtn.textContent = t.stop;
+      document.documentElement.lang = langSelect.value === "ar" ? "ar" : "de";
+      document.body.dir = langSelect.value === "ar" ? "rtl" : "ltr";
+      briefText.dir = langSelect.value === "ar" ? "rtl" : "ltr";
+      ergebnisBox.dir = langSelect.value === "ar" ? "rtl" : "ltr";
+    }
+
+    langSelect.addEventListener("change", updateUiLanguage);
+    updateUiLanguage();
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          const result = reader.result;
+          const base64 = result.split(",")[1];
+          resolve(base64);
+        };
+
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function shouldHighlight() {
+      return langSelect.value === "de";
+    }
+
+    function highlightAntwort(text) {
+      if (!text) return "";
+
+      const escapeHtml = (str) =>
+        str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+      if (!shouldHighlight()) {
+        return escapeHtml(text).replace(/\n/g, "<br>");
+      }
+
+      let html = escapeHtml(text);
+
+      const highlightList = (input, items, className) => {
+        const sorted = [...items].sort((a, b) => b.length - a.length);
+
+        for (const item of sorted) {
+          const escaped = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const regex = new RegExp(`(^|[^\\wÄÖÜäöüß])(${escaped})(?=[^\\wÄÖÜäöüß]|$)`, "gi");
+          input = input.replace(regex, `$1<span class="${className}">$2</span>`);
+        }
+
+        return input;
+      };
+
+      html = html.replace(
+        /\b(bis spätestens\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis spätestens\s+\d{1,2}\.\d{1,2}\.\d{4}|bis zum\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis zum\s+\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{1,2}\.\d{4})\b/gi,
+        '<span class="highlight-red">$1</span>'
+      );
+
+      html = highlightList(html, [
+        "Frist",
+        "Termin",
+        "Mahnung",
+        "Sperre",
+        "Kürzung",
+        "gekürzt",
+        "eingestellt",
+        "Einstellung",
+        "gestoppt",
+        "stoppen",
+        "wegfallen",
+        "kein Geld mehr",
+        "Leistungen gekürzt",
+        "Leistungen eingestellt",
+        "Leistungen gestrichen",
+        "Geld gestrichen",
+        "dringend"
+      ], "highlight-red");
+
+      html = highlightList(html, [
+        "Einstellungsbescheid",
+        "Kindergeldbescheid",
+        "Meldebescheinigung",
+        "Lohnabrechnung",
+        "Kontoauszüge",
+        "Kontoauszug",
+        "Mietvertrag",
+        "Bescheinigung",
+        "Unterlagen",
+        "Unterlage",
+        "Nachweise",
+        "Nachweis",
+        "Bescheid",
+        "Abmeldung",
+        "Kindergeld",
+        "Vertrag",
+        "Kopien",
+        "Kopie",
+        "Originale",
+        "Original"
+      ], "highlight-orange");
+
+      html = highlightList(html, [
+        "per E-Mail",
+        "per Email",
+        "E-Mail",
+        "Email",
+        "per Post",
+        "Post",
+        "Einwurf",
+        "online",
+        "hochladen",
+        "Upload",
+        "persönlich",
+        "Portal",
+        "App"
+      ], "highlight-blue");
+
+      html = html.replace(
+        /(Du musst jetzt nur[\s\S]*?)(?=\n\n|$)/i,
+        '<span class="highlight-green">$1</span>'
+      );
+
+      html = html.replace(/\n/g, "<br>");
+
+      return html;
+    }
+
+    function getPlainTextFromHtml(html) {
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+      return (temp.textContent || temp.innerText || "").trim();
+    }
+
+    function stopVorlesen() {
+      window.speechSynthesis.cancel();
+      aktuelleSprachausgabe = null;
+    }
+
+    function getSpeechLang() {
+      switch (langSelect.value) {
+        case "tr":
+          return "tr-TR";
+        case "bg":
+          return "bg-BG";
+        case "ar":
+          return "ar-SA";
+        default:
+          return "de-DE";
+      }
+    }
+
+    function vorlesenText(text) {
+      const t = getUi();
+
+      if (!("speechSynthesis" in window)) {
+        statusBox.className = "error";
+        statusBox.textContent = t.noReadSupport;
+        return;
+      }
+
+      stopVorlesen();
+
+      const saubererText = text.trim();
+      if (!saubererText) {
+        statusBox.className = "error";
+        statusBox.textContent = t.noReadText;
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(saubererText);
+      utterance.lang = getSpeechLang();
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+
+      utterance.onstart = () => {
+        statusBox.className = "loading";
+        statusBox.textContent = t.reading;
+      };
+
+      utterance.onend = () => {
+        statusBox.className = "";
+        statusBox.textContent = "";
+        aktuelleSprachausgabe = null;
+      };
+
+      utterance.onerror = () => {
+        statusBox.className = "error";
+        statusBox.textContent = t.readFail;
+        aktuelleSprachausgabe = null;
+      };
+
+      aktuelleSprachausgabe = utterance;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    erklaerBtn.addEventListener("click", async () => {
+      const t = getUi();
+
+      try {
+        const text = briefText.value.trim();
+        const files = briefBild.files;
+        const lang = langSelect.value;
+
+        stopVorlesen();
+        statusBox.className = "loading";
+        statusBox.textContent = t.wait;
+        ergebnisBox.innerHTML = "";
+
+        let response;
+
+        if (text) {
+          response = await fetch("/api/brief", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ text, lang })
+          });
+        } else if (files && files.length > 0) {
+          const bilder = await Promise.all(
+            Array.from(files).map(async (file) => {
+              const imageData = await fileToBase64(file);
+              return {
+                imageData,
+                mimeType: file.type
+              };
+            })
+          );
+
+          response = await fetch("/api/brief-bild", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ bilder, lang })
+          });
+        } else {
+          statusBox.className = "error";
+          statusBox.textContent = t.noInput;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || t.unknownError);
+        }
+
+        statusBox.className = "";
+        statusBox.textContent = "";
+        ergebnisBox.innerHTML = highlightAntwort(data.erklaerung);
+      } catch (error) {
+        statusBox.className = "error";
+        statusBox.textContent = error.message || getUi().unknownError;
+      }
+    });
+
+    vorlesenBtn.addEventListener("click", () => {
+      const textZumVorlesen = getPlainTextFromHtml(ergebnisBox.innerHTML);
+      vorlesenText(textZumVorlesen);
+    });
+
+    stoppBtn.addEventListener("click", () => {
+      stopVorlesen();
+      statusBox.className = "";
+      statusBox.textContent = "";
+    });
+  </script>
+</body>
+</html>
