@@ -131,6 +131,7 @@ function extractJson(text) {
 
 function normalizeInfo(info) {
   return {
+    absender: info.absender || "",
     art_des_briefs: info.art_des_briefs || "",
     worum_geht_es: info.worum_geht_es || "",
     was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun) ? info.was_ist_zu_tun : [],
@@ -142,7 +143,6 @@ function normalizeInfo(info) {
     abschlusssatz: info.abschlusssatz || ""
   };
 }
-
 function buildExtractionPromptForText(text) {
   return `
 Du bist Hilfe24.
