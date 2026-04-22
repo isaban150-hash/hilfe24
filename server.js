@@ -24,11 +24,11 @@ function getLanguageMeta(lang) {
         code: "tr",
         label: "Türkisch",
         instruction: `
-Die Antwort muss vollständig auf natürlichem Türkisch sein.
-Schreibe nicht wörtlich und nicht steif.
-Schreibe so, wie ein normaler türkischsprachiger Mensch es im Alltag gut versteht.
-Vermeide kaputte oder zu direkte Wort-für-Wort-Übersetzungen aus dem Deutschen.
-Wenn etwas einfach gesagt werden kann, dann sage es einfach.
+Schreibe auf natürlichem, leicht verständlichem Türkisch.
+Nicht wörtlich.
+Nicht steif.
+Nicht wie Google Translate.
+Bleibe sehr nah an den vorgegebenen Informationen.
 `
       };
     case "bg":
@@ -36,11 +36,11 @@ Wenn etwas einfach gesagt werden kann, dann sage es einfach.
         code: "bg",
         label: "Bulgarisch",
         instruction: `
-Die Antwort muss vollständig auf natürlichem Bulgarisch sein.
-Schreibe nicht wörtlich und nicht steif.
-Schreibe so, wie ein normaler bulgarischsprachiger Mensch es im Alltag gut versteht.
-Vermeide kaputte oder zu direkte Wort-für-Wort-Übersetzungen aus dem Deutschen.
-Wenn etwas einfach gesagt werden kann, dann sage es einfach.
+Schreibe auf natürlichem, leicht verständlichem Bulgarisch.
+Nicht wörtlich.
+Nicht steif.
+Nicht wie Google Translate.
+Bleibe sehr nah an den vorgegebenen Informationen.
 `
       };
     case "ar":
@@ -48,10 +48,11 @@ Wenn etwas einfach gesagt werden kann, dann sage es einfach.
         code: "ar",
         label: "Arabisch",
         instruction: `
-Die Antwort muss vollständig auf natürlichem, leicht verständlichem Arabisch sein.
-Schreibe nicht wörtlich und nicht steif.
-Vermeide unnatürliche oder zu direkte Wort-für-Wort-Übersetzungen aus dem Deutschen.
-Schreibe klar, ruhig und einfach verständlich.
+Schreibe auf natürlichem, leicht verständlichem Arabisch.
+Nicht wörtlich.
+Nicht steif.
+Nicht wie Google Translate.
+Bleibe sehr nah an den vorgegebenen Informationen.
 `
       };
     default:
@@ -59,8 +60,7 @@ Schreibe klar, ruhig und einfach verständlich.
         code: "de",
         label: "Deutsch",
         instruction: `
-Die Antwort muss vollständig auf natürlichem, einfachem Deutsch sein.
-Schreibe klar, ruhig und leicht verständlich.
+Schreibe auf natürlichem, einfachem Deutsch.
 `
       };
   }
@@ -108,160 +108,199 @@ async function callGemini(parts) {
   return text;
 }
 
-function cleanAntwort(text) {
-  if (!text) return "";
-
-  return text
-    .replace(/\*\*/g, "")
-    .replace(/^\s*1\.\s*/gm, "")
-    .replace(/^\s*2\.\s*/gm, "")
-    .replace(/^\s*3\.\s*/gm, "")
-    .replace(/^\s*-\s*/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+function extractJson(text) {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) {
+    throw new Error("Konnte keine JSON-Antwort lesen");
+  }
+  return JSON.parse(match[0]);
 }
 
-function buildUniversalPrompt({ langMeta, sourceType, contentRef }) {
+function normalizeInfo(info) {
+  return {
+    art_des_briefs: info.art_des_briefs || "",
+    worum_geht_es: info.worum_geht_es || "",
+    was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun) ? info.was_ist_zu_tun : [],
+    frist: info.frist || "",
+    folge_wenn_nichts: info.folge_wenn_nichts || "",
+    wichtige_termine: Array.isArray(info.wichtige_termine) ? info.wichtige_termine : [],
+    praktische_tipps: Array.isArray(info.praktische_tipps) ? info.praktische_tipps : [],
+    unsicherheiten: Array.isArray(info.unsicherheiten) ? info.unsicherheiten : [],
+    abschlusssatz: info.abschlusssatz || ""
+  };
+}
+
+function buildExtractionPromptForText(text) {
   return `
-Du bist Hilfe24, ein sehr guter Helfer für einfache Brief-Erklärungen.
+Du bist Hilfe24.
 
 Deine Aufgabe:
-Lies ${sourceType} und erkläre den Inhalt sehr einfach, klar, direkt und menschlich.
+Lies diesen Brief und gib NUR strukturierte Informationen als JSON zurück.
+
+Wichtig:
+- Erfinde nichts.
+- Wenn etwas nicht klar im Brief steht, lass es leer oder setze es in "unsicherheiten".
+- Mache aus einer Möglichkeit keine Pflicht.
+- Mache aus einer Nebeninfo nicht den Hauptpunkt.
+- Keine freien Erklärungen.
+- Keine Sätze außerhalb des JSON.
+- Gib nur gültiges JSON zurück.
+
+Du sollst genau diese Felder zurückgeben:
+{
+  "art_des_briefs": "",
+  "worum_geht_es": "",
+  "was_ist_zu_tun": [],
+  "frist": "",
+  "folge_wenn_nichts": "",
+  "wichtige_termine": [],
+  "praktische_tipps": [],
+  "unsicherheiten": [],
+  "abschlusssatz": ""
+}
+
+Regeln für die Felder:
+- "art_des_briefs": sehr kurz, z. B. "Jobcenter-Brief", "Hilfeplan-Protokoll", "Mahnung"
+- "worum_geht_es": 1 kurzer Satz
+- "was_ist_zu_tun": nur klare Handlungen, die wirklich verlangt oder eindeutig genannt werden
+- "frist": nur wenn klar vorhanden
+- "folge_wenn_nichts": nur wenn klar genannt
+- "wichtige_termine": nur Termine, die im Brief klar stehen
+- "praktische_tipps": höchstens 2 kurze Tipps, aber nur wenn sie direkt aus dem Brief sinnvoll folgen
+- "unsicherheiten": Dinge, die im Brief nicht ganz klar oder auf dem Bild evtl. unklar sind
+- "abschlusssatz": immer ein einziger kurzer Satz, möglichst mit "Du musst jetzt nur ...", aber nur passend zum Brief
+
+Brief:
+${text}
+`;
+}
+
+function buildExtractionPromptForImages() {
+  return `
+Du bist Hilfe24.
+
+Deine Aufgabe:
+Lies die Bilder dieses Briefes und gib NUR strukturierte Informationen als JSON zurück.
+
+Wichtig:
+- Erfinde nichts.
+- Wenn etwas nicht klar lesbar oder nicht sicher ist, schreibe es in "unsicherheiten".
+- Mache aus einer Möglichkeit keine Pflicht.
+- Mache aus einer Nebeninfo nicht den Hauptpunkt.
+- Keine freien Erklärungen.
+- Keine Sätze außerhalb des JSON.
+- Gib nur gültiges JSON zurück.
+
+Du sollst genau diese Felder zurückgeben:
+{
+  "art_des_briefs": "",
+  "worum_geht_es": "",
+  "was_ist_zu_tun": [],
+  "frist": "",
+  "folge_wenn_nichts": "",
+  "wichtige_termine": [],
+  "praktische_tipps": [],
+  "unsicherheiten": [],
+  "abschlusssatz": ""
+}
+
+Regeln für die Felder:
+- "art_des_briefs": sehr kurz
+- "worum_geht_es": 1 kurzer Satz
+- "was_ist_zu_tun": nur klare Handlungen, die wirklich verlangt oder eindeutig genannt werden
+- "frist": nur wenn klar vorhanden
+- "folge_wenn_nichts": nur wenn klar genannt
+- "wichtige_termine": nur Termine, die klar auf den Bildern stehen
+- "praktische_tipps": höchstens 2 kurze Tipps, aber nur wenn sie direkt aus dem Brief sinnvoll folgen
+- "unsicherheiten": Dinge, die nicht ganz klar oder nicht gut lesbar sind
+- "abschlusssatz": immer ein kurzer Schlusssatz, passend zum Brief
+
+Gib nur JSON zurück.
+
+Bilder:
+`;
+}
+
+function buildFinalAnswerPrompt(info, langMeta) {
+  return `
+Du bist Hilfe24.
+
+Aus den folgenden strukturierten Informationen sollst du jetzt eine kurze, natürliche und einfache Erklärung schreiben.
 
 Antwortsprache:
 ${langMeta.label}
 
-Sprachqualität:
+Sprachregel:
 ${langMeta.instruction}
 
-Sehr wichtig zur Übersetzung:
-- Übersetze sinngenau, nicht wörtlich.
-- Schreibe natürlich und flüssig.
-- Verfälsche nie die Bedeutung.
-- Wenn im Brief ein genauer Dokumentname steht, übernimm die Bedeutung korrekt.
-- Wenn ein Bescheid eingestellt, abgelehnt, gekündigt, aufgehoben oder beendet wurde, muss das in der Antwort klar bleiben.
-- Schlechte oder steife Übersetzung ist verboten.
-- Die Antwort darf nicht wie Google Translate klingen.
-
-Wenn die Antwort auf Türkisch, Bulgarisch oder Arabisch ist, dann sei besonders vorsichtig:
-- Formuliere keine Handlung als feste Pflicht, wenn sie im Brief nicht eindeutig als Hauptpflicht genannt wird.
-- Ziehe keine zu starke Schlussfolgerung aus einzelnen Sätzen.
-- Bleibe näher an der wirklichen Aussage des Briefes.
-- Wenn mehrere Dinge im Brief stehen, fasse sie neutral zusammen.
-- Mache aus einer erwähnten Maßnahme oder einem Termin nicht automatisch die wichtigste Aufgabe.
-
 Wichtig:
-Erkläre nicht nach einem starren Schema.
-Erkläre nur die Punkte, die zu genau diesem Brief passen.
-Wenn etwas im Brief nicht vorkommt, dann sprich es nicht künstlich an.
-Wenn etwas auf Bildern nicht klar lesbar ist, dann sag das offen.
-Erfinde nichts.
-Vermute nichts als Tatsache.
-
-Wenn mehrere Bilder zum selben Brief gehören, verbinde die Informationen sinnvoll.
-
-Schreibe so, dass auch ein Mensch mit wenig Sprachkenntnissen oder wenig Erfahrung mit Briefen sofort versteht, worum es geht.
-
-Regeln:
-- Antworte vollständig in ${langMeta.label}.
-- Schreibe in einfachen, normalen Sätzen.
-- Schreibe natürlich und menschlich.
-- Kein Beamtendeutsch.
-- Keine unnötig schwere Fachsprache.
-- Keine Einleitung wie "Gerne helfe ich dir".
+- Bleibe sehr nah an den Daten.
+- Erfinde nichts dazu.
+- Lass Nebensachen weg.
+- Mache aus einem Termin keine Hauptpflicht, wenn er nur ein Termin ist.
+- Mache aus einer Info keine feste Pflicht, wenn sie nicht klar als Pflicht in den Daten steht.
+- Schreibe kurz, klar und menschlich.
 - Keine Überschriften.
 - Keine Listen mit 1., 2., 3.
 - Kein Markdown.
 - Keine Sternchen.
-- Keine unnötigen Wiederholungen.
-- Keine langen verschachtelten Sätze.
-- Keine erfundenen Infos.
-- Keine Vermutungen als Fakten.
+- Normalerweise 4 bis 7 Sätze.
+- Wenn wenig wichtig ist, dann noch kürzer.
 
-Halte die Antwort sehr kurz.
+Nutze nur diese Informationen:
+${JSON.stringify(info, null, 2)}
 
-Nenne nur die wirklich wichtigen Punkte.
-Erkläre nur diese Sachen, wenn sie im Brief vorkommen:
-- Worum es geht
-- Was man jetzt tun muss
-- Bis wann
-- Was passiert, wenn man nichts macht
+Bau die Erklärung ungefähr so:
+- kurz sagen, was das für ein Brief ist und worum es geht
+- dann nur die wirklich wichtigen Handlungen oder Fristen nennen
+- wenn vorhanden, kurz sagen, was passiert, wenn man nichts macht
+- wenn sinnvoll, maximal 1 bis 2 kurze praktische Tipps
+- am Ende genau den Abschlusssatz aus den Daten sinngemäß wiedergeben
 
-Wenn einer dieser Punkte im Brief nicht vorkommt, dann lass ihn weg.
-
-Schreibe keine langen Erklärungen.
-Schreibe keine Hintergrundgeschichte, wenn sie nicht direkt wichtig ist.
-Schreibe keine zusätzlichen Beispiele.
-Schreibe keine unnötigen Details.
-
-Die Antwort soll im Normalfall kurz bleiben und meistens nicht länger als 5 bis 8 Sätze sein.
-
-Wenn der Brief nur eine Information ist, dann antworte noch kürzer.
-Wenn der Brief eine klare Handlung verlangt, dann sag diese Handlung direkt.
-
-Du sollst selbst erkennen, was in diesem Brief wirklich wichtig ist.
-Zum Beispiel:
-- Ist es nur eine Information?
-- Muss man etwas tun?
-- Gibt es eine Frist?
-- Fehlen Unterlagen?
-- Muss man antworten, zahlen, erscheinen oder etwas einreichen?
-- Kann etwas passieren, wenn man nichts macht?
-- Ist der Brief dringend oder eher nur informativ?
-
-Aber:
-Sprich nur über diese Punkte, wenn sie wirklich im Brief vorkommen oder klar daraus folgen.
-Wenn etwas nicht im Brief steht, erfinde es nicht.
-
-Stelle keine Vermutung oder Interpretation als sichere Hauptaussage dar.
-Wenn mehrere Dinge wichtig sind, übertreibe nicht einen einzelnen Punkt.
-Wenn etwas nicht ganz eindeutig ist, formuliere vorsichtig und neutral.
-Schreibe keine Sätze wie "das ist der wichtigste Punkt", wenn der Brief das nicht klar zeigt.
-Wenn ein Termin oder eine Handlung genannt wird, mache daraus nur dann die Hauptaufgabe, wenn das im Brief eindeutig so gemeint ist.
-
-Nenne angeforderte Unterlagen so genau wie möglich.
-Vereinfache die Sprache, aber verfälsche nie die Bedeutung.
-Wenn im Brief ein genauer Name für ein Dokument steht, dann benutze genau diesen Namen oder eine sehr nahe einfache Form davon.
-
-Nenne nur die Informationen, die für die Person jetzt wirklich wichtig sind.
-Lass unwichtige Zusatzinfos weg, auch wenn sie im Brief stehen, wenn sie für das Verstehen oder Handeln keine große Rolle spielen.
-Lass Namen, Ansprechpartner, Nebendetails und genaue Zusatzangaben weg, wenn sie für die Person im Moment nicht direkt wichtig sind.
-Nenne ein genaues Datum oder eine genaue Angabe nur dann, wenn sie im Brief klar steht und für das jetzige Handeln wirklich wichtig ist.
-
-Wenn etwas unklar ist:
-- Wenn etwas im Brief nicht ganz klar ist, sag offen, dass es nicht ganz klar ist.
-- Wenn etwas auf dem Bild nicht gut lesbar ist, sag offen, dass ein Teil nicht gut lesbar ist.
-- Wenn ein wichtiger Teil fehlt, sag offen, dass ein wichtiger Teil fehlt.
-
-Wenn es hilfreich ist:
-Du darfst am Ende 1 bis 2 kurze praktische Tipps geben.
-Aber nur, wenn sie direkt zu diesem Brief passen und wirklich helfen.
-Die Tipps sollen helfen, Fehler zu vermeiden oder den nächsten Schritt leichter zu machen.
-Keine allgemeinen Lebensratschläge.
-Keine erfundenen rechtlichen Aussagen.
-Keine Tipps, die nicht wirklich zu diesem Brief passen.
-Wenn keine sinnvollen Tipps passen, dann gib keine Tipps.
-
-Bevor du antwortest, prüfe still für dich:
-- Ist ein Satz doppelt?
-- Ist etwas unnötig lang?
-- Klingt die Sprache natürlich?
-- Ist die Übersetzung sinngenau und menschlich?
-- Ist die Antwort kürzer möglich, ohne wichtige Bedeutung zu verlieren?
-- Habe ich einen Punkt zu stark betont, obwohl der Brief mehrere wichtige Punkte enthält?
-- Habe ich etwas als sicher dargestellt, das nur wahrscheinlich oder nicht ganz eindeutig ist?
-- Habe ich in der Übersetzung eine Handlung zu eindeutig oder zu streng formuliert?
-- Bin ich in Türkisch, Bulgarisch oder Arabisch näher an der echten Bedeutung geblieben als an einer freien Nacherzählung?
-Dann antworte in der besseren, kürzeren und natürlicheren Version.
-
-Ganz am Ende:
-Schreibe immer einen einzigen kurzen Abschlusssatz.
-Wenn in diesem Brief aktiv etwas getan werden muss, beginne den letzten Satz sinngemäß mit:
-"Du musst jetzt nur ..."
-Wenn in diesem Brief nichts aktiv getan werden muss, dann schreibe stattdessen einen kurzen klaren Satz, dass es nur eine Information ist.
-
-${contentRef}
+Wenn "unsicherheiten" vorhanden sind, nenne sie nur kurz und vorsichtig.
 `;
+}
+
+async function buildFinalAnswerFromText(text, lang) {
+  const langMeta = getLanguageMeta(lang);
+
+  const rawJson = await callGemini([
+    { text: buildExtractionPromptForText(text) }
+  ]);
+
+  const info = normalizeInfo(extractJson(rawJson));
+
+  const finalText = await callGemini([
+    { text: buildFinalAnswerPrompt(info, langMeta) }
+  ]);
+
+  return cleanAntwort(finalText);
+}
+
+async function buildFinalAnswerFromImages(bilder, lang) {
+  const langMeta = getLanguageMeta(lang);
+
+  const parts = [{ text: buildExtractionPromptForImages() }];
+
+  for (const bild of bilder) {
+    if (!bild.imageData || !bild.mimeType) continue;
+
+    parts.push({
+      inline_data: {
+        mime_type: bild.mimeType,
+        data: bild.imageData
+      }
+    });
+  }
+
+  const rawJson = await callGemini(parts);
+  const info = normalizeInfo(extractJson(rawJson));
+
+  const finalText = await callGemini([
+    { text: buildFinalAnswerPrompt(info, langMeta) }
+  ]);
+
+  return cleanAntwort(finalText);
 }
 
 app.post("/api/brief", async (req, res) => {
@@ -276,16 +315,7 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
-    const langMeta = getLanguageMeta(lang);
-
-    const prompt = buildUniversalPrompt({
-      langMeta,
-      sourceType: "diesen Brief",
-      contentRef: `Brief:\n${text}`
-    });
-
-    const raw = await callGemini([{ text: prompt }]);
-    const erklaerung = cleanAntwort(raw);
+    const erklaerung = await buildFinalAnswerFromText(text, lang);
 
     return res.json({
       ok: true,
@@ -313,29 +343,7 @@ app.post("/api/brief-bild", async (req, res) => {
       });
     }
 
-    const langMeta = getLanguageMeta(lang);
-
-    const prompt = buildUniversalPrompt({
-      langMeta,
-      sourceType: "die Bilder dieses Briefes",
-      contentRef: "Bilder:"
-    });
-
-    const parts = [{ text: prompt }];
-
-    for (const bild of bilder) {
-      if (!bild.imageData || !bild.mimeType) continue;
-
-      parts.push({
-        inline_data: {
-          mime_type: bild.mimeType,
-          data: bild.imageData
-        }
-      });
-    }
-
-    const raw = await callGemini(parts);
-    const erklaerung = cleanAntwort(raw);
+    const erklaerung = await buildFinalAnswerFromImages(bilder, lang);
 
     return res.json({
       ok: true,
