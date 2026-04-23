@@ -32,6 +32,8 @@ Lass nichts Wichtiges weg.
 Keine neue Behörde erfinden.
 Wenn im Deutschen "Jobcenter" steht, dann bleibt "Jobcenter".
 Wenn im Deutschen "Jugendamt" steht, übersetze es als "Gençlik Dairesi".
+Wenn im Deutschen "Stadtwerke" steht, dann bleibt "Stadtwerke".
+Wenn im Deutschen "AOK" steht, dann bleibt "AOK".
 Schreibe einfach, klar und natürlich.
 Nicht steif. Nicht wie Google Translate.
 `
@@ -247,9 +249,46 @@ Bilder:
 `;
 }
 
+function buildImageQualityCheckPrompt() {
+  return `
+Du prüfst nur die Bildqualität eines Brief-Fotos.
+
+Antworte NUR als JSON.
+
+Gib genau dieses JSON zurück:
+{
+  "ok": true,
+  "problem": "",
+  "hinweis": ""
+}
+
+Regeln:
+- "ok": true nur wenn der Brief gut genug lesbar ist
+- "ok": false wenn das Bild zu unscharf, abgeschnitten, zu dunkel, mit Schatten verdeckt oder unvollständig ist
+- "problem": sehr kurz, z. B. "unscharf", "abgeschnitten", "zu dunkel", "Schatten", "weitere Seite fehlt"
+- "hinweis": sehr einfacher Satz für den Nutzer
+
+Beispiele für "hinweis":
+- "Das Bild ist zu unscharf. Bitte schick ein schärferes Foto."
+- "Die Seite ist nicht ganz drauf. Bitte fotografiere die ganze Seite."
+- "Der Text ist nicht gut lesbar. Bitte mach ein neues Foto ohne Schatten."
+- "Es fehlt noch eine Seite. Bitte lade auch die nächste Seite hoch."
+
+Wichtig:
+- Erfinde nichts.
+- Wenn das Bild gut genug ist, gib zurück:
+{
+  "ok": true,
+  "problem": "",
+  "hinweis": ""
+}
+`;
+}
+
 function simplifySender(absender, briefart) {
   const text = `${absender || ""} ${briefart || ""}`.toLowerCase();
 
+  if (text.includes("stadtwerke")) return "Stadtwerke";
   if (text.includes("jugendamt")) return "Jugendamt";
   if (text.includes("jobcenter")) return "Jobcenter";
   if (text.includes("aok")) return "AOK";
@@ -260,8 +299,8 @@ function simplifySender(absender, briefart) {
   if (text.includes("gericht")) return "Gericht";
   if (text.includes("schule")) return "Schule";
   if (text.includes("vermieter")) return "Vermieter";
-  if (text.includes("stadt")) return "Stadt";
   if (text.includes("bürgermeister")) return "Stadt";
+  if (text.includes("stadt")) return "Stadt";
   if (text.includes("bank")) return "Bank";
 
   return absender || "";
@@ -307,7 +346,7 @@ function simplifyAction(action) {
     return "die Unterlagen sollen geschickt werden";
   }
 
-  if (a.includes("zahlen")) {
+  if (a.includes("zahlen") || a.includes("überweisen")) {
     return "du sollst zahlen";
   }
 
@@ -321,6 +360,10 @@ function simplifyAction(action) {
 
   if (a.includes("kündigen")) {
     return "du sollst kündigen";
+  }
+
+  if (a.includes("anmelden")) {
+    return "du sollst dich anmelden";
   }
 
   if (a.includes("termin")) {
@@ -349,7 +392,15 @@ function renderSimpleGerman(info) {
   const sender = simplifySender(info.absender, info.briefart);
 
   if (sender) {
-    blocks.push(`Wer schreibt?\nDer Brief ist vom ${sender}.`);
+    if (sender === "Stadtwerke") {
+      blocks.push(`Wer schreibt?\nDer Brief ist von den Stadtwerken.`);
+    } else if (sender === "AOK") {
+      blocks.push(`Wer schreibt?\nDer Brief ist von der AOK.`);
+    } else if (sender === "Stadt") {
+      blocks.push(`Wer schreibt?\nDer Brief ist von der Stadt.`);
+    } else {
+      blocks.push(`Wer schreibt?\nDer Brief ist vom ${sender}.`);
+    }
   }
 
   if (info.worum_geht_es) {
@@ -507,6 +558,24 @@ async function buildInfoFromImages(bilder) {
   return normalizeInfo(extractJson(rawJson));
 }
 
+async function checkImageQuality(bilder) {
+  const parts = [{ text: buildImageQualityCheckPrompt() }];
+
+  for (const bild of bilder) {
+    if (!bild.imageData || !bild.mimeType) continue;
+
+    parts.push({
+      inline_data: {
+        mime_type: bild.mimeType,
+        data: bild.imageData
+      }
+    });
+  }
+
+  const raw = await callGemini(parts);
+  return extractJson(raw);
+}
+
 async function translateIfNeeded(germanBase, lang) {
   const langMeta = getLanguageMeta(lang);
 
@@ -529,6 +598,12 @@ async function buildFinalAnswerFromText(text, lang) {
 }
 
 async function buildFinalAnswerFromImages(bilder, lang) {
+  const quality = await checkImageQuality(bilder);
+
+  if (!quality.ok) {
+    return quality.hinweis || "Das Bild ist nicht gut genug. Bitte schick ein neues Foto.";
+  }
+
   const info = await buildInfoFromImages(bilder);
   const germanBase = cleanAntwort(renderSimpleGerman(info));
   return await translateIfNeeded(germanBase, lang);
@@ -584,4 +659,4 @@ app.post("/api/brief-bild", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log("Server läuft auf Port " + PORT);
-}); require("express");
+});
