@@ -30,8 +30,8 @@ Halte die Struktur exakt gleich.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
 Keine neue Behörde erfinden.
-"Jugendamt" soll als "Gençlik Dairesi" übersetzt werden.
-"Jobcenter" soll als "Jobcenter" stehen bleiben.
+Wenn im Deutschen "Jobcenter" steht, dann bleibt "Jobcenter".
+Wenn im Deutschen "Jugendamt" steht, übersetze es als "Gençlik Dairesi".
 Schreibe einfach, klar und natürlich.
 Nicht steif. Nicht wie Google Translate.
 `
@@ -181,10 +181,10 @@ Gib genau dieses JSON zurück:
 
 Regeln:
 - "absender": nur wenn klar erkennbar
-- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jobcenter-Brief", "Jugendamt-Brief", "Versicherungsbrief", "Werbung"
+- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Einladung", "Versicherungsbrief", "Info-Brief", "Werbung", "Kündigung", "Bestätigung", "Ablehnung", "Bewilligung"
 - "betroffene_person": Name nur wenn klar erkennbar
 - "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, widersprechen
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, antworten, kündigen, unterschreiben, widersprechen
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
@@ -233,7 +233,7 @@ Regeln:
 - "briefart": sehr kurz
 - "betroffene_person": Name nur wenn klar erkennbar
 - "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, widersprechen
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, antworten, kündigen, unterschreiben, widersprechen
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
@@ -261,8 +261,29 @@ function simplifySender(absender, briefart) {
   if (text.includes("schule")) return "Schule";
   if (text.includes("vermieter")) return "Vermieter";
   if (text.includes("stadt")) return "Stadt";
+  if (text.includes("bürgermeister")) return "Stadt";
+  if (text.includes("bank")) return "Bank";
 
   return absender || "";
+}
+
+function toSentence(text) {
+  if (!text) return "";
+  const t = String(text).trim().replace(/\.$/, "");
+  if (!t) return "";
+  return t.charAt(0).toUpperCase() + t.slice(1) + ".";
+}
+
+function dedupe(arr) {
+  const out = [];
+  for (const item of arr) {
+    const t = String(item || "").trim();
+    if (!t) continue;
+    if (!out.some((x) => x.toLowerCase() === t.toLowerCase())) {
+      out.push(t);
+    }
+  }
+  return out;
 }
 
 function simplifyAction(action) {
@@ -290,6 +311,18 @@ function simplifyAction(action) {
     return "du sollst zahlen";
   }
 
+  if (a.includes("antworten")) {
+    return "du sollst antworten";
+  }
+
+  if (a.includes("unterschreiben")) {
+    return "du sollst unterschreiben";
+  }
+
+  if (a.includes("kündigen")) {
+    return "du sollst kündigen";
+  }
+
   if (a.includes("termin")) {
     return "der Termin ist wichtig";
   }
@@ -304,6 +337,7 @@ function simplifyAction(action) {
 
   return action.replace(/\.$/, "").trim();
 }
+
 function applyPersonName(text, personName) {
   if (!text) return "";
   if (!personName) return text;
@@ -337,42 +371,42 @@ function renderSimpleGerman(info) {
       importantLines.push(`Wichtig: ${simpleActions.slice(0, 2).join(" und ")}.`);
     }
 
-    if (info.folge_wenn_nichts) {
-  let consequence = toSentence(info.folge_wenn_nichts)
-    .replace(/verbindlich/gi, "gültig")
-    .replace(/wirksam/gi, "gültig")
-    .replace(/es können keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.")
-    .replace(/keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.");
+    if (info.versteckte_wichtige_info) {
+      importantLines.push(toSentence(info.versteckte_wichtige_info));
+    }
 
-  blocks.push(`Was passiert sonst?\n${consequence}`);
-}
+    blocks.push(`Was ist jetzt wichtig?\n${importantLines.join(" ")}`);
+  }
 
-if (info.kurz_gesagt) {
-  let shortText = toSentence(info.kurz_gesagt)
-    .replace(/senden sie/gi, "Schicken Sie")
-    .replace(/reichen sie/gi, "Schicken Sie")
-    .replace(/unterlagen ein/gi, "die Unterlagen");
-
-  blocks.push(`Kurz gesagt:\n${shortText}`);
-} else if (simpleActions.length > 0) {
-  blocks.push(`Kurz gesagt:\nDu musst jetzt nur das Wichtige beachten.`);
-} else if (info.frist || info.termin) {
-  blocks.push(`Kurz gesagt:\nDu musst jetzt nur die Frist oder den Termin beachten.`);
-} else {
-  blocks.push(`Kurz gesagt:\nDu musst jetzt nichts machen.`);
-}
+  if (info.frist || info.termin) {
+    if (info.frist && info.termin) {
+      blocks.push(
+        `Bis wann?\nWichtig ist diese Frist: ${info.frist}. Wichtiger Termin: ${info.termin}.`
+      );
+    } else if (info.frist) {
+      blocks.push(`Bis wann?\nWichtig ist diese Frist: ${info.frist}.`);
+    } else if (info.termin) {
+      blocks.push(`Bis wann?\nWichtig ist dieser Termin: ${info.termin}.`);
+    }
   }
 
   if (info.folge_wenn_nichts) {
     let consequence = toSentence(info.folge_wenn_nichts)
       .replace(/verbindlich/gi, "gültig")
-      .replace(/wirksam/gi, "gültig");
+      .replace(/wirksam/gi, "gültig")
+      .replace(/es können keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.")
+      .replace(/keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.");
 
     blocks.push(`Was passiert sonst?\n${consequence}`);
   }
 
   if (info.kurz_gesagt) {
-    blocks.push(`Kurz gesagt:\n${toSentence(info.kurz_gesagt)}`);
+    let shortText = toSentence(info.kurz_gesagt)
+      .replace(/senden sie/gi, "Schicken Sie")
+      .replace(/reichen sie/gi, "Schicken Sie")
+      .replace(/unterlagen ein/gi, "die Unterlagen");
+
+    blocks.push(`Kurz gesagt:\n${shortText}`);
   } else if (simpleActions.length > 0) {
     blocks.push(`Kurz gesagt:\nDu musst jetzt nur das Wichtige beachten.`);
   } else if (info.frist || info.termin) {
@@ -389,9 +423,9 @@ function localizeSectionHeadings(text, lang) {
 
   const maps = {
     tr: {
-      "Wer schreibt?": "Kim yazdı?",
+      "Wer schreibt?": "Kim yazıyor?",
       "Worum geht es?": "Konu ne?",
-      "Was ist jetzt wichtig?": "Şimdi önemli olan ne?",
+      "Was ist jetzt wichtig?": "Şimdi ne önemli?",
       "Bis wann?": "Ne zamana kadar?",
       "Was passiert sonst?": "Yoksa ne olur?",
       "Kurz gesagt:": "Kısaca:"
@@ -491,13 +525,13 @@ async function translateIfNeeded(germanBase, lang) {
 async function buildFinalAnswerFromText(text, lang) {
   const info = await buildInfoFromText(text);
   const germanBase = cleanAntwort(renderSimpleGerman(info));
-  return translateIfNeeded(germanBase, lang);
+  return await translateIfNeeded(germanBase, lang);
 }
 
 async function buildFinalAnswerFromImages(bilder, lang) {
   const info = await buildInfoFromImages(bilder);
   const germanBase = cleanAntwort(renderSimpleGerman(info));
-  return translateIfNeeded(germanBase, lang);
+  return await translateIfNeeded(germanBase, lang);
 }
 
 app.post("/api/brief", async (req, res) => {
