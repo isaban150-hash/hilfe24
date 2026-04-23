@@ -25,14 +25,15 @@ function getLanguageMeta(lang) {
         label: "Türkisch",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Türkisch.
-Halte die Struktur gleich.
+Halte die Struktur exakt gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
-Schreibe kurz, klar und einfach.
-Benutze für "Jugendamt" die normale verständliche türkische Bezeichnung "Gençlik Dairesi".
-Lass "Jobcenter" als "Jobcenter" stehen.
-Schreibe nicht steif und nicht wie Google Translate.
+Keine neue Behörde erfinden.
+"Jugendamt" soll als "Gençlik Dairesi" übersetzt werden.
+"Jobcenter" soll als "Jobcenter" stehen bleiben.
+Schreibe einfach, klar und natürlich.
+Nicht steif. Nicht wie Google Translate.
 `
       };
     case "bg":
@@ -41,11 +42,10 @@ Schreibe nicht steif und nicht wie Google Translate.
         label: "Bulgarisch",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Bulgarisch.
-Halte die Struktur gleich.
+Halte die Struktur exakt gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
-Schreibe kurz, klar und einfach.
 `
       };
     case "ar":
@@ -54,20 +54,17 @@ Schreibe kurz, klar und einfach.
         label: "Arabisch",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Arabisch.
-Halte die Struktur gleich.
+Halte die Struktur exakt gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
-Schreibe kurz, klar und einfach.
 `
       };
     default:
       return {
         code: "de",
         label: "Deutsch",
-        instruction: `
-Gib den Text in sehr einfachem Deutsch aus.
-`
+        instruction: ``
       };
   }
 }
@@ -81,9 +78,7 @@ async function callGemini(parts) {
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts }]
       })
@@ -112,7 +107,6 @@ async function callGemini(parts) {
 
 function cleanAntwort(text) {
   if (!text) return "";
-
   return text
     .replace(/\*\*/g, "")
     .replace(/^\s*\d+\.\s*/gm, "")
@@ -128,30 +122,29 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
+function normalizeString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeArray(value) {
+  return Array.isArray(value)
+    ? value.map((x) => String(x).trim()).filter(Boolean)
+    : [];
+}
+
 function normalizeInfo(info) {
   return {
-    absender: typeof info.absender === "string" ? info.absender.trim() : "",
-    briefart: typeof info.briefart === "string" ? info.briefart.trim() : "",
-    betroffene_person:
-      typeof info.betroffene_person === "string" ? info.betroffene_person.trim() : "",
-    worum_geht_es:
-      typeof info.worum_geht_es === "string" ? info.worum_geht_es.trim() : "",
-    was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun)
-      ? info.was_ist_zu_tun.map((x) => String(x).trim()).filter(Boolean)
-      : [],
-    frist: typeof info.frist === "string" ? info.frist.trim() : "",
-    termin: typeof info.termin === "string" ? info.termin.trim() : "",
-    folge_wenn_nichts:
-      typeof info.folge_wenn_nichts === "string" ? info.folge_wenn_nichts.trim() : "",
-    versteckte_wichtige_info:
-      typeof info.versteckte_wichtige_info === "string"
-        ? info.versteckte_wichtige_info.trim()
-        : "",
-    kurz_gesagt:
-      typeof info.kurz_gesagt === "string" ? info.kurz_gesagt.trim() : "",
-    unsicherheiten: Array.isArray(info.unsicherheiten)
-      ? info.unsicherheiten.map((x) => String(x).trim()).filter(Boolean)
-      : []
+    absender: normalizeString(info.absender),
+    briefart: normalizeString(info.briefart),
+    betroffene_person: normalizeString(info.betroffene_person),
+    worum_geht_es: normalizeString(info.worum_geht_es),
+    was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
+    frist: normalizeString(info.frist),
+    termin: normalizeString(info.termin),
+    folge_wenn_nichts: normalizeString(info.folge_wenn_nichts),
+    versteckte_wichtige_info: normalizeString(info.versteckte_wichtige_info),
+    kurz_gesagt: normalizeString(info.kurz_gesagt),
+    unsicherheiten: normalizeArray(info.unsicherheiten)
   };
 }
 
@@ -291,9 +284,8 @@ function dedupe(arr) {
   return out;
 }
 
-function simplifyAction(action, personName) {
+function simplifyAction(action) {
   const a = action.toLowerCase();
-  const person = personName || "die Person";
 
   if (
     a.includes("einwohnermeldeamt") ||
@@ -302,59 +294,60 @@ function simplifyAction(action, personName) {
     a.includes("bei der stadt wieder anmelden") ||
     a.includes("bei der stadt melden")
   ) {
-    return `${person} soll bei der Stadt angemeldet werden`;
+    return "die Person soll bei der Stadt angemeldet werden";
   }
 
   if (a.includes("jobcenter")) {
-    return `${person} soll beim Jobcenter angemeldet werden`;
+    return "die Person soll beim Jobcenter angemeldet werden";
   }
 
   if (a.includes("unterlagen")) {
-    return `die Unterlagen sollen geschickt werden`;
+    return "die Unterlagen sollen geschickt werden";
   }
 
   if (a.includes("zahlen")) {
-    return `du sollst zahlen`;
+    return "du sollst zahlen";
   }
 
   if (a.includes("termin")) {
-    return `der Termin ist wichtig`;
+    return "der Termin ist wichtig";
   }
 
   if (a.includes("widerspruch")) {
-    return `du sollst dich melden, wenn du nicht einverstanden bist`;
+    return "du sollst dich melden, wenn du nicht einverstanden bist";
   }
 
   if (a.includes("melden")) {
-    return `du sollst dich melden`;
+    return "du sollst dich melden";
   }
 
   return action.replace(/\.$/, "").trim();
 }
 
+function applyPersonName(text, personName) {
+  if (!text) return "";
+  if (!personName) return text;
+  return text.replace(/die Person/gi, personName);
+}
+
 function renderSimpleGerman(info) {
   const blocks = [];
   const sender = simplifySender(info.absender, info.briefart);
-  const person = info.betroffene_person || "die Person";
 
   if (sender) {
     blocks.push(`Wer schreibt?\nDer Brief ist vom ${sender}.`);
   }
 
   if (info.worum_geht_es) {
-    let topic = info.worum_geht_es;
-
-    if (info.betroffene_person) {
-      topic = topic.replaceAll(info.betroffene_person, info.betroffene_person);
-    }
-
-    blocks.push(`Worum geht es?\n${toSentence(topic)}`);
+    blocks.push(`Worum geht es?\n${toSentence(info.worum_geht_es)}`);
   } else if (info.briefart) {
     blocks.push(`Worum geht es?\n${toSentence(`Es geht um diesen ${info.briefart}`)}`);
   }
 
   const simpleActions = dedupe(
-    (info.was_ist_zu_tun || []).map((x) => simplifyAction(x, info.betroffene_person || "Die Person"))
+    (info.was_ist_zu_tun || []).map((x) =>
+      applyPersonName(simplifyAction(x), info.betroffene_person)
+    )
   );
 
   if (simpleActions.length > 0 || info.versteckte_wichtige_info) {
@@ -481,7 +474,6 @@ async function buildInfoFromImages(bilder) {
 
   for (const bild of bilder) {
     if (!bild.imageData || !bild.mimeType) continue;
-
     parts.push({
       inline_data: {
         mime_type: bild.mimeType,
@@ -535,13 +527,9 @@ app.post("/api/brief", async (req, res) => {
 
     const erklaerung = await buildFinalAnswerFromText(text, lang);
 
-    return res.json({
-      ok: true,
-      erklaerung
-    });
+    return res.json({ ok: true, erklaerung });
   } catch (error) {
     console.error("Fehler /api/brief:", error);
-
     return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
@@ -563,13 +551,9 @@ app.post("/api/brief-bild", async (req, res) => {
 
     const erklaerung = await buildFinalAnswerFromImages(bilder, lang);
 
-    return res.json({
-      ok: true,
-      erklaerung
-    });
+    return res.json({ ok: true, erklaerung });
   } catch (error) {
     console.error("Fehler /api/brief-bild:", error);
-
     return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
