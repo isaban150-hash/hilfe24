@@ -3,605 +3,649 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hilfe24 - Brief erklären</title>
+  <title>Hilfe24</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f6f6f6;
-      margin: 0;
-      padding: 40px 20px;
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #15803d;
+      --border: #e5e7eb;
+      --warning-bg: #fff7ed;
+      --warning-border: #fdba74;
     }
 
-    .box {
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
       max-width: 900px;
       margin: 0 auto;
-      background: white;
-      padding: 30px;
+      padding: 16px;
+    }
+
+    .card {
+      background: var(--card);
       border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
     }
 
     h1 {
-      margin-top: 0;
-      font-size: 42px;
+      margin: 0 0 8px;
+      font-size: 28px;
     }
 
-    p {
-      color: #555;
-      font-size: 18px;
+    .sub {
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin: 12px 0 6px;
+    }
+
+    select,
+    textarea,
+    input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 16px;
+      background: #fff;
     }
 
     textarea {
-      width: 100%;
-      min-height: 260px;
-      padding: 16px;
-      font-size: 18px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
+      min-height: 160px;
       resize: vertical;
-      box-sizing: border-box;
-      margin-top: 16px;
     }
 
-    .topRow {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-top: 16px;
-    }
-
-    .langBox {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .langBox label {
+    .hint {
       font-size: 14px;
-      font-weight: bold;
-      color: #333;
+      color: var(--muted);
+      margin-top: 6px;
     }
 
-    select {
-      padding: 10px 12px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      background: white;
-    }
-
-    .uploadBox {
-      margin-top: 16px;
-      padding: 16px;
-      border: 1px dashed #bbb;
-      border-radius: 10px;
-      background: #fafafa;
-    }
-
-    .uploadLabel {
-      display: block;
-      margin-bottom: 10px;
-      font-size: 16px;
-      color: #333;
-      font-weight: bold;
-    }
-
-    input[type="file"] {
-      font-size: 16px;
-    }
-
-    .buttonRow {
-      margin-top: 16px;
+    .button-row {
       display: flex;
-      gap: 8px;
       flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     button {
-      background: #111827;
-      color: white;
       border: none;
-      padding: 14px 22px;
-      font-size: 18px;
-      border-radius: 10px;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
       cursor: pointer;
     }
 
-    button:hover {
-      background: #1f2937;
+    .btn-primary {
+      background: var(--primary);
+      color: white;
     }
 
-    .stoppBtn {
-      background: #6b7280;
+    .btn-primary:hover {
+      background: var(--primary-dark);
     }
 
-    .stoppBtn:hover {
-      background: #4b5563;
+    .btn-secondary {
+      background: #eef2ff;
+      color: var(--text);
     }
 
-    #status {
-      margin-top: 16px;
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .preview-grid img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .warning {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: #9a3412;
+      padding: 14px;
+      border-radius: 12px;
+      line-height: 1.5;
+      font-weight: bold;
+    }
+
+    .short-box {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 12px;
+      padding: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
       font-size: 18px;
     }
 
-    #ergebnis {
-      margin-top: 20px;
-      background: #fcfcfc;
-      border: 1px solid #e5e7eb;
+    .detail-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 22px;
-      white-space: normal;
+      padding: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
       font-size: 20px;
-      line-height: 1.8;
-      color: #1f2937;
+    }
+
+    .audio-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .loader {
+      margin-top: 12px;
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    .ok {
+      color: var(--success);
+      font-weight: bold;
+      margin-top: 10px;
     }
 
     .error {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px;
-      border-radius: 8px;
-    }
-
-    .loading {
-      color: #374151;
-    }
-
-    .small {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #666;
-    }
-
-    .highlight-red {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-weight: 700;
-    }
-
-    .highlight-orange {
-      background: #ffedd5;
-      color: #9a3412;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-weight: 700;
-    }
-
-    .highlight-blue {
-      background: #dbeafe;
-      color: #1d4ed8;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-weight: 700;
-    }
-
-    .highlight-green {
-      display: inline-block;
+      color: var(--danger);
+      font-weight: bold;
       margin-top: 10px;
-      background: #dcfce7;
-      color: #166534;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-weight: 700;
-      line-height: 1.5;
     }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1 id="titleText">Brief erklären</h1>
-    <p id="subText">Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.</p>
+  <div class="wrap">
+    <div class="card">
+      <h1>Hilfe24</h1>
+      <div class="sub">
+        Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.
+      </div>
 
-    <textarea id="briefText" placeholder="Füge deinen Brief hier ein..."></textarea>
+      <label for="lang">Sprache</label>
+      <select id="lang">
+        <option value="de">Deutsch</option>
+        <option value="tr">Türkisch</option>
+        <option value="bg">Bulgarisch</option>
+        <option value="ar">Arabisch</option>
+      </select>
 
-    <div class="topRow">
-      <div class="langBox">
-        <label id="langLabel" for="langSelect">Sprache</label>
-        <select id="langSelect">
-          <option value="de">Deutsch</option>
-          <option value="tr">Türkçe</option>
-          <option value="bg">Български</option>
-          <option value="ar">العربية</option>
-        </select>
+      <label for="briefText">Brief als Text</label>
+      <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
+
+      <label for="bilder">Brief-Fotos hochladen</label>
+      <input id="bilder" type="file" accept="image/*" multiple />
+      <div class="hint">Du kannst bis zu 6 Bilder vom selben Brief hochladen.</div>
+
+      <div id="previewGrid" class="preview-grid"></div>
+
+      <div class="button-row">
+        <button id="analyseBtn" class="btn-primary" type="button">Brief erklären</button>
+        <button id="resetBtn" class="btn-secondary" type="button">Alles zurücksetzen</button>
+      </div>
+
+      <div id="status" class="loader hidden">Bitte warten...</div>
+      <div id="errorBox" class="error hidden"></div>
+      <div id="okBox" class="ok hidden"></div>
+    </div>
+
+    <div id="warningCard" class="card hidden">
+      <div class="section-title">Bitte erst neues Foto schicken</div>
+      <div id="warningText" class="warning"></div>
+    </div>
+
+    <div id="resultCard" class="card hidden">
+      <div class="section-title">Kurz erklärt</div>
+      <div id="kurzText" class="short-box"></div>
+
+      <div class="audio-row">
+        <button id="readShortBtn" class="btn-primary" type="button">🔊 Kurz vorlesen</button>
+        <button id="readAllBtn" class="btn-secondary" type="button">🔊 Alles vorlesen</button>
+        <button id="stopBtn" class="btn-danger" type="button">⏹️ Stopp</button>
       </div>
     </div>
 
-    <div class="uploadBox">
-      <label class="uploadLabel" id="uploadLabel" for="briefBild">Oder Foto vom Brief hochladen</label>
-      <input type="file" id="briefBild" accept="image/*,.jpg,.jpeg,.png,.webp" multiple />
-      <div class="small" id="uploadHint">Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.</div>
+    <div id="detailCard" class="card hidden">
+      <div class="section-title">Mehr Details</div>
+      <div id="detailText" class="detail-box"></div>
     </div>
-
-    <div class="buttonRow">
-      <button id="erklaerBtn" type="button">📄 Brief erklären</button>
-      <button id="vorlesenBtn" type="button">🔊 Vorlesen</button>
-      <button id="stoppBtn" type="button" class="stoppBtn">⏹ Stopp</button>
-    </div>
-
-    <div id="status"></div>
-    <div id="ergebnis"></div>
   </div>
 
   <script>
-    const briefText = document.getElementById("briefText");
-    const briefBild = document.getElementById("briefBild");
-    const erklaerBtn = document.getElementById("erklaerBtn");
-    const vorlesenBtn = document.getElementById("vorlesenBtn");
-    const stoppBtn = document.getElementById("stoppBtn");
-    const statusBox = document.getElementById("status");
-    const ergebnisBox = document.getElementById("ergebnis");
-    const langSelect = document.getElementById("langSelect");
+    const langEl = document.getElementById("lang");
+    const briefTextEl = document.getElementById("briefText");
+    const bilderEl = document.getElementById("bilder");
+    const previewGridEl = document.getElementById("previewGrid");
+    const analyseBtn = document.getElementById("analyseBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const statusEl = document.getElementById("status");
+    const errorBoxEl = document.getElementById("errorBox");
+    const okBoxEl = document.getElementById("okBox");
 
-    const titleText = document.getElementById("titleText");
-    const subText = document.getElementById("subText");
-    const langLabel = document.getElementById("langLabel");
-    const uploadLabel = document.getElementById("uploadLabel");
-    const uploadHint = document.getElementById("uploadHint");
+    const warningCardEl = document.getElementById("warningCard");
+    const warningTextEl = document.getElementById("warningText");
 
-    let aktuelleSprachausgabe = null;
+    const resultCardEl = document.getElementById("resultCard");
+    const detailCardEl = document.getElementById("detailCard");
+    const kurzTextEl = document.getElementById("kurzText");
+    const detailTextEl = document.getElementById("detailText");
 
-    const uiText = {
-      de: {
-        title: "Brief erklären",
-        sub: "Füge hier deinen Brief ein oder lade Fotos hoch. Hilfe24 erklärt ihn dir einfach.",
-        placeholder: "Füge deinen Brief hier ein...",
-        lang: "Sprache",
-        upload: "Oder Foto vom Brief hochladen",
-        hint: "Du kannst jetzt ein oder mehrere Bilder vom selben Brief hochladen. PDF bauen wir danach ein.",
-        explain: "📄 Brief erklären",
-        read: "🔊 Vorlesen",
-        stop: "⏹ Stopp",
-        wait: "Bitte kurz warten...",
-        noInput: "Bitte Text einfügen oder mindestens ein Bild hochladen.",
-        noReadText: "Es gibt noch keinen Text zum Vorlesen.",
-        noReadSupport: "Vorlesen wird auf diesem Gerät oder Browser nicht unterstützt.",
-        readFail: "Vorlesen hat nicht funktioniert.",
-        reading: "Die Erklärung wird vorgelesen...",
-        unknownError: "Unbekannter Fehler"
-      },
-      tr: {
-        title: "Mektubu açıkla",
-        sub: "Mektubu buraya yapıştır veya fotoğraf yükle. Hilfe24 sana basitçe açıklar.",
-        placeholder: "Mektubu buraya yapıştır...",
-        lang: "Dil",
-        upload: "Veya mektubun fotoğrafını yükle",
-        hint: "Aynı mektuba ait bir veya birkaç fotoğraf yükleyebilirsin. PDF işini sonra ekleriz.",
-        explain: "📄 Mektubu açıkla",
-        read: "🔊 Sesli oku",
-        stop: "⏹ Durdur",
-        wait: "Lütfen kısa bir süre bekle...",
-        noInput: "Lütfen metin ekle veya en az bir fotoğraf yükle.",
-        noReadText: "Sesli okunacak bir metin yok.",
-        noReadSupport: "Sesli okuma bu cihazda veya tarayıcıda desteklenmiyor.",
-        readFail: "Sesli okuma çalışmadı.",
-        reading: "Açıklama sesli okunuyor...",
-        unknownError: "Bilinmeyen hata"
-      },
-      bg: {
-        title: "Обясни писмото",
-        sub: "Постави писмото тук или качи снимки. Hilfe24 ще ти го обясни лесно.",
-        placeholder: "Постави писмото тук...",
-        lang: "Език",
-        upload: "Или качи снимка на писмото",
-        hint: "Можеш да качиш една или няколко снимки на едно и също писмо. PDF ще добавим по-късно.",
-        explain: "📄 Обясни писмото",
-        read: "🔊 Прочети",
-        stop: "⏹ Стоп",
-        wait: "Моля, изчакай малко...",
-        noInput: "Моля, въведи текст или качи поне една снимка.",
-        noReadText: "Няма текст за прочитане.",
-        noReadSupport: "Гласовото четене не се поддържа на това устройство или браузър.",
-        readFail: "Четенето не проработи.",
-        reading: "Обяснението се чете...",
-        unknownError: "Неизвестна грешка"
-      },
-      ar: {
-        title: "اشرح الرسالة",
-        sub: "ألصق الرسالة هنا أو ارفع صورًا لها. Hilfe24 يشرحها لك بشكل بسيط.",
-        placeholder: "ألصق الرسالة هنا...",
-        lang: "اللغة",
-        upload: "أو ارفع صورة للرسالة",
-        hint: "يمكنك رفع صورة واحدة أو عدة صور لنفس الرسالة. سنضيف PDF لاحقًا.",
-        explain: "📄 اشرح الرسالة",
-        read: "🔊 قراءة",
-        stop: "⏹ إيقاف",
-        wait: "انتظر قليلًا من فضلك...",
-        noInput: "من فضلك أضف نصًا أو ارفع صورة واحدة على الأقل.",
-        noReadText: "لا يوجد نص ليتم قراءته.",
-        noReadSupport: "القراءة الصوتية غير مدعومة على هذا الجهاز أو المتصفح.",
-        readFail: "القراءة الصوتية لم تعمل.",
-        reading: "يتم الآن قراءة الشرح...",
-        unknownError: "خطأ غير معروف"
+    const readShortBtn = document.getElementById("readShortBtn");
+    const readAllBtn = document.getElementById("readAllBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    let currentAudioShort = "";
+    let currentAudioAll = "";
+    let speechQueue = [];
+    let isSpeaking = false;
+    let voices = [];
+
+    function show(el) {
+      el.classList.remove("hidden");
+    }
+
+    function hide(el) {
+      el.classList.add("hidden");
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+      show(statusEl);
+    }
+
+    function clearStatus() {
+      hide(statusEl);
+      statusEl.textContent = "";
+    }
+
+    function setError(text) {
+      errorBoxEl.textContent = text;
+      show(errorBoxEl);
+    }
+
+    function clearError() {
+      hide(errorBoxEl);
+      errorBoxEl.textContent = "";
+    }
+
+    function setOk(text) {
+      okBoxEl.textContent = text;
+      show(okBoxEl);
+    }
+
+    function clearOk() {
+      hide(okBoxEl);
+      okBoxEl.textContent = "";
+    }
+
+    function resetOutput() {
+      hide(warningCardEl);
+      hide(resultCardEl);
+      hide(detailCardEl);
+      warningTextEl.textContent = "";
+      kurzTextEl.textContent = "";
+      detailTextEl.textContent = "";
+      currentAudioShort = "";
+      currentAudioAll = "";
+      stopSpeaking();
+    }
+
+    function resetAll() {
+      briefTextEl.value = "";
+      bilderEl.value = "";
+      previewGridEl.innerHTML = "";
+      clearStatus();
+      clearError();
+      clearOk();
+      resetOutput();
+    }
+
+    function renderPreviews() {
+      previewGridEl.innerHTML = "";
+      const files = Array.from(bilderEl.files || []);
+      for (const file of files.slice(0, 6)) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.onload = () => URL.revokeObjectURL(img.src);
+        previewGridEl.appendChild(img);
       }
-    };
-
-    function getUi() {
-      return uiText[langSelect.value] || uiText.de;
     }
 
-    function updateUiLanguage() {
-      const t = getUi();
-      titleText.textContent = t.title;
-      subText.textContent = t.sub;
-      briefText.placeholder = t.placeholder;
-      langLabel.textContent = t.lang;
-      uploadLabel.textContent = t.upload;
-      uploadHint.textContent = t.hint;
-      erklaerBtn.textContent = t.explain;
-      vorlesenBtn.textContent = t.read;
-      stoppBtn.textContent = t.stop;
-      document.documentElement.lang = langSelect.value === "ar" ? "ar" : "de";
-      document.body.dir = langSelect.value === "ar" ? "rtl" : "ltr";
-      briefText.dir = langSelect.value === "ar" ? "rtl" : "ltr";
-      ergebnisBox.dir = langSelect.value === "ar" ? "rtl" : "ltr";
-    }
-
-    langSelect.addEventListener("change", updateUiLanguage);
-    updateUiLanguage();
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
+    async function fileToBase64(file) {
+      return await new Promise((resolve, reject) => {
         const reader = new FileReader();
-
         reader.onload = () => {
-          const result = reader.result;
-          const base64 = result.split(",")[1];
+          const result = String(reader.result || "");
+          const base64 = result.split(",")[1] || "";
           resolve(base64);
         };
-
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
     }
 
-    function shouldHighlight() {
-      return langSelect.value === "de";
+    function speechLang(lang) {
+      if (lang === "tr") return "tr-TR";
+      if (lang === "bg") return "bg-BG";
+      if (lang === "ar") return "ar-SA";
+      return "de-DE";
     }
 
-    function highlightAntwort(text) {
-      if (!text) return "";
+    function loadVoices() {
+      voices = window.speechSynthesis.getVoices() || [];
+    }
 
-      const escapeHtml = (str) =>
-        str
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+    loadVoices();
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        loadVoices();
+      };
+    }
 
-      if (!shouldHighlight()) {
-        return escapeHtml(text).replace(/\n/g, "<br>");
+    function pickVoice(langCode) {
+      if (!voices.length) loadVoices();
+
+      return (
+        voices.find((v) => (v.lang || "").toLowerCase() === langCode.toLowerCase()) ||
+        voices.find((v) => (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())) ||
+        null
+      );
+    }
+
+    function cleanForSpeech(text, lang) {
+      let t = String(text || "")
+        .replace(/\*\*/g, " ")
+        .replace(/\u00A0/g, " ")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+      t = t
+        .replace(/Wer schreibt\?/gi, "Wer schreibt. ")
+        .replace(/Worum geht es\?/gi, "Worum geht es. ")
+        .replace(/Was ist jetzt wichtig\?/gi, "Was ist jetzt wichtig. ")
+        .replace(/Bis wann\?/gi, "Bis wann. ")
+        .replace(/Was passiert sonst\?/gi, "Was passiert sonst. ")
+        .replace(/Kurz gesagt:?/gi, "Kurz gesagt. ");
+
+      t = t
+        .replace(/Kim yazıyor\?/gi, "Kim yazıyor. ")
+        .replace(/Konu ne\?/gi, "Konu ne. ")
+        .replace(/Şimdi ne önemli\?/gi, "Şimdi ne önemli. ")
+        .replace(/Ne zamana kadar\?/gi, "Ne zamana kadar. ")
+        .replace(/Yoksa ne olur\?/gi, "Yoksa ne olur. ")
+        .replace(/Kısaca:?/gi, "Kısaca. ");
+
+      t = t
+        .replace(/Кой е изпратил писмото\?/gi, "Кой е изпратил писмото. ")
+        .replace(/За какво става дума\?/gi, "За какво става дума. ")
+        .replace(/Какво е важно сега\?/gi, "Какво е важно сега. ")
+        .replace(/До кога\?/gi, "До кога. ")
+        .replace(/Какво става иначе\?/gi, "Какво става иначе. ")
+        .replace(/Накратко:?/gi, "Накратко. ");
+
+      t = t
+        .replace(/من أرسل الرسالة؟/g, "من أرسل الرسالة. ")
+        .replace(/عن ماذا تتحدث الرسالة؟/g, "عن ماذا تتحدث الرسالة. ")
+        .replace(/ما المهم الآن؟/g, "ما المهم الآن. ")
+        .replace(/إلى متى؟/g, "إلى متى. ")
+        .replace(/ماذا يحدث إذا لم أفعل شيئًا؟/g, "ماذا يحدث إذا لم أفعل شيئا. ")
+        .replace(/باختصار:/g, "باختصار. ");
+
+      t = t
+        .replace(/€/g, " Euro ")
+        .replace(/\n/g, ". ")
+        .replace(/[:]/g, ". ")
+        .replace(/\.\s*\./g, ".")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+      if (lang === "de") {
+        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "I B A N");
       }
 
-      let html = escapeHtml(text);
+      if (lang === "tr") {
+        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, " iban");
+      }
 
-      const highlightList = (input, items, className) => {
-        const sorted = [...items].sort((a, b) => b.length - a.length);
+      return t;
+    }
 
-        for (const item of sorted) {
-          const escaped = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const regex = new RegExp(`(^|[^\\wÄÖÜäöüß])(${escaped})(?=[^\\wÄÖÜäöüß]|$)`, "gi");
-          input = input.replace(regex, `$1<span class="${className}">$2</span>`);
+    function splitForSpeech(text, maxLen = 220) {
+      const sentences = text.match(/[^.!?]+[.!?]?/g) || [text];
+      const chunks = [];
+      let current = "";
+
+      for (const raw of sentences) {
+        const s = raw.trim();
+        if (!s) continue;
+
+        if ((current + " " + s).trim().length <= maxLen) {
+          current = (current + " " + s).trim();
+        } else {
+          if (current) chunks.push(current);
+          current = s;
         }
-
-        return input;
-      };
-
-      html = html.replace(
-        /\b(bis spätestens\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis spätestens\s+\d{1,2}\.\d{1,2}\.\d{4}|bis zum\s+\d{1,2}\.\s*[A-Za-zÄÖÜäöüß]+\s+\d{4}|bis zum\s+\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}\.\d{1,2}\.\d{4})\b/gi,
-        '<span class="highlight-red">$1</span>'
-      );
-
-      html = highlightList(html, [
-        "Frist",
-        "Termin",
-        "Mahnung",
-        "Sperre",
-        "Kürzung",
-        "gekürzt",
-        "eingestellt",
-        "Einstellung",
-        "gestoppt",
-        "stoppen",
-        "wegfallen",
-        "kein Geld mehr",
-        "Leistungen gekürzt",
-        "Leistungen eingestellt",
-        "Leistungen gestrichen",
-        "Geld gestrichen",
-        "dringend"
-      ], "highlight-red");
-
-      html = highlightList(html, [
-        "Einstellungsbescheid",
-        "Kindergeldbescheid",
-        "Meldebescheinigung",
-        "Lohnabrechnung",
-        "Kontoauszüge",
-        "Kontoauszug",
-        "Mietvertrag",
-        "Bescheinigung",
-        "Unterlagen",
-        "Unterlage",
-        "Nachweise",
-        "Nachweis",
-        "Bescheid",
-        "Abmeldung",
-        "Kindergeld",
-        "Vertrag",
-        "Kopien",
-        "Kopie",
-        "Originale",
-        "Original"
-      ], "highlight-orange");
-
-      html = highlightList(html, [
-        "per E-Mail",
-        "per Email",
-        "E-Mail",
-        "Email",
-        "per Post",
-        "Post",
-        "Einwurf",
-        "online",
-        "hochladen",
-        "Upload",
-        "persönlich",
-        "Portal",
-        "App"
-      ], "highlight-blue");
-
-      html = html.replace(
-        /(Du musst jetzt nur[\s\S]*?)(?=\n\n|$)/i,
-        '<span class="highlight-green">$1</span>'
-      );
-
-      html = html.replace(/\n/g, "<br>");
-
-      return html;
-    }
-
-    function getPlainTextFromHtml(html) {
-      const temp = document.createElement("div");
-      temp.innerHTML = html;
-      return (temp.textContent || temp.innerText || "").trim();
-    }
-
-    function stopVorlesen() {
-      window.speechSynthesis.cancel();
-      aktuelleSprachausgabe = null;
-    }
-
-    function getSpeechLang() {
-      switch (langSelect.value) {
-        case "tr":
-          return "tr-TR";
-        case "bg":
-          return "bg-BG";
-        case "ar":
-          return "ar-SA";
-        default:
-          return "de-DE";
       }
+
+      if (current) chunks.push(current);
+      return chunks;
     }
 
-    function vorlesenText(text) {
-      const t = getUi();
+    function updateSpeechButtons() {
+      readShortBtn.disabled = isSpeaking;
+      readAllBtn.disabled = isSpeaking;
+      stopBtn.disabled = !isSpeaking;
+    }
 
-      if (!("speechSynthesis" in window)) {
-        statusBox.className = "error";
-        statusBox.textContent = t.noReadSupport;
+    function stopSpeaking() {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+      speechQueue = [];
+      isSpeaking = false;
+      updateSpeechButtons();
+    }
+
+    function speakChunks(chunks, lang) {
+      if (!chunks.length) {
+        isSpeaking = false;
+        updateSpeechButtons();
         return;
       }
 
-      stopVorlesen();
+      const chunk = chunks.shift();
+      const utterance = new SpeechSynthesisUtterance(chunk);
+      const langCode = speechLang(lang);
+      const voice = pickVoice(langCode);
 
-      const saubererText = text.trim();
-      if (!saubererText) {
-        statusBox.className = "error";
-        statusBox.textContent = t.noReadText;
-        return;
+      utterance.lang = langCode;
+      if (voice) utterance.voice = voice;
+
+      if (lang === "tr") {
+        utterance.rate = 0.82;
+      } else if (lang === "de") {
+        utterance.rate = 0.9;
+      } else {
+        utterance.rate = 0.86;
       }
 
-      const utterance = new SpeechSynthesisUtterance(saubererText);
-      utterance.lang = getSpeechLang();
-      utterance.rate = 0.95;
       utterance.pitch = 1;
+      utterance.volume = 1;
 
-      utterance.onstart = () => {
-        statusBox.className = "loading";
-        statusBox.textContent = t.reading;
-      };
+      utterance.onend = () => speakChunks(chunks, lang);
+      utterance.onerror = () => speakChunks(chunks, lang);
 
-      utterance.onend = () => {
-        statusBox.className = "";
-        statusBox.textContent = "";
-        aktuelleSprachausgabe = null;
-      };
-
-      utterance.onerror = () => {
-        statusBox.className = "error";
-        statusBox.textContent = t.readFail;
-        aktuelleSprachausgabe = null;
-      };
-
-      aktuelleSprachausgabe = utterance;
       window.speechSynthesis.speak(utterance);
     }
 
-    erklaerBtn.addEventListener("click", async () => {
-      const t = getUi();
+    function startSpeaking(text) {
+      const lang = langEl.value;
+      const cleaned = cleanForSpeech(text, lang);
+
+      if (!cleaned) {
+        alert("Es gibt keinen Text zum Vorlesen.");
+        return;
+      }
+
+      stopSpeaking();
+
+      speechQueue = splitForSpeech(cleaned, 220);
+      isSpeaking = true;
+      updateSpeechButtons();
+      speakChunks([...speechQueue], lang);
+    }
+
+    async function explainLetter() {
+      clearError();
+      clearOk();
+      resetOutput();
+
+      const text = briefTextEl.value.trim();
+      const files = Array.from(bilderEl.files || []);
+      const lang = langEl.value;
+
+      if (!text && files.length === 0) {
+        setError("Bitte füge Text ein oder lade mindestens ein Bild hoch.");
+        return;
+      }
+
+      if (files.length > 6) {
+        setError("Du kannst maximal 6 Bilder hochladen.");
+        return;
+      }
+
+      setStatus("Bitte warten... Der Brief wird geprüft.");
 
       try {
-        const text = briefText.value.trim();
-        const files = briefBild.files;
-        const lang = langSelect.value;
-
-        stopVorlesen();
-        statusBox.className = "loading";
-        statusBox.textContent = t.wait;
-        ergebnisBox.innerHTML = "";
-
         let response;
+        let data;
 
-        if (text) {
-          response = await fetch("/api/brief", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ text, lang })
-          });
-        } else if (files && files.length > 0) {
-          const bilder = await Promise.all(
-            Array.from(files).map(async (file) => {
-              const imageData = await fileToBase64(file);
-              return {
-                imageData,
-                mimeType: file.type
-              };
-            })
-          );
+        if (files.length > 0) {
+          const bilder = [];
+          for (const file of files) {
+            const imageData = await fileToBase64(file);
+            bilder.push({
+              mimeType: file.type || "image/jpeg",
+              imageData
+            });
+          }
 
           response = await fetch("/api/brief-bild", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({ bilder, lang })
+            body: JSON.stringify({
+              lang,
+              bilder
+            })
           });
         } else {
-          statusBox.className = "error";
-          statusBox.textContent = t.noInput;
+          response = await fetch("/api/brief", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              lang,
+              text
+            })
+          });
+        }
+
+        data = await response.json();
+
+        clearStatus();
+
+        if (!response.ok || !data.ok) {
+          setError(data.error || "Etwas ist schiefgelaufen.");
           return;
         }
 
-        const data = await response.json();
-
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || t.unknownError);
+        if (data.quality_ok === false) {
+          warningTextEl.textContent =
+            data.hinweis || "Das Bild ist nicht gut genug. Bitte schick ein neues Foto.";
+          show(warningCardEl);
+          setOk("Bitte erst ein besseres Foto schicken.");
+          return;
         }
 
-        statusBox.className = "";
-        statusBox.textContent = "";
-        ergebnisBox.innerHTML = highlightAntwort(data.erklaerung);
-      } catch (error) {
-        statusBox.className = "error";
-        statusBox.textContent = error.message || getUi().unknownError;
+        kurzTextEl.textContent = data.kurz || "";
+        detailTextEl.textContent = data.details || "";
+
+        currentAudioShort = data.audio_kurz || data.kurz || "";
+        currentAudioAll = [data.audio_kurz || "", data.audio_details || ""].filter(Boolean).join("\n\n");
+
+        show(resultCardEl);
+        show(detailCardEl);
+        setOk("Der Brief wurde erklärt.");
+      } catch (err) {
+        clearStatus();
+        setError("Serverfehler. Bitte später nochmal versuchen.");
+        console.error(err);
       }
+    }
+
+    bilderEl.addEventListener("change", renderPreviews);
+    analyseBtn.addEventListener("click", explainLetter);
+    resetBtn.addEventListener("click", resetAll);
+
+    readShortBtn.addEventListener("click", () => {
+      startSpeaking(currentAudioShort);
     });
 
-    vorlesenBtn.addEventListener("click", () => {
-      const textZumVorlesen = getPlainTextFromHtml(ergebnisBox.innerHTML);
-      vorlesenText(textZumVorlesen);
+    readAllBtn.addEventListener("click", () => {
+      startSpeaking(currentAudioAll || currentAudioShort);
     });
 
-    stoppBtn.addEventListener("click", () => {
-      stopVorlesen();
-      statusBox.className = "";
-      statusBox.textContent = "";
-    });
+    stopBtn.addEventListener("click", stopSpeaking);
+
+    updateSpeechButtons();
   </script>
 </body>
 </html>
