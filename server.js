@@ -263,19 +263,32 @@ Gib genau dieses JSON zurück:
 }
 
 Regeln:
-- "ok": true nur wenn der Brief gut genug lesbar ist
-- "ok": false wenn das Bild zu unscharf, abgeschnitten, zu dunkel, mit Schatten verdeckt oder unvollständig ist
-- "problem": sehr kurz, z. B. "unscharf", "abgeschnitten", "zu dunkel", "Schatten", "weitere Seite fehlt"
+- "ok": true nur wenn der Brief sicher genug lesbar ist
+- "ok": false wenn das Bild zu unscharf, abgeschnitten, zu dunkel, mit Schatten verdeckt, zu weit weg oder unvollständig ist
+- "ok": false auch dann, wenn der Brief im Bild zu klein ist oder zu viel Hintergrund zu sehen ist
+- "problem": sehr kurz, z. B. "unscharf", "abgeschnitten", "zu dunkel", "Schatten", "weit weg", "Brief zu klein", "weitere Seite fehlt"
 - "hinweis": sehr einfacher Satz für den Nutzer
+
+Wichtige zusätzliche Regel:
+- Wenn der Brief nicht den größten Teil des Fotos einnimmt, sondern viel Tisch, Boden, Beine, Hände oder andere Umgebung sichtbar sind, dann ist das Foto NICHT gut genug
+- Dann setze "ok": false
+- Dann gib einen Hinweis wie:
+  "Der Brief ist zu weit weg. Bitte mach ein näheres Foto nur vom Brief."
+  oder
+  "Bitte fotografiere nur den Brief groß und deutlich."
 
 Beispiele für "hinweis":
 - "Das Bild ist zu unscharf. Bitte schick ein schärferes Foto."
 - "Die Seite ist nicht ganz drauf. Bitte fotografiere die ganze Seite."
 - "Der Text ist nicht gut lesbar. Bitte mach ein neues Foto ohne Schatten."
 - "Es fehlt noch eine Seite. Bitte lade auch die nächste Seite hoch."
+- "Der Brief ist zu weit weg. Bitte mach ein näheres Foto nur vom Brief."
+- "Bitte fotografiere nur den Brief groß und deutlich."
 
 Wichtig:
 - Erfinde nichts.
+- Sei streng.
+- Lieber einmal zu früh stoppen als ein schlechtes Foto durchlassen.
 - Wenn das Bild gut genug ist, gib zurück:
 {
   "ok": true,
