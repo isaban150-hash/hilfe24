@@ -265,7 +265,7 @@ function simplifySender(absender, briefart) {
   return absender || "";
 }
 
-ffunction simplifyAction(action) {
+function simplifyAction(action) {
   const a = action.toLowerCase();
 
   if (
