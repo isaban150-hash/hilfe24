@@ -265,26 +265,7 @@ function simplifySender(absender, briefart) {
   return absender || "";
 }
 
-function toSentence(text) {
-  if (!text) return "";
-  const t = text.trim().replace(/\.$/, "");
-  if (!t) return "";
-  return t.charAt(0).toUpperCase() + t.slice(1) + ".";
-}
-
-function dedupe(arr) {
-  const out = [];
-  for (const item of arr) {
-    const t = String(item || "").trim();
-    if (!t) continue;
-    if (!out.some((x) => x.toLowerCase() === t.toLowerCase())) {
-      out.push(t);
-    }
-  }
-  return out;
-}
-
-function simplifyAction(action) {
+ffunction simplifyAction(action) {
   const a = action.toLowerCase();
 
   if (
@@ -323,7 +304,6 @@ function simplifyAction(action) {
 
   return action.replace(/\.$/, "").trim();
 }
-
 function applyPersonName(text, personName) {
   if (!text) return "";
   if (!personName) return text;
@@ -357,23 +337,30 @@ function renderSimpleGerman(info) {
       importantLines.push(`Wichtig: ${simpleActions.slice(0, 2).join(" und ")}.`);
     }
 
-    if (info.versteckte_wichtige_info) {
-      importantLines.push(toSentence(info.versteckte_wichtige_info));
-    }
+    if (info.folge_wenn_nichts) {
+  let consequence = toSentence(info.folge_wenn_nichts)
+    .replace(/verbindlich/gi, "gültig")
+    .replace(/wirksam/gi, "gültig")
+    .replace(/es können keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.")
+    .replace(/keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.");
 
-    blocks.push(`Was ist jetzt wichtig?\n${importantLines.join(" ")}`);
-  }
+  blocks.push(`Was passiert sonst?\n${consequence}`);
+}
 
-  if (info.frist || info.termin) {
-    if (info.frist && info.termin) {
-      blocks.push(
-        `Bis wann?\nWichtig ist diese Frist: ${info.frist}. Wichtiger Termin: ${info.termin}.`
-      );
-    } else if (info.frist) {
-      blocks.push(`Bis wann?\nWichtig ist diese Frist: ${info.frist}.`);
-    } else if (info.termin) {
-      blocks.push(`Bis wann?\nWichtig ist dieser Termin: ${info.termin}.`);
-    }
+if (info.kurz_gesagt) {
+  let shortText = toSentence(info.kurz_gesagt)
+    .replace(/senden sie/gi, "Schicken Sie")
+    .replace(/reichen sie/gi, "Schicken Sie")
+    .replace(/unterlagen ein/gi, "die Unterlagen");
+
+  blocks.push(`Kurz gesagt:\n${shortText}`);
+} else if (simpleActions.length > 0) {
+  blocks.push(`Kurz gesagt:\nDu musst jetzt nur das Wichtige beachten.`);
+} else if (info.frist || info.termin) {
+  blocks.push(`Kurz gesagt:\nDu musst jetzt nur die Frist oder den Termin beachten.`);
+} else {
+  blocks.push(`Kurz gesagt:\nDu musst jetzt nichts machen.`);
+}
   }
 
   if (info.folge_wenn_nichts) {
