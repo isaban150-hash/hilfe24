@@ -25,14 +25,14 @@ function getLanguageMeta(lang) {
         label: "Türkisch",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Türkisch.
-Halte die Struktur und die Überschriften gleich.
+Halte die Struktur gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
-Keine neue Behörde erfinden.
-Jobcenter soll als "Jobcenter" stehen bleiben.
-Schreibe einfach und natürlich.
-Keine unnötig formellen Wörter.
+Schreibe kurz, klar und einfach.
+Benutze für "Jugendamt" die normale verständliche türkische Bezeichnung "Gençlik Dairesi".
+Lass "Jobcenter" als "Jobcenter" stehen.
+Schreibe nicht steif und nicht wie Google Translate.
 `
       };
     case "bg":
@@ -41,10 +41,11 @@ Keine unnötig formellen Wörter.
         label: "Bulgarisch",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Bulgarisch.
-Halte die Struktur und die Überschriften gleich.
+Halte die Struktur gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
+Schreibe kurz, klar und einfach.
 `
       };
     case "ar":
@@ -53,10 +54,11 @@ Lass nichts Wichtiges weg.
         label: "Arabisch",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Arabisch.
-Halte die Struktur und die Überschriften gleich.
+Halte die Struktur gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
+Schreibe kurz, klar und einfach.
 `
       };
     default:
@@ -130,7 +132,10 @@ function normalizeInfo(info) {
   return {
     absender: typeof info.absender === "string" ? info.absender.trim() : "",
     briefart: typeof info.briefart === "string" ? info.briefart.trim() : "",
-    worum_geht_es: typeof info.worum_geht_es === "string" ? info.worum_geht_es.trim() : "",
+    betroffene_person:
+      typeof info.betroffene_person === "string" ? info.betroffene_person.trim() : "",
+    worum_geht_es:
+      typeof info.worum_geht_es === "string" ? info.worum_geht_es.trim() : "",
     was_ist_zu_tun: Array.isArray(info.was_ist_zu_tun)
       ? info.was_ist_zu_tun.map((x) => String(x).trim()).filter(Boolean)
       : [],
@@ -142,7 +147,8 @@ function normalizeInfo(info) {
       typeof info.versteckte_wichtige_info === "string"
         ? info.versteckte_wichtige_info.trim()
         : "",
-    kurz_gesagt: typeof info.kurz_gesagt === "string" ? info.kurz_gesagt.trim() : "",
+    kurz_gesagt:
+      typeof info.kurz_gesagt === "string" ? info.kurz_gesagt.trim() : "",
     unsicherheiten: Array.isArray(info.unsicherheiten)
       ? info.unsicherheiten.map((x) => String(x).trim()).filter(Boolean)
       : []
@@ -161,14 +167,15 @@ Wichtig:
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
-- Ziele, Wünsche, allgemeine Ideen oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
+- Ziele, Wünsche, Ideen oder allgemeine Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
 - "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
-- "kurz_gesagt" soll 1 sehr kurzer Satz in ultra einfachem Deutsch sein.
+- "kurz_gesagt" soll 1 sehr kurzer Satz in sehr einfachem Deutsch sein.
 
 Gib genau dieses JSON zurück:
 {
   "absender": "",
   "briefart": "",
+  "betroffene_person": "",
   "worum_geht_es": "",
   "was_ist_zu_tun": [],
   "frist": "",
@@ -181,9 +188,10 @@ Gib genau dieses JSON zurück:
 
 Regeln:
 - "absender": nur wenn klar erkennbar
-- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jobcenter-Brief", "Jugendamt-Brief", "Versicherung", "Werbung"
+- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Jobcenter-Brief", "Jugendamt-Brief", "Versicherungsbrief", "Werbung"
+- "betroffene_person": Name nur wenn klar erkennbar
 - "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, schicken, Termin wahrnehmen, widersprechen
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, widersprechen
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
@@ -208,14 +216,15 @@ Wichtig:
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
-- Ziele, Wünsche, allgemeine Ideen oder bloße Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
+- Ziele, Wünsche, Ideen oder allgemeine Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
 - "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
-- "kurz_gesagt" soll 1 sehr kurzer Satz in ultra einfachem Deutsch sein.
+- "kurz_gesagt" soll 1 sehr kurzer Satz in sehr einfachem Deutsch sein.
 
 Gib genau dieses JSON zurück:
 {
   "absender": "",
   "briefart": "",
+  "betroffene_person": "",
   "worum_geht_es": "",
   "was_ist_zu_tun": [],
   "frist": "",
@@ -229,8 +238,9 @@ Gib genau dieses JSON zurück:
 Regeln:
 - "absender": nur wenn klar erkennbar
 - "briefart": sehr kurz
+- "betroffene_person": Name nur wenn klar erkennbar
 - "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, schicken, Termin wahrnehmen, widersprechen
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, widersprechen
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
@@ -257,6 +267,7 @@ function simplifySender(absender, briefart) {
   if (text.includes("gericht")) return "Gericht";
   if (text.includes("schule")) return "Schule";
   if (text.includes("vermieter")) return "Vermieter";
+  if (text.includes("stadt")) return "Stadt";
 
   return absender || "";
 }
@@ -268,69 +279,171 @@ function toSentence(text) {
   return t.charAt(0).toUpperCase() + t.slice(1) + ".";
 }
 
-function formatActions(actions) {
-  if (!actions || actions.length === 0) return "";
+function dedupe(arr) {
+  const out = [];
+  for (const item of arr) {
+    const t = String(item || "").trim();
+    if (!t) continue;
+    if (!out.some((x) => x.toLowerCase() === t.toLowerCase())) {
+      out.push(t);
+    }
+  }
+  return out;
+}
 
-  const cleaned = actions
-    .map((x) => x.replace(/\.$/, "").trim())
-    .filter(Boolean)
-    .slice(0, 2);
+function simplifyAction(action, personName) {
+  const a = action.toLowerCase();
+  const person = personName || "die Person";
 
-  if (cleaned.length === 0) return "";
-  if (cleaned.length === 1) return cleaned[0];
+  if (
+    a.includes("einwohnermeldeamt") ||
+    a.includes("bürgeramt") ||
+    a.includes("bei der stadt anmelden") ||
+    a.includes("bei der stadt wieder anmelden") ||
+    a.includes("bei der stadt melden")
+  ) {
+    return `${person} soll bei der Stadt angemeldet werden`;
+  }
 
-  return `${cleaned[0]} und ${cleaned[1]}`;
+  if (a.includes("jobcenter")) {
+    return `${person} soll beim Jobcenter angemeldet werden`;
+  }
+
+  if (a.includes("unterlagen")) {
+    return `die Unterlagen sollen geschickt werden`;
+  }
+
+  if (a.includes("zahlen")) {
+    return `du sollst zahlen`;
+  }
+
+  if (a.includes("termin")) {
+    return `der Termin ist wichtig`;
+  }
+
+  if (a.includes("widerspruch")) {
+    return `du sollst dich melden, wenn du nicht einverstanden bist`;
+  }
+
+  if (a.includes("melden")) {
+    return `du sollst dich melden`;
+  }
+
+  return action.replace(/\.$/, "").trim();
 }
 
 function renderSimpleGerman(info) {
-  const lines = [];
-
+  const blocks = [];
   const sender = simplifySender(info.absender, info.briefart);
+  const person = info.betroffene_person || "die Person";
+
   if (sender) {
-    lines.push(`Wer schreibt?\nDer Brief ist vom ${sender}.`);
+    blocks.push(`Wer schreibt?\nDer Brief ist vom ${sender}.`);
   }
 
   if (info.worum_geht_es) {
-    lines.push(`Worum geht es?\n${toSentence(info.worum_geht_es)}`);
+    let topic = info.worum_geht_es;
+
+    if (info.betroffene_person) {
+      topic = topic.replaceAll(info.betroffene_person, info.betroffene_person);
+    }
+
+    blocks.push(`Worum geht es?\n${toSentence(topic)}`);
   } else if (info.briefart) {
-    lines.push(`Worum geht es?\n${toSentence(`Es geht um diesen ${info.briefart}`)}`);
+    blocks.push(`Worum geht es?\n${toSentence(`Es geht um diesen ${info.briefart}`)}`);
   }
 
-  const actions = formatActions(info.was_ist_zu_tun);
-  let important = "";
+  const simpleActions = dedupe(
+    (info.was_ist_zu_tun || []).map((x) => simplifyAction(x, info.betroffene_person || "Die Person"))
+  );
 
-  if (actions) {
-    important = `Wichtig: ${actions}.`;
-  } else if (info.versteckte_wichtige_info) {
-    important = toSentence(info.versteckte_wichtige_info);
-  }
+  if (simpleActions.length > 0 || info.versteckte_wichtige_info) {
+    const importantLines = [];
 
-  if (important) {
-    lines.push(`Was ist jetzt wichtig?\n${important}`);
+    if (simpleActions.length > 0) {
+      importantLines.push(`Wichtig: ${simpleActions.slice(0, 2).join(" und ")}.`);
+    }
+
+    if (info.versteckte_wichtige_info) {
+      importantLines.push(toSentence(info.versteckte_wichtige_info));
+    }
+
+    blocks.push(`Was ist jetzt wichtig?\n${importantLines.join(" ")}`);
   }
 
   if (info.frist || info.termin) {
-    const whenText = info.frist
-      ? `Wichtig ist diese Frist: ${info.frist}.`
-      : `Wichtig ist dieser Termin: ${info.termin}.`;
-    lines.push(`Bis wann?\n${whenText}`);
+    if (info.frist && info.termin) {
+      blocks.push(
+        `Bis wann?\nWichtig ist diese Frist: ${info.frist}. Wichtiger Termin: ${info.termin}.`
+      );
+    } else if (info.frist) {
+      blocks.push(`Bis wann?\nWichtig ist diese Frist: ${info.frist}.`);
+    } else if (info.termin) {
+      blocks.push(`Bis wann?\nWichtig ist dieser Termin: ${info.termin}.`);
+    }
   }
 
   if (info.folge_wenn_nichts) {
-    lines.push(`Was passiert sonst?\n${toSentence(info.folge_wenn_nichts)}`);
+    let consequence = toSentence(info.folge_wenn_nichts)
+      .replace(/verbindlich/gi, "gültig")
+      .replace(/wirksam/gi, "gültig");
+
+    blocks.push(`Was passiert sonst?\n${consequence}`);
   }
 
   if (info.kurz_gesagt) {
-    lines.push(`Kurz gesagt:\n${toSentence(info.kurz_gesagt)}`);
-  } else if (actions) {
-    lines.push(`Kurz gesagt:\nDu musst jetzt nur ${actions}.`);
+    blocks.push(`Kurz gesagt:\n${toSentence(info.kurz_gesagt)}`);
+  } else if (simpleActions.length > 0) {
+    blocks.push(`Kurz gesagt:\nDu musst jetzt nur das Wichtige beachten.`);
   } else if (info.frist || info.termin) {
-    lines.push(`Kurz gesagt:\nDu musst jetzt nur die Frist oder den Termin beachten.`);
+    blocks.push(`Kurz gesagt:\nDu musst jetzt nur die Frist oder den Termin beachten.`);
   } else {
-    lines.push(`Kurz gesagt:\nDu musst jetzt nichts machen.`);
+    blocks.push(`Kurz gesagt:\nDu musst jetzt nichts machen.`);
   }
 
-  return lines.slice(0, 6).join("\n\n");
+  return blocks.slice(0, 6).join("\n\n");
+}
+
+function localizeSectionHeadings(text, lang) {
+  if (!text) return text;
+
+  const maps = {
+    tr: {
+      "Wer schreibt?": "Kim yazdı?",
+      "Worum geht es?": "Konu ne?",
+      "Was ist jetzt wichtig?": "Şimdi önemli olan ne?",
+      "Bis wann?": "Ne zamana kadar?",
+      "Was passiert sonst?": "Yoksa ne olur?",
+      "Kurz gesagt:": "Kısaca:"
+    },
+    bg: {
+      "Wer schreibt?": "Кой е изпратил писмото?",
+      "Worum geht es?": "За какво става дума?",
+      "Was ist jetzt wichtig?": "Какво е важно сега?",
+      "Bis wann?": "До кога?",
+      "Was passiert sonst?": "Какво става иначе?",
+      "Kurz gesagt:": "Накратко:"
+    },
+    ar: {
+      "Wer schreibt?": "من أرسل الرسالة؟",
+      "Worum geht es?": "عن ماذا تتحدث الرسالة؟",
+      "Was ist jetzt wichtig?": "ما المهم الآن؟",
+      "Bis wann?": "إلى متى؟",
+      "Was passiert sonst?": "ماذا يحدث إذا لم أفعل شيئًا؟",
+      "Kurz gesagt:": "باختصار:"
+    }
+  };
+
+  const dict = maps[(lang || "").toLowerCase()];
+  if (!dict) return text;
+
+  let result = text;
+  for (const [de, translated] of Object.entries(dict)) {
+    const escaped = de.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(escaped, "g"), translated);
+  }
+
+  return result;
 }
 
 function buildTranslationPrompt(germanBase, langMeta) {
@@ -345,7 +458,7 @@ ${langMeta.instruction}
 
 Regeln:
 - Übersetze Satz für Satz.
-- Halte dieselben Überschriften.
+- Halte dieselbe Struktur.
 - Erfinde nichts dazu.
 - Lass nichts weg.
 - Füge keine neuen Sätze ein.
@@ -392,7 +505,8 @@ async function translateIfNeeded(germanBase, lang) {
     { text: buildTranslationPrompt(germanBase, langMeta) }
   ]);
 
-  return cleanAntwort(translatedRaw);
+  const cleaned = cleanAntwort(translatedRaw);
+  return localizeSectionHeadings(cleaned, lang);
 }
 
 async function buildFinalAnswerFromText(text, lang) {
