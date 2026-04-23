@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 8080;
 const apiKey = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
 
-app.use(express.json({ limit: "20mb" }));
+app.use(express.json({ limit: "25mb" }));
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
@@ -23,18 +23,18 @@ function getLanguageMeta(lang) {
       return {
         code: "tr",
         label: "Türkisch",
+        speech: "tr-TR",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Türkisch.
-Halte die Struktur exakt gleich.
+Halte die Bedeutung exakt gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
-Keine neue Behörde erfinden.
 Wenn im Deutschen "Jobcenter" steht, dann bleibt "Jobcenter".
-Wenn im Deutschen "Jugendamt" steht, übersetze es als "Gençlik Dairesi".
-Wenn im Deutschen "Stadtwerke" steht, dann bleibt "Stadtwerke".
 Wenn im Deutschen "AOK" steht, dann bleibt "AOK".
-Schreibe einfach, klar und natürlich.
+Wenn im Deutschen "Stadtwerke" steht, dann bleibt "Stadtwerke".
+Wenn im Deutschen "Jugendamt" steht, dann übersetze es verständlich als "Gençlik Dairesi".
+Schreibe natürlich, kurz und klar.
 Nicht steif. Nicht wie Google Translate.
 `
       };
@@ -42,9 +42,10 @@ Nicht steif. Nicht wie Google Translate.
       return {
         code: "bg",
         label: "Bulgarisch",
+        speech: "bg-BG",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Bulgarisch.
-Halte die Struktur exakt gleich.
+Halte die Bedeutung exakt gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
@@ -54,9 +55,10 @@ Lass nichts Wichtiges weg.
       return {
         code: "ar",
         label: "Arabisch",
+        speech: "ar-SA",
         instruction: `
 Übersetze den deutschen Text in sehr einfaches, natürliches Arabisch.
-Halte die Struktur exakt gleich.
+Halte die Bedeutung exakt gleich.
 Übersetze Satz für Satz.
 Erfinde nichts dazu.
 Lass nichts Wichtiges weg.
@@ -66,6 +68,7 @@ Lass nichts Wichtiges weg.
       return {
         code: "de",
         label: "Deutsch",
+        speech: "de-DE",
         instruction: ``
       };
   }
@@ -107,9 +110,8 @@ async function callGemini(parts) {
   return text;
 }
 
-function cleanAntwort(text) {
-  if (!text) return "";
-  return text
+function cleanText(text) {
+  return String(text || "")
     .replace(/\*\*/g, "")
     .replace(/^\s*\d+\.\s*/gm, "")
     .replace(/\n{3,}/g, "\n\n")
@@ -117,6 +119,11 @@ function cleanAntwort(text) {
 }
 
 function extractJson(text) {
+  const fenced = text.match(/```json\s*([\s\S]*?)```/i);
+  if (fenced) {
+    return JSON.parse(fenced[1]);
+  }
+
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) {
     throw new Error("Konnte keine JSON-Antwort lesen");
@@ -136,10 +143,12 @@ function normalizeArray(value) {
 
 function normalizeInfo(info) {
   return {
-    absender: normalizeString(info.absender),
+    absender_original: normalizeString(info.absender_original),
+    absender_kurz: normalizeString(info.absender_kurz),
     briefart: normalizeString(info.briefart),
     betroffene_person: normalizeString(info.betroffene_person),
     worum_geht_es: normalizeString(info.worum_geht_es),
+    wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
     was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
     frist: normalizeString(info.frist),
     termin: normalizeString(info.termin),
@@ -163,15 +172,18 @@ Wichtig:
 - Keine Sätze außerhalb des JSON.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
 - Ziele, Wünsche, Ideen oder allgemeine Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
+- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein, nicht Nebensachen.
 - "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
 - "kurz_gesagt" soll 1 sehr kurzer Satz in sehr einfachem Deutsch sein.
 
 Gib genau dieses JSON zurück:
 {
-  "absender": "",
+  "absender_original": "",
+  "absender_kurz": "",
   "briefart": "",
   "betroffene_person": "",
   "worum_geht_es": "",
+  "wichtigste_punkte": [],
   "was_ist_zu_tun": [],
   "frist": "",
   "termin": "",
@@ -182,11 +194,13 @@ Gib genau dieses JSON zurück:
 }
 
 Regeln:
-- "absender": nur wenn klar erkennbar
-- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Einladung", "Versicherungsbrief", "Info-Brief", "Werbung", "Kündigung", "Bestätigung", "Ablehnung", "Bewilligung"
+- "absender_original": so wie im Brief
+- "absender_kurz": kurze, verständliche Form vom Absender
+- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Einladung", "Info-Brief", "Versicherungsbrief", "Bewilligung", "Ablehnung", "Werbung"
 - "betroffene_person": Name nur wenn klar erkennbar
 - "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, antworten, kündigen, unterschreiben, widersprechen
+- "wichtigste_punkte": 1 bis 3 echte Kernpunkte
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, antworten, anmelden, Unterlagen schicken, Termin wahrnehmen, unterschreiben, widersprechen
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
@@ -212,15 +226,18 @@ Wichtig:
 - Keine Sätze außerhalb des JSON.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
 - Ziele, Wünsche, Ideen oder allgemeine Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
+- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein, nicht Nebensachen.
 - "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
 - "kurz_gesagt" soll 1 sehr kurzer Satz in sehr einfachem Deutsch sein.
 
 Gib genau dieses JSON zurück:
 {
-  "absender": "",
+  "absender_original": "",
+  "absender_kurz": "",
   "briefart": "",
   "betroffene_person": "",
   "worum_geht_es": "",
+  "wichtigste_punkte": [],
   "was_ist_zu_tun": [],
   "frist": "",
   "termin": "",
@@ -231,11 +248,13 @@ Gib genau dieses JSON zurück:
 }
 
 Regeln:
-- "absender": nur wenn klar erkennbar
+- "absender_original": so wie im Brief
+- "absender_kurz": kurze, verständliche Form vom Absender
 - "briefart": sehr kurz
 - "betroffene_person": Name nur wenn klar erkennbar
 - "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, anmelden, Unterlagen schicken, Termin wahrnehmen, antworten, kündigen, unterschreiben, widersprechen
+- "wichtigste_punkte": 1 bis 3 echte Kernpunkte
+- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, antworten, anmelden, Unterlagen schicken, Termin wahrnehmen, unterschreiben, widersprechen
 - "frist": nur wenn klar vorhanden
 - "termin": nur wenn klar vorhanden
 - "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
@@ -251,7 +270,7 @@ Bilder:
 
 function buildImageQualityCheckPrompt() {
   return `
-Du prüfst nur die Bildqualität eines Brief-Fotos.
+Du prüfst nur die Bildqualität und Vollständigkeit eines Brief-Fotos.
 
 Antworte NUR als JSON.
 
@@ -263,60 +282,33 @@ Gib genau dieses JSON zurück:
 }
 
 Regeln:
-- "ok": true nur wenn der Brief sicher genug lesbar ist
+- "ok": true nur wenn der Brief sicher genug lesbar und vollständig genug ist
 - "ok": false wenn das Bild zu unscharf, abgeschnitten, zu dunkel, mit Schatten verdeckt, zu weit weg oder unvollständig ist
 - "ok": false auch dann, wenn der Brief im Bild zu klein ist oder zu viel Hintergrund zu sehen ist
-- "problem": sehr kurz, z. B. "unscharf", "abgeschnitten", "zu dunkel", "Schatten", "weit weg", "Brief zu klein", "weitere Seite fehlt"
+- "ok": false auch dann, wenn wahrscheinlich noch eine weitere Seite, Rückseite oder Anlage fehlt
+- "problem": sehr kurz
 - "hinweis": sehr einfacher Satz für den Nutzer
 
-Wichtige zusätzliche Regel:
-- Wenn der Brief nicht den größten Teil des Fotos einnimmt, sondern viel Tisch, Boden, Beine, Hände oder andere Umgebung sichtbar sind, dann ist das Foto NICHT gut genug
-- Dann setze "ok": false
-- Dann gib einen Hinweis wie:
-  "Der Brief ist zu weit weg. Bitte mach ein näheres Foto nur vom Brief."
-  oder
-  "Bitte fotografiere nur den Brief groß und deutlich."
+Wichtige Zusatzregeln:
+- Wenn viel Tisch, Boden, Hände oder Umgebung sichtbar sind und der Brief nicht groß genug im Bild ist, dann setze "ok": false
+- Wenn Hinweise auf weitere Seiten, Rückseite oder Anlagen erkennbar sind, dann setze "ok": false
+- Sei streng
+- Lieber einmal zu früh stoppen als ein schlechtes oder unvollständiges Foto durchlassen
 
-Beispiele für "hinweis":
+Beispiele:
 - "Das Bild ist zu unscharf. Bitte schick ein schärferes Foto."
 - "Die Seite ist nicht ganz drauf. Bitte fotografiere die ganze Seite."
-- "Der Text ist nicht gut lesbar. Bitte mach ein neues Foto ohne Schatten."
-- "Es fehlt noch eine Seite. Bitte lade auch die nächste Seite hoch."
 - "Der Brief ist zu weit weg. Bitte mach ein näheres Foto nur vom Brief."
-- "Bitte fotografiere nur den Brief groß und deutlich."
+- "Es fehlt noch eine Seite. Bitte lade auch die nächste Seite hoch."
+- "Bitte lade auch die Rückseite oder die fehlende Seite hoch."
 
-Wichtig:
-- Erfinde nichts.
-- Sei streng.
-- Lieber einmal zu früh stoppen als ein schlechtes Foto durchlassen.
-- Wenn das Bild gut genug ist, gib zurück:
+Wenn das Bild gut genug ist, gib zurück:
 {
   "ok": true,
   "problem": "",
   "hinweis": ""
 }
 `;
-}
-
-function simplifySender(absender, briefart) {
-  const text = `${absender || ""} ${briefart || ""}`.toLowerCase();
-
-  if (text.includes("stadtwerke")) return "Stadtwerke";
-  if (text.includes("jugendamt")) return "Jugendamt";
-  if (text.includes("jobcenter")) return "Jobcenter";
-  if (text.includes("aok")) return "AOK";
-  if (text.includes("familienkasse")) return "Familienkasse";
-  if (text.includes("krankenkasse")) return "Krankenkasse";
-  if (text.includes("versicherung")) return "Versicherung";
-  if (text.includes("inkasso")) return "Inkasso";
-  if (text.includes("gericht")) return "Gericht";
-  if (text.includes("schule")) return "Schule";
-  if (text.includes("vermieter")) return "Vermieter";
-  if (text.includes("bürgermeister")) return "Stadt";
-  if (text.includes("stadt")) return "Stadt";
-  if (text.includes("bank")) return "Bank";
-
-  return absender || "";
 }
 
 function toSentence(text) {
@@ -336,6 +328,12 @@ function dedupe(arr) {
     }
   }
   return out;
+}
+
+function applyPersonName(text, personName) {
+  if (!text) return "";
+  if (!personName) return text;
+  return text.replace(/die Person/gi, personName);
 }
 
 function simplifyAction(action) {
@@ -394,141 +392,154 @@ function simplifyAction(action) {
   return action.replace(/\.$/, "").trim();
 }
 
-function applyPersonName(text, personName) {
-  if (!text) return "";
-  if (!personName) return text;
-  return text.replace(/die Person/gi, personName);
-}
-
-function renderSimpleGerman(info) {
-  const blocks = [];
-  const sender = simplifySender(info.absender, info.briefart);
+function renderShortGerman(info) {
+  const lines = [];
+  const sender = info.absender_kurz || info.absender_original;
 
   if (sender) {
-    if (sender === "Stadtwerke") {
-      blocks.push(`Wer schreibt?\nDer Brief ist von den Stadtwerken.`);
-    } else if (sender === "AOK") {
-      blocks.push(`Wer schreibt?\nDer Brief ist von der AOK.`);
-    } else if (sender === "Stadt") {
-      blocks.push(`Wer schreibt?\nDer Brief ist von der Stadt.`);
-    } else {
-      blocks.push(`Wer schreibt?\nDer Brief ist vom ${sender}.`);
-    }
+    lines.push(`Das ist ein Brief von ${sender}.`);
   }
 
-  if (info.worum_geht_es) {
-    blocks.push(`Worum geht es?\n${toSentence(info.worum_geht_es)}`);
-  } else if (info.briefart) {
-    blocks.push(`Worum geht es?\n${toSentence(`Es geht um diesen ${info.briefart}`)}`);
-  }
-
-  const simpleActions = dedupe(
+  const actionLine = dedupe(
     (info.was_ist_zu_tun || []).map((x) =>
       applyPersonName(simplifyAction(x), info.betroffene_person)
     )
   );
 
-  if (simpleActions.length > 0 || info.versteckte_wichtige_info) {
-    const importantLines = [];
-
-    if (simpleActions.length > 0) {
-      importantLines.push(`Wichtig: ${simpleActions.slice(0, 2).join(" und ")}.`);
-    }
-
-    if (info.versteckte_wichtige_info) {
-      importantLines.push(toSentence(info.versteckte_wichtige_info));
-    }
-
-    blocks.push(`Was ist jetzt wichtig?\n${importantLines.join(" ")}`);
+  if (actionLine.length > 0) {
+    lines.push(`Du musst ${actionLine[0]}.`);
+  } else if (info.wichtigste_punkte.length > 0) {
+    lines.push(toSentence(info.wichtigste_punkte[0]));
+  } else if (info.worum_geht_es) {
+    lines.push(toSentence(info.worum_geht_es));
   }
 
-  if (info.frist || info.termin) {
-    if (info.frist && info.termin) {
-      blocks.push(
-        `Bis wann?\nWichtig ist diese Frist: ${info.frist}. Wichtiger Termin: ${info.termin}.`
-      );
-    } else if (info.frist) {
-      blocks.push(`Bis wann?\nWichtig ist diese Frist: ${info.frist}.`);
-    } else if (info.termin) {
-      blocks.push(`Bis wann?\nWichtig ist dieser Termin: ${info.termin}.`);
-    }
+  if (info.frist) {
+    lines.push(`Bis ${info.frist}.`);
+  } else if (info.termin) {
+    lines.push(`Termin: ${info.termin}.`);
   }
 
   if (info.folge_wenn_nichts) {
-    let consequence = toSentence(info.folge_wenn_nichts)
-      .replace(/verbindlich/gi, "gültig")
-      .replace(/wirksam/gi, "gültig")
-      .replace(/es können keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.")
-      .replace(/keine leistungen[^.]*\./gi, "Sonst kann Geld fehlen oder gestoppt werden.");
+    lines.push(toSentence(info.folge_wenn_nichts));
+  } else if (info.kurz_gesagt) {
+    lines.push(toSentence(info.kurz_gesagt));
+  }
 
-    blocks.push(`Was passiert sonst?\n${consequence}`);
+  return lines.slice(0, 4).join("\n");
+}
+
+function renderDetailTemplateGerman(info) {
+  const blocks = [];
+  const sender = info.absender_kurz || info.absender_original;
+
+  if (sender) {
+    blocks.push(`[[HEAD_FROM]]\nDer Brief ist von ${sender}.`);
+  }
+
+  if (info.worum_geht_es) {
+    blocks.push(`[[HEAD_TOPIC]]\n${toSentence(info.worum_geht_es)}`);
+  }
+
+  const importantPoints = dedupe(info.wichtigste_punkte || []);
+  const actions = dedupe(
+    (info.was_ist_zu_tun || []).map((x) =>
+      applyPersonName(simplifyAction(x), info.betroffene_person)
+    )
+  );
+
+  if (importantPoints.length > 0 || actions.length > 0 || info.versteckte_wichtige_info) {
+    const lines = [];
+
+    for (const p of importantPoints.slice(0, 2)) {
+      lines.push(toSentence(p));
+    }
+
+    if (actions.length > 0) {
+      lines.push(`Wichtig: ${actions.slice(0, 2).join(" und ")}.`);
+    }
+
+    if (info.versteckte_wichtige_info) {
+      lines.push(toSentence(info.versteckte_wichtige_info));
+    }
+
+    blocks.push(`[[HEAD_IMPORTANT]]\n${lines.join(" ")}`);
+  }
+
+  if (info.frist || info.termin) {
+    const parts = [];
+    if (info.frist) parts.push(`Frist: ${info.frist}.`);
+    if (info.termin) parts.push(`Termin: ${info.termin}.`);
+    blocks.push(`[[HEAD_WHEN]]\n${parts.join(" ")}`);
+  }
+
+  if (info.folge_wenn_nichts) {
+    blocks.push(`[[HEAD_ELSE]]\n${toSentence(info.folge_wenn_nichts)}`);
   }
 
   if (info.kurz_gesagt) {
-    let shortText = toSentence(info.kurz_gesagt)
-      .replace(/senden sie/gi, "Schicken Sie")
-      .replace(/reichen sie/gi, "Schicken Sie")
-      .replace(/unterlagen ein/gi, "die Unterlagen");
-
-    blocks.push(`Kurz gesagt:\n${shortText}`);
-  } else if (simpleActions.length > 0) {
-    blocks.push(`Kurz gesagt:\nDu musst jetzt nur das Wichtige beachten.`);
-  } else if (info.frist || info.termin) {
-    blocks.push(`Kurz gesagt:\nDu musst jetzt nur die Frist oder den Termin beachten.`);
+    blocks.push(`[[HEAD_SUMMARY]]\n${toSentence(info.kurz_gesagt)}`);
+  } else if (actions.length > 0) {
+    blocks.push(`[[HEAD_SUMMARY]]\nDu musst jetzt nur das Wichtige beachten.`);
   } else {
-    blocks.push(`Kurz gesagt:\nDu musst jetzt nichts machen.`);
+    blocks.push(`[[HEAD_SUMMARY]]\nDu musst jetzt nichts machen.`);
   }
 
-  return blocks.slice(0, 6).join("\n\n");
+  return blocks.join("\n\n");
 }
 
-function localizeSectionHeadings(text, lang) {
-  if (!text) return text;
-
+function localizeDetailHeadings(text, lang) {
   const maps = {
+    de: {
+      "[[HEAD_FROM]]": "Wer schreibt?",
+      "[[HEAD_TOPIC]]": "Worum geht es?",
+      "[[HEAD_IMPORTANT]]": "Was ist jetzt wichtig?",
+      "[[HEAD_WHEN]]": "Bis wann?",
+      "[[HEAD_ELSE]]": "Was passiert sonst?",
+      "[[HEAD_SUMMARY]]": "Kurz gesagt:"
+    },
     tr: {
-      "Wer schreibt?": "Kim yazıyor?",
-      "Worum geht es?": "Konu ne?",
-      "Was ist jetzt wichtig?": "Şimdi ne önemli?",
-      "Bis wann?": "Ne zamana kadar?",
-      "Was passiert sonst?": "Yoksa ne olur?",
-      "Kurz gesagt:": "Kısaca:"
+      "[[HEAD_FROM]]": "Kim yazıyor?",
+      "[[HEAD_TOPIC]]": "Konu ne?",
+      "[[HEAD_IMPORTANT]]": "Şimdi ne önemli?",
+      "[[HEAD_WHEN]]": "Ne zamana kadar?",
+      "[[HEAD_ELSE]]": "Yoksa ne olur?",
+      "[[HEAD_SUMMARY]]": "Kısaca:"
     },
     bg: {
-      "Wer schreibt?": "Кой е изпратил писмото?",
-      "Worum geht es?": "За какво става дума?",
-      "Was ist jetzt wichtig?": "Какво е важно сега?",
-      "Bis wann?": "До кога?",
-      "Was passiert sonst?": "Какво става иначе?",
-      "Kurz gesagt:": "Накратко:"
+      "[[HEAD_FROM]]": "Кой е изпратил писмото?",
+      "[[HEAD_TOPIC]]": "За какво става дума?",
+      "[[HEAD_IMPORTANT]]": "Какво е важно сега?",
+      "[[HEAD_WHEN]]": "До кога?",
+      "[[HEAD_ELSE]]": "Какво става иначе?",
+      "[[HEAD_SUMMARY]]": "Накратко:"
     },
     ar: {
-      "Wer schreibt?": "من أرسل الرسالة؟",
-      "Worum geht es?": "عن ماذا تتحدث الرسالة؟",
-      "Was ist jetzt wichtig?": "ما المهم الآن؟",
-      "Bis wann?": "إلى متى؟",
-      "Was passiert sonst?": "ماذا يحدث إذا لم أفعل شيئًا؟",
-      "Kurz gesagt:": "باختصار:"
+      "[[HEAD_FROM]]": "من أرسل الرسالة؟",
+      "[[HEAD_TOPIC]]": "عن ماذا تتحدث الرسالة؟",
+      "[[HEAD_IMPORTANT]]": "ما المهم الآن؟",
+      "[[HEAD_WHEN]]": "إلى متى؟",
+      "[[HEAD_ELSE]]": "ماذا يحدث إذا لم أفعل شيئًا؟",
+      "[[HEAD_SUMMARY]]": "باختصار:"
     }
   };
 
-  const dict = maps[(lang || "").toLowerCase()];
-  if (!dict) return text;
-
+  const dict = maps[lang] || maps.de;
   let result = text;
-  for (const [de, translated] of Object.entries(dict)) {
-    const escaped = de.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    result = result.replace(new RegExp(escaped, "g"), translated);
+
+  for (const [token, heading] of Object.entries(dict)) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(escaped, "g"), heading);
   }
 
   return result;
 }
 
-function buildTranslationPrompt(germanBase, langMeta) {
+function buildTranslationPrompt(text, langMeta, keepHeadingTokens = false) {
   return `
 Du bist Hilfe24.
 
-Unten steht ein fertiger deutscher Text mit festen Überschriften.
+Unten steht ein fertiger deutscher Text.
 Übersetze ihn sauber in ${langMeta.label}.
 
 Wichtig:
@@ -536,16 +547,16 @@ ${langMeta.instruction}
 
 Regeln:
 - Übersetze Satz für Satz.
-- Halte dieselbe Struktur.
 - Erfinde nichts dazu.
 - Lass nichts weg.
 - Füge keine neuen Sätze ein.
 - Keine Ausschmückung.
 - Keine Wiederholung.
 - Kein Markdown.
+${keepHeadingTokens ? '- Die Tokens wie [[HEAD_FROM]] oder [[HEAD_TOPIC]] dürfen NICHT verändert werden.' : ''}
 
 Deutscher Text:
-${germanBase}
+${text}
 `;
 }
 
@@ -576,7 +587,6 @@ async function checkImageQuality(bilder) {
 
   for (const bild of bilder) {
     if (!bild.imageData || !bild.mimeType) continue;
-
     parts.push({
       inline_data: {
         mime_type: bild.mimeType,
@@ -589,37 +599,86 @@ async function checkImageQuality(bilder) {
   return extractJson(raw);
 }
 
-async function translateIfNeeded(germanBase, lang) {
+async function translateShortIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
+  if (langMeta.code === "de") return text;
 
+  const translatedRaw = await callGemini([
+    { text: buildTranslationPrompt(text, langMeta, false) }
+  ]);
+
+  return cleanText(translatedRaw);
+}
+
+async function translateDetailIfNeeded(text, lang) {
+  const langMeta = getLanguageMeta(lang);
   if (langMeta.code === "de") {
-    return germanBase;
+    return localizeDetailHeadings(text, "de");
   }
 
   const translatedRaw = await callGemini([
-    { text: buildTranslationPrompt(germanBase, langMeta) }
+    { text: buildTranslationPrompt(text, langMeta, true) }
   ]);
 
-  const cleaned = cleanAntwort(translatedRaw);
-  return localizeSectionHeadings(cleaned, lang);
+  return localizeDetailHeadings(cleanText(translatedRaw), langMeta.code);
+}
+
+async function buildFinalPayloadFromInfo(info, lang) {
+  const kurzDe = cleanText(renderShortGerman(info));
+  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
+
+  const kurz = await translateShortIfNeeded(kurzDe, lang);
+  const details = await translateDetailIfNeeded(detailTemplateDe, lang);
+
+  return {
+    ok: true,
+    quality_ok: true,
+    hinweis: "",
+    kurz,
+    details,
+    audio_kurz: kurz,
+    audio_details: details,
+    debug_de_kurz: kurzDe,
+    debug_de_details: localizeDetailHeadings(detailTemplateDe, "de")
+  };
 }
 
 async function buildFinalAnswerFromText(text, lang) {
   const info = await buildInfoFromText(text);
-  const germanBase = cleanAntwort(renderSimpleGerman(info));
-  return await translateIfNeeded(germanBase, lang);
+  return await buildFinalPayloadFromInfo(info, lang);
 }
 
 async function buildFinalAnswerFromImages(bilder, lang) {
+  if (!Array.isArray(bilder) || bilder.length === 0) {
+    return {
+      ok: false,
+      error: "Kein Bild gesendet"
+    };
+  }
+
+  if (bilder.length > 6) {
+    return {
+      ok: false,
+      error: "Du kannst maximal 6 Bilder hochladen."
+    };
+  }
+
   const quality = await checkImageQuality(bilder);
 
   if (!quality.ok) {
-    return quality.hinweis || "Das Bild ist nicht gut genug. Bitte schick ein neues Foto.";
+    return {
+      ok: true,
+      quality_ok: false,
+      hinweis: quality.hinweis || "Das Bild ist nicht gut genug. Bitte schick ein neues Foto.",
+      kurz: "",
+      details: "",
+      audio_kurz: "",
+      audio_details: ""
+    };
   }
 
   const info = await buildInfoFromImages(bilder);
-  const germanBase = cleanAntwort(renderSimpleGerman(info));
-  return await translateIfNeeded(germanBase, lang);
+  return await buildFinalPayloadFromInfo(info, lang);
 }
 
 app.post("/api/brief", async (req, res) => {
@@ -634,9 +693,8 @@ app.post("/api/brief", async (req, res) => {
       });
     }
 
-    const erklaerung = await buildFinalAnswerFromText(text, lang);
-
-    return res.json({ ok: true, erklaerung });
+    const result = await buildFinalAnswerFromText(text, lang);
+    return res.json(result);
   } catch (error) {
     console.error("Fehler /api/brief:", error);
     return res.status(500).json({
@@ -651,16 +709,13 @@ app.post("/api/brief-bild", async (req, res) => {
     const bilder = req.body.bilder;
     const lang = (req.body.lang || "de").toLowerCase();
 
-    if (!Array.isArray(bilder) || bilder.length === 0) {
-      return res.status(400).json({
-        ok: false,
-        error: "Kein Bild gesendet"
-      });
+    const result = await buildFinalAnswerFromImages(bilder, lang);
+
+    if (!result.ok && result.error) {
+      return res.status(400).json(result);
     }
 
-    const erklaerung = await buildFinalAnswerFromImages(bilder, lang);
-
-    return res.json({ ok: true, erklaerung });
+    return res.json(result);
   } catch (error) {
     console.error("Fehler /api/brief-bild:", error);
     return res.status(500).json({
