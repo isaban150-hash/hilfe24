@@ -1,10 +1,13 @@
 const express = require("express");
 const path = require("path");
+const textToSpeech = require("@google-cloud/text-to-speech");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const apiKey = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
+
+const ttsClient = new textToSpeech.TextToSpeechClient();
 
 app.use(express.json({ limit: "25mb" }));
 app.use(express.static(__dirname));
@@ -14,7 +17,10 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber" });
+  res.json({
+    ok: true,
+    message: "Server läuft sauber"
+  });
 });
 
 function getLanguageMeta(lang) {
@@ -22,22 +28,34 @@ function getLanguageMeta(lang) {
     case "tr":
       return {
         code: "tr",
-        label: "Türkisch"
+        label: "Türkisch",
+        ttsLanguageCode: "tr-TR",
+        ttsVoiceName: "",
+        ttsGender: "FEMALE"
       };
     case "bg":
       return {
         code: "bg",
-        label: "Bulgarisch"
+        label: "Bulgarisch",
+        ttsLanguageCode: "bg-BG",
+        ttsVoiceName: "",
+        ttsGender: "FEMALE"
       };
     case "ar":
       return {
         code: "ar",
-        label: "Arabisch"
+        label: "Arabisch",
+        ttsLanguageCode: "ar-XA",
+        ttsVoiceName: "",
+        ttsGender: "FEMALE"
       };
     default:
       return {
         code: "de",
-        label: "Deutsch"
+        label: "Deutsch",
+        ttsLanguageCode: "de-DE",
+        ttsVoiceName: "",
+        ttsGender: "FEMALE"
       };
   }
 }
@@ -96,6 +114,7 @@ function extractJson(text) {
   if (!match) {
     throw new Error("Konnte keine JSON-Antwort lesen");
   }
+
   return JSON.parse(match[0]);
 }
 
@@ -410,9 +429,7 @@ function renderShortByLanguage(info, lang) {
     if (sender) lines.push(`Bu mektup ${sender} geldi.`);
     if (firstAction) lines.push(actionText(firstAction, "tr") + ".");
     else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`Son gün: ${info.frist}.`);
-    else if (info.termin) lines.push(`Tarih: ${info.termin}.`);
     if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     return lines.slice(0, 4).join("\n");
   }
@@ -421,9 +438,7 @@ function renderShortByLanguage(info, lang) {
     if (sender) lines.push(`Това е писмо от ${sender}.`);
     if (firstAction) lines.push(actionText(firstAction, "bg") + ".");
     else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`Срок: ${info.frist}.`);
-    else if (info.termin) lines.push(`Дата: ${info.termin}.`);
     if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     return lines.slice(0, 4).join("\n");
   }
@@ -432,9 +447,7 @@ function renderShortByLanguage(info, lang) {
     if (sender) lines.push(`هذه رسالة من ${sender}.`);
     if (firstAction) lines.push(actionText(firstAction, "ar") + ".");
     else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`آخر موعد: ${info.frist}.`);
-    else if (info.termin) lines.push(`الموعد: ${info.termin}.`);
     if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     return lines.slice(0, 4).join("\n");
   }
@@ -442,11 +455,8 @@ function renderShortByLanguage(info, lang) {
   if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
   if (firstAction) lines.push(`Du musst ${actionText(firstAction, "de")}.`);
   else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-  else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
   if (info.frist) lines.push(`Bis ${info.frist}.`);
-  else if (info.termin) lines.push(`Termin: ${info.termin}.`);
   if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
-
   return lines.slice(0, 4).join("\n");
 }
 
@@ -480,8 +490,6 @@ function renderDetailTemplateGerman(info) {
 
   if (info.worum_geht_es) {
     blocks.push(`[[HEAD_TOPIC]]\n${toSentence(info.worum_geht_es)}`);
-  } else if (info.briefart) {
-    blocks.push(`[[HEAD_TOPIC]]\n${toSentence(`Es geht um ${info.briefart}`)}`);
   }
 
   const importantLines = [];
@@ -516,11 +524,6 @@ function renderDetailTemplateGerman(info) {
 
   if (info.kurz_gesagt) {
     blocks.push(`[[HEAD_SUMMARY]]\n${toSentence(info.kurz_gesagt)}`);
-  } else if (actions.length > 0) {
-    const first = actionTextDe(actions[0]);
-    blocks.push(`[[HEAD_SUMMARY]]\n${first || "Bitte beachten Sie jetzt das Wichtigste."}`);
-  } else {
-    blocks.push(`[[HEAD_SUMMARY]]\nBitte beachten Sie jetzt das Wichtigste.`);
   }
 
   return blocks.join("\n\n");
@@ -594,6 +597,33 @@ ${text}
 `;
 }
 
+function buildAudioRewritePrompt(text, lang) {
+  const meta = getLanguageMeta(lang);
+
+  return `
+Du bist Hilfe24.
+
+Mach aus diesem Text einen gut vorlesbaren Audio-Text in ${meta.label}.
+
+Wichtig:
+- Inhalt vollständig behalten
+- Nicht kürzer machen
+- Aber besser hörbar machen
+- Kurze Sätze
+- Sehr einfache Sprache
+- Zahlen, Geld und Daten so umschreiben, dass sie beim Hören verständlich sind
+- Keine Listenzeichen
+- Kein Markdown
+- Keine Überschriften wie "Worum geht es?"
+- Nur Fließtext mit kurzen klaren Sätzen
+- Firmennamen und Behördennamen dürfen bleiben
+- Kein Deutsch einmischen, außer echte Eigennamen
+
+Text:
+${text}
+`;
+}
+
 async function buildInfoFromText(text) {
   const rawJson = await callGemini([{ text: buildExtractionPromptForText(text) }]);
   return normalizeInfo(extractJson(rawJson));
@@ -646,11 +676,52 @@ async function translateDetailIfNeeded(text, lang) {
   return localizeDetailHeadings(cleanText(translatedRaw), langMeta.code);
 }
 
+async function buildAudioText(text, lang) {
+  const raw = await callGemini([
+    { text: buildAudioRewritePrompt(text, lang) }
+  ]);
+  return cleanText(raw);
+}
+
+async function synthesizeMp3(text, lang) {
+  const langMeta = getLanguageMeta(lang);
+
+  const request = {
+    input: { text },
+    voice: {
+      languageCode: langMeta.ttsLanguageCode,
+      ssmlGender: langMeta.ttsGender
+    },
+    audioConfig: {
+      audioEncoding: "MP3",
+      speakingRate: 0.92,
+      pitch: 0
+    }
+  };
+
+  if (langMeta.ttsVoiceName) {
+    request.voice.name = langMeta.ttsVoiceName;
+  }
+
+  const [response] = await ttsClient.synthesizeSpeech(request);
+
+  if (!response.audioContent) {
+    throw new Error("Keine TTS-Audioantwort erhalten");
+  }
+
+  return Buffer.isBuffer(response.audioContent)
+    ? response.audioContent.toString("base64")
+    : Buffer.from(response.audioContent, "binary").toString("base64");
+}
+
 async function buildFinalPayloadFromInfo(info, lang) {
   const langCode = getLanguageMeta(lang).code;
   const kurz = cleanText(renderShortByLanguage(info, langCode));
   const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
   const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
+
+  const audioKurz = await buildAudioText(kurz, langCode);
+  const audioDetails = await buildAudioText(details, langCode);
 
   return {
     ok: true,
@@ -658,8 +729,8 @@ async function buildFinalPayloadFromInfo(info, lang) {
     hinweis: "",
     kurz,
     details,
-    audio_kurz: kurz,
-    audio_details: details
+    audio_kurz: audioKurz,
+    audio_details: audioDetails
   };
 }
 
@@ -741,6 +812,34 @@ app.post("/api/brief-bild", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
+    });
+  }
+});
+
+app.post("/api/tts", async (req, res) => {
+  try {
+    const text = cleanText(req.body.text || "");
+    const lang = (req.body.lang || "de").toLowerCase();
+
+    if (!text) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Text für Audio gesendet"
+      });
+    }
+
+    const audioBase64 = await synthesizeMp3(text, lang);
+
+    return res.json({
+      ok: true,
+      mimeType: "audio/mpeg",
+      audioBase64
+    });
+  } catch (error) {
+    console.error("Fehler /api/tts:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "TTS-Fehler"
     });
   }
 });
