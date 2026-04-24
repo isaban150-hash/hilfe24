@@ -293,6 +293,7 @@
   </div>
 
  <script>
+ <script>
   const langEl = document.getElementById("lang");
   const briefTextEl = document.getElementById("briefText");
   const bilderEl = document.getElementById("bilder");
@@ -313,7 +314,7 @@
 
   const readShortBtn = document.getElementById("readShortBtn");
   const readAllBtn = document.getElementById("readAllBtn");
-  const stopBtn = document.getElementById("stopBtn");FF
+  const stopBtn = document.getElementById("stopBtn");
 
   let currentAudioShort = "";
   let currentAudioAll = "";
@@ -323,51 +324,58 @@
   let activeRequestId = 0;
 
   function show(el) {
-    el.classList.remove("hidden");
+    if (el) el.classList.remove("hidden");
   }
 
   function hide(el) {
-    el.classList.add("hidden");
+    if (el) el.classList.add("hidden");
   }
 
   function setStatus(text) {
+    if (!statusEl) return;
     statusEl.textContent = text;
     show(statusEl);
   }
 
   function clearStatus() {
+    if (!statusEl) return;
     statusEl.textContent = "";
     hide(statusEl);
   }
 
   function setError(text) {
+    if (!errorBoxEl) return;
     errorBoxEl.textContent = text;
     show(errorBoxEl);
   }
 
   function clearError() {
+    if (!errorBoxEl) return;
     errorBoxEl.textContent = "";
     hide(errorBoxEl);
   }
 
   function setOk(text) {
+    if (!okBoxEl) return;
     okBoxEl.textContent = text;
     show(okBoxEl);
   }
 
   function clearOk() {
+    if (!okBoxEl) return;
     okBoxEl.textContent = "";
     hide(okBoxEl);
   }
 
   function clearWarning() {
+    if (!warningTextEl) return;
     warningTextEl.textContent = "";
     hide(warningCardEl);
   }
 
   function clearResults() {
-    kurzTextEl.textContent = "";
-    detailTextEl.textContent = "";
+    if (kurzTextEl) kurzTextEl.textContent = "";
+    if (detailTextEl) detailTextEl.textContent = "";
     currentAudioShort = "";
     currentAudioAll = "";
     hide(resultCardEl);
@@ -394,16 +402,19 @@
   }
 
   function resetAll() {
-    briefTextEl.value = "";
-    bilderEl.value = "";
-    previewGridEl.innerHTML = "";
+    if (briefTextEl) briefTextEl.value = "";
+    if (bilderEl) bilderEl.value = "";
+    if (previewGridEl) previewGridEl.innerHTML = "";
     activeRequestId++;
     clearOutputState();
   }
 
   function renderPreviews() {
+    if (!previewGridEl || !bilderEl) return;
+
     previewGridEl.innerHTML = "";
     const files = Array.from(bilderEl.files || []);
+
     for (const file of files.slice(0, 6)) {
       const img = document.createElement("img");
       img.src = URL.createObjectURL(file);
@@ -448,7 +459,9 @@
 
     return (
       voices.find((v) => (v.lang || "").toLowerCase() === langCode.toLowerCase()) ||
-      voices.find((v) => (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())) ||
+      voices.find((v) =>
+        (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())
+      ) ||
       null
     );
   }
@@ -534,9 +547,9 @@
   }
 
   function updateSpeechButtons() {
-    readShortBtn.disabled = isSpeaking;
-    readAllBtn.disabled = isSpeaking;
-    stopBtn.disabled = !isSpeaking;
+    if (readShortBtn) readShortBtn.disabled = isSpeaking;
+    if (readAllBtn) readAllBtn.disabled = isSpeaking;
+    if (stopBtn) stopBtn.disabled = !isSpeaking;
   }
 
   function speakChunks(chunks, lang) {
@@ -572,6 +585,8 @@
   }
 
   function startSpeaking(text) {
+    if (!langEl) return;
+
     const lang = langEl.value;
     const cleaned = cleanForSpeech(text, lang);
 
@@ -591,9 +606,9 @@
   async function explainLetter() {
     const requestId = ++activeRequestId;
 
-    const text = briefTextEl.value.trim();
-    const files = Array.from(bilderEl.files || []);
-    const lang = langEl.value;
+    const text = briefTextEl ? briefTextEl.value.trim() : "";
+    const files = bilderEl ? Array.from(bilderEl.files || []) : [];
+    const lang = langEl ? langEl.value : "de";
 
     clearOutputState();
 
@@ -607,8 +622,9 @@
       return;
     }
 
-    analyseBtn.disabled = true;
-    resetBtn.disabled = true;
+    if (analyseBtn) analyseBtn.disabled = true;
+    if (resetBtn) resetBtn.disabled = true;
+
     setStatus("Bitte warten... Der Brief wird geprüft.");
 
     try {
@@ -650,9 +666,7 @@
 
       data = await response.json();
 
-      if (requestId !== activeRequestId) {
-        return;
-      }
+      if (requestId !== activeRequestId) return;
 
       clearStatus();
 
@@ -662,67 +676,87 @@
       }
 
       if (data.quality_ok === false) {
-        warningTextEl.textContent =
-          data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+        if (warningTextEl) {
+          warningTextEl.textContent =
+            data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+        }
         show(warningCardEl);
         return;
       }
 
-      kurzTextEl.textContent = data.kurz || "";
-      detailTextEl.textContent = data.details || "";
+      if (kurzTextEl) kurzTextEl.textContent = data.kurz || "";
+      if (detailTextEl) detailTextEl.textContent = data.details || "";
 
       currentAudioShort = data.audio_kurz || data.kurz || "";
-      currentAudioAll = [data.audio_kurz || "", data.audio_details || ""].filter(Boolean).join("\n\n");
+      currentAudioAll = [data.audio_kurz || "", data.audio_details || ""]
+        .filter(Boolean)
+        .join("\n\n");
 
       show(resultCardEl);
       show(detailCardEl);
       setOk("Der Brief wurde erklärt.");
     } catch (err) {
-      if (requestId !== activeRequestId) {
-        return;
-      }
+      if (requestId !== activeRequestId) return;
 
       clearStatus();
       setError("Serverfehler. Bitte später nochmal versuchen.");
       console.error(err);
     } finally {
       if (requestId === activeRequestId) {
-        analyseBtn.disabled = false;
-        resetBtn.disabled = false;
+        if (analyseBtn) analyseBtn.disabled = false;
+        if (resetBtn) resetBtn.disabled = false;
       }
     }
   }
 
-  bilderEl.addEventListener("change", () => {
-    activeRequestId++;
-    clearOutputState();
-    renderPreviews();
-  });
+  if (bilderEl) {
+    bilderEl.addEventListener("change", () => {
+      activeRequestId++;
+      clearOutputState();
+      renderPreviews();
+    });
+  }
 
-  langEl.addEventListener("change", () => {
-    activeRequestId++;
-    clearOutputState();
-  });
+  if (langEl) {
+    langEl.addEventListener("change", () => {
+      activeRequestId++;
+      clearOutputState();
+    });
+  }
 
-  briefTextEl.addEventListener("input", () => {
-    activeRequestId++;
-    clearOutputState();
-  });
+  if (briefTextEl) {
+    briefTextEl.addEventListener("input", () => {
+      activeRequestId++;
+      clearOutputState();
+    });
+  }
 
-  analyseBtn.addEventListener("click", explainLetter);
-  resetBtn.addEventListener("click", resetAll);
+  if (analyseBtn) {
+    analyseBtn.addEventListener("click", explainLetter);
+  }
 
-  readShortBtn.addEventListener("click", () => {
-    startSpeaking(currentAudioShort);
-  });
+  if (resetBtn) {
+    resetBtn.addEventListener("click", resetAll);
+  }
 
-  readAllBtn.addEventListener("click", () => {
-    startSpeaking(currentAudioAll || currentAudioShort);
-  });
+  if (readShortBtn) {
+    readShortBtn.addEventListener("click", () => {
+      startSpeaking(currentAudioShort);
+    });
+  }
 
-  stopBtn.addEventListener("click", stopSpeaking);
+  if (readAllBtn) {
+    readAllBtn.addEventListener("click", () => {
+      startSpeaking(currentAudioAll || currentAudioShort);
+    });
+  }
+
+  if (stopBtn) {
+    stopBtn.addEventListener("click", stopSpeaking);
+  }
 
   updateSpeechButtons();
+</script>
 </script>
 </body>
 </html>
