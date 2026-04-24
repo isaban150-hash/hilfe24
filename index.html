@@ -202,6 +202,17 @@
       margin-top: 10px;
     }
 
+    .audio-status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 12px;
+    }
+
     @media (max-width: 600px) {
       .button-row,
       .audio-row {
@@ -286,6 +297,9 @@
         <button id="readAllBtn" class="btn-secondary" type="button">🔊 Alles vorlesen</button>
         <button id="stopBtn" class="btn-danger" type="button">⏹️ Stopp</button>
       </div>
+
+      <div id="audioStatus" class="audio-status hidden"></div>
+      <audio id="audioPlayer" controls class="hidden"></audio>
     </div>
 
     <div id="detailCard" class="card hidden">
@@ -317,12 +331,13 @@
     const readAllBtn = document.getElementById("readAllBtn");
     const stopBtn = document.getElementById("stopBtn");
 
+    const audioPlayerEl = document.getElementById("audioPlayer");
+    const audioStatusEl = document.getElementById("audioStatus");
+
     let currentAudioShort = "";
     let currentAudioAll = "";
-    let speechQueue = [];
-    let isSpeaking = false;
-    let voices = [];
     let activeRequestId = 0;
+    let activeAudioUrl = "";
 
     function show(el) {
       if (el) el.classList.remove("hidden");
@@ -374,6 +389,36 @@
       hide(warningCardEl);
     }
 
+    function clearAudioStatus() {
+      if (!audioStatusEl) return;
+      audioStatusEl.textContent = "";
+      hide(audioStatusEl);
+    }
+
+    function setAudioStatus(text) {
+      if (!audioStatusEl) return;
+      audioStatusEl.textContent = text;
+      show(audioStatusEl);
+    }
+
+    function revokeAudioUrl() {
+      if (activeAudioUrl) {
+        URL.revokeObjectURL(activeAudioUrl);
+        activeAudioUrl = "";
+      }
+    }
+
+    function stopAudio() {
+      if (!audioPlayerEl) return;
+      audioPlayerEl.pause();
+      audioPlayerEl.currentTime = 0;
+      audioPlayerEl.removeAttribute("src");
+      audioPlayerEl.load();
+      revokeAudioUrl();
+      clearAudioStatus();
+      hide(audioPlayerEl);
+    }
+
     function clearResults() {
       if (kurzTextEl) kurzTextEl.textContent = "";
       if (detailTextEl) detailTextEl.textContent = "";
@@ -381,16 +426,7 @@
       currentAudioAll = "";
       hide(resultCardEl);
       hide(detailCardEl);
-    }
-
-    function stopSpeaking() {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
-
-      speechQueue = [];
-      isSpeaking = false;
-      updateSpeechButtons();
+      stopAudio();
     }
 
     function clearOutputState() {
@@ -399,7 +435,6 @@
       clearStatus();
       clearWarning();
       clearResults();
-      stopSpeaking();
     }
 
     function resetAll() {
@@ -437,171 +472,64 @@
       });
     }
 
-    function speechLang(lang) {
-      if (lang === "tr") return "tr-TR";
-      if (lang === "bg") return "bg-BG";
-      if (lang === "ar") return "ar-SA";
-      return "de-DE";
-    }
+    function base64ToBlob(base64, mimeType) {
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
 
-    function loadVoices() {
-      voices = window.speechSynthesis.getVoices() || [];
-    }
-
-    loadVoices();
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        loadVoices();
-      };
-    }
-
-    function pickVoice(langCode) {
-      if (!voices.length) loadVoices();
-
-      return (
-        voices.find((v) => (v.lang || "").toLowerCase() === langCode.toLowerCase()) ||
-        voices.find((v) =>
-          (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())
-        ) ||
-        null
-      );
-    }
-
-    function cleanForSpeech(text, lang) {
-      let t = String(text || "")
-        .replace(/\*\*/g, " ")
-        .replace(/\u00A0/g, " ")
-        .replace(/[ \t]+/g, " ")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
-
-      t = t
-        .replace(/Wer schreibt\?/gi, "Wer schreibt. ")
-        .replace(/Worum geht es\?/gi, "Worum geht es. ")
-        .replace(/Was ist jetzt wichtig\?/gi, "Was ist jetzt wichtig. ")
-        .replace(/Bis wann\?/gi, "Bis wann. ")
-        .replace(/Was passiert sonst\?/gi, "Was passiert sonst. ")
-        .replace(/Kurz gesagt:?/gi, "Kurz gesagt. ");
-
-      t = t
-        .replace(/Kim yazıyor\?/gi, "Kim yazıyor. ")
-        .replace(/Konu ne\?/gi, "Konu ne. ")
-        .replace(/Şimdi ne önemli\?/gi, "Şimdi ne önemli. ")
-        .replace(/Ne zamana kadar\?/gi, "Ne zamana kadar. ")
-        .replace(/Yoksa ne olur\?/gi, "Yoksa ne olur. ")
-        .replace(/Kısaca:?/gi, "Kısaca. ");
-
-      t = t
-        .replace(/Кой е изпратил писмото\?/gi, "Кой е изпратил писмото. ")
-        .replace(/За какво става дума\?/gi, "За какво става дума. ")
-        .replace(/Какво е важно сега\?/gi, "Какво е важно сега. ")
-        .replace(/До кога\?/gi, "До кога. ")
-        .replace(/Какво става иначе\?/gi, "Какво става иначе. ")
-        .replace(/Накратко:?/gi, "Накратко. ");
-
-      t = t
-        .replace(/من أرسل الرسالة؟/g, "من أرسل الرسالة. ")
-        .replace(/عن ماذا تتحدث الرسالة؟/g, "عن ماذا تتحدث الرسالة. ")
-        .replace(/ما المهم الآن؟/g, "ما المهم الآن. ")
-        .replace(/إلى متى؟/g, "إلى متى. ")
-        .replace(/ماذا يحدث إذا لم أفعل شيئًا؟/g, "ماذا يحدث إذا لم أفعل شيئا. ")
-        .replace(/باختصار:/g, "باختصار. ");
-
-      t = t
-        .replace(/€/g, " Euro ")
-        .replace(/\n/g, ". ")
-        .replace(/[:]/g, ". ")
-        .replace(/\.\s*\./g, ".")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-
-      if (lang === "de") {
-        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "I B A N");
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
 
-      if (lang === "tr") {
-        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "iban");
-      }
-
-      return t;
+      const byteArray = new Uint8Array(byteNumbers);
+      return new Blob([byteArray], { type: mimeType });
     }
 
-    function splitForSpeech(text, maxLen = 220) {
-      const sentences = text.match(/[^.!?]+[.!?]?/g) || [text];
-      const chunks = [];
-      let current = "";
+    async function fetchTtsAudio(text, lang) {
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text,
+          lang
+        })
+      });
 
-      for (const raw of sentences) {
-        const s = raw.trim();
-        if (!s) continue;
+      const data = await response.json();
 
-        if ((current + " " + s).trim().length <= maxLen) {
-          current = (current + " " + s).trim();
-        } else {
-          if (current) chunks.push(current);
-          current = s;
-        }
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "TTS-Fehler");
       }
 
-      if (current) chunks.push(current);
-      return chunks;
+      const blob = base64ToBlob(data.audioBase64, data.mimeType || "audio/mpeg");
+      return URL.createObjectURL(blob);
     }
 
-    function updateSpeechButtons() {
-      if (readShortBtn) readShortBtn.disabled = isSpeaking;
-      if (readAllBtn) readAllBtn.disabled = isSpeaking;
-      if (stopBtn) stopBtn.disabled = !isSpeaking;
-    }
-
-    function speakChunks(chunks, lang) {
-      if (!chunks.length) {
-        isSpeaking = false;
-        updateSpeechButtons();
-        return;
-      }
-
-      const chunk = chunks.shift();
-      const utterance = new SpeechSynthesisUtterance(chunk);
-      const langCode = speechLang(lang);
-      const voice = pickVoice(langCode);
-
-      utterance.lang = langCode;
-      if (voice) utterance.voice = voice;
-
-      if (lang === "tr") {
-        utterance.rate = 0.82;
-      } else if (lang === "de") {
-        utterance.rate = 0.9;
-      } else {
-        utterance.rate = 0.86;
-      }
-
-      utterance.pitch = 1;
-      utterance.volume = 1;
-
-      utterance.onend = () => speakChunks(chunks, lang);
-      utterance.onerror = () => speakChunks(chunks, lang);
-
-      window.speechSynthesis.speak(utterance);
-    }
-
-    function startSpeaking(text) {
-      if (!langEl) return;
-
-      const lang = langEl.value;
-      const cleaned = cleanForSpeech(text, lang);
-
-      if (!cleaned) {
+    async function playServerAudio(text) {
+      if (!text || !text.trim()) {
         alert("Es gibt keinen Text zum Vorlesen.");
         return;
       }
 
-      stopSpeaking();
+      const lang = langEl ? langEl.value : "de";
 
-      speechQueue = splitForSpeech(cleaned, 220);
-      isSpeaking = true;
-      updateSpeechButtons();
-      speakChunks([...speechQueue], lang);
+      stopAudio();
+      setAudioStatus("Audio wird geladen...");
+
+      try {
+        const audioUrl = await fetchTtsAudio(text, lang);
+        activeAudioUrl = audioUrl;
+
+        audioPlayerEl.src = audioUrl;
+        show(audioPlayerEl);
+        clearAudioStatus();
+
+        await audioPlayerEl.play();
+      } catch (err) {
+        clearAudioStatus();
+        setError(err.message || "Audio konnte nicht geladen werden.");
+      }
     }
 
     async function explainLetter() {
@@ -741,22 +669,26 @@
     }
 
     if (readShortBtn) {
-      readShortBtn.addEventListener("click", () => {
-        startSpeaking(currentAudioShort);
+      readShortBtn.addEventListener("click", async () => {
+        await playServerAudio(currentAudioShort);
       });
     }
 
     if (readAllBtn) {
-      readAllBtn.addEventListener("click", () => {
-        startSpeaking(currentAudioAll || currentAudioShort);
+      readAllBtn.addEventListener("click", async () => {
+        await playServerAudio(currentAudioAll || currentAudioShort);
       });
     }
 
     if (stopBtn) {
-      stopBtn.addEventListener("click", stopSpeaking);
+      stopBtn.addEventListener("click", stopAudio);
     }
 
-    updateSpeechButtons();
+    if (audioPlayerEl) {
+      audioPlayerEl.addEventListener("ended", () => {
+        clearAudioStatus();
+      });
+    }
   </script>
 </body>
 </html>
