@@ -708,17 +708,12 @@ async function buildFinalPayloadFromInfo(info, lang) {
   const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
   const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
 
-  const audioKurz = await buildAudioText(kurz, langCode);
-  const audioDetails = await buildAudioText(details, langCode);
-
   return {
     ok: true,
     quality_ok: true,
     hinweis: "",
     kurz,
-    details,
-    audio_kurz: audioKurz,
-    audio_details: audioDetails
+    details
   };
 }
 
@@ -783,27 +778,20 @@ app.post("/api/brief", async (req, res) => {
   }
 });
 
-app.post("/api/brief-bild", async (req, res) => {
-  try {
-    const bilder = req.body.bilder;
-    const lang = (req.body.lang || "de").toLowerCase();
+async function buildFinalPayloadFromInfo(info, lang) {
+  const langCode = getLanguageMeta(lang).code;
+  const kurz = cleanText(renderShortByLanguage(info, langCode));
+  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
+  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
 
-    const result = await buildFinalAnswerFromImages(bilder, lang);
-
-    if (!result.ok && result.error) {
-      return res.status(400).json(result);
-    }
-
-    return res.json(result);
-  } catch (error) {
-    console.error("Fehler /api/brief-bild:", error);
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
-});
-
+  return {
+    ok: true,
+    quality_ok: true,
+    hinweis: "",
+    kurz,
+    details
+  };
+}
 app.post("/api/tts", async (req, res) => {
   try {
     const text = cleanText(req.body.text || "");
