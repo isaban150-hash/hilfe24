@@ -599,22 +599,36 @@ function buildTranslationPrompt(text, langMeta, keepHeadingTokens = false) {
 Du bist Hilfe24.
 
 Unten steht ein fertiger deutscher Text.
-Übersetze ihn sauber in ${langMeta.label}.
 
-Wichtig:
-- Übersetze in sehr einfache, natürliche Alltagssprache.
-- Erfinde nichts dazu.
-- Lass nichts weg.
-- Füge keine neuen Sätze ein.
+Übersetze ihn vollständig und sauber in ${langMeta.label}.
+
+WICHTIG:
+- Übersetze den Inhalt vollständig.
+- Lasse nichts weg.
+- Füge nichts dazu.
+- Kürze nichts.
+- Keine Zusammenfassung.
+- Keine neuen Sätze erfinden.
 - Keine Wiederholung.
 - Kein Markdown.
-${keepHeadingTokens ? "- Die Tokens wie [[HEAD_FROM]] dürfen NICHT verändert werden." : ""}
+- Keine Mischsprache.
+- Keine deutschen Wörter mitten im Satz.
+- Nur echte Eigennamen dürfen unverändert bleiben, zum Beispiel:
+  - Stadtwerke Bad Salzuflen
+  - Bad Salzuflen
+  - IBAN
+  - QR-Code
+  - Namen von Personen, Firmen, Behörden, Städten
+- Alles andere muss vollständig auf ${langMeta.label} sein.
+- Schreibe natürlich, einfach und verständlich.
+- Die Bedeutung muss exakt erhalten bleiben.
+- Beträge, Daten, Fristen, Gebühren und Folgen müssen exakt erhalten bleiben.
+${keepHeadingTokens ? '- Die Tokens wie [[HEAD_FROM]] dürfen NICHT verändert werden.' : ''}
 
 Deutscher Text:
 ${text}
 `;
 }
-
 function buildAudioRewritePrompt(text, lang) {
   const meta = getLanguageMeta(lang);
 
