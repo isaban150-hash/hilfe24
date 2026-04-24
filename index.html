@@ -15,8 +15,6 @@
       --danger: #dc2626;
       --success: #15803d;
       --border: #e5e7eb;
-      --warning-bg: #fff7ed;
-      --warning-border: #fdba74;
     }
 
     * {
@@ -54,12 +52,14 @@
       color: var(--muted);
       margin-bottom: 8px;
       line-height: 1.5;
+      font-size: 16px;
     }
 
     label {
       display: block;
       font-weight: bold;
       margin: 12px 0 6px;
+      font-size: 16px;
     }
 
     select,
@@ -82,9 +82,11 @@
       font-size: 14px;
       color: var(--muted);
       margin-top: 6px;
+      line-height: 1.5;
     }
 
-    .button-row {
+    .button-row,
+    .audio-row {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
@@ -139,13 +141,14 @@
     }
 
     .warning {
-      background: var(--warning-bg);
-      border: 1px solid var(--warning-border);
+      background: #fff7ed;
+      border: 1px solid #fdba74;
       color: #9a3412;
       padding: 14px;
       border-radius: 12px;
       line-height: 1.5;
-      font-weight: bold;
+      font-size: 18px;
+      font-weight: 600;
     }
 
     .short-box {
@@ -153,9 +156,10 @@
       border: 1px solid #86efac;
       border-radius: 12px;
       padding: 14px;
-      line-height: 1.7;
+      line-height: 1.8;
       white-space: pre-wrap;
-      font-size: 18px;
+      font-size: 22px;
+      font-weight: 700;
     }
 
     .detail-box {
@@ -163,20 +167,15 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 14px;
-      line-height: 1.7;
+      line-height: 1.8;
       white-space: pre-wrap;
+      font-size: 18px;
     }
 
     .section-title {
       margin: 0 0 10px;
-      font-size: 20px;
-    }
-
-    .audio-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
+      font-size: 22px;
+      font-weight: 700;
     }
 
     .loader {
@@ -195,6 +194,29 @@
       color: var(--danger);
       font-weight: bold;
       margin-top: 10px;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 24px;
+      }
+
+      .short-box {
+        font-size: 24px;
+        line-height: 1.9;
+      }
+
+      .detail-box {
+        font-size: 20px;
+        line-height: 1.9;
+      }
+
+      button,
+      select,
+      textarea,
+      input[type="file"] {
+        font-size: 18px;
+      }
     }
   </style>
 </head>
@@ -234,7 +256,7 @@
     </div>
 
     <div id="warningCard" class="card hidden">
-      <div class="section-title">Bitte erst neues Foto schicken</div>
+      <div class="section-title">Hinweis</div>
       <div id="warningText" class="warning"></div>
     </div>
 
@@ -449,7 +471,7 @@
       }
 
       if (lang === "tr") {
-        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, " iban");
+        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "iban");
       }
 
       return t;
@@ -486,6 +508,7 @@
       try {
         window.speechSynthesis.cancel();
       } catch (e) {}
+
       speechQueue = [];
       isSpeaking = false;
       updateSpeechButtons();
@@ -599,7 +622,6 @@
         }
 
         data = await response.json();
-
         clearStatus();
 
         if (!response.ok || !data.ok) {
@@ -607,12 +629,12 @@
           return;
         }
 
-       if (data.quality_ok === false) {
-  warningTextEl.textContent =
-    data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
-  show(warningCardEl);
-  return;
-}
+        if (data.quality_ok === false) {
+          warningTextEl.textContent =
+            data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+          show(warningCardEl);
+          return;
+        }
 
         kurzTextEl.textContent = data.kurz || "";
         detailTextEl.textContent = data.details || "";
