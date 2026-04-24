@@ -352,62 +352,71 @@ function dedupe(arr) {
   return out;
 }
 
-function simplifyActionBase(action) {
-  const a = String(action || "").toLowerCase();
+function buildImageQualityCheckPrompt() {
+  return `
+Du prüfst nur, ob ein Brief-Foto gut genug ist, damit Hilfe24 den Brief einfach erklären kann.
 
-  if (
-    a.includes("einwohnermeldeamt") ||
-    a.includes("bürgeramt") ||
-    a.includes("bei der stadt anmelden") ||
-    a.includes("bei der stadt wieder anmelden") ||
-    a.includes("bei der stadt melden")
-  ) {
-    return "bei der Stadt anmelden";
-  }
+Antworte NUR als JSON.
 
-  if (a.includes("jobcenter")) {
-    return "beim Jobcenter anmelden";
-  }
-
-  if (a.includes("unterlagen")) {
-    return "Unterlagen schicken";
-  }
-
-  if (a.includes("zahlen") || a.includes("überweisen")) {
-    return "zahlen";
-  }
-
-  if (a.includes("antworten")) {
-    return "antworten";
-  }
-
-  if (a.includes("unterschreiben")) {
-    return "unterschreiben";
-  }
-
-  if (a.includes("kündigen")) {
-    return "kündigen";
-  }
-
-  if (a.includes("anmelden")) {
-    return "anmelden";
-  }
-
-  if (a.includes("termin")) {
-    return "zum Termin gehen";
-  }
-
-  if (a.includes("widerspruch")) {
-    return "melden, wenn du nicht einverstanden bist";
-  }
-
-  if (a.includes("melden")) {
-    return "melden";
-  }
-
-  return String(action || "").replace(/\.$/, "").trim();
+Gib genau dieses JSON zurück:
+{
+  "ok": true,
+  "problem": "",
+  "hinweis": ""
 }
 
+Regeln:
+- "ok": true, wenn der Brief insgesamt gut genug lesbar ist
+- "ok": false nur dann, wenn das Bild klar schlecht ist
+- Sei nicht zu streng
+- Ein Foto muss NICHT perfekt sein
+- Wenn die ganze Seite sichtbar und der Text größtenteils lesbar ist, dann setze "ok": true
+- Nicht wegen jeder kleinen Unsicherheit stoppen
+- Nicht wegen möglicher fehlender Seite stoppen, wenn die sichtbare Seite gut genug erkennbar ist
+- Nur blockieren bei klaren Problemen
+
+Blockiere nur bei solchen Fällen:
+- Bild stark unscharf
+- Bild zu dunkel
+- großer Schatten auf wichtigem Text
+- Seite stark abgeschnitten
+- Brief viel zu klein im Bild
+- sehr viel Hintergrund und Text kaum lesbar
+- wichtige Teile klar nicht lesbar
+
+Dann setze:
+- "ok": false
+- "problem": sehr kurz
+- "hinweis": genau 1 kurzer einfacher Satz
+
+Beispiele für false:
+{
+  "ok": false,
+  "problem": "unscharf",
+  "hinweis": "Bitte mach ein schärferes Foto vom ganzen Brief."
+}
+
+{
+  "ok": false,
+  "problem": "zu weit weg",
+  "hinweis": "Bitte fotografiere den ganzen Brief näher."
+}
+
+{
+  "ok": false,
+  "problem": "abgeschnitten",
+  "hinweis": "Bitte fotografiere die ganze Seite vollständig."
+}
+
+Wichtig:
+- Wenn das Foto brauchbar ist, auch wenn es nicht perfekt ist, dann gib zurück:
+{
+  "ok": true,
+  "problem": "",
+  "hinweis": ""
+}
+`;
+}
 function renderShortByLanguage(info, lang) {
   const sender = info.absender_kurz || info.absender_original || "";
   const actions = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
