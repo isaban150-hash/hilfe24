@@ -2,12 +2,30 @@ const express = require("express");
 const path = require("path");
 const textToSpeech = require("@google-cloud/text-to-speech");
 
+function createTtsClient() {
+  const raw = process.env.GOOGLE_CREDENTIALS_JSON;
+
+  if (raw && raw.trim()) {
+    const credentials = JSON.parse(raw);
+
+    return new textToSpeech.TextToSpeechClient({
+      credentials: {
+        client_email: credentials.client_email,
+        private_key: credentials.private_key
+      },
+      projectId: credentials.project_id
+    });
+  }
+
+  return new textToSpeech.TextToSpeechClient();
+}
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 const apiKey = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
 
-const ttsClient = new textToSpeech.TextToSpeechClient();
+const ttsClient = createTtsClient();
 
 app.use(express.json({ limit: "25mb" }));
 app.use(express.static(__dirname));
