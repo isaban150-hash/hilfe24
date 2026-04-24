@@ -22,54 +22,22 @@ function getLanguageMeta(lang) {
     case "tr":
       return {
         code: "tr",
-        label: "Türkisch",
-        speech: "tr-TR",
-        instruction: `
-Übersetze den deutschen Text in sehr einfaches, natürliches Türkisch.
-Halte die Bedeutung exakt gleich.
-Übersetze Satz für Satz.
-Erfinde nichts dazu.
-Lass nichts Wichtiges weg.
-Wenn im Deutschen "Jobcenter" steht, dann bleibt "Jobcenter".
-Wenn im Deutschen "AOK" steht, dann bleibt "AOK".
-Wenn im Deutschen "Stadtwerke" steht, dann bleibt "Stadtwerke".
-Wenn im Deutschen "Jugendamt" steht, dann übersetze es verständlich als "Gençlik Dairesi".
-Schreibe natürlich, kurz und klar.
-Nicht steif. Nicht wie Google Translate.
-`
+        label: "Türkisch"
       };
     case "bg":
       return {
         code: "bg",
-        label: "Bulgarisch",
-        speech: "bg-BG",
-        instruction: `
-Übersetze den deutschen Text in sehr einfaches, natürliches Bulgarisch.
-Halte die Bedeutung exakt gleich.
-Übersetze Satz für Satz.
-Erfinde nichts dazu.
-Lass nichts Wichtiges weg.
-`
+        label: "Bulgarisch"
       };
     case "ar":
       return {
         code: "ar",
-        label: "Arabisch",
-        speech: "ar-SA",
-        instruction: `
-Übersetze den deutschen Text in sehr einfaches, natürliches Arabisch.
-Halte die Bedeutung exakt gleich.
-Übersetze Satz für Satz.
-Erfinde nichts dazu.
-Lass nichts Wichtiges weg.
-`
+        label: "Arabisch"
       };
     default:
       return {
         code: "de",
-        label: "Deutsch",
-        speech: "de-DE",
-        instruction: ``
+        label: "Deutsch"
       };
   }
 }
@@ -171,10 +139,8 @@ Wichtig:
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
-- Ziele, Wünsche, Ideen oder allgemeine Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
-- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein, nicht Nebensachen.
-- "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
-- "kurz_gesagt" soll 1 sehr kurzer Satz in sehr einfachem Deutsch sein.
+- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein.
+- "kurz_gesagt" soll 1 sehr kurzer Satz in einfachem Deutsch sein.
 
 Gib genau dieses JSON zurück:
 {
@@ -192,21 +158,6 @@ Gib genau dieses JSON zurück:
   "kurz_gesagt": "",
   "unsicherheiten": []
 }
-
-Regeln:
-- "absender_original": so wie im Brief
-- "absender_kurz": kurze, verständliche Form vom Absender
-- "briefart": sehr kurz, z. B. "Mahnung", "Rechnung", "Einladung", "Info-Brief", "Versicherungsbrief", "Bewilligung", "Ablehnung", "Werbung"
-- "betroffene_person": Name nur wenn klar erkennbar
-- "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "wichtigste_punkte": 1 bis 3 echte Kernpunkte
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, antworten, anmelden, Unterlagen schicken, Termin wahrnehmen, unterschreiben, widersprechen
-- "frist": nur wenn klar vorhanden
-- "termin": nur wenn klar vorhanden
-- "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
-- "versteckte_wichtige_info": nur 1 kurzer Satz
-- "kurz_gesagt": 1 sehr kurzer einfacher Satz
-- "unsicherheiten": nur echte Unklarheiten
 
 Brief:
 ${text}
@@ -225,10 +176,8 @@ Wichtig:
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
-- Ziele, Wünsche, Ideen oder allgemeine Gesprächsinhalte gehören NICHT in "was_ist_zu_tun".
-- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein, nicht Nebensachen.
-- "versteckte_wichtige_info" nur dann füllen, wenn eine wichtige Sache leicht übersehen wird, aber klar aus dem Brief folgt.
-- "kurz_gesagt" soll 1 sehr kurzer Satz in sehr einfachem Deutsch sein.
+- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein.
+- "kurz_gesagt" soll 1 sehr kurzer Satz in einfachem Deutsch sein.
 
 Gib genau dieses JSON zurück:
 {
@@ -247,24 +196,7 @@ Gib genau dieses JSON zurück:
   "unsicherheiten": []
 }
 
-Regeln:
-- "absender_original": so wie im Brief
-- "absender_kurz": kurze, verständliche Form vom Absender
-- "briefart": sehr kurz
-- "betroffene_person": Name nur wenn klar erkennbar
-- "worum_geht_es": 1 sehr kurzer Satz in einfachem Deutsch
-- "wichtigste_punkte": 1 bis 3 echte Kernpunkte
-- "was_ist_zu_tun": nur klare Handlungen wie zahlen, melden, antworten, anmelden, Unterlagen schicken, Termin wahrnehmen, unterschreiben, widersprechen
-- "frist": nur wenn klar vorhanden
-- "termin": nur wenn klar vorhanden
-- "folge_wenn_nichts": nur wenn klar genannt oder sehr klar daraus folgt
-- "versteckte_wichtige_info": nur 1 kurzer Satz
-- "kurz_gesagt": 1 sehr kurzer einfacher Satz
-- "unsicherheiten": nur echte Unklarheiten oder schlecht lesbare Stellen
-
 Gib nur JSON zurück.
-
-Bilder:
 `;
 }
 
@@ -333,6 +265,7 @@ Wichtig:
 }
 `;
 }
+
 function toSentence(text) {
   if (!text) return "";
   const t = String(text).trim().replace(/\.$/, "");
@@ -352,135 +285,126 @@ function dedupe(arr) {
   return out;
 }
 
-function buildImageQualityCheckPrompt() {
-  return `
-Du prüfst nur, ob ein Brief-Foto gut genug ist, damit Hilfe24 den Brief einfach erklären kann.
+function simplifyActionBase(action) {
+  const a = String(action || "").toLowerCase();
 
-Antworte NUR als JSON.
+  if (
+    a.includes("einwohnermeldeamt") ||
+    a.includes("bürgeramt") ||
+    a.includes("bei der stadt anmelden") ||
+    a.includes("bei der stadt wieder anmelden") ||
+    a.includes("bei der stadt melden")
+  ) {
+    return "register_city";
+  }
 
-Gib genau dieses JSON zurück:
-{
-  "ok": true,
-  "problem": "",
-  "hinweis": ""
+  if (a.includes("jobcenter")) {
+    return "register_jobcenter";
+  }
+
+  if (a.includes("unterlagen")) {
+    return "send_documents";
+  }
+
+  if (a.includes("zahlen") || a.includes("überweisen")) {
+    return "pay";
+  }
+
+  if (a.includes("antworten")) {
+    return "reply";
+  }
+
+  if (a.includes("unterschreiben")) {
+    return "sign";
+  }
+
+  if (a.includes("kündigen")) {
+    return "cancel";
+  }
+
+  if (a.includes("anmelden") || a.includes("registrieren")) {
+    return "register";
+  }
+
+  if (a.includes("termin")) {
+    return "attend_appointment";
+  }
+
+  if (a.includes("widerspruch")) {
+    return "object_if_disagree";
+  }
+
+  if (a.includes("melden")) {
+    return "contact";
+  }
+
+  return String(action || "").replace(/\.$/, "").trim();
 }
 
-Regeln:
-- "ok": true, wenn der Brief insgesamt gut genug lesbar ist
-- "ok": false nur dann, wenn das Bild klar schlecht ist
-- Sei nicht zu streng
-- Ein Foto muss NICHT perfekt sein
-- Wenn die ganze Seite sichtbar und der Text größtenteils lesbar ist, dann setze "ok": true
-- Nicht wegen jeder kleinen Unsicherheit stoppen
-- Nicht wegen möglicher fehlender Seite stoppen, wenn die sichtbare Seite gut genug erkennbar ist
-- Nur blockieren bei klaren Problemen
+function actionText(code, language) {
+  const map = {
+    de: {
+      register: "dich anmelden",
+      register_city: "die Person bei der Stadt anmelden",
+      register_jobcenter: "die Person beim Jobcenter anmelden",
+      send_documents: "Unterlagen schicken",
+      pay: "zahlen",
+      reply: "antworten",
+      sign: "unterschreiben",
+      cancel: "kündigen",
+      attend_appointment: "zum Termin gehen",
+      object_if_disagree: "dich melden, wenn du nicht einverstanden bist",
+      contact: "dich melden"
+    },
+    tr: {
+      register: "kayıt olmanız gerekiyor",
+      register_city: "kişiyi belediyeye kaydetmeniz gerekiyor",
+      register_jobcenter: "kişiyi Jobcenter'a kaydetmeniz gerekiyor",
+      send_documents: "belgeleri göndermeniz gerekiyor",
+      pay: "ödeme yapmanız gerekiyor",
+      reply: "cevap vermeniz gerekiyor",
+      sign: "imzalamanız gerekiyor",
+      cancel: "iptal etmeniz gerekiyor",
+      attend_appointment: "randevuya gitmeniz gerekiyor",
+      object_if_disagree: "kabul etmiyorsanız bildirmeniz gerekiyor",
+      contact: "iletişime geçmeniz gerekiyor"
+    },
+    bg: {
+      register: "трябва да се регистрирате",
+      register_city: "трябва да регистрирате лицето в общината",
+      register_jobcenter: "трябва да регистрирате лицето в Jobcenter",
+      send_documents: "трябва да изпратите документите",
+      pay: "трябва да платите",
+      reply: "трябва да отговорите",
+      sign: "трябва да подпишете",
+      cancel: "трябва да прекратите",
+      attend_appointment: "трябва да отидете на срещата",
+      object_if_disagree: "трябва да се свържете, ако не сте съгласни",
+      contact: "трябва да се свържете"
+    },
+    ar: {
+      register: "يجب عليك التسجيل",
+      register_city: "يجب عليك تسجيل الشخص في البلدية",
+      register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر",
+      send_documents: "يجب عليك إرسال المستندات",
+      pay: "يجب عليك الدفع",
+      reply: "يجب عليك الرد",
+      sign: "يجب عليك التوقيع",
+      cancel: "يجب عليك الإلغاء",
+      attend_appointment: "يجب عليك الذهاب إلى الموعد",
+      object_if_disagree: "يجب عليك التواصل إذا لم تكن موافقًا",
+      contact: "يجب عليك التواصل"
+    }
+  };
 
-Blockiere nur bei solchen Fällen:
-- Bild stark unscharf
-- Bild zu dunkel
-- großer Schatten auf wichtigem Text
-- Seite stark abgeschnitten
-- Brief viel zu klein im Bild
-- sehr viel Hintergrund und Text kaum lesbar
-- wichtige Teile klar nicht lesbar
-
-Dann setze:
-- "ok": false
-- "problem": sehr kurz
-- "hinweis": genau 1 kurzer einfacher Satz
-
-Beispiele für false:
-{
-  "ok": false,
-  "problem": "unscharf",
-  "hinweis": "Bitte mach ein schärferes Foto vom ganzen Brief."
+  return map[language]?.[code] || "";
 }
 
-{
-  "ok": false,
-  "problem": "zu weit weg",
-  "hinweis": "Bitte fotografiere den ganzen Brief näher."
-}
-
-{
-  "ok": false,
-  "problem": "abgeschnitten",
-  "hinweis": "Bitte fotografiere die ganze Seite vollständig."
-}
-
-Wichtig:
-- Wenn das Foto brauchbar ist, auch wenn es nicht perfekt ist, dann gib zurück:
-{
-  "ok": true,
-  "problem": "",
-  "hinweis": ""
-}
-`;
-}
 function renderShortByLanguage(info, lang) {
   const sender = info.absender_kurz || info.absender_original || "";
   const actionCodes = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
   const firstAction = actionCodes[0] || "";
   const lines = [];
-
-  function actionText(code, language) {
-    const map = {
-      de: {
-        register: "dich anmelden",
-        register_city: "die Person bei der Stadt anmelden",
-        register_jobcenter: "die Person beim Jobcenter anmelden",
-        send_documents: "Unterlagen schicken",
-        pay: "zahlen",
-        reply: "antworten",
-        sign: "unterschreiben",
-        cancel: "kündigen",
-        attend_appointment: "zum Termin gehen",
-        object_if_disagree: "dich melden, wenn du nicht einverstanden bist",
-        contact: "dich melden"
-      },
-      tr: {
-        register: "kayıt olmanız gerekiyor",
-        register_city: "kişiyi belediyeye kaydetmeniz gerekiyor",
-        register_jobcenter: "kişiyi Jobcenter'a kaydetmeniz gerekiyor",
-        send_documents: "belgeleri göndermeniz gerekiyor",
-        pay: "ödeme yapmanız gerekiyor",
-        reply: "cevap vermeniz gerekiyor",
-        sign: "imzalamanız gerekiyor",
-        cancel: "iptal etmeniz gerekiyor",
-        attend_appointment: "randevuya gitmeniz gerekiyor",
-        object_if_disagree: "kabul etmiyorsanız bildirmeniz gerekiyor",
-        contact: "iletişime geçmeniz gerekiyor"
-      },
-      bg: {
-        register: "трябва да се регистрирате",
-        register_city: "трябва да регистрирате лицето в общината",
-        register_jobcenter: "трябва да регистрирате лицето в Jobcenter",
-        send_documents: "трябва да изпратите документите",
-        pay: "трябва да платите",
-        reply: "трябва да отговорите",
-        sign: "трябва да подпишете",
-        cancel: "трябва да прекратите",
-        attend_appointment: "трябва да отидете на срещата",
-        object_if_disagree: "трябва да се свържете, ако не сте съгласни",
-        contact: "трябва да се свържете"
-      },
-      ar: {
-        register: "يجب عليك التسجيل",
-        register_city: "يجب عليك تسجيل الشخص في البلدية",
-        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر",
-        send_documents: "يجب عليك إرسال المستندات",
-        pay: "يجب عليك الدفع",
-        reply: "يجب عليك الرد",
-        sign: "يجب عليك التوقيع",
-        cancel: "يجب عليك الإلغاء",
-        attend_appointment: "يجب عليك الذهاب إلى الموعد",
-        object_if_disagree: "يجب عليك التواصل إذا لم تكن موافقًا",
-        contact: "يجب عليك التواصل"
-      }
-    };
-
-    return map[language]?.[code] || "";
-  }
 
   if (lang === "tr") {
     if (sender) lines.push(`Bu mektup ${sender} geldi.`);
@@ -489,8 +413,7 @@ function renderShortByLanguage(info, lang) {
     else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`Son gün: ${info.frist}.`);
     else if (info.termin) lines.push(`Tarih: ${info.termin}.`);
-    if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
-    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     return lines.slice(0, 4).join("\n");
   }
 
@@ -501,8 +424,7 @@ function renderShortByLanguage(info, lang) {
     else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`Срок: ${info.frist}.`);
     else if (info.termin) lines.push(`Дата: ${info.termin}.`);
-    if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
-    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     return lines.slice(0, 4).join("\n");
   }
 
@@ -513,8 +435,7 @@ function renderShortByLanguage(info, lang) {
     else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`آخر موعد: ${info.frist}.`);
     else if (info.termin) lines.push(`الموعد: ${info.termin}.`);
-    if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
-    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     return lines.slice(0, 4).join("\n");
   }
 
@@ -524,8 +445,7 @@ function renderShortByLanguage(info, lang) {
   else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
   if (info.frist) lines.push(`Bis ${info.frist}.`);
   else if (info.termin) lines.push(`Termin: ${info.termin}.`);
-  if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
-  else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+  if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
 
   return lines.slice(0, 4).join("\n");
 }
@@ -661,14 +581,10 @@ Unten steht ein fertiger deutscher Text.
 Übersetze ihn sauber in ${langMeta.label}.
 
 Wichtig:
-${langMeta.instruction}
-
-Regeln:
-- Übersetze Satz für Satz.
+- Übersetze in sehr einfache, natürliche Alltagssprache.
 - Erfinde nichts dazu.
 - Lass nichts weg.
 - Füge keine neuen Sätze ein.
-- Keine Ausschmückung.
 - Keine Wiederholung.
 - Kein Markdown.
 ${keepHeadingTokens ? "- Die Tokens wie [[HEAD_FROM]] dürfen NICHT verändert werden." : ""}
@@ -773,7 +689,7 @@ async function buildFinalAnswerFromImages(bilder, lang) {
     return {
       ok: true,
       quality_ok: false,
-      hinweis: quality.hinweis || "Das Bild ist nicht gut genug. Bitte schick ein neues Foto.",
+      hinweis: quality.hinweis || "Bitte schick ein besseres Foto vom Brief.",
       kurz: "",
       details: "",
       audio_kurz: "",
