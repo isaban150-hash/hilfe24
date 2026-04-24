@@ -277,396 +277,437 @@
     </div>
   </div>
 
-  <script>
-    const langEl = document.getElementById("lang");
-    const briefTextEl = document.getElementById("briefText");
-    const bilderEl = document.getElementById("bilder");
-    const previewGridEl = document.getElementById("previewGrid");
-    const analyseBtn = document.getElementById("analyseBtn");
-    const resetBtn = document.getElementById("resetBtn");
-    const statusEl = document.getElementById("status");
-    const errorBoxEl = document.getElementById("errorBox");
-    const okBoxEl = document.getElementById("okBox");
+ <script>
+  const langEl = document.getElementById("lang");
+  const briefTextEl = document.getElementById("briefText");
+  const bilderEl = document.getElementById("bilder");
+  const previewGridEl = document.getElementById("previewGrid");
+  const analyseBtn = document.getElementById("analyseBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const statusEl = document.getElementById("status");
+  const errorBoxEl = document.getElementById("errorBox");
+  const okBoxEl = document.getElementById("okBox");
 
-    const warningCardEl = document.getElementById("warningCard");
-    const warningTextEl = document.getElementById("warningText");
+  const warningCardEl = document.getElementById("warningCard");
+  const warningTextEl = document.getElementById("warningText");
 
-    const resultCardEl = document.getElementById("resultCard");
-    const detailCardEl = document.getElementById("detailCard");
-    const kurzTextEl = document.getElementById("kurzText");
-    const detailTextEl = document.getElementById("detailText");
+  const resultCardEl = document.getElementById("resultCard");
+  const detailCardEl = document.getElementById("detailCard");
+  const kurzTextEl = document.getElementById("kurzText");
+  const detailTextEl = document.getElementById("detailText");
 
-    const readShortBtn = document.getElementById("readShortBtn");
-    const readAllBtn = document.getElementById("readAllBtn");
-    const stopBtn = document.getElementById("stopBtn");
+  const readShortBtn = document.getElementById("readShortBtn");
+  const readAllBtn = document.getElementById("readAllBtn");
+  const stopBtn = document.getElementById("stopBtn");
 
-    let currentAudioShort = "";
-    let currentAudioAll = "";
-    let speechQueue = [];
-    let isSpeaking = false;
-    let voices = [];
+  let currentAudioShort = "";
+  let currentAudioAll = "";
+  let speechQueue = [];
+  let isSpeaking = false;
+  let voices = [];
+  let activeRequestId = 0;
 
-    function show(el) {
-      el.classList.remove("hidden");
+  function show(el) {
+    el.classList.remove("hidden");
+  }
+
+  function hide(el) {
+    el.classList.add("hidden");
+  }
+
+  function setStatus(text) {
+    statusEl.textContent = text;
+    show(statusEl);
+  }
+
+  function clearStatus() {
+    statusEl.textContent = "";
+    hide(statusEl);
+  }
+
+  function setError(text) {
+    errorBoxEl.textContent = text;
+    show(errorBoxEl);
+  }
+
+  function clearError() {
+    errorBoxEl.textContent = "";
+    hide(errorBoxEl);
+  }
+
+  function setOk(text) {
+    okBoxEl.textContent = text;
+    show(okBoxEl);
+  }
+
+  function clearOk() {
+    okBoxEl.textContent = "";
+    hide(okBoxEl);
+  }
+
+  function clearWarning() {
+    warningTextEl.textContent = "";
+    hide(warningCardEl);
+  }
+
+  function clearResults() {
+    kurzTextEl.textContent = "";
+    detailTextEl.textContent = "";
+    currentAudioShort = "";
+    currentAudioAll = "";
+    hide(resultCardEl);
+    hide(detailCardEl);
+  }
+
+  function stopSpeaking() {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+
+    speechQueue = [];
+    isSpeaking = false;
+    updateSpeechButtons();
+  }
+
+  function clearOutputState() {
+    clearError();
+    clearOk();
+    clearStatus();
+    clearWarning();
+    clearResults();
+    stopSpeaking();
+  }
+
+  function resetAll() {
+    briefTextEl.value = "";
+    bilderEl.value = "";
+    previewGridEl.innerHTML = "";
+    activeRequestId++;
+    clearOutputState();
+  }
+
+  function renderPreviews() {
+    previewGridEl.innerHTML = "";
+    const files = Array.from(bilderEl.files || []);
+    for (const file of files.slice(0, 6)) {
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      previewGridEl.appendChild(img);
     }
+  }
 
-    function hide(el) {
-      el.classList.add("hidden");
-    }
-
-    function setStatus(text) {
-      statusEl.textContent = text;
-      show(statusEl);
-    }
-
-    function clearStatus() {
-      hide(statusEl);
-      statusEl.textContent = "";
-    }
-
-    function setError(text) {
-      errorBoxEl.textContent = text;
-      show(errorBoxEl);
-    }
-
-    function clearError() {
-      hide(errorBoxEl);
-      errorBoxEl.textContent = "";
-    }
-
-    function setOk(text) {
-      okBoxEl.textContent = text;
-      show(okBoxEl);
-    }
-
-    function clearOk() {
-      hide(okBoxEl);
-      okBoxEl.textContent = "";
-    }
-
-    function resetOutput() {
-      hide(warningCardEl);
-      hide(resultCardEl);
-      hide(detailCardEl);
-      warningTextEl.textContent = "";
-      kurzTextEl.textContent = "";
-      detailTextEl.textContent = "";
-      currentAudioShort = "";
-      currentAudioAll = "";
-      stopSpeaking();
-    }
-
-    function resetAll() {
-      briefTextEl.value = "";
-      bilderEl.value = "";
-      previewGridEl.innerHTML = "";
-      clearStatus();
-      clearError();
-      clearOk();
-      resetOutput();
-    }
-
-    function renderPreviews() {
-      previewGridEl.innerHTML = "";
-      const files = Array.from(bilderEl.files || []);
-      for (const file of files.slice(0, 6)) {
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
-        img.onload = () => URL.revokeObjectURL(img.src);
-        previewGridEl.appendChild(img);
-      }
-    }
-
-    async function fileToBase64(file) {
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = String(reader.result || "");
-          const base64 = result.split(",")[1] || "";
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function speechLang(lang) {
-      if (lang === "tr") return "tr-TR";
-      if (lang === "bg") return "bg-BG";
-      if (lang === "ar") return "ar-SA";
-      return "de-DE";
-    }
-
-    function loadVoices() {
-      voices = window.speechSynthesis.getVoices() || [];
-    }
-
-    loadVoices();
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        loadVoices();
+  async function fileToBase64(file) {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        const base64 = result.split(",")[1] || "";
+        resolve(base64);
       };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function speechLang(lang) {
+    if (lang === "tr") return "tr-TR";
+    if (lang === "bg") return "bg-BG";
+    if (lang === "ar") return "ar-SA";
+    return "de-DE";
+  }
+
+  function loadVoices() {
+    voices = window.speechSynthesis.getVoices() || [];
+  }
+
+  loadVoices();
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      loadVoices();
+    };
+  }
+
+  function pickVoice(langCode) {
+    if (!voices.length) loadVoices();
+
+    return (
+      voices.find((v) => (v.lang || "").toLowerCase() === langCode.toLowerCase()) ||
+      voices.find((v) => (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())) ||
+      null
+    );
+  }
+
+  function cleanForSpeech(text, lang) {
+    let t = String(text || "")
+      .replace(/\*\*/g, " ")
+      .replace(/\u00A0/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    t = t
+      .replace(/Wer schreibt\?/gi, "Wer schreibt. ")
+      .replace(/Worum geht es\?/gi, "Worum geht es. ")
+      .replace(/Was ist jetzt wichtig\?/gi, "Was ist jetzt wichtig. ")
+      .replace(/Bis wann\?/gi, "Bis wann. ")
+      .replace(/Was passiert sonst\?/gi, "Was passiert sonst. ")
+      .replace(/Kurz gesagt:?/gi, "Kurz gesagt. ");
+
+    t = t
+      .replace(/Kim yazıyor\?/gi, "Kim yazıyor. ")
+      .replace(/Konu ne\?/gi, "Konu ne. ")
+      .replace(/Şimdi ne önemli\?/gi, "Şimdi ne önemli. ")
+      .replace(/Ne zamana kadar\?/gi, "Ne zamana kadar. ")
+      .replace(/Yoksa ne olur\?/gi, "Yoksa ne olur. ")
+      .replace(/Kısaca:?/gi, "Kısaca. ");
+
+    t = t
+      .replace(/Кой е изпратил писмото\?/gi, "Кой е изпратил писмото. ")
+      .replace(/За какво става дума\?/gi, "За какво става дума. ")
+      .replace(/Какво е важно сега\?/gi, "Какво е важно сега. ")
+      .replace(/До кога\?/gi, "До кога. ")
+      .replace(/Какво става иначе\?/gi, "Какво става иначе. ")
+      .replace(/Накратко:?/gi, "Накратко. ");
+
+    t = t
+      .replace(/من أرسل الرسالة؟/g, "من أرسل الرسالة. ")
+      .replace(/عن ماذا تتحدث الرسالة؟/g, "عن ماذا تتحدث الرسالة. ")
+      .replace(/ما المهم الآن؟/g, "ما المهم الآن. ")
+      .replace(/إلى متى؟/g, "إلى متى. ")
+      .replace(/ماذا يحدث إذا لم أفعل شيئًا؟/g, "ماذا يحدث إذا لم أفعل شيئا. ")
+      .replace(/باختصار:/g, "باختصار. ");
+
+    t = t
+      .replace(/€/g, " Euro ")
+      .replace(/\n/g, ". ")
+      .replace(/[:]/g, ". ")
+      .replace(/\.\s*\./g, ".")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    if (lang === "de") {
+      t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "I B A N");
     }
 
-    function pickVoice(langCode) {
-      if (!voices.length) loadVoices();
-
-      return (
-        voices.find((v) => (v.lang || "").toLowerCase() === langCode.toLowerCase()) ||
-        voices.find((v) => (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())) ||
-        null
-      );
+    if (lang === "tr") {
+      t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "iban");
     }
 
-    function cleanForSpeech(text, lang) {
-      let t = String(text || "")
-        .replace(/\*\*/g, " ")
-        .replace(/\u00A0/g, " ")
-        .replace(/[ \t]+/g, " ")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
+    return t;
+  }
 
-      t = t
-        .replace(/Wer schreibt\?/gi, "Wer schreibt. ")
-        .replace(/Worum geht es\?/gi, "Worum geht es. ")
-        .replace(/Was ist jetzt wichtig\?/gi, "Was ist jetzt wichtig. ")
-        .replace(/Bis wann\?/gi, "Bis wann. ")
-        .replace(/Was passiert sonst\?/gi, "Was passiert sonst. ")
-        .replace(/Kurz gesagt:?/gi, "Kurz gesagt. ");
+  function splitForSpeech(text, maxLen = 220) {
+    const sentences = text.match(/[^.!?]+[.!?]?/g) || [text];
+    const chunks = [];
+    let current = "";
 
-      t = t
-        .replace(/Kim yazıyor\?/gi, "Kim yazıyor. ")
-        .replace(/Konu ne\?/gi, "Konu ne. ")
-        .replace(/Şimdi ne önemli\?/gi, "Şimdi ne önemli. ")
-        .replace(/Ne zamana kadar\?/gi, "Ne zamana kadar. ")
-        .replace(/Yoksa ne olur\?/gi, "Yoksa ne olur. ")
-        .replace(/Kısaca:?/gi, "Kısaca. ");
+    for (const raw of sentences) {
+      const s = raw.trim();
+      if (!s) continue;
 
-      t = t
-        .replace(/Кой е изпратил писмото\?/gi, "Кой е изпратил писмото. ")
-        .replace(/За какво става дума\?/gi, "За какво става дума. ")
-        .replace(/Какво е важно сега\?/gi, "Какво е важно сега. ")
-        .replace(/До кога\?/gi, "До кога. ")
-        .replace(/Какво става иначе\?/gi, "Какво става иначе. ")
-        .replace(/Накратко:?/gi, "Накратко. ");
-
-      t = t
-        .replace(/من أرسل الرسالة؟/g, "من أرسل الرسالة. ")
-        .replace(/عن ماذا تتحدث الرسالة؟/g, "عن ماذا تتحدث الرسالة. ")
-        .replace(/ما المهم الآن؟/g, "ما المهم الآن. ")
-        .replace(/إلى متى؟/g, "إلى متى. ")
-        .replace(/ماذا يحدث إذا لم أفعل شيئًا؟/g, "ماذا يحدث إذا لم أفعل شيئا. ")
-        .replace(/باختصار:/g, "باختصار. ");
-
-      t = t
-        .replace(/€/g, " Euro ")
-        .replace(/\n/g, ". ")
-        .replace(/[:]/g, ". ")
-        .replace(/\.\s*\./g, ".")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-
-      if (lang === "de") {
-        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "I B A N");
+      if ((current + " " + s).trim().length <= maxLen) {
+        current = (current + " " + s).trim();
+      } else {
+        if (current) chunks.push(current);
+        current = s;
       }
-
-      if (lang === "tr") {
-        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "iban");
-      }
-
-      return t;
     }
 
-    function splitForSpeech(text, maxLen = 220) {
-      const sentences = text.match(/[^.!?]+[.!?]?/g) || [text];
-      const chunks = [];
-      let current = "";
+    if (current) chunks.push(current);
+    return chunks;
+  }
 
-      for (const raw of sentences) {
-        const s = raw.trim();
-        if (!s) continue;
+  function updateSpeechButtons() {
+    readShortBtn.disabled = isSpeaking;
+    readAllBtn.disabled = isSpeaking;
+    stopBtn.disabled = !isSpeaking;
+  }
 
-        if ((current + " " + s).trim().length <= maxLen) {
-          current = (current + " " + s).trim();
-        } else {
-          if (current) chunks.push(current);
-          current = s;
-        }
-      }
-
-      if (current) chunks.push(current);
-      return chunks;
-    }
-
-    function updateSpeechButtons() {
-      readShortBtn.disabled = isSpeaking;
-      readAllBtn.disabled = isSpeaking;
-      stopBtn.disabled = !isSpeaking;
-    }
-
-    function stopSpeaking() {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
-
-      speechQueue = [];
+  function speakChunks(chunks, lang) {
+    if (!chunks.length) {
       isSpeaking = false;
       updateSpeechButtons();
+      return;
     }
 
-    function speakChunks(chunks, lang) {
-      if (!chunks.length) {
-        isSpeaking = false;
-        updateSpeechButtons();
-        return;
-      }
+    const chunk = chunks.shift();
+    const utterance = new SpeechSynthesisUtterance(chunk);
+    const langCode = speechLang(lang);
+    const voice = pickVoice(langCode);
 
-      const chunk = chunks.shift();
-      const utterance = new SpeechSynthesisUtterance(chunk);
-      const langCode = speechLang(lang);
-      const voice = pickVoice(langCode);
+    utterance.lang = langCode;
+    if (voice) utterance.voice = voice;
 
-      utterance.lang = langCode;
-      if (voice) utterance.voice = voice;
-
-      if (lang === "tr") {
-        utterance.rate = 0.82;
-      } else if (lang === "de") {
-        utterance.rate = 0.9;
-      } else {
-        utterance.rate = 0.86;
-      }
-
-      utterance.pitch = 1;
-      utterance.volume = 1;
-
-      utterance.onend = () => speakChunks(chunks, lang);
-      utterance.onerror = () => speakChunks(chunks, lang);
-
-      window.speechSynthesis.speak(utterance);
+    if (lang === "tr") {
+      utterance.rate = 0.82;
+    } else if (lang === "de") {
+      utterance.rate = 0.9;
+    } else {
+      utterance.rate = 0.86;
     }
 
-    function startSpeaking(text) {
-      const lang = langEl.value;
-      const cleaned = cleanForSpeech(text, lang);
+    utterance.pitch = 1;
+    utterance.volume = 1;
 
-      if (!cleaned) {
-        alert("Es gibt keinen Text zum Vorlesen.");
-        return;
-      }
+    utterance.onend = () => speakChunks(chunks, lang);
+    utterance.onerror = () => speakChunks(chunks, lang);
 
-      stopSpeaking();
+    window.speechSynthesis.speak(utterance);
+  }
 
-      speechQueue = splitForSpeech(cleaned, 220);
-      isSpeaking = true;
-      updateSpeechButtons();
-      speakChunks([...speechQueue], lang);
+  function startSpeaking(text) {
+    const lang = langEl.value;
+    const cleaned = cleanForSpeech(text, lang);
+
+    if (!cleaned) {
+      alert("Es gibt keinen Text zum Vorlesen.");
+      return;
     }
 
-    async function explainLetter() {
-      clearError();
-      clearOk();
-      resetOutput();
+    stopSpeaking();
 
-      const text = briefTextEl.value.trim();
-      const files = Array.from(bilderEl.files || []);
-      const lang = langEl.value;
-
-      if (!text && files.length === 0) {
-        setError("Bitte füge Text ein oder lade mindestens ein Bild hoch.");
-        return;
-      }
-
-      if (files.length > 6) {
-        setError("Du kannst maximal 6 Bilder hochladen.");
-        return;
-      }
-
-      setStatus("Bitte warten... Der Brief wird geprüft.");
-
-      try {
-        let response;
-        let data;
-
-        if (files.length > 0) {
-          const bilder = [];
-          for (const file of files) {
-            const imageData = await fileToBase64(file);
-            bilder.push({
-              mimeType: file.type || "image/jpeg",
-              imageData
-            });
-          }
-
-          response = await fetch("/api/brief-bild", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              lang,
-              bilder
-            })
-          });
-        } else {
-          response = await fetch("/api/brief", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              lang,
-              text
-            })
-          });
-        }
-
-        data = await response.json();
-        clearStatus();
-
-        if (!response.ok || !data.ok) {
-          setError(data.error || "Etwas ist schiefgelaufen.");
-          return;
-        }
-
-        if (data.quality_ok === false) {
-          warningTextEl.textContent =
-            data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
-          show(warningCardEl);
-          return;
-        }
-
-        kurzTextEl.textContent = data.kurz || "";
-        detailTextEl.textContent = data.details || "";
-
-        currentAudioShort = data.audio_kurz || data.kurz || "";
-        currentAudioAll = [data.audio_kurz || "", data.audio_details || ""].filter(Boolean).join("\n\n");
-
-        show(resultCardEl);
-        show(detailCardEl);
-        setOk("Der Brief wurde erklärt.");
-      } catch (err) {
-        clearStatus();
-        setError("Serverfehler. Bitte später nochmal versuchen.");
-        console.error(err);
-      }
-    }
-
-    bilderEl.addEventListener("change", renderPreviews);
-    analyseBtn.addEventListener("click", explainLetter);
-    resetBtn.addEventListener("click", resetAll);
-
-    readShortBtn.addEventListener("click", () => {
-      startSpeaking(currentAudioShort);
-    });
-
-    readAllBtn.addEventListener("click", () => {
-      startSpeaking(currentAudioAll || currentAudioShort);
-    });
-
-    stopBtn.addEventListener("click", stopSpeaking);
-
+    speechQueue = splitForSpeech(cleaned, 220);
+    isSpeaking = true;
     updateSpeechButtons();
-  </script>
+    speakChunks([...speechQueue], lang);
+  }
+
+  async function explainLetter() {
+    const requestId = ++activeRequestId;
+
+    const text = briefTextEl.value.trim();
+    const files = Array.from(bilderEl.files || []);
+    const lang = langEl.value;
+
+    clearOutputState();
+
+    if (!text && files.length === 0) {
+      setError("Bitte füge Text ein oder lade mindestens ein Bild hoch.");
+      return;
+    }
+
+    if (files.length > 6) {
+      setError("Du kannst maximal 6 Bilder hochladen.");
+      return;
+    }
+
+    analyseBtn.disabled = true;
+    resetBtn.disabled = true;
+    setStatus("Bitte warten... Der Brief wird geprüft.");
+
+    try {
+      let response;
+      let data;
+
+      if (files.length > 0) {
+        const bilder = [];
+        for (const file of files) {
+          const imageData = await fileToBase64(file);
+          bilder.push({
+            mimeType: file.type || "image/jpeg",
+            imageData
+          });
+        }
+
+        response = await fetch("/api/brief-bild", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            lang,
+            bilder
+          })
+        });
+      } else {
+        response = await fetch("/api/brief", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            lang,
+            text
+          })
+        });
+      }
+
+      data = await response.json();
+
+      if (requestId !== activeRequestId) {
+        return;
+      }
+
+      clearStatus();
+
+      if (!response.ok || !data.ok) {
+        setError(data.error || "Etwas ist schiefgelaufen.");
+        return;
+      }
+
+      if (data.quality_ok === false) {
+        warningTextEl.textContent =
+          data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+        show(warningCardEl);
+        return;
+      }
+
+      kurzTextEl.textContent = data.kurz || "";
+      detailTextEl.textContent = data.details || "";
+
+      currentAudioShort = data.audio_kurz || data.kurz || "";
+      currentAudioAll = [data.audio_kurz || "", data.audio_details || ""].filter(Boolean).join("\n\n");
+
+      show(resultCardEl);
+      show(detailCardEl);
+      setOk("Der Brief wurde erklärt.");
+    } catch (err) {
+      if (requestId !== activeRequestId) {
+        return;
+      }
+
+      clearStatus();
+      setError("Serverfehler. Bitte später nochmal versuchen.");
+      console.error(err);
+    } finally {
+      if (requestId === activeRequestId) {
+        analyseBtn.disabled = false;
+        resetBtn.disabled = false;
+      }
+    }
+  }
+
+  bilderEl.addEventListener("change", () => {
+    activeRequestId++;
+    clearOutputState();
+    renderPreviews();
+  });
+
+  langEl.addEventListener("change", () => {
+    activeRequestId++;
+    clearOutputState();
+  });
+
+  briefTextEl.addEventListener("input", () => {
+    activeRequestId++;
+    clearOutputState();
+  });
+
+  analyseBtn.addEventListener("click", explainLetter);
+  resetBtn.addEventListener("click", resetAll);
+
+  readShortBtn.addEventListener("click", () => {
+    startSpeaking(currentAudioShort);
+  });
+
+  readAllBtn.addEventListener("click", () => {
+    startSpeaking(currentAudioAll || currentAudioShort);
+  });
+
+  stopBtn.addEventListener("click", stopSpeaking);
+
+  updateSpeechButtons();
+</script>
 </body>
 </html>
