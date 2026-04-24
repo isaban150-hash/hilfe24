@@ -629,55 +629,11 @@ Deutscher Text:
 ${text}
 `;
 }
-function buildAudioRewritePrompt(text, lang) {
-  const meta = getLanguageMeta(lang);
-
-  return `
-Du bist Hilfe24.
-
-Mach aus diesem Text einen gut vorlesbaren Audio-Text in ${meta.label}.
-
-Wichtig:
-- Inhalt vollständig behalten
-- Nicht kürzer machen
-- Aber besser hörbar machen
-- Kurze Sätze
-- Sehr einfache Sprache
-- Zahlen, Geld und Daten so umschreiben, dass sie beim Hören verständlich sind
-- Keine Listenzeichen
-- Kein Markdown
-- Keine Überschriften wie "Worum geht es?"
-- Nur Fließtext mit kurzen klaren Sätzen
-- Firmennamen und Behördennamen dürfen bleiben
-- Kein Deutsch einmischen, außer echte Eigennamen
-
-Text:
-${text}
-`;
-}
 
 async function buildInfoFromText(text) {
   const rawJson = await callGemini([{ text: buildExtractionPromptForText(text) }]);
   return normalizeInfo(extractJson(rawJson));
 }
-
-async function buildInfoFromImages(bilder) {
-  const parts = [{ text: buildExtractionPromptForImages() }];
-
-  for (const bild of bilder) {
-    if (!bild.imageData || !bild.mimeType) continue;
-    parts.push({
-      inline_data: {
-        mime_type: bild.mimeType,
-        data: bild.imageData
-      }
-    });
-  }
-
-  const rawJson = await callGemini(parts);
-  return normalizeInfo(extractJson(rawJson));
-}
-
 async function checkImageQuality(bilder) {
   const parts = [{ text: buildImageQualityCheckPrompt() }];
 
