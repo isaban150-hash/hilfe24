@@ -532,7 +532,27 @@ function renderShortByLanguage(info, lang) {
 
 function renderDetailTemplateGerman(info) {
   const blocks = [];
-  const sender = info.absender_kurz || info.absender_original;
+  const sender = info.absender_kurz || info.absender_original || "";
+  const importantPoints = dedupe(info.wichtigste_punkte || []);
+  const actions = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
+
+  function actionTextDe(code) {
+    const map = {
+      register: "Sie müssen sich anmelden.",
+      register_city: "Die Person muss bei der Stadt angemeldet werden.",
+      register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
+      send_documents: "Die Unterlagen müssen geschickt werden.",
+      pay: "Sie müssen zahlen.",
+      reply: "Sie müssen antworten.",
+      sign: "Sie müssen unterschreiben.",
+      cancel: "Sie müssen kündigen.",
+      attend_appointment: "Sie müssen zum Termin gehen.",
+      object_if_disagree: "Sie müssen sich melden, wenn Sie nicht einverstanden sind.",
+      contact: "Sie müssen sich melden."
+    };
+
+    return map[code] || "";
+  }
 
   if (sender) {
     blocks.push(`[[HEAD_FROM]]\nDer Brief ist von ${sender}.`);
@@ -540,27 +560,27 @@ function renderDetailTemplateGerman(info) {
 
   if (info.worum_geht_es) {
     blocks.push(`[[HEAD_TOPIC]]\n${toSentence(info.worum_geht_es)}`);
+  } else if (info.briefart) {
+    blocks.push(`[[HEAD_TOPIC]]\n${toSentence(`Es geht um ${info.briefart}`)}`);
   }
 
-  const importantPoints = dedupe(info.wichtigste_punkte || []);
-  const actions = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
+  const importantLines = [];
 
-  if (importantPoints.length > 0 || actions.length > 0 || info.versteckte_wichtige_info) {
-    const lines = [];
+  for (const p of importantPoints.slice(0, 2)) {
+    importantLines.push(toSentence(p));
+  }
 
-    for (const p of importantPoints.slice(0, 2)) {
-      lines.push(toSentence(p));
-    }
+  for (const a of actions.slice(0, 2)) {
+    const t = actionTextDe(a);
+    if (t) importantLines.push(t);
+  }
 
-    if (actions.length > 0) {
-      lines.push(`Wichtig: Du musst ${actions.slice(0, 2).join(" und ")}.`);
-    }
+  if (info.versteckte_wichtige_info) {
+    importantLines.push(toSentence(info.versteckte_wichtige_info));
+  }
 
-    if (info.versteckte_wichtige_info) {
-      lines.push(toSentence(info.versteckte_wichtige_info));
-    }
-
-    blocks.push(`[[HEAD_IMPORTANT]]\n${lines.join(" ")}`);
+  if (importantLines.length > 0) {
+    blocks.push(`[[HEAD_IMPORTANT]]\n${importantLines.join(" ")}`);
   }
 
   if (info.frist || info.termin) {
@@ -577,9 +597,10 @@ function renderDetailTemplateGerman(info) {
   if (info.kurz_gesagt) {
     blocks.push(`[[HEAD_SUMMARY]]\n${toSentence(info.kurz_gesagt)}`);
   } else if (actions.length > 0) {
-    blocks.push(`[[HEAD_SUMMARY]]\nDu musst jetzt das Wichtige beachten.`);
+    const first = actionTextDe(actions[0]);
+    blocks.push(`[[HEAD_SUMMARY]]\n${first || "Bitte beachten Sie jetzt das Wichtigste."}`);
   } else {
-    blocks.push(`[[HEAD_SUMMARY]]\nDu musst jetzt nichts machen.`);
+    blocks.push(`[[HEAD_SUMMARY]]\nBitte beachten Sie jetzt das Wichtigste.`);
   }
 
   return blocks.join("\n\n");
