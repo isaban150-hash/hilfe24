@@ -270,7 +270,7 @@ Bilder:
 
 function buildImageQualityCheckPrompt() {
   return `
-Du prüfst nur die Bildqualität und Vollständigkeit eines Brief-Fotos.
+Du prüfst nur, ob ein Brief-Foto gut genug ist, damit Hilfe24 den Brief einfach erklären kann.
 
 Antworte NUR als JSON.
 
@@ -282,27 +282,50 @@ Gib genau dieses JSON zurück:
 }
 
 Regeln:
-- "ok": true nur wenn der Brief sicher genug lesbar und vollständig genug ist
-- "ok": false wenn das Bild zu unscharf, abgeschnitten, zu dunkel, mit Schatten verdeckt, zu weit weg oder unvollständig ist
-- "ok": false auch dann, wenn der Brief im Bild zu klein ist oder zu viel Hintergrund zu sehen ist
-- "ok": false auch dann, wenn wahrscheinlich noch eine weitere Seite, Rückseite oder Anlage fehlt
+- "ok": true, wenn der Brief insgesamt gut genug lesbar ist
+- "ok": false nur dann, wenn das Bild klar schlecht ist
+- Sei nicht zu streng
+- Ein Foto muss NICHT perfekt sein
+- Wenn die ganze Seite sichtbar und der Text größtenteils lesbar ist, dann setze "ok": true
+- Nicht wegen jeder kleinen Unsicherheit stoppen
+- Nicht wegen möglicher fehlender Seite stoppen, wenn die sichtbare Seite gut genug erkennbar ist
+- Nur blockieren bei klaren Problemen
+
+Blockiere nur bei solchen Fällen:
+- Bild stark unscharf
+- Bild zu dunkel
+- großer Schatten auf wichtigem Text
+- Seite stark abgeschnitten
+- Brief viel zu klein im Bild
+- sehr viel Hintergrund und Text kaum lesbar
+- wichtige Teile klar nicht lesbar
+
+Dann setze:
+- "ok": false
 - "problem": sehr kurz
-- "hinweis": sehr einfacher Satz für den Nutzer
+- "hinweis": genau 1 kurzer einfacher Satz
 
-Wichtige Zusatzregeln:
-- Wenn viel Tisch, Boden, Hände oder Umgebung sichtbar sind und der Brief nicht groß genug im Bild ist, dann setze "ok": false
-- Wenn Hinweise auf weitere Seiten, Rückseite oder Anlagen erkennbar sind, dann setze "ok": false
-- Sei streng
-- Lieber einmal zu früh stoppen als ein schlechtes oder unvollständiges Foto durchlassen
+Beispiele für false:
+{
+  "ok": false,
+  "problem": "unscharf",
+  "hinweis": "Bitte mach ein schärferes Foto vom ganzen Brief."
+}
 
-Beispiele:
-- "Das Bild ist zu unscharf. Bitte schick ein schärferes Foto."
-- "Die Seite ist nicht ganz drauf. Bitte fotografiere die ganze Seite."
-- "Der Brief ist zu weit weg. Bitte mach ein näheres Foto nur vom Brief."
-- "Es fehlt noch eine Seite. Bitte lade auch die nächste Seite hoch."
-- "Bitte lade auch die Rückseite oder die fehlende Seite hoch."
+{
+  "ok": false,
+  "problem": "zu weit weg",
+  "hinweis": "Bitte fotografiere den ganzen Brief näher."
+}
 
-Wenn das Bild gut genug ist, gib zurück:
+{
+  "ok": false,
+  "problem": "abgeschnitten",
+  "hinweis": "Bitte fotografiere die ganze Seite vollständig."
+}
+
+Wichtig:
+- Wenn das Foto brauchbar ist, auch wenn es nicht perfekt ist, dann gib zurück:
 {
   "ok": true,
   "problem": "",
@@ -310,7 +333,6 @@ Wenn das Bild gut genug ist, gib zurück:
 }
 `;
 }
-
 function toSentence(text) {
   if (!text) return "";
   const t = String(text).trim().replace(/\.$/, "");
