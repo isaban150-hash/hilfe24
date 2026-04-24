@@ -732,31 +732,30 @@
   }
 
   if (analyseBtn) {
-    analyseBtn.addEventListener("click", explainLetter);
-  }
+  analyseBtn.addEventListener("click", explainLetter);
+}
 
-  if (resetBtn) {
-    resetBtn.addEventListener("click", resetAll);
-  }
+if (resetBtn) {
+  resetBtn.addEventListener("click", resetAll);
+}
 
-  if (readShortBtn) {
-    readShortBtn.addEventListener("click", () => {
-      startSpeaking(currentAudioShort);
-    });
-  }
+if (readShortBtn) {
+  readShortBtn.addEventListener("click", () => {
+    startSpeaking(currentAudioShort);
+  });
+}
 
-  if (readAllBtn) {
-    readAllBtn.addEventListener("click", () => {
-      startSpeaking(currentAudioAll || currentAudioShort);
-    });
-  }
+if (readAllBtn) {
+  readAllBtn.addEventListener("click", () => {
+    startSpeaking(currentAudioAll || currentAudioShort);
+  });
+}
 
-  if (stopBtn) {
-    stopBtn.addEventListener("click", stopSpeaking);
-  }
+if (stopBtn) {
+  stopBtn.addEventListener("click", stopSpeaking);
+}
 
-  updateSpeechButtons();
-
+updateSpeechButtons();
 </script>
 </body>
 </html>
