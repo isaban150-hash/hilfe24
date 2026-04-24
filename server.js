@@ -330,14 +330,8 @@ function dedupe(arr) {
   return out;
 }
 
-function applyPersonName(text, personName) {
-  if (!text) return "";
-  if (!personName) return text;
-  return text.replace(/die Person/gi, personName);
-}
-
-function simplifyAction(action) {
-  const a = action.toLowerCase();
+function simplifyActionBase(action) {
+  const a = String(action || "").toLowerCase();
 
   if (
     a.includes("einwohnermeldeamt") ||
@@ -346,85 +340,101 @@ function simplifyAction(action) {
     a.includes("bei der stadt wieder anmelden") ||
     a.includes("bei der stadt melden")
   ) {
-    return "die Person soll bei der Stadt angemeldet werden";
+    return "bei der Stadt anmelden";
   }
 
   if (a.includes("jobcenter")) {
-    return "die Person soll beim Jobcenter angemeldet werden";
+    return "beim Jobcenter anmelden";
   }
 
   if (a.includes("unterlagen")) {
-    return "die Unterlagen sollen geschickt werden";
+    return "Unterlagen schicken";
   }
 
   if (a.includes("zahlen") || a.includes("überweisen")) {
-    return "du sollst zahlen";
+    return "zahlen";
   }
 
   if (a.includes("antworten")) {
-    return "du sollst antworten";
+    return "antworten";
   }
 
   if (a.includes("unterschreiben")) {
-    return "du sollst unterschreiben";
+    return "unterschreiben";
   }
 
   if (a.includes("kündigen")) {
-    return "du sollst kündigen";
+    return "kündigen";
   }
 
   if (a.includes("anmelden")) {
-    return "du sollst dich anmelden";
+    return "anmelden";
   }
 
   if (a.includes("termin")) {
-    return "der Termin ist wichtig";
+    return "zum Termin gehen";
   }
 
   if (a.includes("widerspruch")) {
-    return "du sollst dich melden, wenn du nicht einverstanden bist";
+    return "melden, wenn du nicht einverstanden bist";
   }
 
   if (a.includes("melden")) {
-    return "du sollst dich melden";
+    return "melden";
   }
 
-  return action.replace(/\.$/, "").trim();
+  return String(action || "").replace(/\.$/, "").trim();
 }
 
-function renderShortGerman(info) {
+function renderShortByLanguage(info, lang) {
+  const sender = info.absender_kurz || info.absender_original || "";
+  const actions = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
   const lines = [];
-  const sender = info.absender_kurz || info.absender_original;
 
-  if (sender) {
-    lines.push(`Das ist ein Brief von ${sender}.`);
+  if (lang === "tr") {
+    if (sender) lines.push(`Bu mektup ${sender} gönderdi.`);
+    if (actions.length > 0) lines.push(`Yapman gereken: ${actions[0]}.`);
+    else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
+    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (info.frist) lines.push(`Son gün: ${info.frist}.`);
+    else if (info.termin) lines.push(`Tarih: ${info.termin}.`);
+    if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
+    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    return lines.slice(0, 4).join("\n");
   }
 
-  const actionLine = dedupe(
-    (info.was_ist_zu_tun || []).map((x) =>
-      applyPersonName(simplifyAction(x), info.betroffene_person)
-    )
-  );
-
-  if (actionLine.length > 0) {
-    lines.push(`Du musst ${actionLine[0]}.`);
-  } else if (info.wichtigste_punkte.length > 0) {
-    lines.push(toSentence(info.wichtigste_punkte[0]));
-  } else if (info.worum_geht_es) {
-    lines.push(toSentence(info.worum_geht_es));
+  if (lang === "bg") {
+    if (sender) lines.push(`Това е писмо от ${sender}.`);
+    if (actions.length > 0) lines.push(`Трябва да ${actions[0]}.`);
+    else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
+    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (info.frist) lines.push(`Срок: ${info.frist}.`);
+    else if (info.termin) lines.push(`Дата: ${info.termin}.`);
+    if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
+    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    return lines.slice(0, 4).join("\n");
   }
 
-  if (info.frist) {
-    lines.push(`Bis ${info.frist}.`);
-  } else if (info.termin) {
-    lines.push(`Termin: ${info.termin}.`);
+  if (lang === "ar") {
+    if (sender) lines.push(`هذه رسالة من ${sender}.`);
+    if (actions.length > 0) lines.push(`يجب عليك أن ${actions[0]}.`);
+    else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
+    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (info.frist) lines.push(`آخر موعد: ${info.frist}.`);
+    else if (info.termin) lines.push(`الموعد: ${info.termin}.`);
+    if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
+    else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    return lines.slice(0, 4).join("\n");
   }
 
-  if (info.folge_wenn_nichts) {
-    lines.push(toSentence(info.folge_wenn_nichts));
-  } else if (info.kurz_gesagt) {
-    lines.push(toSentence(info.kurz_gesagt));
-  }
+  if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
+  if (actions.length > 0) lines.push(`Du musst ${actions[0]}.`);
+  else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
+  else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+  if (info.frist) lines.push(`Bis ${info.frist}.`);
+  else if (info.termin) lines.push(`Termin: ${info.termin}.`);
+  if (info.folge_wenn_nichts) lines.push(toSentence(info.folge_wenn_nichts));
+  else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
 
   return lines.slice(0, 4).join("\n");
 }
@@ -442,11 +452,7 @@ function renderDetailTemplateGerman(info) {
   }
 
   const importantPoints = dedupe(info.wichtigste_punkte || []);
-  const actions = dedupe(
-    (info.was_ist_zu_tun || []).map((x) =>
-      applyPersonName(simplifyAction(x), info.betroffene_person)
-    )
-  );
+  const actions = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
 
   if (importantPoints.length > 0 || actions.length > 0 || info.versteckte_wichtige_info) {
     const lines = [];
@@ -456,7 +462,7 @@ function renderDetailTemplateGerman(info) {
     }
 
     if (actions.length > 0) {
-      lines.push(`Wichtig: ${actions.slice(0, 2).join(" und ")}.`);
+      lines.push(`Wichtig: Du musst ${actions.slice(0, 2).join(" und ")}.`);
     }
 
     if (info.versteckte_wichtige_info) {
@@ -480,7 +486,7 @@ function renderDetailTemplateGerman(info) {
   if (info.kurz_gesagt) {
     blocks.push(`[[HEAD_SUMMARY]]\n${toSentence(info.kurz_gesagt)}`);
   } else if (actions.length > 0) {
-    blocks.push(`[[HEAD_SUMMARY]]\nDu musst jetzt nur das Wichtige beachten.`);
+    blocks.push(`[[HEAD_SUMMARY]]\nDu musst jetzt das Wichtige beachten.`);
   } else {
     blocks.push(`[[HEAD_SUMMARY]]\nDu musst jetzt nichts machen.`);
   }
@@ -553,7 +559,7 @@ Regeln:
 - Keine Ausschmückung.
 - Keine Wiederholung.
 - Kein Markdown.
-${keepHeadingTokens ? '- Die Tokens wie [[HEAD_FROM]] oder [[HEAD_TOPIC]] dürfen NICHT verändert werden.' : ''}
+${keepHeadingTokens ? "- Die Tokens wie [[HEAD_FROM]] dürfen NICHT verändert werden." : ""}
 
 Deutscher Text:
 ${text}
@@ -599,17 +605,6 @@ async function checkImageQuality(bilder) {
   return extractJson(raw);
 }
 
-async function translateShortIfNeeded(text, lang) {
-  const langMeta = getLanguageMeta(lang);
-  if (langMeta.code === "de") return text;
-
-  const translatedRaw = await callGemini([
-    { text: buildTranslationPrompt(text, langMeta, false) }
-  ]);
-
-  return cleanText(translatedRaw);
-}
-
 async function translateDetailIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
   if (langMeta.code === "de") {
@@ -624,11 +619,10 @@ async function translateDetailIfNeeded(text, lang) {
 }
 
 async function buildFinalPayloadFromInfo(info, lang) {
-  const kurzDe = cleanText(renderShortGerman(info));
+  const langCode = getLanguageMeta(lang).code;
+  const kurz = cleanText(renderShortByLanguage(info, langCode));
   const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
-
-  const kurz = await translateShortIfNeeded(kurzDe, lang);
-  const details = await translateDetailIfNeeded(detailTemplateDe, lang);
+  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
 
   return {
     ok: true,
@@ -637,9 +631,7 @@ async function buildFinalPayloadFromInfo(info, lang) {
     kurz,
     details,
     audio_kurz: kurz,
-    audio_details: details,
-    debug_de_kurz: kurzDe,
-    debug_de_details: localizeDetailHeadings(detailTemplateDe, "de")
+    audio_details: details
   };
 }
 
