@@ -419,12 +419,72 @@ Wichtig:
 }
 function renderShortByLanguage(info, lang) {
   const sender = info.absender_kurz || info.absender_original || "";
-  const actions = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
+  const actionCodes = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
+  const firstAction = actionCodes[0] || "";
   const lines = [];
 
+  function actionText(code, language) {
+    const map = {
+      de: {
+        register: "dich anmelden",
+        register_city: "die Person bei der Stadt anmelden",
+        register_jobcenter: "die Person beim Jobcenter anmelden",
+        send_documents: "Unterlagen schicken",
+        pay: "zahlen",
+        reply: "antworten",
+        sign: "unterschreiben",
+        cancel: "kündigen",
+        attend_appointment: "zum Termin gehen",
+        object_if_disagree: "dich melden, wenn du nicht einverstanden bist",
+        contact: "dich melden"
+      },
+      tr: {
+        register: "kayıt olmanız gerekiyor",
+        register_city: "kişiyi belediyeye kaydetmeniz gerekiyor",
+        register_jobcenter: "kişiyi Jobcenter'a kaydetmeniz gerekiyor",
+        send_documents: "belgeleri göndermeniz gerekiyor",
+        pay: "ödeme yapmanız gerekiyor",
+        reply: "cevap vermeniz gerekiyor",
+        sign: "imzalamanız gerekiyor",
+        cancel: "iptal etmeniz gerekiyor",
+        attend_appointment: "randevuya gitmeniz gerekiyor",
+        object_if_disagree: "kabul etmiyorsanız bildirmeniz gerekiyor",
+        contact: "iletişime geçmeniz gerekiyor"
+      },
+      bg: {
+        register: "трябва да се регистрирате",
+        register_city: "трябва да регистрирате лицето в общината",
+        register_jobcenter: "трябва да регистрирате лицето в Jobcenter",
+        send_documents: "трябва да изпратите документите",
+        pay: "трябва да платите",
+        reply: "трябва да отговорите",
+        sign: "трябва да подпишете",
+        cancel: "трябва да прекратите",
+        attend_appointment: "трябва да отидете на срещата",
+        object_if_disagree: "трябва да се свържете, ако не сте съгласни",
+        contact: "трябва да се свържете"
+      },
+      ar: {
+        register: "يجب عليك التسجيل",
+        register_city: "يجب عليك تسجيل الشخص في البلدية",
+        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر",
+        send_documents: "يجب عليك إرسال المستندات",
+        pay: "يجب عليك الدفع",
+        reply: "يجب عليك الرد",
+        sign: "يجب عليك التوقيع",
+        cancel: "يجب عليك الإلغاء",
+        attend_appointment: "يجب عليك الذهاب إلى الموعد",
+        object_if_disagree: "يجب عليك التواصل إذا لم تكن موافقًا",
+        contact: "يجب عليك التواصل"
+      }
+    };
+
+    return map[language]?.[code] || "";
+  }
+
   if (lang === "tr") {
-    if (sender) lines.push(`Bu mektup ${sender} gönderdi.`);
-    if (actions.length > 0) lines.push(`Yapman gereken: ${actions[0]}.`);
+    if (sender) lines.push(`Bu mektup ${sender} geldi.`);
+    if (firstAction) lines.push(actionText(firstAction, "tr") + ".");
     else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
     else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`Son gün: ${info.frist}.`);
@@ -436,7 +496,7 @@ function renderShortByLanguage(info, lang) {
 
   if (lang === "bg") {
     if (sender) lines.push(`Това е писмо от ${sender}.`);
-    if (actions.length > 0) lines.push(`Трябва да ${actions[0]}.`);
+    if (firstAction) lines.push(actionText(firstAction, "bg") + ".");
     else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
     else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`Срок: ${info.frist}.`);
@@ -448,7 +508,7 @@ function renderShortByLanguage(info, lang) {
 
   if (lang === "ar") {
     if (sender) lines.push(`هذه رسالة من ${sender}.`);
-    if (actions.length > 0) lines.push(`يجب عليك أن ${actions[0]}.`);
+    if (firstAction) lines.push(actionText(firstAction, "ar") + ".");
     else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
     else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
     if (info.frist) lines.push(`آخر موعد: ${info.frist}.`);
@@ -459,7 +519,7 @@ function renderShortByLanguage(info, lang) {
   }
 
   if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
-  if (actions.length > 0) lines.push(`Du musst ${actions[0]}.`);
+  if (firstAction) lines.push(`Du musst ${actionText(firstAction, "de")}.`);
   else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
   else if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
   if (info.frist) lines.push(`Bis ${info.frist}.`);
