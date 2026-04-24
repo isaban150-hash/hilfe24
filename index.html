@@ -85,19 +85,19 @@
       line-height: 1.5;
     }
 
-  .button-row,
-.audio-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
-}
+    .button-row,
+    .audio-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
 
-.button-row button,
-.audio-row button {
-  flex: 1 1 220px;
-  min-width: 0;
-}
+    .button-row button,
+    .audio-row button {
+      flex: 1 1 220px;
+      min-width: 0;
+    }
 
     button {
       border: none;
@@ -203,16 +203,18 @@
     }
 
     @media (max-width: 600px) {
- .button-row,
-  .audio-row {
-    flex-direction: column;
-  }
+      .button-row,
+      .audio-row {
+        flex-direction: column;
+      }
 
-  .button-row button,
-  .audio-row button {
-    width: 100%;
-    flex: none;
-  }     h1 {
+      .button-row button,
+      .audio-row button {
+        width: 100%;
+        flex: none;
+      }
+
+      h1 {
         font-size: 24px;
       }
 
@@ -292,470 +294,469 @@
     </div>
   </div>
 
- <script>
- <script>
-  const langEl = document.getElementById("lang");
-  const briefTextEl = document.getElementById("briefText");
-  const bilderEl = document.getElementById("bilder");
-  const previewGridEl = document.getElementById("previewGrid");
-  const analyseBtn = document.getElementById("analyseBtn");
-  const resetBtn = document.getElementById("resetBtn");
-  const statusEl = document.getElementById("status");
-  const errorBoxEl = document.getElementById("errorBox");
-  const okBoxEl = document.getElementById("okBox");
+  <script>
+    const langEl = document.getElementById("lang");
+    const briefTextEl = document.getElementById("briefText");
+    const bilderEl = document.getElementById("bilder");
+    const previewGridEl = document.getElementById("previewGrid");
+    const analyseBtn = document.getElementById("analyseBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const statusEl = document.getElementById("status");
+    const errorBoxEl = document.getElementById("errorBox");
+    const okBoxEl = document.getElementById("okBox");
 
-  const warningCardEl = document.getElementById("warningCard");
-  const warningTextEl = document.getElementById("warningText");
+    const warningCardEl = document.getElementById("warningCard");
+    const warningTextEl = document.getElementById("warningText");
 
-  const resultCardEl = document.getElementById("resultCard");
-  const detailCardEl = document.getElementById("detailCard");
-  const kurzTextEl = document.getElementById("kurzText");
-  const detailTextEl = document.getElementById("detailText");
+    const resultCardEl = document.getElementById("resultCard");
+    const detailCardEl = document.getElementById("detailCard");
+    const kurzTextEl = document.getElementById("kurzText");
+    const detailTextEl = document.getElementById("detailText");
 
-  const readShortBtn = document.getElementById("readShortBtn");
-  const readAllBtn = document.getElementById("readAllBtn");
-  const stopBtn = document.getElementById("stopBtn");
+    const readShortBtn = document.getElementById("readShortBtn");
+    const readAllBtn = document.getElementById("readAllBtn");
+    const stopBtn = document.getElementById("stopBtn");
 
-  let currentAudioShort = "";
-  let currentAudioAll = "";
-  let speechQueue = [];
-  let isSpeaking = false;
-  let voices = [];
-  let activeRequestId = 0;
+    let currentAudioShort = "";
+    let currentAudioAll = "";
+    let speechQueue = [];
+    let isSpeaking = false;
+    let voices = [];
+    let activeRequestId = 0;
 
-  function show(el) {
-    if (el) el.classList.remove("hidden");
-  }
-
-  function hide(el) {
-    if (el) el.classList.add("hidden");
-  }
-
-  function setStatus(text) {
-    if (!statusEl) return;
-    statusEl.textContent = text;
-    show(statusEl);
-  }
-
-  function clearStatus() {
-    if (!statusEl) return;
-    statusEl.textContent = "";
-    hide(statusEl);
-  }
-
-  function setError(text) {
-    if (!errorBoxEl) return;
-    errorBoxEl.textContent = text;
-    show(errorBoxEl);
-  }
-
-  function clearError() {
-    if (!errorBoxEl) return;
-    errorBoxEl.textContent = "";
-    hide(errorBoxEl);
-  }
-
-  function setOk(text) {
-    if (!okBoxEl) return;
-    okBoxEl.textContent = text;
-    show(okBoxEl);
-  }
-
-  function clearOk() {
-    if (!okBoxEl) return;
-    okBoxEl.textContent = "";
-    hide(okBoxEl);
-  }
-
-  function clearWarning() {
-    if (!warningTextEl) return;
-    warningTextEl.textContent = "";
-    hide(warningCardEl);
-  }
-
-  function clearResults() {
-    if (kurzTextEl) kurzTextEl.textContent = "";
-    if (detailTextEl) detailTextEl.textContent = "";
-    currentAudioShort = "";
-    currentAudioAll = "";
-    hide(resultCardEl);
-    hide(detailCardEl);
-  }
-
-  function stopSpeaking() {
-    try {
-      window.speechSynthesis.cancel();
-    } catch (e) {}
-
-    speechQueue = [];
-    isSpeaking = false;
-    updateSpeechButtons();
-  }
-
-  function clearOutputState() {
-    clearError();
-    clearOk();
-    clearStatus();
-    clearWarning();
-    clearResults();
-    stopSpeaking();
-  }
-
-  function resetAll() {
-    if (briefTextEl) briefTextEl.value = "";
-    if (bilderEl) bilderEl.value = "";
-    if (previewGridEl) previewGridEl.innerHTML = "";
-    activeRequestId++;
-    clearOutputState();
-  }
-
-  function renderPreviews() {
-    if (!previewGridEl || !bilderEl) return;
-
-    previewGridEl.innerHTML = "";
-    const files = Array.from(bilderEl.files || []);
-
-    for (const file of files.slice(0, 6)) {
-      const img = document.createElement("img");
-      img.src = URL.createObjectURL(file);
-      img.onload = () => URL.revokeObjectURL(img.src);
-      previewGridEl.appendChild(img);
-    }
-  }
-
-  async function fileToBase64(file) {
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = String(reader.result || "");
-        const base64 = result.split(",")[1] || "";
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function speechLang(lang) {
-    if (lang === "tr") return "tr-TR";
-    if (lang === "bg") return "bg-BG";
-    if (lang === "ar") return "ar-SA";
-    return "de-DE";
-  }
-
-  function loadVoices() {
-    voices = window.speechSynthesis.getVoices() || [];
-  }
-
-  loadVoices();
-  if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      loadVoices();
-    };
-  }
-
-  function pickVoice(langCode) {
-    if (!voices.length) loadVoices();
-
-    return (
-      voices.find((v) => (v.lang || "").toLowerCase() === langCode.toLowerCase()) ||
-      voices.find((v) =>
-        (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())
-      ) ||
-      null
-    );
-  }
-
-  function cleanForSpeech(text, lang) {
-    let t = String(text || "")
-      .replace(/\*\*/g, " ")
-      .replace(/\u00A0/g, " ")
-      .replace(/[ \t]+/g, " ")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-
-    t = t
-      .replace(/Wer schreibt\?/gi, "Wer schreibt. ")
-      .replace(/Worum geht es\?/gi, "Worum geht es. ")
-      .replace(/Was ist jetzt wichtig\?/gi, "Was ist jetzt wichtig. ")
-      .replace(/Bis wann\?/gi, "Bis wann. ")
-      .replace(/Was passiert sonst\?/gi, "Was passiert sonst. ")
-      .replace(/Kurz gesagt:?/gi, "Kurz gesagt. ");
-
-    t = t
-      .replace(/Kim yazıyor\?/gi, "Kim yazıyor. ")
-      .replace(/Konu ne\?/gi, "Konu ne. ")
-      .replace(/Şimdi ne önemli\?/gi, "Şimdi ne önemli. ")
-      .replace(/Ne zamana kadar\?/gi, "Ne zamana kadar. ")
-      .replace(/Yoksa ne olur\?/gi, "Yoksa ne olur. ")
-      .replace(/Kısaca:?/gi, "Kısaca. ");
-
-    t = t
-      .replace(/Кой е изпратил писмото\?/gi, "Кой е изпратил писмото. ")
-      .replace(/За какво става дума\?/gi, "За какво става дума. ")
-      .replace(/Какво е важно сега\?/gi, "Какво е важно сега. ")
-      .replace(/До кога\?/gi, "До кога. ")
-      .replace(/Какво става иначе\?/gi, "Какво става иначе. ")
-      .replace(/Накратко:?/gi, "Накратко. ");
-
-    t = t
-      .replace(/من أرسل الرسالة؟/g, "من أرسل الرسالة. ")
-      .replace(/عن ماذا تتحدث الرسالة؟/g, "عن ماذا تتحدث الرسالة. ")
-      .replace(/ما المهم الآن؟/g, "ما المهم الآن. ")
-      .replace(/إلى متى؟/g, "إلى متى. ")
-      .replace(/ماذا يحدث إذا لم أفعل شيئًا؟/g, "ماذا يحدث إذا لم أفعل شيئا. ")
-      .replace(/باختصار:/g, "باختصار. ");
-
-    t = t
-      .replace(/€/g, " Euro ")
-      .replace(/\n/g, ". ")
-      .replace(/[:]/g, ". ")
-      .replace(/\.\s*\./g, ".")
-      .replace(/\s{2,}/g, " ")
-      .trim();
-
-    if (lang === "de") {
-      t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "I B A N");
+    function show(el) {
+      if (el) el.classList.remove("hidden");
     }
 
-    if (lang === "tr") {
-      t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "iban");
+    function hide(el) {
+      if (el) el.classList.add("hidden");
     }
 
-    return t;
-  }
+    function setStatus(text) {
+      if (!statusEl) return;
+      statusEl.textContent = text;
+      show(statusEl);
+    }
 
-  function splitForSpeech(text, maxLen = 220) {
-    const sentences = text.match(/[^.!?]+[.!?]?/g) || [text];
-    const chunks = [];
-    let current = "";
+    function clearStatus() {
+      if (!statusEl) return;
+      statusEl.textContent = "";
+      hide(statusEl);
+    }
 
-    for (const raw of sentences) {
-      const s = raw.trim();
-      if (!s) continue;
+    function setError(text) {
+      if (!errorBoxEl) return;
+      errorBoxEl.textContent = text;
+      show(errorBoxEl);
+    }
 
-      if ((current + " " + s).trim().length <= maxLen) {
-        current = (current + " " + s).trim();
-      } else {
-        if (current) chunks.push(current);
-        current = s;
+    function clearError() {
+      if (!errorBoxEl) return;
+      errorBoxEl.textContent = "";
+      hide(errorBoxEl);
+    }
+
+    function setOk(text) {
+      if (!okBoxEl) return;
+      okBoxEl.textContent = text;
+      show(okBoxEl);
+    }
+
+    function clearOk() {
+      if (!okBoxEl) return;
+      okBoxEl.textContent = "";
+      hide(okBoxEl);
+    }
+
+    function clearWarning() {
+      if (!warningTextEl) return;
+      warningTextEl.textContent = "";
+      hide(warningCardEl);
+    }
+
+    function clearResults() {
+      if (kurzTextEl) kurzTextEl.textContent = "";
+      if (detailTextEl) detailTextEl.textContent = "";
+      currentAudioShort = "";
+      currentAudioAll = "";
+      hide(resultCardEl);
+      hide(detailCardEl);
+    }
+
+    function stopSpeaking() {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+
+      speechQueue = [];
+      isSpeaking = false;
+      updateSpeechButtons();
+    }
+
+    function clearOutputState() {
+      clearError();
+      clearOk();
+      clearStatus();
+      clearWarning();
+      clearResults();
+      stopSpeaking();
+    }
+
+    function resetAll() {
+      if (briefTextEl) briefTextEl.value = "";
+      if (bilderEl) bilderEl.value = "";
+      if (previewGridEl) previewGridEl.innerHTML = "";
+      activeRequestId++;
+      clearOutputState();
+    }
+
+    function renderPreviews() {
+      if (!previewGridEl || !bilderEl) return;
+
+      previewGridEl.innerHTML = "";
+      const files = Array.from(bilderEl.files || []);
+
+      for (const file of files.slice(0, 6)) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.onload = () => URL.revokeObjectURL(img.src);
+        previewGridEl.appendChild(img);
       }
     }
 
-    if (current) chunks.push(current);
-    return chunks;
-  }
+    async function fileToBase64(file) {
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          const base64 = result.split(",")[1] || "";
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
 
-  function updateSpeechButtons() {
-    if (readShortBtn) readShortBtn.disabled = isSpeaking;
-    if (readAllBtn) readAllBtn.disabled = isSpeaking;
-    if (stopBtn) stopBtn.disabled = !isSpeaking;
-  }
+    function speechLang(lang) {
+      if (lang === "tr") return "tr-TR";
+      if (lang === "bg") return "bg-BG";
+      if (lang === "ar") return "ar-SA";
+      return "de-DE";
+    }
 
-  function speakChunks(chunks, lang) {
-    if (!chunks.length) {
-      isSpeaking = false;
+    function loadVoices() {
+      voices = window.speechSynthesis.getVoices() || [];
+    }
+
+    loadVoices();
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        loadVoices();
+      };
+    }
+
+    function pickVoice(langCode) {
+      if (!voices.length) loadVoices();
+
+      return (
+        voices.find((v) => (v.lang || "").toLowerCase() === langCode.toLowerCase()) ||
+        voices.find((v) =>
+          (v.lang || "").toLowerCase().startsWith(langCode.split("-")[0].toLowerCase())
+        ) ||
+        null
+      );
+    }
+
+    function cleanForSpeech(text, lang) {
+      let t = String(text || "")
+        .replace(/\*\*/g, " ")
+        .replace(/\u00A0/g, " ")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+      t = t
+        .replace(/Wer schreibt\?/gi, "Wer schreibt. ")
+        .replace(/Worum geht es\?/gi, "Worum geht es. ")
+        .replace(/Was ist jetzt wichtig\?/gi, "Was ist jetzt wichtig. ")
+        .replace(/Bis wann\?/gi, "Bis wann. ")
+        .replace(/Was passiert sonst\?/gi, "Was passiert sonst. ")
+        .replace(/Kurz gesagt:?/gi, "Kurz gesagt. ");
+
+      t = t
+        .replace(/Kim yazıyor\?/gi, "Kim yazıyor. ")
+        .replace(/Konu ne\?/gi, "Konu ne. ")
+        .replace(/Şimdi ne önemli\?/gi, "Şimdi ne önemli. ")
+        .replace(/Ne zamana kadar\?/gi, "Ne zamana kadar. ")
+        .replace(/Yoksa ne olur\?/gi, "Yoksa ne olur. ")
+        .replace(/Kısaca:?/gi, "Kısaca. ");
+
+      t = t
+        .replace(/Кой е изпратил писмото\?/gi, "Кой е изпратил писмото. ")
+        .replace(/За какво става дума\?/gi, "За какво става дума. ")
+        .replace(/Какво е важно сега\?/gi, "Какво е важно сега. ")
+        .replace(/До кога\?/gi, "До кога. ")
+        .replace(/Какво става иначе\?/gi, "Какво става иначе. ")
+        .replace(/Накратко:?/gi, "Накратко. ");
+
+      t = t
+        .replace(/من أرسل الرسالة؟/g, "من أرسل الرسالة. ")
+        .replace(/عن ماذا تتحدث الرسالة؟/g, "عن ماذا تتحدث الرسالة. ")
+        .replace(/ما المهم الآن؟/g, "ما المهم الآن. ")
+        .replace(/إلى متى؟/g, "إلى متى. ")
+        .replace(/ماذا يحدث إذا لم أفعل شيئًا؟/g, "ماذا يحدث إذا لم أفعل شيئا. ")
+        .replace(/باختصار:/g, "باختصار. ");
+
+      t = t
+        .replace(/€/g, " Euro ")
+        .replace(/\n/g, ". ")
+        .replace(/[:]/g, ". ")
+        .replace(/\.\s*\./g, ".")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+      if (lang === "de") {
+        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "I B A N");
+      }
+
+      if (lang === "tr") {
+        t = t.replace(/\bAOK\b/g, "A O K").replace(/\bIBAN\b/g, "iban");
+      }
+
+      return t;
+    }
+
+    function splitForSpeech(text, maxLen = 220) {
+      const sentences = text.match(/[^.!?]+[.!?]?/g) || [text];
+      const chunks = [];
+      let current = "";
+
+      for (const raw of sentences) {
+        const s = raw.trim();
+        if (!s) continue;
+
+        if ((current + " " + s).trim().length <= maxLen) {
+          current = (current + " " + s).trim();
+        } else {
+          if (current) chunks.push(current);
+          current = s;
+        }
+      }
+
+      if (current) chunks.push(current);
+      return chunks;
+    }
+
+    function updateSpeechButtons() {
+      if (readShortBtn) readShortBtn.disabled = isSpeaking;
+      if (readAllBtn) readAllBtn.disabled = isSpeaking;
+      if (stopBtn) stopBtn.disabled = !isSpeaking;
+    }
+
+    function speakChunks(chunks, lang) {
+      if (!chunks.length) {
+        isSpeaking = false;
+        updateSpeechButtons();
+        return;
+      }
+
+      const chunk = chunks.shift();
+      const utterance = new SpeechSynthesisUtterance(chunk);
+      const langCode = speechLang(lang);
+      const voice = pickVoice(langCode);
+
+      utterance.lang = langCode;
+      if (voice) utterance.voice = voice;
+
+      if (lang === "tr") {
+        utterance.rate = 0.82;
+      } else if (lang === "de") {
+        utterance.rate = 0.9;
+      } else {
+        utterance.rate = 0.86;
+      }
+
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      utterance.onend = () => speakChunks(chunks, lang);
+      utterance.onerror = () => speakChunks(chunks, lang);
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function startSpeaking(text) {
+      if (!langEl) return;
+
+      const lang = langEl.value;
+      const cleaned = cleanForSpeech(text, lang);
+
+      if (!cleaned) {
+        alert("Es gibt keinen Text zum Vorlesen.");
+        return;
+      }
+
+      stopSpeaking();
+
+      speechQueue = splitForSpeech(cleaned, 220);
+      isSpeaking = true;
       updateSpeechButtons();
-      return;
+      speakChunks([...speechQueue], lang);
     }
 
-    const chunk = chunks.shift();
-    const utterance = new SpeechSynthesisUtterance(chunk);
-    const langCode = speechLang(lang);
-    const voice = pickVoice(langCode);
+    async function explainLetter() {
+      const requestId = ++activeRequestId;
 
-    utterance.lang = langCode;
-    if (voice) utterance.voice = voice;
+      const text = briefTextEl ? briefTextEl.value.trim() : "";
+      const files = bilderEl ? Array.from(bilderEl.files || []) : [];
+      const lang = langEl ? langEl.value : "de";
 
-    if (lang === "tr") {
-      utterance.rate = 0.82;
-    } else if (lang === "de") {
-      utterance.rate = 0.9;
-    } else {
-      utterance.rate = 0.86;
-    }
+      clearOutputState();
 
-    utterance.pitch = 1;
-    utterance.volume = 1;
+      if (!text && files.length === 0) {
+        setError("Bitte füge Text ein oder lade mindestens ein Bild hoch.");
+        return;
+      }
 
-    utterance.onend = () => speakChunks(chunks, lang);
-    utterance.onerror = () => speakChunks(chunks, lang);
+      if (files.length > 6) {
+        setError("Du kannst maximal 6 Bilder hochladen.");
+        return;
+      }
 
-    window.speechSynthesis.speak(utterance);
-  }
+      if (analyseBtn) analyseBtn.disabled = true;
+      if (resetBtn) resetBtn.disabled = true;
 
-  function startSpeaking(text) {
-    if (!langEl) return;
+      setStatus("Bitte warten... Der Brief wird geprüft.");
 
-    const lang = langEl.value;
-    const cleaned = cleanForSpeech(text, lang);
+      try {
+        let response;
+        let data;
 
-    if (!cleaned) {
-      alert("Es gibt keinen Text zum Vorlesen.");
-      return;
-    }
+        if (files.length > 0) {
+          const bilder = [];
+          for (const file of files) {
+            const imageData = await fileToBase64(file);
+            bilder.push({
+              mimeType: file.type || "image/jpeg",
+              imageData
+            });
+          }
 
-    stopSpeaking();
-
-    speechQueue = splitForSpeech(cleaned, 220);
-    isSpeaking = true;
-    updateSpeechButtons();
-    speakChunks([...speechQueue], lang);
-  }
-
-  async function explainLetter() {
-    const requestId = ++activeRequestId;
-
-    const text = briefTextEl ? briefTextEl.value.trim() : "";
-    const files = bilderEl ? Array.from(bilderEl.files || []) : [];
-    const lang = langEl ? langEl.value : "de";
-
-    clearOutputState();
-
-    if (!text && files.length === 0) {
-      setError("Bitte füge Text ein oder lade mindestens ein Bild hoch.");
-      return;
-    }
-
-    if (files.length > 6) {
-      setError("Du kannst maximal 6 Bilder hochladen.");
-      return;
-    }
-
-    if (analyseBtn) analyseBtn.disabled = true;
-    if (resetBtn) resetBtn.disabled = true;
-
-    setStatus("Bitte warten... Der Brief wird geprüft.");
-
-    try {
-      let response;
-      let data;
-
-      if (files.length > 0) {
-        const bilder = [];
-        for (const file of files) {
-          const imageData = await fileToBase64(file);
-          bilder.push({
-            mimeType: file.type || "image/jpeg",
-            imageData
+          response = await fetch("/api/brief-bild", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              lang,
+              bilder
+            })
+          });
+        } else {
+          response = await fetch("/api/brief", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              lang,
+              text
+            })
           });
         }
 
-        response = await fetch("/api/brief-bild", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            lang,
-            bilder
-          })
-        });
-      } else {
-        response = await fetch("/api/brief", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            lang,
-            text
-          })
-        });
-      }
+        data = await response.json();
 
-      data = await response.json();
+        if (requestId !== activeRequestId) return;
 
-      if (requestId !== activeRequestId) return;
+        clearStatus();
 
-      clearStatus();
-
-      if (!response.ok || !data.ok) {
-        setError(data.error || "Etwas ist schiefgelaufen.");
-        return;
-      }
-
-      if (data.quality_ok === false) {
-        if (warningTextEl) {
-          warningTextEl.textContent =
-            data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+        if (!response.ok || !data.ok) {
+          setError(data.error || "Etwas ist schiefgelaufen.");
+          return;
         }
-        show(warningCardEl);
-        return;
-      }
 
-      if (kurzTextEl) kurzTextEl.textContent = data.kurz || "";
-      if (detailTextEl) detailTextEl.textContent = data.details || "";
+        if (data.quality_ok === false) {
+          if (warningTextEl) {
+            warningTextEl.textContent =
+              data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+          }
+          show(warningCardEl);
+          return;
+        }
 
-      currentAudioShort = data.audio_kurz || data.kurz || "";
-      currentAudioAll = [data.audio_kurz || "", data.audio_details || ""]
-        .filter(Boolean)
-        .join("\n\n");
+        if (kurzTextEl) kurzTextEl.textContent = data.kurz || "";
+        if (detailTextEl) detailTextEl.textContent = data.details || "";
 
-      show(resultCardEl);
-      show(detailCardEl);
-      setOk("Der Brief wurde erklärt.");
-    } catch (err) {
-      if (requestId !== activeRequestId) return;
+        currentAudioShort = data.audio_kurz || data.kurz || "";
+        currentAudioAll = [data.audio_kurz || "", data.audio_details || ""]
+          .filter(Boolean)
+          .join("\n\n");
 
-      clearStatus();
-      setError("Serverfehler. Bitte später nochmal versuchen.");
-      console.error(err);
-    } finally {
-      if (requestId === activeRequestId) {
-        if (analyseBtn) analyseBtn.disabled = false;
-        if (resetBtn) resetBtn.disabled = false;
+        show(resultCardEl);
+        show(detailCardEl);
+        setOk("Der Brief wurde erklärt.");
+      } catch (err) {
+        if (requestId !== activeRequestId) return;
+
+        clearStatus();
+        setError("Serverfehler. Bitte später nochmal versuchen.");
+        console.error(err);
+      } finally {
+        if (requestId === activeRequestId) {
+          if (analyseBtn) analyseBtn.disabled = false;
+          if (resetBtn) resetBtn.disabled = false;
+        }
       }
     }
-  }
 
-  if (bilderEl) {
-    bilderEl.addEventListener("change", () => {
-      activeRequestId++;
-      clearOutputState();
-      renderPreviews();
-    });
-  }
+    if (bilderEl) {
+      bilderEl.addEventListener("change", () => {
+        activeRequestId++;
+        clearOutputState();
+        renderPreviews();
+      });
+    }
 
-  if (langEl) {
-    langEl.addEventListener("change", () => {
-      activeRequestId++;
-      clearOutputState();
-    });
-  }
+    if (langEl) {
+      langEl.addEventListener("change", () => {
+        activeRequestId++;
+        clearOutputState();
+      });
+    }
 
-  if (briefTextEl) {
-    briefTextEl.addEventListener("input", () => {
-      activeRequestId++;
-      clearOutputState();
-    });
-  }
+    if (briefTextEl) {
+      briefTextEl.addEventListener("input", () => {
+        activeRequestId++;
+        clearOutputState();
+      });
+    }
 
-  if (analyseBtn) {
-  analyseBtn.addEventListener("click", explainLetter);
-}
+    if (analyseBtn) {
+      analyseBtn.addEventListener("click", explainLetter);
+    }
 
-if (resetBtn) {
-  resetBtn.addEventListener("click", resetAll);
-}
+    if (resetBtn) {
+      resetBtn.addEventListener("click", resetAll);
+    }
 
-if (readShortBtn) {
-  readShortBtn.addEventListener("click", () => {
-    startSpeaking(currentAudioShort);
-  });
-}
+    if (readShortBtn) {
+      readShortBtn.addEventListener("click", () => {
+        startSpeaking(currentAudioShort);
+      });
+    }
 
-if (readAllBtn) {
-  readAllBtn.addEventListener("click", () => {
-    startSpeaking(currentAudioAll || currentAudioShort);
-  });
-}
+    if (readAllBtn) {
+      readAllBtn.addEventListener("click", () => {
+        startSpeaking(currentAudioAll || currentAudioShort);
+      });
+    }
 
-if (stopBtn) {
-  stopBtn.addEventListener("click", stopSpeaking);
-}
+    if (stopBtn) {
+      stopBtn.addEventListener("click", stopSpeaking);
+    }
 
-updateSpeechButtons();
-</script>
+    updateSpeechButtons();
+  </script>
 </body>
 </html>
