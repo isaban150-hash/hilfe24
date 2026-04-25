@@ -584,6 +584,23 @@ async function buildInfoFromText(text) {
   const rawJson = await callGemini([{ text: buildExtractionPromptForText(text) }]);
   return normalizeInfo(extractJson(rawJson));
 }
+async function buildInfoFromImages(bilder) {
+  const parts = [{ text: buildExtractionPromptForImages() }];
+
+  for (const bild of bilder) {
+    if (!bild.imageData || !bild.mimeType) continue;
+    parts.push({
+      inline_data: {
+        mime_type: bild.mimeType,
+        data: bild.imageData
+      }
+    });
+  }
+
+  const rawJson = await callGemini(parts);
+  return normalizeInfo(extractJson(rawJson));
+}
+
 async function checkImageQuality(bilder) {
   const parts = [{ text: buildImageQualityCheckPrompt() }];
 
@@ -612,6 +629,33 @@ async function translateDetailIfNeeded(text, lang) {
   ]);
 
   return localizeDetailHeadings(cleanText(translatedRaw), langMeta.code);
+}
+
+function buildAudioRewritePrompt(text, lang) {
+  const meta = getLanguageMeta(lang);
+
+  return `
+Du bist Hilfe24.
+
+Mach aus diesem Text einen gut vorlesbaren Audio-Text in ${meta.label}.
+
+Wichtig:
+- Inhalt vollständig behalten
+- Nicht kürzer machen
+- Aber besser hörbar machen
+- Kurze Sätze
+- Sehr einfache Sprache
+- Zahlen, Geld und Daten so umschreiben, dass sie beim Hören verständlich sind
+- Keine Listenzeichen
+- Kein Markdown
+- Keine Überschriften wie "Worum geht es?"
+- Nur Fließtext mit kurzen klaren Sätzen
+- Firmennamen und Behördennamen dürfen bleiben
+- Kein Deutsch einmischen, außer echte Eigennamen
+
+Text:
+${text}
+`;
 }
 
 async function buildAudioText(text, lang) {
@@ -695,9 +739,7 @@ async function buildFinalAnswerFromImages(bilder, lang) {
       quality_ok: false,
       hinweis: quality.hinweis || "Bitte schick ein besseres Foto vom Brief.",
       kurz: "",
-      details: "",
-      audio_kurz: "",
-      audio_details: ""
+      details: ""
     };
   }
 
@@ -728,20 +770,22 @@ app.post("/api/brief", async (req, res) => {
   }
 });
 
-async function buildFinalPayloadFromInfo(info, lang) {
-  const langCode = getLanguageMeta(lang).code;
-  const kurz = cleanText(renderShortByLanguage(info, langCode));
-  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
-  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
+app.post("/api/brief-bild", async (req, res) => {
+  try {
+    const bilder = req.body.bilder || [];
+    const lang = (req.body.lang || "de").toLowerCase();
 
-  return {
-    ok: true,
-    quality_ok: true,
-    hinweis: "",
-    kurz,
-    details
-  };
-}
+    const result = await buildFinalAnswerFromImages(bilder, lang);
+    return res.json(result);
+  } catch (error) {
+    console.error("Fehler /api/brief-bild:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
+  }
+});
+
 app.post("/api/tts", async (req, res) => {
   try {
     const text = cleanText(req.body.text || "");
@@ -754,7 +798,8 @@ app.post("/api/tts", async (req, res) => {
       });
     }
 
-    const audioBase64 = await synthesizeMp3(text, lang);
+    const audioText = await buildAudioText(text, lang);
+    const audioBase64 = await synthesizeMp3(audioText, lang);
 
     return res.json({
       ok: true,
