@@ -584,6 +584,7 @@ async function buildInfoFromText(text) {
   const rawJson = await callGemini([{ text: buildExtractionPromptForText(text) }]);
   return normalizeInfo(extractJson(rawJson));
 }
+
 async function buildInfoFromImages(bilder) {
   const parts = [{ text: buildExtractionPromptForImages() }];
 
