@@ -641,7 +641,7 @@ currentAudioAll = "";
 
     if (bilderEl) {
       bilderEl.addEventListener("change", () => {
-        activeRequestId++;
+        activeRequestId++;function 
         clearOutputState();
         renderPreviews();
       });
@@ -669,21 +669,31 @@ currentAudioAll = "";
       resetBtn.addEventListener("click", resetAll);
     }
 
-    if (readShortBtn) {
-      readShortBtn.addEventListener("click", async () => {
-        await playServerAudio(currentAudioShort);
-      });
+  if (readShortBtn) {
+  readShortBtn.addEventListener("click", async () => {
+    try {
+      await playServerAudio(currentKurzText);
+    } catch (error) {
+      setError(error.message || "Audio konnte nicht geladen werden.");
     }
+  });
+}
 
-    if (readAllBtn) {
-      readAllBtn.addEventListener("click", async () => {
-        await playServerAudio(currentAudioAll || currentAudioShort);
-      });
+if (readAllBtn) {
+  readAllBtn.addEventListener("click", async () => {
+    try {
+      await playServerAudio(
+        [currentKurzText, currentDetailText].filter(Boolean).join("\n\n")
+      );
+    } catch (error) {
+      setError(error.message || "Audio konnte nicht geladen werden.");
     }
+  });
+}
 
-    if (stopBtn) {
-      stopBtn.addEventListener("click", stopAudio);
-    }
+if (stopBtn) {
+  stopBtn.addEventListener("click", stopAudio);
+}
 
     if (audioPlayerEl) {
       audioPlayerEl.addEventListener("ended", () => {
