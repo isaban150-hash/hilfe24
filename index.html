@@ -614,13 +614,14 @@
         }
 
         if (kurzTextEl) kurzTextEl.textContent = data.kurz || "";
-        if (detailTextEl) detailTextEl.textContent = data.details || "";
+if (detailTextEl) detailTextEl.textContent = data.details || "";
 
-        currentAudioShort = data.audio_kurz || data.kurz || "";
-        currentAudioAll = [data.audio_kurz || "", data.audio_details || ""]
-          .filter(Boolean)
-          .join("\n\n");
-
+       currentLang = lang;
+currentKurzText = data.kurz || "";
+currentDetailText = data.details || "";
+currentAudioShort = "";
+currentAudioAll = "";
+       
         show(resultCardEl);
         show(detailCardEl);
         setOk("Der Brief wurde erklärt.");
