@@ -443,117 +443,7 @@ function renderShortByLanguage(info, lang) {
         register_city: "Трябва да регистрирате лицето в общината.",
         register_jobcenter: "Трябва да регистрирате лицето в Jobcenter.",
         send_documents: "Трябва да изпратите документите.",
-        pay: "Трябва да платите.",
-        reply: "Трябва да отговорите.",
-        sign: "Трябва да подпишете.",
-        cancel: "Трябва да прекратите.",
-        attend_appointment: "Трябва да отидете на срещата.",
-        object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете с тях.",
-        contact: "Трябва да се свържете."
-      };
-      lines.push(map[firstAction] || "Трябва да предприемете действие.");
-    } else if (topic) {
-      lines.push(cleanNativeSentence(topic) + ".");
-    }
-
-    if (info.frist) {
-      lines.push(`Срок: ${info.frist}.`);
-    }
-
-    if (summary) {
-      lines.push(cleanNativeSentence(summary) + ".");
-    } else if (consequence) {
-      lines.push(`Иначе може да се случи следното: ${cleanNativeSentence(consequence)}.`);
-    }
-
-    return lines.slice(0, 4).join("\n");
-  }
-
-  if (lang === "ar") {
-    if (sender) lines.push(`هذه رسالة من ${sender}.`);
-    if (firstAction) {
-      const map = {
-        register: "يجب عليك التسجيل.",
-        register_city: "يجب عليك تسجيل الشخص في البلدية.",
-        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر.",
-        send_documents: "يجب عليك إرسال المستندات.",
-        pay: "يجب عليك الدفع.",
-        reply: "يجب عليك الرد.",
-        sign: "يجب عليك التوقيع.",
-        cancel: "يجب عليك الإلغاء.",
-        attend_appointment: "يجب عليك الذهاب إلى الموعد.",
-        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل معهم.",
-        contact: "يجب عليك التواصل."
-      };
-      lines.push(map[firstAction] || "يجب عليك اتخاذ إجراء.");
-    } else if (topic) {
-      lines.push(cleanNativeSentence(topic) + ".");
-    }
-
-    if (info.frist) {
-      lines.push(`آخر موعد: ${info.frist}.`);
-    }
-
-    if (summary) {
-      lines.push(cleanNativeSentence(summary) + ".");
-    } else if (consequence) {
-      lines.push(`إذا لم تفعل شيئًا، فقد يحدث ما يلي: ${cleanNativeSentence(consequence)}.`);
-    }
-
-    return lines.slice(0, 4).join("\n");
-  }
-
-  if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
-
-  if (firstAction) {
-    const map = {
-      register: "Du musst dich anmelden.",
-      register_city: "Die Person muss bei der Stadt angemeldet werden.",
-      register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
-      send_documents: "Du musst Unterlagen schicken.",
-      pay: "Du musst zahlen.",
-      reply: "Du musst antworten.",
-      sign: "Du musst unterschreiben.",
-      cancel: "Du musst kündigen.",
-      attend_appointment: "Du musst zum Termin gehen.",
-      object_if_disagree: "Wenn du nicht einverstanden bist, musst du dich melden oder widersprechen.",
-      contact: "Du musst dich melden."
-    };
-    lines.push(map[firstAction] || "Du musst etwas tun.");
-  } else if (topic) {
-    lines.push(cleanNativeSentence(topic) + ".");
-  }
-
-  if (info.frist) {
-    lines.push(`Frist: ${info.frist}.`);
-  }
-
-  if (summary) {
-    lines.push(cleanNativeSentence(summary) + ".");
-  } else if (consequence) {
-    lines.push(`Sonst kann das passieren: ${cleanNativeSentence(consequence)}.`);
-  }
-
-  return lines.slice(0, 4).join("\n");
-}
-
-  if (lang === "ar") {
-    if (sender) lines.push(`هذه رسالة من ${sender}.`);
-    if (firstAction) lines.push(actionText(firstAction, "ar") + ".");
-    else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-    if (info.frist) lines.push(`آخر موعد: ${info.frist}.`);
-    if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
-    return lines.slice(0, 4).join("\n");
-  }
-
-  if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
-  if (firstAction) lines.push(`Du musst ${actionText(firstAction, "de")}.`);
-  else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-  if (info.frist) lines.push(`Bis ${info.frist}.`);
-  if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
-  return lines.slice(0, 4).join("\n");
-}
-
+        pay: "Трябва да плат
 function renderDetailTemplateGerman(info) {
   const blocks = [];
   const sender = info.absender_kurz || info.absender_original || "";
@@ -672,34 +562,34 @@ function localizeDetailHeadings(text, lang) {
 
 function buildTranslationPrompt(text, langMeta, keepHeadingTokens = false) {
   return `
-Du bist Hilfe24.
+Du bist professioneller Übersetzer für Hilfe24.
 
-Unten steht ein fertiger deutscher Text.
+Du bekommst einen deutschen Erklärungstext zu einem Brief.
+Übersetze ihn vollständig, natürlich und sauber in ${langMeta.label}.
 
-Übersetze ihn vollständig und sauber in ${langMeta.label}.
-
-WICHTIG:
-- Übersetze den Inhalt vollständig.
-- Lasse nichts weg.
-- Füge nichts dazu.
-- Kürze nichts.
+SEHR WICHTIG:
+- Schreibe so, wie ein echter Muttersprachler schreiben würde.
+- Der Text muss natürlich klingen, nicht wie Wort-für-Wort-Übersetzung.
+- Die Bedeutung muss vollständig gleich bleiben.
+- Keine Informationen weglassen.
+- Keine Informationen hinzufügen.
 - Keine Zusammenfassung.
-- Keine neuen Sätze erfinden.
-- Keine Wiederholung.
-- Kein Markdown.
 - Keine Mischsprache.
 - Keine deutschen Wörter mitten im Satz.
-- Nur echte Eigennamen dürfen unverändert bleiben, zum Beispiel:
+- Nur echte Eigennamen dürfen auf Deutsch bleiben, zum Beispiel:
+  - Stadt Blomberg
   - Stadtwerke Bad Salzuflen
-  - Bad Salzuflen
+  - Jobcenter
   - IBAN
   - QR-Code
-  - Namen von Personen, Firmen, Behörden, Städten
-- Alles andere muss vollständig auf ${langMeta.label} sein.
-- Schreibe natürlich, einfach und verständlich.
-- Die Bedeutung muss exakt erhalten bleiben.
-- Beträge, Daten, Fristen, Gebühren und Folgen müssen exakt erhalten bleiben.
-${keepHeadingTokens ? '- Die Tokens wie [[HEAD_FROM]] dürfen NICHT verändert werden.' : ''}
+  - Namen von Personen, Firmen, Behörden, Orten
+- Geldbeträge, Daten, Fristen und Folgen exakt beibehalten.
+- Schreibe einfach, klar und alltagstauglich.
+- Keine unnötig schweren Wörter.
+- Keine holprigen Sätze.
+- Keine wörtliche Übersetzung deutscher Satzlogik.
+- Wenn im Deutschen ein Satz unnatürlich klingen würde, formuliere ihn in natürlichem ${langMeta.label}, aber mit exakt derselben Bedeutung.
+${keepHeadingTokens ? '- Die Tokens wie [[HEAD_FROM]], [[HEAD_TOPIC]] und ähnliche dürfen NICHT verändert werden.' : ''}
 
 Deutscher Text:
 ${text}
