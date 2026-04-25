@@ -24,7 +24,6 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const apiKey = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
-
 const ttsClient = createTtsClient();
 
 app.use(express.json({ limit: "25mb" }));
@@ -274,27 +273,7 @@ Dann setze:
 - "problem": sehr kurz
 - "hinweis": genau 1 kurzer einfacher Satz
 
-Beispiele für false:
-{
-  "ok": false,
-  "problem": "unscharf",
-  "hinweis": "Bitte mach ein schärferes Foto vom ganzen Brief."
-}
-
-{
-  "ok": false,
-  "problem": "zu weit weg",
-  "hinweis": "Bitte fotografiere den ganzen Brief näher."
-}
-
-{
-  "ok": false,
-  "problem": "abgeschnitten",
-  "hinweis": "Bitte fotografiere die ganze Seite vollständig."
-}
-
-Wichtig:
-- Wenn das Foto brauchbar ist, auch wenn es nicht perfekt ist, dann gib zurück:
+Wenn das Foto brauchbar ist, auch wenn es nicht perfekt ist, dann gib zurück:
 {
   "ok": true,
   "problem": "",
@@ -335,45 +314,16 @@ function simplifyActionBase(action) {
     return "register_city";
   }
 
-  if (a.includes("jobcenter")) {
-    return "register_jobcenter";
-  }
-
-  if (a.includes("unterlagen")) {
-    return "send_documents";
-  }
-
-  if (a.includes("zahlen") || a.includes("überweisen")) {
-    return "pay";
-  }
-
-  if (a.includes("antworten")) {
-    return "reply";
-  }
-
-  if (a.includes("unterschreiben")) {
-    return "sign";
-  }
-
-  if (a.includes("kündigen")) {
-    return "cancel";
-  }
-
-  if (a.includes("anmelden") || a.includes("registrieren")) {
-    return "register";
-  }
-
-  if (a.includes("termin")) {
-    return "attend_appointment";
-  }
-
-  if (a.includes("widerspruch")) {
-    return "object_if_disagree";
-  }
-
-  if (a.includes("melden")) {
-    return "contact";
-  }
+  if (a.includes("jobcenter")) return "register_jobcenter";
+  if (a.includes("unterlagen")) return "send_documents";
+  if (a.includes("zahlen") || a.includes("überweisen")) return "pay";
+  if (a.includes("antworten")) return "reply";
+  if (a.includes("unterschreiben")) return "sign";
+  if (a.includes("kündigen")) return "cancel";
+  if (a.includes("anmelden") || a.includes("registrieren")) return "register";
+  if (a.includes("termin")) return "attend_appointment";
+  if (a.includes("widerspruch")) return "object_if_disagree";
+  if (a.includes("melden")) return "contact";
 
   return String(action || "").replace(/\.$/, "").trim();
 }
