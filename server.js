@@ -388,28 +388,154 @@ function actionText(code, language) {
 }
 
 function renderShortByLanguage(info, lang) {
-  const sender = info.absender_kurz || info.absender_original || "";
+  const senderRaw = info.absender_kurz || info.absender_original || "";
+  const sender = senderRaw.trim();
+  const topic = String(info.worum_geht_es || "").trim();
+  const summary = String(info.kurz_gesagt || "").trim();
+  const consequence = String(info.folge_wenn_nichts || "").trim();
   const actionCodes = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
   const firstAction = actionCodes[0] || "";
   const lines = [];
 
+  function cleanNativeSentence(text) {
+    return String(text || "").trim().replace(/\s+/g, " ").replace(/\.$/, "");
+  }
+
   if (lang === "tr") {
-    if (sender) lines.push(`Bu mektup ${sender} geldi.`);
-    if (firstAction) lines.push(actionText(firstAction, "tr") + ".");
-    else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-    if (info.frist) lines.push(`Son gün: ${info.frist}.`);
-    if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (sender) lines.push(`Bu mektup ${sender} tarafından gönderildi.`);
+    if (firstAction) {
+      const map = {
+        register: "Kayıt olmanız gerekiyor.",
+        register_city: "Kişiyi belediyeye kaydetmeniz gerekiyor.",
+        register_jobcenter: "Kişiyi Jobcenter'a kaydetmeniz gerekiyor.",
+        send_documents: "Belgeleri göndermeniz gerekiyor.",
+        pay: "Ödeme yapmanız gerekiyor.",
+        reply: "Cevap vermeniz gerekiyor.",
+        sign: "İmzalamanız gerekiyor.",
+        cancel: "İptal etmeniz gerekiyor.",
+        attend_appointment: "Randevuya gitmeniz gerekiyor.",
+        object_if_disagree: "Kabul etmiyorsanız itiraz etmeniz veya iletişime geçmeniz gerekiyor.",
+        contact: "İletişime geçmeniz gerekiyor."
+      };
+      lines.push(map[firstAction] || "Harekete geçmeniz gerekiyor.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
+    }
+
+    if (info.frist) {
+      lines.push(`Son tarih: ${info.frist}.`);
+    }
+
+    if (summary) {
+      lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(`Aksi halde şu olabilir: ${cleanNativeSentence(consequence)}.`);
+    }
+
     return lines.slice(0, 4).join("\n");
   }
 
   if (lang === "bg") {
     if (sender) lines.push(`Това е писмо от ${sender}.`);
-    if (firstAction) lines.push(actionText(firstAction, "bg") + ".");
-    else if (info.worum_geht_es) lines.push(toSentence(info.worum_geht_es));
-    if (info.frist) lines.push(`Срок: ${info.frist}.`);
-    if (info.kurz_gesagt) lines.push(toSentence(info.kurz_gesagt));
+    if (firstAction) {
+      const map = {
+        register: "Трябва да се регистрирате.",
+        register_city: "Трябва да регистрирате лицето в общината.",
+        register_jobcenter: "Трябва да регистрирате лицето в Jobcenter.",
+        send_documents: "Трябва да изпратите документите.",
+        pay: "Трябва да платите.",
+        reply: "Трябва да отговорите.",
+        sign: "Трябва да подпишете.",
+        cancel: "Трябва да прекратите.",
+        attend_appointment: "Трябва да отидете на срещата.",
+        object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете с тях.",
+        contact: "Трябва да се свържете."
+      };
+      lines.push(map[firstAction] || "Трябва да предприемете действие.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
+    }
+
+    if (info.frist) {
+      lines.push(`Срок: ${info.frist}.`);
+    }
+
+    if (summary) {
+      lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(`Иначе може да се случи следното: ${cleanNativeSentence(consequence)}.`);
+    }
+
     return lines.slice(0, 4).join("\n");
   }
+
+  if (lang === "ar") {
+    if (sender) lines.push(`هذه رسالة من ${sender}.`);
+    if (firstAction) {
+      const map = {
+        register: "يجب عليك التسجيل.",
+        register_city: "يجب عليك تسجيل الشخص في البلدية.",
+        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر.",
+        send_documents: "يجب عليك إرسال المستندات.",
+        pay: "يجب عليك الدفع.",
+        reply: "يجب عليك الرد.",
+        sign: "يجب عليك التوقيع.",
+        cancel: "يجب عليك الإلغاء.",
+        attend_appointment: "يجب عليك الذهاب إلى الموعد.",
+        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل معهم.",
+        contact: "يجب عليك التواصل."
+      };
+      lines.push(map[firstAction] || "يجب عليك اتخاذ إجراء.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
+    }
+
+    if (info.frist) {
+      lines.push(`آخر موعد: ${info.frist}.`);
+    }
+
+    if (summary) {
+      lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(`إذا لم تفعل شيئًا، فقد يحدث ما يلي: ${cleanNativeSentence(consequence)}.`);
+    }
+
+    return lines.slice(0, 4).join("\n");
+  }
+
+  if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
+
+  if (firstAction) {
+    const map = {
+      register: "Du musst dich anmelden.",
+      register_city: "Die Person muss bei der Stadt angemeldet werden.",
+      register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
+      send_documents: "Du musst Unterlagen schicken.",
+      pay: "Du musst zahlen.",
+      reply: "Du musst antworten.",
+      sign: "Du musst unterschreiben.",
+      cancel: "Du musst kündigen.",
+      attend_appointment: "Du musst zum Termin gehen.",
+      object_if_disagree: "Wenn du nicht einverstanden bist, musst du dich melden oder widersprechen.",
+      contact: "Du musst dich melden."
+    };
+    lines.push(map[firstAction] || "Du musst etwas tun.");
+  } else if (topic) {
+    lines.push(cleanNativeSentence(topic) + ".");
+  }
+
+  if (info.frist) {
+    lines.push(`Frist: ${info.frist}.`);
+  }
+
+  if (summary) {
+    lines.push(cleanNativeSentence(summary) + ".");
+  } else if (consequence) {
+    lines.push(`Sonst kann das passieren: ${cleanNativeSentence(consequence)}.`);
+  }
+
+  return lines.slice(0, 4).join("\n");
+}
 
   if (lang === "ar") {
     if (sender) lines.push(`هذه رسالة من ${sender}.`);
@@ -632,31 +758,154 @@ async function translateDetailIfNeeded(text, lang) {
   return localizeDetailHeadings(cleanText(translatedRaw), langMeta.code);
 }
 
-function buildAudioRewritePrompt(text, lang) {
-  const meta = getLanguageMeta(lang);
+function renderShortByLanguage(info, lang) {
+  const senderRaw = info.absender_kurz || info.absender_original || "";
+  const sender = senderRaw.trim();
+  const topic = String(info.worum_geht_es || "").trim();
+  const summary = String(info.kurz_gesagt || "").trim();
+  const consequence = String(info.folge_wenn_nichts || "").trim();
+  const actionCodes = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
+  const firstAction = actionCodes[0] || "";
+  const lines = [];
 
-  return `
-Du bist Hilfe24.
+  function cleanNativeSentence(text) {
+    return String(text || "").trim().replace(/\s+/g, " ").replace(/\.$/, "");
+  }
 
-Mach aus diesem Text einen gut vorlesbaren Audio-Text in ${meta.label}.
+  if (lang === "tr") {
+    if (sender) lines.push(`Bu mektup ${sender} tarafından gönderildi.`);
+    if (firstAction) {
+      const map = {
+        register: "Kayıt olmanız gerekiyor.",
+        register_city: "Kişiyi belediyeye kaydetmeniz gerekiyor.",
+        register_jobcenter: "Kişiyi Jobcenter'a kaydetmeniz gerekiyor.",
+        send_documents: "Belgeleri göndermeniz gerekiyor.",
+        pay: "Ödeme yapmanız gerekiyor.",
+        reply: "Cevap vermeniz gerekiyor.",
+        sign: "İmzalamanız gerekiyor.",
+        cancel: "İptal etmeniz gerekiyor.",
+        attend_appointment: "Randevuya gitmeniz gerekiyor.",
+        object_if_disagree: "Kabul etmiyorsanız itiraz etmeniz veya iletişime geçmeniz gerekiyor.",
+        contact: "İletişime geçmeniz gerekiyor."
+      };
+      lines.push(map[firstAction] || "Harekete geçmeniz gerekiyor.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
+    }
 
-Wichtig:
-- Inhalt vollständig behalten
-- Nicht kürzer machen
-- Aber besser hörbar machen
-- Kurze Sätze
-- Sehr einfache Sprache
-- Zahlen, Geld und Daten so umschreiben, dass sie beim Hören verständlich sind
-- Keine Listenzeichen
-- Kein Markdown
-- Keine Überschriften wie "Worum geht es?"
-- Nur Fließtext mit kurzen klaren Sätzen
-- Firmennamen und Behördennamen dürfen bleiben
-- Kein Deutsch einmischen, außer echte Eigennamen
+    if (info.frist) {
+      lines.push(`Son tarih: ${info.frist}.`);
+    }
 
-Text:
-${text}
-`;
+    if (summary) {
+      lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(`Aksi halde şu olabilir: ${cleanNativeSentence(consequence)}.`);
+    }
+
+    return lines.slice(0, 4).join("\n");
+  }
+
+  if (lang === "bg") {
+    if (sender) lines.push(`Това е писмо от ${sender}.`);
+    if (firstAction) {
+      const map = {
+        register: "Трябва да се регистрирате.",
+        register_city: "Трябва да регистрирате лицето в общината.",
+        register_jobcenter: "Трябва да регистрирате лицето в Jobcenter.",
+        send_documents: "Трябва да изпратите документите.",
+        pay: "Трябва да платите.",
+        reply: "Трябва да отговорите.",
+        sign: "Трябва да подпишете.",
+        cancel: "Трябва да прекратите.",
+        attend_appointment: "Трябва да отидете на срещата.",
+        object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете с тях.",
+        contact: "Трябва да се свържете."
+      };
+      lines.push(map[firstAction] || "Трябва да предприемете действие.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
+    }
+
+    if (info.frist) {
+      lines.push(`Срок: ${info.frist}.`);
+    }
+
+    if (summary) {
+      lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(`Иначе може да се случи следното: ${cleanNativeSentence(consequence)}.`);
+    }
+
+    return lines.slice(0, 4).join("\n");
+  }
+
+  if (lang === "ar") {
+    if (sender) lines.push(`هذه رسالة من ${sender}.`);
+    if (firstAction) {
+      const map = {
+        register: "يجب عليك التسجيل.",
+        register_city: "يجب عليك تسجيل الشخص في البلدية.",
+        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر.",
+        send_documents: "يجب عليك إرسال المستندات.",
+        pay: "يجب عليك الدفع.",
+        reply: "يجب عليك الرد.",
+        sign: "يجب عليك التوقيع.",
+        cancel: "يجب عليك الإلغاء.",
+        attend_appointment: "يجب عليك الذهاب إلى الموعد.",
+        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل معهم.",
+        contact: "يجب عليك التواصل."
+      };
+      lines.push(map[firstAction] || "يجب عليك اتخاذ إجراء.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
+    }
+
+    if (info.frist) {
+      lines.push(`آخر موعد: ${info.frist}.`);
+    }
+
+    if (summary) {
+      lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(`إذا لم تفعل شيئًا، فقد يحدث ما يلي: ${cleanNativeSentence(consequence)}.`);
+    }
+
+    return lines.slice(0, 4).join("\n");
+  }
+
+  if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
+
+  if (firstAction) {
+    const map = {
+      register: "Du musst dich anmelden.",
+      register_city: "Die Person muss bei der Stadt angemeldet werden.",
+      register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
+      send_documents: "Du musst Unterlagen schicken.",
+      pay: "Du musst zahlen.",
+      reply: "Du musst antworten.",
+      sign: "Du musst unterschreiben.",
+      cancel: "Du musst kündigen.",
+      attend_appointment: "Du musst zum Termin gehen.",
+      object_if_disagree: "Wenn du nicht einverstanden bist, musst du dich melden oder widersprechen.",
+      contact: "Du musst dich melden."
+    };
+    lines.push(map[firstAction] || "Du musst etwas tun.");
+  } else if (topic) {
+    lines.push(cleanNativeSentence(topic) + ".");
+  }
+
+  if (info.frist) {
+    lines.push(`Frist: ${info.frist}.`);
+  }
+
+  if (summary) {
+    lines.push(cleanNativeSentence(summary) + ".");
+  } else if (consequence) {
+    lines.push(`Sonst kann das passieren: ${cleanNativeSentence(consequence)}.`);
+  }
+
+  return lines.slice(0, 4).join("\n");
 }
 
 async function buildAudioText(text, lang) {
