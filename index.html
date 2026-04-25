@@ -334,10 +334,13 @@
     const audioPlayerEl = document.getElementById("audioPlayer");
     const audioStatusEl = document.getElementById("audioStatus");
 
-    let currentAudioShort = "";
-    let currentAudioAll = "";
-    let activeRequestId = 0;
-    let activeAudioUrl = "";
+  let currentAudioShort = "";
+let currentAudioAll = "";
+let currentLang = "de";
+let currentKurzText = "";
+let currentDetailText = "";
+let activeRequestId = 0;
+let activeAudioUrl = "";
 
     function show(el) {
       if (el) el.classList.remove("hidden");
@@ -639,14 +642,7 @@ currentAudioAll = "";
       }
     }
 
-  if (bilderEl) {
-  bilderEl.addEventListener("change", () => {
-    activeRequestId++;
-    clearOutputState();
-    renderPreviews();
-  });
-}
-
+ activeRequestId++;function
     if (langEl) {
       langEl.addEventListener("change", () => {
         activeRequestId++;
