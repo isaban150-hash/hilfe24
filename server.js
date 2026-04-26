@@ -822,6 +822,8 @@ ${text}
 }
 
 async function buildAudioText(text, lang) {
+  return cleanText(text);
+}
   const raw = await callGemini([
     { text: buildAudioRewritePrompt(text, lang) }
   ]);
