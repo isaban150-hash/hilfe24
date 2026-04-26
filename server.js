@@ -618,21 +618,20 @@ function renderShortByLanguage(info, lang) {
     lines.push("Du musst auf diesen Brief reagieren.");
   }
 
-  if (info.frist) {
-    lines.push(`Frist: ${simplifyFrist(info.frist, "de")}.`);
-  } else if (info.termin) {
-    lines.push(`Termin: ${cleanNativeSentence(info.termin)}.`);
-  }
-
-  if (summary) {
-    lines.push(cleanNativeSentence(summary) + ".");
-  } else if (consequence) {
-    lines.push(`Sonst: ${cleanNativeSentence(consequence)}.`);
-  }
-
-  return lines.slice(0, 4).join("\n");
+ if (info.frist) {
+  lines.push(`Frist: ${simplifyFrist(info.frist, "de")}.`);
+} else if (info.termin) {
+  lines.push(`Termin: ${cleanNativeSentence(info.termin)}.`);
 }
 
+if (summary) {
+  lines.push(cleanNativeSentence(summary) + ".");
+} else if (consequence) {
+  lines.push(`Sonst: ${cleanNativeSentence(consequence)}.`);
+}
+
+return lines.slice(0, 5).join("\n");
+}
 function renderDetailTemplateGerman(info) {
   const blocks = [];
   const sender = String(info.absender_kurz || info.absender_original || "").trim();
