@@ -655,40 +655,44 @@ function localizeDetailHeadings(text, lang) {
 
 function buildTranslationPrompt(text, langMeta, keepHeadingTokens = false) {
   return `
-Du bist professioneller Übersetzer für Hilfe24.
+Du bist professioneller Übersetzer und Sprachvereinfacher für Hilfe24.
 
 Du bekommst einen deutschen Erklärungstext zu einem Brief.
-Übersetze ihn vollständig, natürlich und sauber in ${langMeta.label}.
+Übersetze ihn vollständig, natürlich, einfach und sauber in ${langMeta.label}.
 
 SEHR WICHTIG:
 - Schreibe so, wie ein echter Muttersprachler schreiben würde.
-- Der Text muss natürlich klingen, nicht wie Wort-für-Wort-Übersetzung.
-- Die Bedeutung muss vollständig gleich bleiben.
+- Der Text muss natürlich klingen, nicht wie eine Wort-für-Wort-Übersetzung.
+- Die Bedeutung muss exakt gleich bleiben.
 - Keine Informationen weglassen.
 - Keine Informationen hinzufügen.
 - Keine Zusammenfassung.
 - Keine Mischsprache.
-- Keine deutschen Wörter mitten im Satz.
-- Nur echte Eigennamen dürfen auf Deutsch bleiben, zum Beispiel:
+- Keine deutschen Sätze oder Satzteile im Ergebnis.
+- Nur echte Eigennamen dürfen im Original bleiben, zum Beispiel:
   - Stadt Blomberg
   - Stadtwerke Bad Salzuflen
   - Jobcenter
   - IBAN
   - QR-Code
-  - Namen von Personen, Firmen, Behörden, Orten
-- Geldbeträge, Daten, Fristen und Folgen exakt beibehalten.
-- Schreibe einfach, klar und alltagstauglich.
-- Keine unnötig schweren Wörter.
-- Keine holprigen Sätze.
-- Keine wörtliche Übersetzung deutscher Satzlogik.
-- Wenn im Deutschen ein Satz unnatürlich klingen würde, formuliere ihn in natürlichem ${langMeta.label}, aber mit exakt derselben Bedeutung.
-${keepHeadingTokens ? "- Die Tokens wie [[HEAD_FROM]], [[HEAD_TOPIC]] und ähnliche dürfen NICHT verändert werden." : ""}
+  - Namen von Personen, Behörden, Orten, Firmen
+- Fristen, Daten, Beträge und Folgen müssen vollständig übersetzt und exakt erhalten bleiben.
+- Formuliere einfach, klar und alltagstauglich.
+- Vermeide schwere Amtssprache.
+- Übersetze auch Formulierungen wie:
+  - "innerhalb einer Woche nach Eingang dieser Mahnung"
+  - "zwangsweise Einziehung"
+  - "Mahngebühren"
+  - "Säumniszuschläge"
+  natürlich und verständlich in ${langMeta.label}.
+- Lasse KEINE doppelten eckigen Klammern wie [[...]] im Ergebnis stehen.
+- Gib NUR den fertigen übersetzten Text zurück.
+${keepHeadingTokens ? '- Die Überschrift-Tokens [[HEAD_FROM]], [[HEAD_TOPIC]], [[HEAD_IMPORTANT]], [[HEAD_WHEN]], [[HEAD_ELSE]], [[HEAD_SUMMARY]] dürfen NICHT verändert werden.' : ''}
 
 Deutscher Text:
 ${text}
 `;
 }
-
 async function buildInfoFromText(text) {
   const rawJson = await callGemini([{ text: buildExtractionPromptForText(text) }]);
   return normalizeInfo(extractJson(rawJson));
@@ -730,6 +734,7 @@ async function checkImageQuality(bilder) {
 
 async function translateDetailIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
+
   if (langMeta.code === "de") {
     return localizeDetailHeadings(text, "de");
   }
@@ -738,9 +743,17 @@ async function translateDetailIfNeeded(text, lang) {
     { text: buildTranslationPrompt(text, langMeta, true) }
   ]);
 
-  return localizeDetailHeadings(cleanText(translatedRaw), langMeta.code);
-}
+  let result = cleanText(translatedRaw);
 
+  result = result
+    .replace(/\[\[\s*/g, "")
+    .replace(/\s*\]\]/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return localizeDetailHeadings(result, langMeta.code);
+}
 function buildAudioRewritePrompt(text, lang) {
   const meta = getLanguageMeta(lang);
 
