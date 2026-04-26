@@ -482,20 +482,19 @@ function renderShortByLanguage(info, lang) {
   if (lang === "tr") {
     if (sender) lines.push(`Bu mektup ${sender} tarafından gönderildi.`);
 
-    if (firstAction) {
-      const map = {
-        register: "Kayıt olmanız gerekiyor.",
-        register_city: "Kişiyi belediyeye kaydetmeniz gerekiyor.",
-        register_jobcenter: "Kişiyi Jobcenter'a kaydetmeniz gerekiyor.",
-        send_documents: "Belgeleri göndermeniz gerekiyor.",
-        pay: "Ödeme yapmanız gerekiyor.",
-        reply: "Cevap vermeniz gerekiyor.",
-        sign: "İmzalamanız gerekiyor.",
-        cancel: "İptal etmeniz gerekiyor.",
-        attend_appointment: "Randevuya gitmeniz gerekiyor.",
-        object_if_disagree: "Kabul etmiyorsanız itiraz etmeniz veya iletişime geçmeniz gerekiyor.",
-        contact: "İletişime geçmeniz gerekiyor."
-      };
+  const map = {
+  register: "Kayıt olmanız gerekiyor.",
+  register_city: "Kişiyi belediyeye kaydetmeniz gerekiyor.",
+  register_jobcenter: "Kişiyi Jobcenter'a kaydetmeniz gerekiyor.",
+  send_documents: "Belgeleri göndermeniz gerekiyor.",
+  pay: "Ödeme yapmanız gerekiyor.",
+  reply: "Cevap vermeniz gerekiyor.",
+  sign: "İmzalamanız gerekiyor.",
+  cancel: "İptal etmeniz gerekiyor.",
+  attend_appointment: "Belirtilen zamanda hazır bulunmanız gerekiyor.",
+  object_if_disagree: "Kabul etmiyorsanız itiraz etmeniz veya iletişime geçmeniz gerekiyor.",
+  contact: "İletişime geçmeniz gerekiyor."
+};
       lines.push(map[firstAction] || "Harekete geçmeniz gerekiyor.");
     } else if (topic) {
       lines.push(cleanNativeSentence(topic) + ".");
@@ -522,19 +521,19 @@ function renderShortByLanguage(info, lang) {
     if (sender) lines.push(`Това е писмо от ${sender}.`);
 
     if (firstAction) {
-      const map = {
-        register: "Трябва да се регистрирате.",
-        register_city: "Трябва да регистрирате лицето в общината.",
-        register_jobcenter: "Трябва да регистрирате лицето в Jobcenter.",
-        send_documents: "Трябва да изпратите документите.",
-        pay: "Трябва да платите.",
-        reply: "Трябва да отговорите.",
-        sign: "Трябва да подпишете.",
-        cancel: "Трябва да прекратите.",
-        attend_appointment: "Трябва да отидете на срещата.",
-        object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете.",
-        contact: "Трябва да се свържете."
-      };
+ const map = {
+  register: "Трябва да се регистрирате.",
+  register_city: "Трябва да регистрирате лицето в общината.",
+  register_jobcenter: "Трябва да регистрирате лицето в Jobcenter.",
+  send_documents: "Трябва да изпратите документите.",
+  pay: "Трябва да платите.",
+  reply: "Трябва да отговорите.",
+  sign: "Трябва да подпишете.",
+  cancel: "Трябва да прекратите.",
+  attend_appointment: "Трябва да се явите на посочения час.",
+  object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете.",
+  contact: "Трябва да се свържете."
+};
       lines.push(map[firstAction] || "Трябва да предприемете действие.");
     } else if (topic) {
       lines.push(cleanNativeSentence(topic) + ".");
@@ -562,18 +561,18 @@ function renderShortByLanguage(info, lang) {
 
     if (firstAction) {
       const map = {
-        register: "يجب عليك التسجيل.",
-        register_city: "يجب عليك تسجيل الشخص في البلدية.",
-        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر.",
-        send_documents: "يجب عليك إرسال المستندات.",
-        pay: "يجب عليك الدفع.",
-        reply: "يجب عليك الرد.",
-        sign: "يجب عليك التوقيع.",
-        cancel: "يجب عليك الإلغاء.",
-        attend_appointment: "يجب عليك الذهاب إلى الموعد.",
-        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل.",
-        contact: "يجب عليك التواصل."
-      };
+  register: "يجب عليك التسجيل.",
+  register_city: "يجب عليك تسجيل الشخص في البلدية.",
+  register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر.",
+  send_documents: "يجب عليك إرسال المستندات.",
+  pay: "يجب عليك الدفع.",
+  reply: "يجب عليك الرد.",
+  sign: "يجب عليك التوقيع.",
+  cancel: "يجب عليك الإلغاء.",
+  attend_appointment: "يجب عليك الحضور في الموعد المحدد.",
+  object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل.",
+  contact: "يجب عليك التواصل."
+};
       lines.push(map[firstAction] || "يجب عليك اتخاذ إجراء.");
     } else if (topic) {
       lines.push(cleanNativeSentence(topic) + ".");
@@ -599,19 +598,19 @@ function renderShortByLanguage(info, lang) {
   if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
 
   if (firstAction) {
-    const map = {
-      register: "Du musst dich anmelden.",
-      register_city: "Die Person muss bei der Stadt angemeldet werden.",
-      register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
-      send_documents: "Du musst Unterlagen schicken.",
-      pay: "Du musst zahlen.",
-      reply: "Du musst antworten.",
-      sign: "Du musst unterschreiben.",
-      cancel: "Du musst kündigen.",
-      attend_appointment: "Du musst zum Termin gehen.",
-      object_if_disagree: "Wenn du nicht einverstanden bist, musst du widersprechen oder dich melden.",
-      contact: "Du musst dich melden."
-    };
+   const map = {
+  register: "Du musst dich anmelden.",
+  register_city: "Die Person muss bei der Stadt angemeldet werden.",
+  register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
+  send_documents: "Du musst Unterlagen schicken.",
+  pay: "Du musst zahlen.",
+  reply: "Du musst antworten.",
+  sign: "Du musst unterschreiben.",
+  cancel: "Du musst kündigen.",
+  attend_appointment: "Du musst zu dem angegebenen Termin erscheinen.",
+  object_if_disagree: "Wenn du nicht einverstanden bist, musst du widersprechen oder dich melden.",
+  contact: "Du musst dich melden."
+};
     lines.push(map[firstAction] || "Du musst auf diesen Brief reagieren.");
   } else if (topic) {
     lines.push(cleanNativeSentence(topic) + ".");
