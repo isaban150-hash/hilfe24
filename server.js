@@ -631,7 +631,7 @@ if (summary) {
 }
 
 return lines.slice(0, 5).join("\n");
-}
+
 function renderDetailTemplateGerman(info) {
   const blocks = [];
   const sender = String(info.absender_kurz || info.absender_original || "").trim();
