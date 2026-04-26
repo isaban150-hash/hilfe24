@@ -134,6 +134,17 @@ function extractJson(text) {
 
   return JSON.parse(match[0]);
 }
+function normalizeString(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim().replace(/\s+/g, " ");
+}
+
+function normalizeArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizeString(item))
+    .filter(Boolean);
+}
 
 function normalizeInfo(info) {
   function normalizePerson(value) {
@@ -169,20 +180,20 @@ function normalizeInfo(info) {
   }
 
   return {
-    absender_original: normalizeString(info.absender_original),
-    absender_kurz: normalizeString(info.absender_kurz),
-    briefart: normalizeString(info.briefart),
-    betroffene_person: normalizePerson(info.betroffene_person),
-    worum_geht_es: normalizeString(info.worum_geht_es),
-    wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
-    was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
-    frist: normalizeString(info.frist),
-    termin: normalizeString(info.termin),
-    folge_wenn_nichts: normalizeString(info.folge_wenn_nichts),
-    versteckte_wichtige_info: normalizeString(info.versteckte_wichtige_info),
-    kurz_gesagt: normalizeString(info.kurz_gesagt),
-    unsicherheiten: normalizeArray(info.unsicherheiten)
-  };
+  absender_original: normalizeString(info.absender_original),
+  absender_kurz: normalizeString(info.absender_kurz),
+  briefart: normalizeString(info.briefart),
+  betroffene_person: normalizePerson(info.betroffene_person),
+  worum_geht_es: normalizeString(info.worum_geht_es),
+  wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
+  was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
+  frist: normalizeString(info.frist),
+  termin: normalizeString(info.termin),
+  folge_wenn_nichts: normalizeString(info.folge_wenn_nichts),
+  versteckte_wichtige_info: normalizeString(info.versteckte_wichtige_info),
+  kurz_gesagt: normalizeString(info.kurz_gesagt),
+  unsicherheiten: normalizeArray(info.unsicherheiten)
+};
 }
 function buildExtractionPromptForText(text) {
   return `
