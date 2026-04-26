@@ -963,11 +963,12 @@ app.post("/api/tts", async (req, res) => {
     const audioText = await buildAudioText(text, lang);
     const audioBase64 = await synthesizeMp3(audioText, lang);
 
-    return res.json({
-      ok: true,
-      mimeType: "audio/mpeg",
-      audioBase64
-    });
+   return res.json({
+  ok: true,
+  mimeType: "audio/mpeg",
+  audioBase64,
+  debugAudioText: audioText
+});
   } catch (error) {
     console.error("Fehler /api/tts:", error);
     return res.status(500).json({
