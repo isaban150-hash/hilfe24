@@ -610,7 +610,7 @@ function renderShortByLanguage(info, lang) {
   }
 
   return lines.slice(0, 4).join("\n");
-}
+
 
 function renderDetailTemplateGerman(info) {
   const blocks = [];
