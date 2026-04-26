@@ -697,13 +697,20 @@ function renderShortByLanguage(info, lang) {
     lines.push(`Frist: ${simplifyFrist(info.frist, "de")}.`);
   }
 
-  
- 
-  if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
-  if (person) lines.push(`Der Brief betrifft ${person}.`);
+  if (info.termin) {
+  lines.push(`Termin: ${cleanNativeSentence(info.termin)}.`);
+} else if (info.frist) {
+  lines.push(`Frist: ${simplifyFrist(info.frist, "de")}.`);
+}
 
-  if (firstAction) {
-    const map = {
+if (consequence) {
+  lines.push(`Sonst: ${cleanNativeSentence(consequence)}.`);
+}
+
+return lines.slice(0, 5).join("\n");
+}
+ 
+ 
       register: "Du musst dich anmelden.",
       register_city: "Die Person muss bei der Stadt angemeldet werden.",
       register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
