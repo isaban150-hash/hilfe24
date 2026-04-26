@@ -542,7 +542,7 @@ function renderShortByLanguage(info, lang) {
 
   return lines.slice(0, 4).join("\n");
 }
-  }
+  
 
   if (lang === "ar") {
     if (sender) lines.push(`هذه رسالة من ${sender}.`);
