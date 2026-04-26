@@ -825,7 +825,7 @@ async function buildAudioText(text, lang) {
   return cleanText(text);
 }
  
-}
+
 
 async function synthesizeMp3(text, lang) {
   const langMeta = getLanguageMeta(lang);
