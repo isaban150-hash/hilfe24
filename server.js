@@ -697,13 +697,7 @@ function renderShortByLanguage(info, lang) {
     lines.push(`Frist: ${simplifyFrist(info.frist, "de")}.`);
   }
 
-  if (consequence) {
-    lines.push(`Sonst: ${cleanNativeSentence(consequence)}.`);
-  }
-
-  return lines.slice(0, 5).join("\n");
-}
-
+  
  
   if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
   if (person) lines.push(`Der Brief betrifft ${person}.`);
