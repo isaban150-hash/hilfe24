@@ -135,22 +135,44 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
-function normalizeString(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizeArray(value) {
-  return Array.isArray(value)
-    ? value.map((x) => String(x).trim()).filter(Boolean)
-    : [];
-}
-
 function normalizeInfo(info) {
+  function normalizePerson(value) {
+    const v = normalizeString(value);
+
+    if (!v) return "";
+
+    const lower = v.toLowerCase();
+
+    const invalidExact = new Set([
+      "sie",
+      "ihr",
+      "ihnen",
+      "empfänger",
+      "adressat",
+      "adressatin",
+      "betroffene person",
+      "person",
+      "unbekannt",
+      "nicht genannt",
+      "nicht erkennbar",
+      "n/a",
+      "-"
+    ]);
+
+    if (invalidExact.has(lower)) return "";
+
+    if (/^(herr|frau)$/i.test(v)) return "";
+    if (/^[A-Z0-9\-\/]{6,}$/.test(v.replace(/\s+/g, ""))) return "";
+    if (v.length < 2) return "";
+
+    return v;
+  }
+
   return {
     absender_original: normalizeString(info.absender_original),
     absender_kurz: normalizeString(info.absender_kurz),
     briefart: normalizeString(info.briefart),
-    betroffene_person: normalizeString(info.betroffene_person),
+    betroffene_person: normalizePerson(info.betroffene_person),
     worum_geht_es: normalizeString(info.worum_geht_es),
     wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
     was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
@@ -162,7 +184,6 @@ function normalizeInfo(info) {
     unsicherheiten: normalizeArray(info.unsicherheiten)
   };
 }
-
 function buildExtractionPromptForText(text) {
   return `
 Du bist Hilfe24.
@@ -175,6 +196,9 @@ WICHTIG:
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - Wenn etwas unklar ist, lieber leer lassen statt raten.
+- "betroffene_person" nur füllen, wenn im Brief klar erkennbar ist, welche Person gemeint oder angeschrieben ist.
+- Bei "betroffene_person" nur den Namen oder die klar erkennbare betroffene Person eintragen, keine Rollenwörter wie "Sie", "Empfänger" oder "Adressat".
+- Wenn nicht klar erkennbar ist, für wen der Brief ist, "betroffene_person" leer lassen.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
 - "frist" nur füllen, wenn eine Frist im Brief klar genannt wird.
 - "termin" nur füllen, wenn ein echter Termin klar genannt wird.
@@ -662,7 +686,9 @@ function renderDetailTemplateGerman(info) {
   if (sender) {
     blocks.push(`[[HEAD_FROM]]\nDer Brief ist von ${sender}.`);
   }
-
+if (info.betroffene_person) {
+  blocks.push(`[[HEAD_PERSON]]\nDer Brief betrifft ${info.betroffene_person}.`);
+}
   if (topic) {
     blocks.push(`[[HEAD_TOPIC]]\n${safeSentence(topic)}`);
   } else if (importantPoints[0]) {
@@ -703,64 +729,74 @@ function renderDetailTemplateGerman(info) {
 }
 function localizeDetailHeadings(text, lang) {
   const maps = {
-    de: {
-      "[[HEAD_FROM]]": "Wer schreibt?",
-      "[[HEAD_TOPIC]]": "Worum geht es?",
-      "[[HEAD_IMPORTANT]]": "Was ist jetzt wichtig?",
-      "[[HEAD_WHEN]]": "Bis wann?",
-      "[[HEAD_ELSE]]": "Was passiert sonst?",
-      "[[HEAD_SUMMARY]]": "Kurz gesagt:",
-      "HEAD_FROM": "Wer schreibt?",
-      "HEAD_TOPIC": "Worum geht es?",
-      "HEAD_IMPORTANT": "Was ist jetzt wichtig?",
-      "HEAD_WHEN": "Bis wann?",
-      "HEAD_ELSE": "Was passiert sonst?",
-      "HEAD_SUMMARY": "Kurz gesagt:"
-    },
-    tr: {
-      "[[HEAD_FROM]]": "Kim yazıyor?",
-      "[[HEAD_TOPIC]]": "Konu ne?",
-      "[[HEAD_IMPORTANT]]": "Şimdi ne önemli?",
-      "[[HEAD_WHEN]]": "Ne zamana kadar?",
-      "[[HEAD_ELSE]]": "Yoksa ne olur?",
-      "[[HEAD_SUMMARY]]": "Kısaca:",
-      "HEAD_FROM": "Kim yazıyor?",
-      "HEAD_TOPIC": "Konu ne?",
-      "HEAD_IMPORTANT": "Şimdi ne önemli?",
-      "HEAD_WHEN": "Ne zamana kadar?",
-      "HEAD_ELSE": "Yoksa ne olur?",
-      "HEAD_SUMMARY": "Kısaca:"
-    },
-    bg: {
-      "[[HEAD_FROM]]": "Кой е изпратил писмото?",
-      "[[HEAD_TOPIC]]": "За какво става дума?",
-      "[[HEAD_IMPORTANT]]": "Какво е важно сега?",
-      "[[HEAD_WHEN]]": "До кога?",
-      "[[HEAD_ELSE]]": "Какво става иначе?",
-      "[[HEAD_SUMMARY]]": "Накратко:",
-      "HEAD_FROM": "Кой е изпратил писмото?",
-      "HEAD_TOPIC": "За какво става дума?",
-      "HEAD_IMPORTANT": "Какво е важно сега?",
-      "HEAD_WHEN": "До кога?",
-      "HEAD_ELSE": "Какво става иначе?",
-      "HEAD_SUMMARY": "Накратко:"
-    },
-    ar: {
-      "[[HEAD_FROM]]": "من أرسل الرسالة؟",
-      "[[HEAD_TOPIC]]": "عن ماذا تتحدث الرسالة؟",
-      "[[HEAD_IMPORTANT]]": "ما المهم الآن؟",
-      "[[HEAD_WHEN]]": "إلى متى؟",
-      "[[HEAD_ELSE]]": "ماذا يحدث إذا لم أفعل شيئًا؟",
-      "[[HEAD_SUMMARY]]": "باختصار:",
-      "HEAD_FROM": "من أرسل الرسالة؟",
-      "HEAD_TOPIC": "عن ماذا تتحدث الرسالة؟",
-      "HEAD_IMPORTANT": "ما المهم الآن؟",
-      "HEAD_WHEN": "إلى متى؟",
-      "HEAD_ELSE": "ماذا يحدث إذا لم أفعل شيئًا؟",
-      "HEAD_SUMMARY": "باختصار:"
-    }
-  };
+  de: {
+    "[[HEAD_FROM]]": "Wer schreibt?",
+    "[[HEAD_PERSON]]": "Für wen ist der Brief?",
+    "[[HEAD_TOPIC]]": "Worum geht es?",
+    "[[HEAD_IMPORTANT]]": "Was ist jetzt wichtig?",
+    "[[HEAD_WHEN]]": "Bis wann?",
+    "[[HEAD_ELSE]]": "Was passiert sonst?",
+    "[[HEAD_SUMMARY]]": "Kurz gesagt:",
+    "HEAD_FROM": "Wer schreibt?",
+    "HEAD_PERSON": "Für wen ist der Brief?",
+    "HEAD_TOPIC": "Worum geht es?",
+    "HEAD_IMPORTANT": "Was ist jetzt wichtig?",
+    "HEAD_WHEN": "Bis wann?",
+    "HEAD_ELSE": "Was passiert sonst?",
+    "HEAD_SUMMARY": "Kurz gesagt:"
+  },
 
+  tr: {
+    "[[HEAD_FROM]]": "Kim yazıyor?",
+    "[[HEAD_PERSON]]": "Bu mektup kimin için?",
+    "[[HEAD_TOPIC]]": "Konu ne?",
+    "[[HEAD_IMPORTANT]]": "Şimdi ne önemli?",
+    "[[HEAD_WHEN]]": "Ne zamana kadar?",
+    "[[HEAD_ELSE]]": "Yoksa ne olur?",
+    "[[HEAD_SUMMARY]]": "Kısaca:",
+    "HEAD_FROM": "Kim yazıyor?",
+    "HEAD_PERSON": "Bu mektup kimin için?",
+    "HEAD_TOPIC": "Konu ne?",
+    "HEAD_IMPORTANT": "Şimdi ne önemli?",
+    "HEAD_WHEN": "Ne zamana kadar?",
+    "HEAD_ELSE": "Yoksa ne olur?",
+    "HEAD_SUMMARY": "Kısaca:"
+  },
+
+  bg: {
+    "[[HEAD_FROM]]": "Кой е изпратил писмото?",
+    "[[HEAD_PERSON]]": "За кого е писмото?",
+    "[[HEAD_TOPIC]]": "За какво става дума?",
+    "[[HEAD_IMPORTANT]]": "Какво е важно сега?",
+    "[[HEAD_WHEN]]": "До кога?",
+    "[[HEAD_ELSE]]": "Какво става иначе?",
+    "[[HEAD_SUMMARY]]": "Накратко:",
+    "HEAD_FROM": "Кой е изпратил писмото?",
+    "HEAD_PERSON": "За кого е писмото?",
+    "HEAD_TOPIC": "За какво става дума?",
+    "HEAD_IMPORTANT": "Какво е важно сега?",
+    "HEAD_WHEN": "До кога?",
+    "HEAD_ELSE": "Какво става иначе?",
+    "HEAD_SUMMARY": "Накратко:"
+  },
+
+  ar: {
+    "[[HEAD_FROM]]": "من أرسل الرسالة؟",
+    "[[HEAD_PERSON]]": "لمن هذه الرسالة؟",
+    "[[HEAD_TOPIC]]": "عن ماذا تتحدث الرسالة؟",
+    "[[HEAD_IMPORTANT]]": "ما المهم الآن؟",
+    "[[HEAD_WHEN]]": "إلى متى؟",
+    "[[HEAD_ELSE]]": "ماذا يحدث إذا لم أفعل شيئًا؟",
+    "[[HEAD_SUMMARY]]": "باختصار:",
+    "HEAD_FROM": "من أرسل الرسالة؟",
+    "HEAD_PERSON": "لمن هذه الرسالة؟",
+    "HEAD_TOPIC": "عن ماذا تتحدث الرسالة؟",
+    "HEAD_IMPORTANT": "ما المهم الآن؟",
+    "HEAD_WHEN": "إلى متى؟",
+    "HEAD_ELSE": "ماذا يحدث إذا لم أفعل شيئًا؟",
+    "HEAD_SUMMARY": "باختصار:"
+  }
+};
   const dict = maps[lang] || maps.de;
   let result = text;
 
