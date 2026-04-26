@@ -527,7 +527,7 @@ function renderShortByLanguage(info, lang) {
       object_if_disagree: "Wenn du nicht einverstanden bist, musst du dich melden oder widersprechen.",
       contact: "Du musst dich melden."
     };
-    lines.push(map[firstAction] || "Du musst etwas tun.");
+    lines.push("Du musst auf diesen Brief reagieren.");
   } else {
     lines.push("Du musst auf diesen Brief reagieren.");
   }
