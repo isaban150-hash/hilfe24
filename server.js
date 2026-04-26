@@ -704,44 +704,7 @@ function renderShortByLanguage(info, lang) {
   return lines.slice(0, 5).join("\n");
 }
 
-  if (lang === "ar") {
-    if (sender) lines.push(`هذه رسالة من ${sender}.`);
-    if (person) lines.push(`هذه الرسالة تخص ${person}.`);
-
-    if (firstAction) {
-      const map = {
-        register: "يجب عليك التسجيل.",
-        register_city: "يجب عليك تسجيل الشخص في البلدية.",
-        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر.",
-        send_documents: "يجب عليك إرسال المستندات.",
-        pay: "يجب عليك الدفع.",
-        reply: "يجب عليك الرد.",
-        sign: "يجب عليك التوقيع.",
-        cancel: "يجب عليك الإلغاء.",
-        attend_appointment: "يجب عليك الحضور في الموعد المحدد.",
-        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل.",
-        contact: "يجب عليك التواصل."
-      };
-      lines.push(map[firstAction] || "يجب عليك اتخاذ إجراء.");
-    } else if (topic) {
-      lines.push(cleanNativeSentence(topic) + ".");
-    } else {
-      lines.push("يجب عليك اتخاذ إجراء بخصوص هذه الرسالة.");
-    }
-
-    if (info.termin) {
-      lines.push(`الموعد: ${cleanNativeSentence(info.termin)}.`);
-    } else if (info.frist) {
-      lines.push(`آخر موعد: ${simplifyFrist(info.frist, "ar")}.`);
-    }
-
-    if (consequence) {
-      lines.push(cleanNativeSentence(consequence) + ".");
-    }
-
-    return lines.slice(0, 5).join("\n");
-  }
-
+ 
   if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
   if (person) lines.push(`Der Brief betrifft ${person}.`);
 
