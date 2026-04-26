@@ -824,10 +824,7 @@ ${text}
 async function buildAudioText(text, lang) {
   return cleanText(text);
 }
-  const raw = await callGemini([
-    { text: buildAudioRewritePrompt(text, lang) }
-  ]);
-  return cleanText(raw);
+ 
 }
 
 async function synthesizeMp3(text, lang) {
