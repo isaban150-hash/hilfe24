@@ -678,17 +678,15 @@
       });
     }
 
-    if (readAllBtn) {
-      readAllBtn.addEventListener("click", async () => {
-        try {
-          await playServerAudio(
-            [currentKurzText, currentDetailText].filter(Boolean).join("\n\n")
-          );
-        } catch (error) {
-          setError(error.message || "Audio konnte nicht geladen werden.");
-        }
-      });
+   if (readAllBtn) {
+  readAllBtn.addEventListener("click", async () => {
+    try {
+      await playServerAudio(currentDetailText || currentKurzText);
+    } catch (error) {
+      setError(error.message || "Audio konnte nicht geladen werden.");
     }
+  });
+}
 
     if (stopBtn) {
       stopBtn.addEventListener("click", stopAudio);
