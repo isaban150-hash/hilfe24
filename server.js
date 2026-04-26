@@ -708,7 +708,7 @@ if (consequence) {
 }
 
 return lines.slice(0, 5).join("\n");
-}
+
  
  
       register: "Du musst dich anmelden.",
