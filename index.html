@@ -498,7 +498,7 @@
       });
 
       const data = await response.json();
-
+console.log("DEBUG AUDIO TEXT:", data.debugAudioText);
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "TTS-Fehler");
       }
