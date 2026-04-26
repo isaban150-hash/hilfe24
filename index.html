@@ -677,11 +677,10 @@
     }
   });
 }
-
-   if (readAllBtn) {
-  readAllBtn.addEventListener("click", async () => {
+ if (readShortBtn) {
+  readShortBtn.addEventListener("click", async () => {
     try {
-      await playServerAudio(currentDetailText || currentKurzText);
+      await playServerAudio(currentKurzText);
     } catch (error) {
       setError(error.message || "Audio konnte nicht geladen werden.");
     }
