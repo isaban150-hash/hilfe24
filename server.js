@@ -169,14 +169,26 @@ Du bist Hilfe24.
 
 Lies diesen Brief und gib NUR gültiges JSON zurück.
 
-Wichtig:
+WICHTIG:
 - Erfinde nichts.
-- Nenne nur Dinge, die klar im Brief stehen oder sehr klar daraus folgen.
+- Nenne nur Dinge, die klar im Brief stehen oder sehr klar direkt daraus folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
+- Wenn etwas unklar ist, lieber leer lassen statt raten.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
-- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein.
-- "kurz_gesagt" soll 1 sehr kurzer Satz in einfachem Deutsch sein.
+- "frist" nur füllen, wenn eine Frist im Brief klar genannt wird.
+- "termin" nur füllen, wenn ein echter Termin klar genannt wird.
+- "folge_wenn_nichts" nur füllen, wenn eine Folge klar im Brief steht.
+- "wichtigste_punkte" nur mit den 1 bis 3 wichtigsten sachlichen Punkten aus dem Brief.
+- In "wichtigste_punkte" gehören NICHT hinein: Bankverbindungen, Öffnungszeiten, Datenschutz-Hinweise, Internetseiten, Kontaktangaben, interne Nummern oder Nebensätze ohne direkte Relevanz.
+- "kurz_gesagt" muss genau 1 sehr kurzer sachlicher Satz in einfachem Deutsch sein.
+- "kurz_gesagt" darf nur den Kern des Briefes enthalten, keine Nebensachen.
+- Geldbeträge, Daten, Fristen, Namen, Behörden, Forderungen und Folgen müssen exakt erhalten bleiben.
+- Keine Übertreibung.
+- Keine Abschwächung.
+- Keine zusätzliche Deutung.
+- "versteckte_wichtige_info" nur füllen, wenn im Brief ein wichtiger Hinweis steht, der leicht übersehen werden kann und direkt relevant ist.
+- "briefart" soll kurz und sachlich sein, zum Beispiel: Mahnung, Rechnung, Bescheid, Termin, Anhörung, Kündigung, Forderung, Erinnerung, Schreiben.
 
 Gib genau dieses JSON zurück:
 {
@@ -206,14 +218,26 @@ Du bist Hilfe24.
 
 Lies die Bilder dieses Briefes und gib NUR gültiges JSON zurück.
 
-Wichtig:
+WICHTIG:
 - Erfinde nichts.
-- Nenne nur Dinge, die klar auf den Bildern stehen oder sehr klar daraus folgen.
+- Nenne nur Dinge, die klar auf den Bildern stehen oder sehr klar direkt daraus folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
+- Wenn etwas unklar oder schlecht lesbar ist, lieber leer lassen statt raten.
 - "was_ist_zu_tun" nur für echte konkrete Schritte.
-- "wichtigste_punkte" sollen die 1 bis 3 wichtigsten Sachen aus dem Brief sein.
-- "kurz_gesagt" soll 1 sehr kurzer Satz in einfachem Deutsch sein.
+- "frist" nur füllen, wenn eine Frist auf den Bildern klar genannt wird.
+- "termin" nur füllen, wenn ein echter Termin klar genannt wird.
+- "folge_wenn_nichts" nur füllen, wenn eine Folge klar im Brief steht.
+- "wichtigste_punkte" nur mit den 1 bis 3 wichtigsten sachlichen Punkten aus dem Brief.
+- In "wichtigste_punkte" gehören NICHT hinein: Bankverbindungen, Öffnungszeiten, Datenschutz-Hinweise, Internetseiten, Kontaktangaben, interne Nummern oder Nebensätze ohne direkte Relevanz.
+- "kurz_gesagt" muss genau 1 sehr kurzer sachlicher Satz in einfachem Deutsch sein.
+- "kurz_gesagt" darf nur den Kern des Briefes enthalten, keine Nebensachen.
+- Geldbeträge, Daten, Fristen, Namen, Behörden, Forderungen und Folgen müssen exakt erhalten bleiben.
+- Keine Übertreibung.
+- Keine Abschwächung.
+- Keine zusätzliche Deutung.
+- "versteckte_wichtige_info" nur füllen, wenn im Brief ein wichtiger Hinweis steht, der leicht übersehen werden kann und direkt relevant ist.
+- "briefart" soll kurz und sachlich sein, zum Beispiel: Mahnung, Rechnung, Bescheid, Termin, Anhörung, Kündigung, Forderung, Erinnerung, Schreiben.
 
 Gib genau dieses JSON zurück:
 {
@@ -390,13 +414,18 @@ function actionText(code, language) {
 function renderShortByLanguage(info, lang) {
   const senderRaw = info.absender_kurz || info.absender_original || "";
   const sender = senderRaw.trim();
+  const topic = String(info.worum_geht_es || "").trim();
   const summary = String(info.kurz_gesagt || "").trim();
+  const consequence = String(info.folge_wenn_nichts || "").trim();
   const actionCodes = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
   const firstAction = actionCodes[0] || "";
   const lines = [];
 
   function cleanNativeSentence(text) {
-    return String(text || "").trim().replace(/\s+/g, " ").replace(/\.$/, "");
+    return String(text || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/\.$/, "");
   }
 
   function simplifyFrist(value, language) {
@@ -417,6 +446,7 @@ function renderShortByLanguage(info, lang) {
 
   if (lang === "tr") {
     if (sender) lines.push(`Bu mektup ${sender} tarafından gönderildi.`);
+
     if (firstAction) {
       const map = {
         register: "Kayıt olmanız gerekiyor.",
@@ -432,16 +462,22 @@ function renderShortByLanguage(info, lang) {
         contact: "İletişime geçmeniz gerekiyor."
       };
       lines.push(map[firstAction] || "Harekete geçmeniz gerekiyor.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
     } else {
       lines.push("Bu mektupla ilgili işlem yapmanız gerekiyor.");
     }
 
     if (info.frist) {
       lines.push(`Son tarih: ${simplifyFrist(info.frist, "tr")}.`);
+    } else if (info.termin) {
+      lines.push(`Tarih: ${cleanNativeSentence(info.termin)}.`);
     }
 
     if (summary) {
       lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(cleanNativeSentence(consequence) + ".");
     }
 
     return lines.slice(0, 4).join("\n");
@@ -449,6 +485,7 @@ function renderShortByLanguage(info, lang) {
 
   if (lang === "bg") {
     if (sender) lines.push(`Това е писмо от ${sender}.`);
+
     if (firstAction) {
       const map = {
         register: "Трябва да се регистрирате.",
@@ -460,20 +497,26 @@ function renderShortByLanguage(info, lang) {
         sign: "Трябва да подпишете.",
         cancel: "Трябва да прекратите.",
         attend_appointment: "Трябва да отидете на срещата.",
-        object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете с тях.",
+        object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете.",
         contact: "Трябва да се свържете."
       };
       lines.push(map[firstAction] || "Трябва да предприемете действие.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
     } else {
       lines.push("Трябва да предприемете действие по това писмо.");
     }
 
     if (info.frist) {
       lines.push(`Срок: ${simplifyFrist(info.frist, "bg")}.`);
+    } else if (info.termin) {
+      lines.push(`Дата: ${cleanNativeSentence(info.termin)}.`);
     }
 
     if (summary) {
       lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(cleanNativeSentence(consequence) + ".");
     }
 
     return lines.slice(0, 4).join("\n");
@@ -481,6 +524,7 @@ function renderShortByLanguage(info, lang) {
 
   if (lang === "ar") {
     if (sender) lines.push(`هذه رسالة من ${sender}.`);
+
     if (firstAction) {
       const map = {
         register: "يجب عليك التسجيل.",
@@ -492,20 +536,26 @@ function renderShortByLanguage(info, lang) {
         sign: "يجب عليك التوقيع.",
         cancel: "يجب عليك الإلغاء.",
         attend_appointment: "يجب عليك الذهاب إلى الموعد.",
-        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل معهم.",
+        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل.",
         contact: "يجب عليك التواصل."
       };
       lines.push(map[firstAction] || "يجب عليك اتخاذ إجراء.");
+    } else if (topic) {
+      lines.push(cleanNativeSentence(topic) + ".");
     } else {
       lines.push("يجب عليك القيام بإجراء بخصوص هذه الرسالة.");
     }
 
     if (info.frist) {
       lines.push(`آخر موعد: ${simplifyFrist(info.frist, "ar")}.`);
+    } else if (info.termin) {
+      lines.push(`الموعد: ${cleanNativeSentence(info.termin)}.`);
     }
 
     if (summary) {
       lines.push(cleanNativeSentence(summary) + ".");
+    } else if (consequence) {
+      lines.push(cleanNativeSentence(consequence) + ".");
     }
 
     return lines.slice(0, 4).join("\n");
@@ -524,31 +574,44 @@ function renderShortByLanguage(info, lang) {
       sign: "Du musst unterschreiben.",
       cancel: "Du musst kündigen.",
       attend_appointment: "Du musst zum Termin gehen.",
-      object_if_disagree: "Wenn du nicht einverstanden bist, musst du dich melden oder widersprechen.",
+      object_if_disagree: "Wenn du nicht einverstanden bist, musst du widersprechen oder dich melden.",
       contact: "Du musst dich melden."
     };
-    lines.push("Du musst auf diesen Brief reagieren.");
+    lines.push(map[firstAction] || "Du musst auf diesen Brief reagieren.");
+  } else if (topic) {
+    lines.push(cleanNativeSentence(topic) + ".");
   } else {
     lines.push("Du musst auf diesen Brief reagieren.");
   }
 
   if (info.frist) {
     lines.push(`Frist: ${simplifyFrist(info.frist, "de")}.`);
+  } else if (info.termin) {
+    lines.push(`Termin: ${cleanNativeSentence(info.termin)}.`);
   }
 
   if (summary) {
     lines.push(cleanNativeSentence(summary) + ".");
+  } else if (consequence) {
+    lines.push(`Sonst: ${cleanNativeSentence(consequence)}.`);
   }
 
   return lines.slice(0, 4).join("\n");
 }
 
-
 function renderDetailTemplateGerman(info) {
   const blocks = [];
-  const sender = info.absender_kurz || info.absender_original || "";
+  const sender = String(info.absender_kurz || info.absender_original || "").trim();
+  const topic = String(info.worum_geht_es || "").trim();
+  const summary = String(info.kurz_gesagt || "").trim();
+  const consequence = String(info.folge_wenn_nichts || "").trim();
+  const hiddenInfo = String(info.versteckte_wichtige_info || "").trim();
   const importantPoints = dedupe(info.wichtigste_punkte || []);
   const actions = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
+
+  function safeSentence(text) {
+    return toSentence(String(text || "").trim());
+  }
 
   function actionTextDe(code) {
     const map = {
@@ -561,58 +624,83 @@ function renderDetailTemplateGerman(info) {
       sign: "Sie müssen unterschreiben.",
       cancel: "Sie müssen kündigen.",
       attend_appointment: "Sie müssen zum Termin gehen.",
-      object_if_disagree: "Sie müssen sich melden, wenn Sie nicht einverstanden sind.",
+      object_if_disagree: "Wenn Sie nicht einverstanden sind, müssen Sie sich melden oder widersprechen.",
       contact: "Sie müssen sich melden."
     };
 
     return map[code] || "";
   }
 
+  const actionLines = actions
+    .map(actionTextDe)
+    .filter(Boolean);
+
+  const importantLines = [];
+  const seen = new Set();
+
+  function pushUniqueLine(text) {
+    const clean = String(text || "").trim();
+    if (!clean) return;
+    const key = clean.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    importantLines.push(clean);
+  }
+
+  for (const p of importantPoints.slice(0, 3)) {
+    pushUniqueLine(safeSentence(p));
+  }
+
+  for (const a of actionLines.slice(0, 2)) {
+    pushUniqueLine(a);
+  }
+
+  if (hiddenInfo) {
+    pushUniqueLine(safeSentence(hiddenInfo));
+  }
+
   if (sender) {
     blocks.push(`[[HEAD_FROM]]\nDer Brief ist von ${sender}.`);
   }
 
-  if (info.worum_geht_es) {
-    blocks.push(`[[HEAD_TOPIC]]\n${toSentence(info.worum_geht_es)}`);
-  }
-
-  const importantLines = [];
-
-  for (const p of importantPoints.slice(0, 2)) {
-    importantLines.push(toSentence(p));
-  }
-
-  for (const a of actions.slice(0, 2)) {
-    const t = actionTextDe(a);
-    if (t) importantLines.push(t);
-  }
-
-  if (info.versteckte_wichtige_info) {
-    importantLines.push(toSentence(info.versteckte_wichtige_info));
+  if (topic) {
+    blocks.push(`[[HEAD_TOPIC]]\n${safeSentence(topic)}`);
+  } else if (importantPoints[0]) {
+    blocks.push(`[[HEAD_TOPIC]]\n${safeSentence(importantPoints[0])}`);
+  } else if (actionLines[0]) {
+    blocks.push(`[[HEAD_TOPIC]]\n${actionLines[0]}`);
   }
 
   if (importantLines.length > 0) {
     blocks.push(`[[HEAD_IMPORTANT]]\n${importantLines.join(" ")}`);
+  } else if (actionLines[0]) {
+    blocks.push(`[[HEAD_IMPORTANT]]\n${actionLines[0]}`);
   }
 
-  if (info.frist || info.termin) {
-    const parts = [];
-    if (info.frist) parts.push(`Frist: ${info.frist}.`);
-    if (info.termin) parts.push(`Termin: ${info.termin}.`);
-    blocks.push(`[[HEAD_WHEN]]\n${parts.join(" ")}`);
+  const whenParts = [];
+  if (info.frist) whenParts.push(`Frist: ${String(info.frist).trim()}.`);
+  if (info.termin) whenParts.push(`Termin: ${String(info.termin).trim()}.`);
+
+  if (whenParts.length > 0) {
+    blocks.push(`[[HEAD_WHEN]]\n${whenParts.join(" ")}`);
   }
 
-  if (info.folge_wenn_nichts) {
-    blocks.push(`[[HEAD_ELSE]]\n${toSentence(info.folge_wenn_nichts)}`);
+  if (consequence) {
+    blocks.push(`[[HEAD_ELSE]]\n${safeSentence(consequence)}`);
   }
 
-  if (info.kurz_gesagt) {
-    blocks.push(`[[HEAD_SUMMARY]]\n${toSentence(info.kurz_gesagt)}`);
+  if (summary) {
+    blocks.push(`[[HEAD_SUMMARY]]\n${safeSentence(summary)}`);
+  } else if (importantPoints[0]) {
+    blocks.push(`[[HEAD_SUMMARY]]\n${safeSentence(importantPoints[0])}`);
+  } else if (actionLines[0]) {
+    blocks.push(`[[HEAD_SUMMARY]]\n${actionLines[0]}`);
+  } else if (topic) {
+    blocks.push(`[[HEAD_SUMMARY]]\n${safeSentence(topic)}`);
   }
 
   return blocks.join("\n\n");
 }
-
 function localizeDetailHeadings(text, lang) {
   const maps = {
     de: {
