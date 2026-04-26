@@ -792,29 +792,31 @@ function buildAudioRewritePrompt(text, lang) {
 Du bist Hilfe24.
 
 Du bekommst einen fertigen Erklärungstext.
-Schreibe ihn als gut hörbaren Vorlesetext in ${meta.label} um.
+Deine Aufgabe ist NUR, daraus einen gut vorlesbaren Audiotext in ${meta.label} zu machen.
 
-WICHTIG:
-- Inhalt vollständig behalten
-- Nichts weglassen
-- Nichts hinzufügen
-- Nicht kürzer machen
-- Nur verständlicher und besser hörbar machen
-- Sehr kurze und klare Sätze
-- Sehr einfache Alltagssprache
-- Natürliches ${meta.label}
-- Keine Mischsprache
-- Keine deutschen Wörter mitten im Satz, außer echte Eigennamen
-- Keine Aufzählungszeichen
-- Kein Markdown
-- Keine Sternchen
-- Keine Überschriften wie "Worum geht es?" oder "Bis wann?"
-- Nur normaler Fließtext
-- Geldbeträge, Daten, Fristen und Folgen müssen klar hörbar bleiben
-- Zahlen so schreiben, dass man sie gut vorlesen kann
-- Der Text soll klingen, als würde ein Mensch ihn langsam und klar vorlesen
+SEHR WICHTIG:
+- Der Inhalt muss inhaltlich exakt gleich bleiben.
+- Du darfst nichts hinzufügen.
+- Du darfst nichts weglassen.
+- Du darfst nichts erklären, verbessern oder umdeuten.
+- Du darfst keine Information vereinfachen, wenn sich dadurch der Sinn ändert.
+- Du darfst keine neue Formulierung erfinden, die inhaltlich mehr sagt als der Originaltext.
+- Du sollst den Text nur so anpassen, dass er besser vorgelesen werden kann.
+- Erlaubt sind nur minimale Änderungen für bessere Hörbarkeit:
+  - sehr kleine Satztrennungen
+  - Satzzeichen verbessern
+  - Zeilenumbrüche glätten
+  - schwer lesbare Listen in gut hörbaren Fließtext umwandeln
+- Beträge, Daten, Fristen, Namen, Folgen und Aussagen müssen exakt erhalten bleiben.
+- Keine Mischsprache.
+- Keine deutschen Wörter mitten im Satz, außer echte Eigennamen.
+- Kein Markdown.
+- Keine Sternchen.
+- Keine Aufzählungszeichen.
+- Keine Überschriften wie "Worum geht es?" oder "Bis wann?", wenn sie nicht schon im Originaltext stehen.
+- Gib nur den fertigen Audiotext zurück.
 
-Text:
+Originaltext:
 ${text}
 `;
 }
