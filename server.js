@@ -977,10 +977,32 @@ async function synthesizeMp3(text, lang) {
 
   const [response] = await ttsClient.synthesizeSpeech(request);
 
-  if (!response.audioContent) {
-    throw new Error("Keine TTS-Audioantwort erhalten");
-  }
+if (!response.audioContent) {
+  throw new Error("Keine TTS-Audioantwort erhalten");
+}
 
+return Buffer.isBuffer(response.audioContent)
+  ? response.audioContent.toString("base64")
+  : Buffer.from(response.audioContent, "binary").toString("base64");
+}
+
+async function buildFinalPayloadFromInfo(info, lang) {
+  const langCode = getLanguageMeta(lang).code;
+
+  const shortDe = cleanText(renderShortByLanguage(info, "de"));
+  const kurz = await translateShortIfNeeded(shortDe, langCode);
+
+  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
+  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
+
+  return {
+    ok: true,
+    quality_ok: true,
+    hinweis: "",
+    kurz,
+    details
+  };
+}
   async function buildFinalPayloadFromInfo(info, lang) {
   const langCode = getLanguageMeta(lang).code;
 
