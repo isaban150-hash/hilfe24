@@ -910,6 +910,7 @@ async function translateDetailIfNeeded(text, lang) {
 
   for (const block of rawBlocks) {
     const tokenMatch = block.match(/^(\[\[HEAD_[A-Z_]+\]\])/);
+
     if (!tokenMatch) {
       const translatedRaw = await callGemini([
         { text: buildTranslationPrompt(block, langMeta, false) }
@@ -930,7 +931,40 @@ async function translateDetailIfNeeded(text, lang) {
       { text: buildTranslationPrompt(content, langMeta, false) }
     ]);
 
-    const translatedContent = cleanText(translatedRaw);
+    let translatedContent = cleanText(translatedRaw);
+
+    if (langMeta.code === "ar") {
+      const smoothedArabic = await callGemini([
+        {
+          text: `
+Du bist ein professioneller arabischer Sprachredakteur für Hilfe24.
+
+Du bekommst bereits auf Arabisch übersetzten Erklärungstext zu einem Brief.
+Deine Aufgabe ist NUR, den Text natürlicher, flüssiger und klarer auf Arabisch zu formulieren.
+
+SEHR WICHTIG:
+- Die Bedeutung muss exakt gleich bleiben.
+- Keine Information weglassen.
+- Keine Information hinzufügen.
+- Keine Zusammenfassung.
+- Keine Mischsprache.
+- Keine deutschen Sätze oder Satzteile.
+- Eigennamen, Adressen, Daten, Uhrzeiten, Beträge, Behördennamen und Ortsnamen exakt erhalten.
+- Formuliere in natürlichem, gut verständlichem Alltagsarabisch.
+- Vermeide steife oder wörtlich aus dem Deutschen klingende Formulierungen.
+- Nutze eher kurze bis mittlere Sätze.
+- Warnungen, Pflichten, Termine und Folgen müssen klar und deutlich bleiben.
+- Gib NUR den fertigen arabischen Text zurück.
+
+Arabischer Text:
+${translatedContent}
+`
+        }
+      ]);
+
+      translatedContent = cleanText(smoothedArabic);
+    }
+
     translatedBlocks.push(`${token}\n${translatedContent}`);
   }
 
@@ -944,6 +978,7 @@ async function translateDetailIfNeeded(text, lang) {
 
   return localizeDetailHeadings(result, langMeta.code);
 }
+
 async function translateShortIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
   const clean = cleanText(text);
@@ -976,11 +1011,10 @@ async function buildFinalPayloadFromInfo(info, lang) {
     details
   };
 }
+
 async function buildAudioText(text, lang) {
   return cleanText(text);
 }
- 
-
 
 async function synthesizeMp3(text, lang) {
   const langMeta = getLanguageMeta(lang);
@@ -1004,48 +1038,13 @@ async function synthesizeMp3(text, lang) {
 
   const [response] = await ttsClient.synthesizeSpeech(request);
 
-if (!response.audioContent) {
-  throw new Error("Keine TTS-Audioantwort erhalten");
-}
+  if (!response.audioContent) {
+    throw new Error("Keine TTS-Audioantwort erhalten");
+  }
 
-return Buffer.isBuffer(response.audioContent)
-  ? response.audioContent.toString("base64")
-  : Buffer.from(response.audioContent, "binary").toString("base64");
-}
-
-async function buildFinalPayloadFromInfo(info, lang) {
-  const langCode = getLanguageMeta(lang).code;
-
-  const shortDe = cleanText(renderShortByLanguage(info, "de"));
-  const kurz = await translateShortIfNeeded(shortDe, langCode);
-
-  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
-  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
-
-  return {
-    ok: true,
-    quality_ok: true,
-    hinweis: "",
-    kurz,
-    details
-  };
-}
-  async function buildFinalPayloadFromInfo(info, lang) {
-  const langCode = getLanguageMeta(lang).code;
-
-  const shortDe = cleanText(renderShortByLanguage(info, "de"));
-  const kurz = await translateShortIfNeeded(shortDe, langCode);
-
-  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
-  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
-
-  return {
-    ok: true,
-    quality_ok: true,
-    hinweis: "",
-    kurz,
-    details
-  };
+  return Buffer.isBuffer(response.audioContent)
+    ? response.audioContent.toString("base64")
+    : Buffer.from(response.audioContent, "binary").toString("base64");
 }
 
 async function buildFinalAnswerFromText(text, lang) {
