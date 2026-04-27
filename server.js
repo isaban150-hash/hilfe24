@@ -1219,11 +1219,12 @@ ${cleanKurz}
 DETAILTEXT_DEUTSCH:
 ${cleanDetails}
 `
-    
+  
+`
+    }
   ]);
 
   const parsed = extractJson(raw);
-
   const kurz = cleanText(parsed.kurz || "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
