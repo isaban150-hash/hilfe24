@@ -1067,25 +1067,6 @@ async function synthesizeMp3(text, lang) {
     : Buffer.from(response.audioContent, "binary").toString("base64");
 }
 
-
-
-
-async function buildFinalPayloadFromInfo(info, lang) {
-  const langCode = getLanguageMeta(lang).code;
-
-  const shortDe = cleanText(renderShortByLanguage(info, "de"));
-  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
-
-  const translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
-
-  return {
-    ok: true,
-    quality_ok: true,
-    hinweis: "",
-    kurz: translated.kurz,
-    details: translated.details
-  };
-}
 async function translateFinalTextsIfNeeded(kurzDe, detailsDe, lang) {
   const langMeta = getLanguageMeta(lang);
 
@@ -1099,34 +1080,92 @@ async function translateFinalTextsIfNeeded(kurzDe, detailsDe, lang) {
     };
   }
 
+  const styleRules = {
+    tr: `
+TÜRKISCH-STIL:
+- Schreibe natürliches, einfaches Türkisch.
+- Schreibe so, wie man es einer normalen Familie erklären würde.
+- Keine steifen Behördenwörter, wenn einfache Wörter reichen.
+- Nutze "randevu", "belge", "ödeme", "son tarih", "yardım kesilebilir" verständlich.
+- Vermeide künstliche Überschriften wie "Getirilecekler/Gönderilecekler".
+- Schreibe nicht zu formell.
+- Kurztext muss sehr klar sein: Ne yapmalı? Ne zaman? Ne götürmeli? Ne olur?
+`,
+    bg: `
+BULGARISCH-STIL:
+- Пиши на ясен и естествен български.
+- Обяснявай така, че човек без преводач да разбере веднага.
+- Избягвай тежък административен език.
+- Използвай кратки изречения.
+- Не използвай изкуствени заглавия в краткия текст.
+- Краткият текст трябва ясно да казва: какво е писмото, какво трябва да се направи, срок/час, документи/сума, последици.
+`,
+    ar: `
+ARABISCH-STIL:
+- اكتب بلغة عربية واضحة وبسيطة ومفهومة.
+- استخدم أسلوبًا قريبًا من الكلام اليومي المحترم.
+- تجنب العبارات الرسمية الثقيلة إذا كان يمكن قولها ببساطة.
+- لا تستخدم جملاً طويلة.
+- لا تستخدم عناوين مصطنعة داخل النص القصير.
+- النص القصير يجب أن يوضح بسرعة: ما الرسالة؟ ماذا يجب أن أفعل؟ متى؟ ماذا أحضر أو أدفع؟ ماذا يحدث إذا لم أفعل؟
+- أبقِ الكلمات الألمانية المهمة مثل Jobcenter و Bürgergeld و AOK كما هي إذا كانت أسماء رسمية.
+`
+  };
+
   const raw = await callGemini([
     {
       text: `
 Du bist professioneller Übersetzer und Sprachvereinfacher für Hilfe24.
 
 Du bekommst zwei deutsche Erklärungstexte zu einem Brief:
-1. Einen kurzen Text für den oberen Kasten
-2. Einen Detailtext für den unteren Kasten
+1. KURZTEXT für den oberen grünen Kasten
+2. DETAILTEXT für den unteren Detailkasten
 
-Übersetze BEIDE Texte vollständig, natürlich, einfach und sauber in ${langMeta.label}.
+Übersetze BEIDE Texte vollständig und korrekt in ${langMeta.label}.
 
 SEHR WICHTIG:
-- Schreibe so, wie ein echter Muttersprachler schreiben würde.
-- Der Text muss natürlich klingen, nicht wie eine Wort-für-Wort-Übersetzung.
-- Die Bedeutung muss exakt gleich bleiben.
+- Bedeutung exakt beibehalten.
 - Keine Informationen weglassen.
 - Keine Informationen hinzufügen.
 - Keine Zusammenfassung.
-- Keine Mischsprache.
 - Keine deutschen Sätze oder Satzteile im Ergebnis.
-- Eigennamen, Adressen, Daten, Uhrzeiten, Beträge, Behördennamen und Ortsnamen exakt erhalten.
-- Fristen, Daten, Beträge und Folgen müssen exakt erhalten bleiben.
-- Formuliere einfach, klar und alltagstauglich.
-- Vermeide schwere Amtssprache.
-- Überschrift-Tokens wie [[HEAD_FROM]], [[HEAD_PERSON]], [[HEAD_TOPIC]], [[HEAD_IMPORTANT]], [[HEAD_WHEN]], [[HEAD_ELSE]], [[HEAD_SUMMARY]] müssen im Detailtext exakt unverändert bleiben.
-- Diese Tokens nicht übersetzen.
-- Diese Tokens nicht löschen.
-- Diese Tokens nicht verändern.
+- Eigennamen, Adressen, Daten, Uhrzeiten, Beträge, Behördennamen, Aktenzeichen und Ortsnamen exakt erhalten.
+- Begriffe wie Jobcenter, Bürgergeld, AOK, IBAN, QR-Code dürfen im Original bleiben.
+- Fristen, Daten, Beträge, Termine und Folgen exakt erhalten.
+- Keine Panik machen.
+- Keine Pflicht erfinden.
+- Keine Abschwächung, wenn eine Pflicht oder Frist genannt wird.
+
+REGEL FÜR DEN KURZTEXT:
+- Der Kurztext ist für Menschen, die den Brief schnell verstehen müssen.
+- Maximal 5 kurze Zeilen.
+- Jede Zeile muss kurz und direkt sein.
+- Keine langen verschachtelten Sätze.
+- Keine künstlichen Überschriften.
+- Keine unnötigen Details.
+- Keine vollständigen Adressen im Kurztext, wenn nicht unbedingt nötig.
+- Der Kurztext soll beantworten:
+  1. Was ist das?
+  2. Was muss ich tun?
+  3. Wann ist Termin oder Frist?
+  4. Was muss ich mitbringen, schicken oder zahlen?
+  5. Was passiert sonst?
+
+REGEL FÜR DEN DETAILTEXT:
+- Der Detailtext darf ausführlicher sein.
+- Trotzdem einfache Sprache.
+- Behördenlogik verständlich erklären.
+- Keine schweren Fachsätze.
+
+ÜBERSCHRIFT-TOKENS:
+- Im Detailtext können Tokens stehen wie:
+  [[HEAD_FROM]], [[HEAD_PERSON]], [[HEAD_TOPIC]], [[HEAD_IMPORTANT]], [[HEAD_WHEN]], [[HEAD_ELSE]], [[HEAD_SUMMARY]]
+- Diese Tokens müssen exakt unverändert bleiben.
+- Nicht übersetzen.
+- Nicht löschen.
+- Nicht verändern.
+
+${styleRules[langMeta.code] || ""}
 
 Antworte NUR als gültiges JSON.
 Keine Erklärung außerhalb des JSON.
@@ -1149,7 +1188,10 @@ ${cleanDetails}
 
   const parsed = extractJson(raw);
 
-  const kurz = cleanText(parsed.kurz || "");
+  const kurz = cleanText(parsed.kurz || "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
   const detailsRaw = cleanText(parsed.details || "")
     .replace(/\[\[\s*/g, "[[")
     .replace(/\s*\]\]/g, "]]")
@@ -1162,6 +1204,25 @@ ${cleanDetails}
     details: localizeDetailHeadings(detailsRaw, langMeta.code)
   };
 }
+
+
+async function buildFinalPayloadFromInfo(info, lang) {
+  const langCode = getLanguageMeta(lang).code;
+
+  const shortDe = cleanText(renderShortByLanguage(info, "de"));
+  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
+
+  const translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
+
+  return {
+    ok: true,
+    quality_ok: true,
+    hinweis: "",
+    kurz: translated.kurz,
+    details: translated.details
+  };
+}
+
 async function buildAudioText(text, lang) {
   return cleanText(text);
 }
