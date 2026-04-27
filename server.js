@@ -547,9 +547,8 @@ function actionText(code, language) {
   return map[language]?.[code] || "";
 }
 
-function renderShortByLanguage(info, lang) {
+ffunction renderShortByLanguage(info, lang) {
   const sender = String(info.absender_kurz || info.absender_original || "").trim();
-  const person = String(info.betroffene_person || "").trim();
   const briefart = String(info.briefart || "").trim();
   const nextStep = String(info.naechster_schritt || "").trim();
   const consequence = String(info.folge_wenn_nichts || "").trim();
@@ -560,8 +559,9 @@ function renderShortByLanguage(info, lang) {
   const urgency = String(info.dringlichkeit || "unklar").trim();
   const documents = dedupe(info.unterlagen || []);
   const summary = String(info.kurz_gesagt || "").trim();
-  const topic = String(info.worum_geht_es || "").trim();
   const actions = dedupe(info.was_ist_zu_tun || []);
+  const topic = String(info.worum_geht_es || "").trim();
+
   const lines = [];
 
   function cleanSentence(text) {
@@ -571,7 +571,7 @@ function renderShortByLanguage(info, lang) {
       .replace(/\.$/, "");
   }
 
-  function shorten(text, max = 140) {
+  function shorten(text, max = 95) {
     const clean = cleanSentence(text);
     if (clean.length <= max) return clean;
     return clean.slice(0, max).replace(/\s+\S*$/, "") + "...";
@@ -582,88 +582,100 @@ function renderShortByLanguage(info, lang) {
     return words.some((word) => lower.includes(word));
   }
 
-  if (sender) {
-    if (briefart) {
-      lines.push(`Das ist ein ${briefart} von ${sender}.`);
-    } else {
-      lines.push(`Das ist ein Brief von ${sender}.`);
-    }
-  } else if (briefart) {
-    lines.push(`Das ist ein ${briefart}.`);
+  function pushLine(text) {
+    const clean = cleanSentence(text);
+    if (!clean) return;
+    lines.push(clean + ".");
   }
 
-  if (person) {
-    lines.push(`Der Brief betrifft ${person}.`);
-  }
-
-  if (duty === "freiwillig" || duty === "information" || duty === "werbung") {
-    if (summary) {
-      lines.push(shorten(summary, 130) + ".");
-    } else if (topic) {
-      lines.push(shorten(topic, 130) + ".");
+  function buildTypeLine() {
+    if (duty === "pflicht") {
+      if (briefart && sender) return `Das ist ein wichtiger ${briefart} von ${sender}`;
+      if (sender) return `Das ist ein wichtiger Brief von ${sender}`;
+      if (briefart) return `Das ist ein wichtiger ${briefart}`;
+      return "Das ist ein wichtiger Brief";
     }
 
     if (duty === "freiwillig") {
-      lines.push("Das ist freiwillig.");
-    } else if (duty === "information") {
-      lines.push("Das ist eine Information.");
-    } else if (duty === "werbung") {
-      lines.push("Das wirkt wie Werbung oder ein Angebot.");
+      if (sender) return `Das ist ein freiwilliges Angebot von ${sender}`;
+      return "Das ist ein freiwilliges Angebot";
+    }
+
+    if (duty === "information") {
+      if (sender) return `Das ist eine Information von ${sender}`;
+      return "Das ist eine Information";
+    }
+
+    if (duty === "werbung") {
+      if (sender) return `Das wirkt wie Werbung oder ein Angebot von ${sender}`;
+      return "Das wirkt wie Werbung oder ein Angebot";
+    }
+
+    if (briefart && sender) return `Das ist ein ${briefart} von ${sender}`;
+    if (sender) return `Das ist ein Brief von ${sender}`;
+    if (briefart) return `Das ist ein ${briefart}`;
+    return "Das ist ein Brief";
+  }
+
+  pushLine(buildTypeLine());
+
+  if (duty === "freiwillig" || duty === "information" || duty === "werbung") {
+    if (summary) {
+      pushLine(shorten(summary, 95));
+    } else if (topic) {
+      pushLine(shorten(topic, 95));
     }
 
     if (nextStep) {
-      lines.push(shorten(nextStep, 130) + ".");
+      pushLine(shorten(nextStep, 95));
+    } else if (duty === "freiwillig") {
+      pushLine("Sie müssen nichts tun, wenn Sie das Angebot nicht nutzen möchten");
+    } else if (duty === "information") {
+      pushLine("Sie müssen meistens nichts tun");
+    } else if (duty === "werbung") {
+      pushLine("Reagieren Sie nur, wenn Sie das Angebot wirklich nutzen möchten");
     }
 
     if (consequence) {
-      lines.push(shorten(consequence, 130) + ".");
+      pushLine(shorten(consequence, 95));
     }
 
     return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
   }
 
-  if (duty === "pflicht") {
-    if (nextStep) {
-      lines.push(shorten(nextStep, 140) + ".");
-    } else if (actions[0]) {
-      lines.push(shorten(actions[0], 140) + ".");
-    } else if (summary) {
-      lines.push(shorten(summary, 140) + ".");
-    }
-  } else {
-    if (summary) {
-      lines.push(shorten(summary, 140) + ".");
-    } else if (nextStep) {
-      lines.push(shorten(nextStep, 140) + ".");
-    } else if (topic) {
-      lines.push(shorten(topic, 140) + ".");
-    }
+  if (nextStep) {
+    pushLine(shorten(nextStep, 95));
+  } else if (actions[0]) {
+    pushLine(shorten(actions[0], 95));
+  } else if (summary) {
+    pushLine(shorten(summary, 95));
+  } else if (topic) {
+    pushLine(shorten(topic, 95));
   }
 
   if (appointment) {
-    lines.push(`Termin: ${cleanSentence(appointment)}.`);
-  }
-
-  if (deadline) {
-    lines.push(`Frist: ${cleanSentence(deadline)}.`);
+    pushLine(`Termin: ${shorten(appointment, 85)}`);
+  } else if (deadline) {
+    pushLine(`Frist: ${shorten(deadline, 85)}`);
   }
 
   if (amount) {
-    lines.push(`Betrag: ${cleanSentence(amount)}.`);
+    pushLine(`Betrag: ${shorten(amount, 70)}`);
+  } else if (documents.length > 0) {
+    pushLine(`Mitbringen/Schicken: ${documents.slice(0, 3).join(", ")}`);
   }
 
-  if (documents.length > 0) {
-    const docs = documents.slice(0, 3).join(", ");
-    lines.push(`Mitbringen/Schicken: ${docs}.`);
+  if (deadline && appointment) {
+    pushLine(`Frist: ${shorten(deadline, 85)}`);
   }
 
   if (consequence) {
-    lines.push(`Sonst: ${shorten(consequence, 130)}.`);
+    pushLine(`Sonst: ${shorten(consequence, 95)}`);
   } else if (urgency === "hoch") {
-    lines.push("Bitte schnell prüfen.");
+    pushLine("Bitte schnell prüfen");
   }
 
-  return dedupe(lines.filter(Boolean)).slice(0, 6).join("\n");
+  return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
 }
 function renderDetailTemplateGerman(info) {
   const blocks = [];
