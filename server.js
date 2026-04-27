@@ -547,7 +547,7 @@ function actionText(code, language) {
   return map[language]?.[code] || "";
 }
 
-ffunction renderShortByLanguage(info, lang) {
+function renderShortByLanguage(info, lang) {
   const sender = String(info.absender_kurz || info.absender_original || "").trim();
   const briefart = String(info.briefart || "").trim();
   const nextStep = String(info.naechster_schritt || "").trim();
