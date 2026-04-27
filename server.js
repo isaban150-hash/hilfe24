@@ -179,72 +179,41 @@ function normalizeInfo(info) {
     return v;
   }
 
+  function normalizeChoice(value, allowed, fallback = "") {
+    const v = normalizeString(value).toLowerCase();
+    if (!v) return fallback;
+    return allowed.includes(v) ? v : fallback;
+  }
+
   return {
-  absender_original: normalizeString(info.absender_original),
-  absender_kurz: normalizeString(info.absender_kurz),
-  briefart: normalizeString(info.briefart),
-  betroffene_person: normalizePerson(info.betroffene_person),
-  worum_geht_es: normalizeString(info.worum_geht_es),
-  wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
-  was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
-  frist: normalizeString(info.frist),
-  termin: normalizeString(info.termin),
-  folge_wenn_nichts: normalizeString(info.folge_wenn_nichts),
-  versteckte_wichtige_info: normalizeString(info.versteckte_wichtige_info),
-  kurz_gesagt: normalizeString(info.kurz_gesagt),
-  unsicherheiten: normalizeArray(info.unsicherheiten)
-};
-}
-function buildExtractionPromptForText(text) {
-  return `
-Du bist Hilfe24.
+    absender_original: normalizeString(info.absender_original),
+    absender_kurz: normalizeString(info.absender_kurz),
+    briefart: normalizeString(info.briefart),
+    betroffene_person: normalizePerson(info.betroffene_person),
+    worum_geht_es: normalizeString(info.worum_geht_es),
+    wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
+    was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
+    frist: normalizeString(info.frist),
+    termin: normalizeString(info.termin),
+    folge_wenn_nichts: normalizeString(info.folge_wenn_nichts),
+    versteckte_wichtige_info: normalizeString(info.versteckte_wichtige_info),
+    kurz_gesagt: normalizeString(info.kurz_gesagt),
+    unsicherheiten: normalizeArray(info.unsicherheiten),
 
-Lies diesen Brief und gib NUR gültiges JSON zurück.
-
-WICHTIG:
-- Erfinde nichts.
-- Nenne nur Dinge, die klar im Brief stehen oder sehr klar direkt daraus folgen.
-- Keine freien Erklärungen.
-- Keine Sätze außerhalb des JSON.
-- Wenn etwas unklar ist, lieber leer lassen statt raten.
-- "betroffene_person" nur füllen, wenn im Brief klar erkennbar ist, welche Person gemeint oder angeschrieben ist.
-- Bei "betroffene_person" nur den Namen oder die klar erkennbare betroffene Person eintragen, keine Rollenwörter wie "Sie", "Empfänger" oder "Adressat".
-- Wenn nicht klar erkennbar ist, für wen der Brief ist, "betroffene_person" leer lassen.
-- "was_ist_zu_tun" nur für echte konkrete Schritte.
-- "frist" nur füllen, wenn eine Frist im Brief klar genannt wird.
-- "termin" nur füllen, wenn ein echter Termin klar genannt wird.
-- "folge_wenn_nichts" nur füllen, wenn eine Folge klar im Brief steht.
-- "wichtigste_punkte" nur mit den 1 bis 3 wichtigsten sachlichen Punkten aus dem Brief.
-- In "wichtigste_punkte" gehören NICHT hinein: Bankverbindungen, Öffnungszeiten, Datenschutz-Hinweise, Internetseiten, Kontaktangaben, interne Nummern oder Nebensätze ohne direkte Relevanz.
-- "kurz_gesagt" muss genau 1 sehr kurzer sachlicher Satz in einfachem Deutsch sein.
-- "kurz_gesagt" darf nur den Kern des Briefes enthalten, keine Nebensachen.
-- Geldbeträge, Daten, Fristen, Namen, Behörden, Forderungen und Folgen müssen exakt erhalten bleiben.
-- Keine Übertreibung.
-- Keine Abschwächung.
-- Keine zusätzliche Deutung.
-- "versteckte_wichtige_info" nur füllen, wenn im Brief ein wichtiger Hinweis steht, der leicht übersehen werden kann und direkt relevant ist.
-- "briefart" soll kurz und sachlich sein, zum Beispiel: Mahnung, Rechnung, Bescheid, Termin, Anhörung, Kündigung, Forderung, Erinnerung, Schreiben.
-
-Gib genau dieses JSON zurück:
-{
-  "absender_original": "",
-  "absender_kurz": "",
-  "briefart": "",
-  "betroffene_person": "",
-  "worum_geht_es": "",
-  "wichtigste_punkte": [],
-  "was_ist_zu_tun": [],
-  "frist": "",
-  "termin": "",
-  "folge_wenn_nichts": "",
-  "versteckte_wichtige_info": "",
-  "kurz_gesagt": "",
-  "unsicherheiten": []
-}
-
-Brief:
-${text}
-`;
+    pflicht_oder_freiwillig: normalizeChoice(
+      info.pflicht_oder_freiwillig,
+      ["pflicht", "freiwillig", "information", "werbung", "unklar"],
+      "unklar"
+    ),
+    dringlichkeit: normalizeChoice(
+      info.dringlichkeit,
+      ["hoch", "mittel", "niedrig", "unklar"],
+      "unklar"
+    ),
+    naechster_schritt: normalizeString(info.naechster_schritt),
+    betrag: normalizeString(info.betrag),
+    unterlagen: normalizeArray(info.unterlagen)
+  };
 }
 
 function buildExtractionPromptForImages() {
@@ -253,134 +222,154 @@ Du bist Hilfe24.
 
 Lies die Bilder dieses Briefes und gib NUR gültiges JSON zurück.
 
-DEINE AUFGABE:
-Du sollst den Brief sachlich verstehen.
-Erkenne allgemein, ob der Nutzer wirklich handeln muss oder ob der Brief nur informiert, etwas anbietet, bestätigt, warnt oder Werbung ist.
+ZIEL:
+Du sollst jeden Brief allgemein verstehen.
+Nicht auf eine bestimmte Behörde fixieren.
+Nicht raten.
+Nicht dramatisieren.
+Nicht verharmlosen.
 
-WICHTIG:
-- Erfinde nichts.
-- Nenne nur Dinge, die klar auf den Bildern stehen oder sehr klar direkt daraus folgen.
-- Keine freien Erklärungen.
-- Keine Sätze außerhalb des JSON.
-- Wenn etwas unklar oder schlecht lesbar ist, lieber leer lassen statt raten.
-- Geldbeträge, Daten, Fristen, Namen, Behörden, Forderungen und Folgen müssen exakt erhalten bleiben.
-- Keine Panik machen.
-- Keine Pflicht erfinden.
-- Wenn wirklich eine Pflicht, Frist, Forderung oder Gefahr genannt wird, dann klar benennen.
+Du musst erkennen:
+- Wer schreibt?
+- Für wen ist der Brief?
+- Was ist die Briefart?
+- Ist es Pflicht, freiwillig, Information, Werbung oder unklar?
+- Wie dringend ist es?
+- Was ist der nächste konkrete Schritt?
+- Gibt es Frist, Termin, Betrag oder Unterlagen?
+- Was passiert, wenn nichts gemacht wird?
 
-ENTSCHEIDUNGSLOGIK:
+ALLGEMEINE BRIEFLOGIK:
 
-1. Informationsbrief
-Wenn der Brief nur informiert, erklärt oder auf ein Angebot hinweist, dann ist es meistens keine Pflicht.
-Typische Wörter:
-- Information
-- wir informieren Sie
-- Hinweis
-- Angebot
-- freiwillig
-- können Sie
-- wenn Sie möchten
-- wenn Sie teilnehmen möchten
-- es entstehen keine Nachteile
-- keine Nachteile
-
-Dann:
-- "briefart" eher "Informationsbrief" oder "Hinweis"
-- "was_ist_zu_tun" nur füllen, wenn ein sinnvoller freiwilliger Schritt genannt wird
-- nicht schreiben: "Sie müssen reagieren"
-- nicht schreiben: "Sie müssen antworten"
-- nicht schreiben: "Sie müssen auf diesen Brief reagieren"
-
-Beispiel:
-Wenn im Brief steht, dass eine Teilnahme freiwillig ist, dann schreibe:
-"Wenn Sie teilnehmen möchten, können Sie sich bei der genannten Stelle melden."
-Wenn im Brief steht, dass keine Nachteile entstehen, dann schreibe das bei "folge_wenn_nichts".
-
-2. Pflichtbrief
-Wenn der Brief eine klare Pflicht nennt, dann trage sie bei "was_ist_zu_tun" ein.
-Typische Fälle:
+1. Pflicht
+Wenn der Brief klar verlangt, dass etwas getan werden muss, dann ist "pflicht_oder_freiwillig": "pflicht".
+Beispiele:
 - Unterlagen einreichen
 - Betrag zahlen
 - Termin wahrnehmen
 - Stellungnahme abgeben
-- Vertrag kündigen oder bestätigen
-- Nachweis schicken
 - Formular ausfüllen
-- Frist beachten
+- Nachweise schicken
+- Widerspruchsfrist beachten
+- Kündigung beachten
+- Meldeaufforderung
+- Anhörung
+- Mahnung
+- Forderung
 
-Dann:
-- "was_ist_zu_tun" mit konkretem Schritt füllen
-- "frist" füllen, wenn Datum oder Zeitraum genannt ist
-- "folge_wenn_nichts" nur füllen, wenn die Folge im Brief steht
+2. Freiwillig
+Wenn der Brief nur ein Angebot oder eine freiwillige Möglichkeit nennt, dann ist "pflicht_oder_freiwillig": "freiwillig".
+Beispiele:
+- freiwillige Untersuchung
+- optionales Angebot
+- wenn Sie möchten
+- wenn Sie teilnehmen möchten
+- können Sie nutzen
+- keine Nachteile bei Nichtteilnahme
 
-3. Mahnung / Rechnung / Forderung
-Wenn es um Geld geht:
-- Betrag exakt übernehmen
-- Zahlungsfrist exakt übernehmen, wenn genannt
-- nicht automatisch behaupten, dass die Forderung richtig ist
-- wenn unklar ist, ob bezahlt werden muss, bei "unsicherheiten" eintragen
-- bei "was_ist_zu_tun" sachlich schreiben: "Forderung prüfen" oder "Betrag zahlen, wenn die Forderung stimmt"
+3. Information
+Wenn der Brief nur informiert und keine Handlung verlangt, dann ist "pflicht_oder_freiwillig": "information".
+Beispiele:
+- reine Information
+- Hinweis
+- Bestätigung
+- Mitteilung ohne Frist und ohne Pflicht
 
-4. Werbung / Angebot
-Wenn der Brief wie Werbung, Gewinnspiel, Verkauf oder Angebot wirkt:
-- "briefart" als "Werbung" oder "Angebot" eintragen
-- keine Zahlungspflicht erfinden
-- bei "was_ist_zu_tun" höchstens schreiben: "Nur reagieren, wenn Sie das Angebot nutzen möchten."
-- wenn es unseriös oder unklar wirkt, bei "unsicherheiten" eintragen
+4. Werbung
+Wenn der Brief wie Werbung, Verkauf, Gewinnspiel oder Angebot wirkt und keine echte Pflicht enthält, dann ist "pflicht_oder_freiwillig": "werbung".
 
-5. Gericht / Polizei / Behörde / Jobcenter
-Wenn Gericht, Polizei, Jobcenter, Stadt, Krankenkasse, Rentenversicherung, Ausländerbehörde oder Finanzamt schreibt:
-- besonders genau auf Fristen, Termine und Folgen achten
-- keine Frist erfinden
-- keine rechtliche Sicherheit behaupten
-- wenn es ernst wirkt, sachlich sagen, dass man schnell prüfen oder Hilfe holen sollte
+5. Unklar
+Wenn nicht klar erkennbar ist, ob eine Pflicht besteht, dann ist "pflicht_oder_freiwillig": "unklar".
+Dann bei "unsicherheiten" kurz erklären, was unklar ist.
 
-6. Gesundheit / Krankenkasse / Pflege
-Wenn es um Gesundheit, Untersuchung, Pflege, Krankenkasse oder medizinische Themen geht:
-- keine medizinische Diagnose stellen
-- keine Behandlung empfehlen
-- nur erklären, was im Brief steht
-- freiwillige Angebote klar als freiwillig erklären
-- wenn Beratung empfohlen wird, nur den im Brief genannten Ansprechpartner nennen
+DRINGLICHKEIT:
+
+"hoch":
+- Gericht
+- Polizei
+- Kündigung
+- Mahnung mit kurzer Frist
+- Jobcenter-Termin / Meldeaufforderung
+- Leistungskürzung möglich
+- Zwangsvollstreckung möglich
+- Frist läuft bald
+- Zahlungsfrist
+
+"mittel":
+- Unterlagen sollen eingereicht werden
+- Antrag / Nachweis / Rückmeldung nötig
+- Termin oder Frist vorhanden, aber nicht akut bedrohlich
+
+"niedrig":
+- reine Information
+- freiwilliges Angebot
+- Werbung
+- keine Nachteile bei Nichtteilnahme
+
+"unklar":
+- wenn Frist/Folge/Handlung nicht sicher erkennbar ist
+
+FÜR "naechster_schritt":
+Schreibe genau 1 klaren nächsten Schritt in einfacher Sprache.
+Beispiele:
+- "Gehen Sie am genannten Termin zum Jobcenter und bringen Sie die Unterlagen mit."
+- "Zahlen Sie den Betrag fristgerecht, wenn die Forderung stimmt."
+- "Schicken Sie die genannten Unterlagen bis zur Frist."
+- "Sie müssen nichts tun, wenn Sie das Angebot nicht nutzen möchten."
+- "Prüfen Sie die Forderung und holen Sie Hilfe, wenn Sie unsicher sind."
 
 FÜR "was_ist_zu_tun":
-- Nur echte Pflichtschritte oder sinnvolle freiwillige nächste Schritte eintragen.
-- Wenn nichts getan werden muss, leer lassen oder nur freiwilligen Schritt eintragen.
-- Keine allgemeine Floskel wie "auf den Brief reagieren", wenn keine Reaktion gefordert wird.
+Nur konkrete Schritte eintragen.
+Keine allgemeine Floskel wie "auf den Brief reagieren", wenn nicht klar eine Reaktion verlangt wird.
+
+FÜR "betrag":
+Nur füllen, wenn ein Geldbetrag klar genannt ist.
+Beispiel: "89,50 €"
+
+FÜR "unterlagen":
+Nur füllen, wenn konkrete Unterlagen genannt sind.
+Beispiele:
+- aktueller Lebenslauf
+- letztes Bewerbungsschreiben
+- Nachweise über Eigenbemühungen
+- Kontoauszüge
+- Mietvertrag
+- Arbeitsunfähigkeitsbescheinigung
+
+FÜR "frist":
+Nur füllen, wenn eine Frist klar genannt ist.
+Beispiele:
+- "innerhalb einer Woche nach Eingang dieser Mahnung"
+- "bis zum 15.05.2026"
+
+FÜR "termin":
+Nur füllen, wenn ein Termin klar genannt ist.
+Beispiel:
+- "Mittwoch, 29.04.2026 um 10:00 Uhr, Zimmer E09"
 
 FÜR "folge_wenn_nichts":
-- Nur füllen, wenn im Brief klar eine Folge steht.
-- Wenn im Brief steht, dass keine Nachteile entstehen, genau das eintragen.
-- Keine Folgen selbst erfinden.
+Nur füllen, wenn im Brief klar steht, was passiert.
+Wenn dort steht, dass keine Nachteile entstehen, dann genau das eintragen.
+Keine Folgen erfinden.
 
 FÜR "kurz_gesagt":
-- Genau 1 kurzer sachlicher Satz in einfachem Deutsch.
-- Bei Informationsbriefen klar sagen, dass es eine Information oder ein freiwilliges Angebot ist.
-- Bei Pflichtbriefen klar sagen, was getan werden muss.
-- Bei Mahnungen/Forderungen klar sagen, dass Zahlung oder Prüfung nötig sein kann.
-- Bei Werbung klar sagen, dass es ein Angebot oder Werbung ist.
-- Keine Panik.
-- Keine Nebensachen.
+Genau 1 kurzer sachlicher Satz in einfachem Deutsch.
+Der Satz soll den Kern treffen:
+- Bei Pflicht: was muss getan werden?
+- Bei Termin: wann muss man erscheinen?
+- Bei Mahnung: was muss gezahlt/geprüft werden?
+- Bei Information: dass es nur Information/freiwillig ist
+- Bei Werbung: dass es ein Angebot/Werbung ist
 
-FÜR "wichtigste_punkte":
-- Nur die 1 bis 3 wichtigsten sachlichen Punkte aus dem Brief.
-- Keine Bankverbindungen, Öffnungszeiten, Datenschutz-Hinweise, Internetseiten, Kontaktangaben, interne Nummern oder Nebensätze ohne direkte Relevanz.
-
-FÜR "briefart":
-Nutze kurz und sachlich, zum Beispiel:
-- Informationsbrief
-- Hinweis
-- Angebot
-- Werbung
-- Mahnung
-- Rechnung
-- Bescheid
-- Termin
-- Anhörung
-- Kündigung
-- Forderung
-- Erinnerung
-- Schreiben
+WICHTIGE REGELN:
+- Erfinde nichts.
+- Keine Rechtsberatung.
+- Keine medizinische Diagnose.
+- Keine Panik machen.
+- Keine Pflicht erfinden.
+- Keine Information weglassen, wenn sie wichtig ist.
+- Namen, Daten, Uhrzeiten, Beträge, Behörden und Folgen exakt übernehmen.
+- Wenn mehrere Seiten fehlen oder etwas nicht lesbar ist, schreibe das bei "unsicherheiten".
 
 Gib genau dieses JSON zurück:
 {
@@ -396,7 +385,12 @@ Gib genau dieses JSON zurück:
   "folge_wenn_nichts": "",
   "versteckte_wichtige_info": "",
   "kurz_gesagt": "",
-  "unsicherheiten": []
+  "unsicherheiten": [],
+  "pflicht_oder_freiwillig": "unklar",
+  "dringlichkeit": "unklar",
+  "naechster_schritt": "",
+  "betrag": "",
+  "unterlagen": []
 }
 
 Gib nur JSON zurück.
@@ -557,11 +551,17 @@ function renderShortByLanguage(info, lang) {
   const sender = String(info.absender_kurz || info.absender_original || "").trim();
   const person = String(info.betroffene_person || "").trim();
   const briefart = String(info.briefart || "").trim();
-  const topic = String(info.worum_geht_es || "").trim();
-  const summary = String(info.kurz_gesagt || "").trim();
+  const nextStep = String(info.naechster_schritt || "").trim();
   const consequence = String(info.folge_wenn_nichts || "").trim();
+  const deadline = String(info.frist || "").trim();
+  const appointment = String(info.termin || "").trim();
+  const amount = String(info.betrag || "").trim();
+  const duty = String(info.pflicht_oder_freiwillig || "unklar").trim();
+  const urgency = String(info.dringlichkeit || "unklar").trim();
+  const documents = dedupe(info.unterlagen || []);
+  const summary = String(info.kurz_gesagt || "").trim();
+  const topic = String(info.worum_geht_es || "").trim();
   const actions = dedupe(info.was_ist_zu_tun || []);
-  const importantPoints = dedupe(info.wichtigste_punkte || []);
   const lines = [];
 
   function cleanSentence(text) {
@@ -571,83 +571,16 @@ function renderShortByLanguage(info, lang) {
       .replace(/\.$/, "");
   }
 
-  function hasAny(text, words) {
-    const lower = String(text || "").toLowerCase();
-    return words.some((word) => lower.includes(word));
-  }
-
-  function shorten(text, max = 150) {
+  function shorten(text, max = 140) {
     const clean = cleanSentence(text);
     if (clean.length <= max) return clean;
     return clean.slice(0, max).replace(/\s+\S*$/, "") + "...";
   }
 
-  const allText = [
-    sender,
-    briefart,
-    topic,
-    summary,
-    consequence,
-    actions.join(" "),
-    importantPoints.join(" ")
-  ].join(" ");
-
-  const isInfoOrOffer = hasAny(allText, [
-    "information",
-    "informationsbrief",
-    "hinweis",
-    "angebot",
-    "freiwillig",
-    "kostenfrei",
-    "kostenlos",
-    "wenn sie möchten",
-    "wenn sie teilnehmen möchten",
-    "keine nachteile",
-    "keinerlei nachteile"
-  ]);
-
-  const hasNoDisadvantage = hasAny(consequence, [
-    "keine nachteile",
-    "keinerlei nachteile",
-    "keinen nachteil",
-    "keine negativen folgen"
-  ]);
-
-  const isMoney = hasAny(allText, [
-    "mahnung",
-    "rechnung",
-    "forderung",
-    "zahlen",
-    "zahlung",
-    "betrag",
-    "€",
-    "euro",
-    "säumniszuschlag",
-    "bußgeld"
-  ]);
-
-  const isAppointment = hasAny(allText, [
-    "termin",
-    "erscheinen",
-    "einladung",
-    "vorsprechen",
-    "gespräch",
-    "rendezvous",
-    "randevu"
-  ]);
-
-  const isSeriousAuthority = hasAny(allText, [
-    "jobcenter",
-    "gericht",
-    "polizei",
-    "stadt",
-    "finanzamt",
-    "ausländerbehörde",
-    "rentenversicherung",
-    "krankenkasse"
-  ]);
-
-  const hasAction = actions.length > 0;
+  function hasAny(text, words) {
+    const lower = String(text || "").toLowerCase();
+    return words.some((word) => lower.includes(word));
+  }
 
   if (sender) {
     if (briefart) {
@@ -663,64 +596,74 @@ function renderShortByLanguage(info, lang) {
     lines.push(`Der Brief betrifft ${person}.`);
   }
 
-  if (isInfoOrOffer && !hasAction) {
-    if (topic) {
-      lines.push(shorten(topic, 120) + ".");
-    } else if (summary) {
-      lines.push(shorten(summary, 120) + ".");
+  if (duty === "freiwillig" || duty === "information" || duty === "werbung") {
+    if (summary) {
+      lines.push(shorten(summary, 130) + ".");
+    } else if (topic) {
+      lines.push(shorten(topic, 130) + ".");
     }
 
-    lines.push("Das ist eine Information oder ein freiwilliges Angebot.");
+    if (duty === "freiwillig") {
+      lines.push("Das ist freiwillig.");
+    } else if (duty === "information") {
+      lines.push("Das ist eine Information.");
+    } else if (duty === "werbung") {
+      lines.push("Das wirkt wie Werbung oder ein Angebot.");
+    }
 
-    if (hasNoDisadvantage) {
-      lines.push("Wenn Sie nicht teilnehmen, entstehen keine Nachteile.");
-    } else if (consequence) {
-      lines.push("Folge: " + shorten(consequence, 130) + ".");
+    if (nextStep) {
+      lines.push(shorten(nextStep, 130) + ".");
+    }
+
+    if (consequence) {
+      lines.push(shorten(consequence, 130) + ".");
     }
 
     return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
   }
 
-  if (hasAction) {
-    lines.push(shorten(actions[0], 150) + ".");
-  } else if (summary) {
-    lines.push(shorten(summary, 150) + ".");
-  } else if (topic) {
-    lines.push(shorten(topic, 150) + ".");
-  } else if (importantPoints[0]) {
-    lines.push(shorten(importantPoints[0], 150) + ".");
+  if (duty === "pflicht") {
+    if (nextStep) {
+      lines.push(shorten(nextStep, 140) + ".");
+    } else if (actions[0]) {
+      lines.push(shorten(actions[0], 140) + ".");
+    } else if (summary) {
+      lines.push(shorten(summary, 140) + ".");
+    }
+  } else {
+    if (summary) {
+      lines.push(shorten(summary, 140) + ".");
+    } else if (nextStep) {
+      lines.push(shorten(nextStep, 140) + ".");
+    } else if (topic) {
+      lines.push(shorten(topic, 140) + ".");
+    }
   }
 
-  if (isAppointment && info.termin) {
-    lines.push(`Termin: ${cleanSentence(info.termin)}.`);
-  } else if (info.termin) {
-    lines.push(`Termin: ${cleanSentence(info.termin)}.`);
+  if (appointment) {
+    lines.push(`Termin: ${cleanSentence(appointment)}.`);
   }
 
-  if (info.frist) {
-    lines.push(`Frist: ${cleanSentence(info.frist)}.`);
+  if (deadline) {
+    lines.push(`Frist: ${cleanSentence(deadline)}.`);
   }
 
-  if (actions.length > 1) {
-    lines.push(shorten(actions[1], 140) + ".");
+  if (amount) {
+    lines.push(`Betrag: ${cleanSentence(amount)}.`);
   }
 
-  if (isMoney && !actions.some((a) => hasAny(a, ["zahlen", "zahlung", "betrag", "überweisen"]))) {
-    const moneyPoint = importantPoints.find((p) => hasAny(p, ["€", "euro", "betrag", "zahlen", "zahlung", "forderung"]));
-    if (moneyPoint) lines.push(shorten(moneyPoint, 140) + ".");
+  if (documents.length > 0) {
+    const docs = documents.slice(0, 3).join(", ");
+    lines.push(`Mitbringen/Schicken: ${docs}.`);
   }
 
   if (consequence) {
-    if (hasNoDisadvantage) {
-      lines.push("Wenn Sie nicht teilnehmen, entstehen keine Nachteile.");
-    } else {
-      lines.push("Sonst: " + shorten(consequence, 140) + ".");
-    }
-  } else if (isSeriousAuthority && !isInfoOrOffer) {
-    lines.push("Bitte prüfen Sie den Brief schnell.");
+    lines.push(`Sonst: ${shorten(consequence, 130)}.`);
+  } else if (urgency === "hoch") {
+    lines.push("Bitte schnell prüfen.");
   }
 
-  return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
+  return dedupe(lines.filter(Boolean)).slice(0, 6).join("\n");
 }
 function renderDetailTemplateGerman(info) {
   const blocks = [];
