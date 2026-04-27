@@ -1010,7 +1010,82 @@ async function buildFinalPayloadFromInfo(info, lang) {
     details: translated.details
   };
 }
+async function translateFinalTextsIfNeeded(kurzDe, detailsDe, lang) {
+  const langMeta = getLanguageMeta(lang);
 
+  const cleanKurz = cleanText(kurzDe);
+  const cleanDetails = cleanText(detailsDe);
+
+  if (langMeta.code === "de") {
+    return {
+      kurz: cleanKurz,
+      details: localizeDetailHeadings(cleanDetails, "de")
+    };
+  }
+
+  const raw = await callGemini([
+    {
+      text: `
+Du bist professioneller Übersetzer und Sprachvereinfacher für Hilfe24.
+
+Du bekommst zwei deutsche Erklärungstexte zu einem Brief:
+1. Einen kurzen Text für den oberen Kasten
+2. Einen Detailtext für den unteren Kasten
+
+Übersetze BEIDE Texte vollständig, natürlich, einfach und sauber in ${langMeta.label}.
+
+SEHR WICHTIG:
+- Schreibe so, wie ein echter Muttersprachler schreiben würde.
+- Der Text muss natürlich klingen, nicht wie eine Wort-für-Wort-Übersetzung.
+- Die Bedeutung muss exakt gleich bleiben.
+- Keine Informationen weglassen.
+- Keine Informationen hinzufügen.
+- Keine Zusammenfassung.
+- Keine Mischsprache.
+- Keine deutschen Sätze oder Satzteile im Ergebnis.
+- Eigennamen, Adressen, Daten, Uhrzeiten, Beträge, Behördennamen und Ortsnamen exakt erhalten.
+- Fristen, Daten, Beträge und Folgen müssen exakt erhalten bleiben.
+- Formuliere einfach, klar und alltagstauglich.
+- Vermeide schwere Amtssprache.
+- Überschrift-Tokens wie [[HEAD_FROM]], [[HEAD_PERSON]], [[HEAD_TOPIC]], [[HEAD_IMPORTANT]], [[HEAD_WHEN]], [[HEAD_ELSE]], [[HEAD_SUMMARY]] müssen im Detailtext exakt unverändert bleiben.
+- Diese Tokens nicht übersetzen.
+- Diese Tokens nicht löschen.
+- Diese Tokens nicht verändern.
+
+Antworte NUR als gültiges JSON.
+Keine Erklärung außerhalb des JSON.
+Keine Markdown-Codeblöcke.
+
+Gib genau dieses JSON zurück:
+{
+  "kurz": "",
+  "details": ""
+}
+
+KURZTEXT_DEUTSCH:
+${cleanKurz}
+
+DETAILTEXT_DEUTSCH:
+${cleanDetails}
+`
+    }
+  ]);
+
+  const parsed = extractJson(raw);
+
+  const kurz = cleanText(parsed.kurz || "");
+  const detailsRaw = cleanText(parsed.details || "")
+    .replace(/\[\[\s*/g, "[[")
+    .replace(/\s*\]\]/g, "]]")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return {
+    kurz,
+    details: localizeDetailHeadings(detailsRaw, langMeta.code)
+  };
+}
 async function buildAudioText(text, lang) {
   return cleanText(text);
 }
