@@ -894,27 +894,19 @@ async function checkImageQuality(bilder) {
   return extractJson(raw);
 }
 
-async function translateDetailIfNeeded(text, lang) {
+async function translateShortIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
+  const clean = cleanText(text);
 
   if (langMeta.code === "de") {
-    return localizeDetailHeadings(text, "de");
+    return clean;
   }
 
   const translatedRaw = await callGemini([
-    { text: buildTranslationPrompt(text, langMeta, true) }
+    { text: buildTranslationPrompt(clean, langMeta, false) }
   ]);
 
-  let result = cleanText(translatedRaw);
-
-  result = result
-    .replace(/\[\[\s*/g, "")
-    .replace(/\s*\]\]/g, "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  return localizeDetailHeadings(result, langMeta.code);
+  return cleanText(translatedRaw);
 }
 function buildAudioRewritePrompt(text, lang) {
   const meta = getLanguageMeta(lang);
@@ -984,14 +976,12 @@ async function synthesizeMp3(text, lang) {
     throw new Error("Keine TTS-Audioantwort erhalten");
   }
 
-  return Buffer.isBuffer(response.audioContent)
-    ? response.audioContent.toString("base64")
-    : Buffer.from(response.audioContent, "binary").toString("base64");
-}
-
-async function buildFinalPayloadFromInfo(info, lang) {
+  async function buildFinalPayloadFromInfo(info, lang) {
   const langCode = getLanguageMeta(lang).code;
-  const kurz = cleanText(renderShortByLanguage(info, langCode));
+
+  const shortDe = cleanText(renderShortByLanguage(info, "de"));
+  const kurz = await translateShortIfNeeded(shortDe, langCode);
+
   const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
   const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
 
