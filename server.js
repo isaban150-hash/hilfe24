@@ -922,39 +922,40 @@ async function translateDetailIfNeeded(text, lang) {
 
   return localizeDetailHeadings(result, langMeta.code);
 }
-async function translateShortIfNeeded(text, lang) {
-  const langMeta = getLanguageMeta(lang);
-  const clean = cleanText(text);
-
-  if (langMeta.code === "de") {
-    return clean;
+async function buildFinalAnswerFromImages(bilder, lang) {
+  if (!Array.isArray(bilder) || bilder.length === 0) {
+    return {
+      ok: false,
+      error: "Kein Bild gesendet"
+    };
   }
 
-  const translatedRaw = await callGemini([
-    { text: buildTranslationPrompt(clean, langMeta, false) }
-  ]);
+  if (bilder.length > 3) {
+    return {
+      ok: false,
+      error: "In der kostenlosen Version kannst du maximal 3 Bilder hochladen."
+    };
+  }
 
-  return cleanText(translatedRaw);
+  for (const bild of bilder) {
+    if (!bild || typeof bild.imageData !== "string" || typeof bild.mimeType !== "string") {
+      return {
+        ok: false,
+        error: "Ein Bild ist ungültig."
+      };
+    }
+
+    if (bild.imageData.length > 8000000) {
+      return {
+        ok: false,
+        error: "Ein Bild ist zu groß. Bitte mach ein kleineres oder klareres Foto."
+      };
+    }
+  }
+
+  const info = await buildInfoFromImages(bilder);
+  return await buildFinalPayloadFromInfo(info, lang);
 }
-
-async function buildFinalPayloadFromInfo(info, lang) {
-  const langCode = getLanguageMeta(lang).code;
-
-  const shortDe = cleanText(renderShortByLanguage(info, "de"));
-  const kurz = await translateShortIfNeeded(shortDe, langCode);
-
-  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
-  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
-
-  return {
-    ok: true,
-    quality_ok: true,
-    hinweis: "",
-    kurz,
-    details
-  };
-}
-
 async function buildAudioText(text, lang) {
   return cleanText(text);
 }
