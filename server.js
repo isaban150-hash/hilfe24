@@ -1080,40 +1080,76 @@ async function translateFinalTextsIfNeeded(kurzDe, detailsDe, lang) {
     };
   }
 
-  const styleRules = {
-    tr: `
+const styleRules = {
+  tr: `
 TÜRKISCH-STIL:
 - Schreibe natürliches, einfaches Türkisch.
 - Schreibe so, wie man es einer normalen Familie erklären würde.
 - Keine steifen Behördenwörter, wenn einfache Wörter reichen.
-- Nutze "randevu", "belge", "ödeme", "son tarih", "yardım kesilebilir" verständlich.
-- Vermeide künstliche Überschriften wie "Getirilecekler/Gönderilecekler".
-- Schreibe nicht zu formell.
-- Kurztext muss sehr klar sein: Ne yapmalı? Ne zaman? Ne götürmeli? Ne olur?
+- Keine künstlichen Überschriften wie "Getirilecekler/Gönderilecekler".
+- Keine langen Sätze.
+- Kurztext maximal 5 kurze Zeilen.
+- Der Kurztext muss sofort klären: Was ist das? Was muss ich tun? Wann? Was mitbringen/schicken/zahlen? Was passiert sonst?
+
+WICHTIGE TÜRKISCHE LOGIK:
+- Unterscheide klar zwischen "die Person muss Geld bezahlen" und "eine Leistung/Hilfe kann gekürzt oder gestoppt werden".
+- Wenn es um Hilfe, Sozialleistung, Unterstützung, Rente, Krankengeld, Pflegegeld, Wohngeld, Bürgergeld, Kindergeld oder ähnliche Leistungen geht:
+  Schreibe nicht so, als müsste die Person selbst etwas bezahlen.
+  Schreibe klar, dass die Hilfe/Zahlung/Leistung gekürzt, gestoppt oder betroffen sein kann.
+- Nutze einfache Wörter wie:
+  yardım, ödeme, destek, kesilebilir, azaltılabilir, durdurulabilir.
+- Bei Terminen: "randevuya gidin" oder "randevuya gitmeniz gerekiyor".
+- Bei Unterlagen: "belgeleri götürün" wenn man sie zum Termin mitbringen soll.
+- Bei Unterlagen per Post/online: "belgeleri gönderin".
+- Bei Fristen: "son tarih" oder "bu tarihe kadar".
+- Bei freiwilligen Angeboten: klar sagen "zorunlu değil" oder "isteğe bağlı".
 `,
-    bg: `
+
+  bg: `
 BULGARISCH-STIL:
 - Пиши на ясен и естествен български.
 - Обяснявай така, че човек без преводач да разбере веднага.
 - Избягвай тежък административен език.
 - Използвай кратки изречения.
 - Не използвай изкуствени заглавия в краткия текст.
+- Краткият текст да бъде максимум 5 кратки реда.
 - Краткият текст трябва ясно да казва: какво е писмото, какво трябва да се направи, срок/час, документи/сума, последици.
+
+ВАЖНА БЪЛГАРСКА ЛОГИКА:
+- Разграничавай ясно дали човекът трябва да плати пари, или дали помощ/плащане/социална услуга може да бъде намалена или спряна.
+- Ако става дума за социална помощ, пенсия, болнични, Pflegegeld, Wohngeld, Bürgergeld, детски добавки или друга подкрепа:
+  Не го превеждай така, сякаш човекът трябва да плати.
+  Обясни ясно, че помощта/плащането/подкрепата може да бъде намалена, спряна или засегната.
+- При среща: използвай "трябва да отидете на срещата".
+- При документи за носене: "носете документите".
+- При документи за изпращане: "изпратете документите".
+- При доброволни предложения: ясно кажи "не е задължително" или "по желание".
 `,
-    ar: `
+
+  ar: `
 ARABISCH-STIL:
 - اكتب بلغة عربية واضحة وبسيطة ومفهومة.
 - استخدم أسلوبًا قريبًا من الكلام اليومي المحترم.
 - تجنب العبارات الرسمية الثقيلة إذا كان يمكن قولها ببساطة.
 - لا تستخدم جملاً طويلة.
 - لا تستخدم عناوين مصطنعة داخل النص القصير.
-- النص القصير يجب أن يوضح بسرعة: ما الرسالة؟ ماذا يجب أن أفعل؟ متى؟ ماذا أحضر أو أدفع؟ ماذا يحدث إذا لم أفعل؟
-- أبقِ الكلمات الألمانية المهمة مثل Jobcenter و Bürgergeld و AOK كما هي إذا كانت أسماء رسمية.
-`
-  };
+- النص القصير يكون بحد أقصى 5 أسطر قصيرة.
+- النص القصير يجب أن يوضح بسرعة: ما الرسالة؟ ماذا يجب أن أفعل؟ متى؟ ماذا أحضر أو أرسل أو أدفع؟ ماذا يحدث إذا لم أفعل؟
 
-  const raw = await callGemini([
-    {
+منطق عربي مهم:
+- فرّق بوضوح بين حالتين:
+  هل يجب على الشخص أن يدفع مالاً؟
+  أم أن مساعدة/دفعة/إعانة يمكن أن تُخفّض أو تتوقف؟
+- إذا كان الموضوع عن مساعدة من الدولة، دعم، راتب تقاعد، مرضية، Pflegegeld، Wohngeld، Bürgergeld، Kindergeld أو أي إعانة:
+  لا تكتب وكأن الشخص يجب أن يدفع مالاً.
+  اكتب بوضوح أن المساعدة أو الدفعة أو الإعانة قد تُخفّض أو تتوقف أو تتأثر.
+- عند المواعيد: قل بوضوح "يجب أن تذهب إلى الموعد".
+- عند المستندات التي يجب أخذها للموعد: قل "أحضر المستندات".
+- عند المستندات التي يجب إرسالها: قل "أرسل المستندات".
+- عند العروض الاختيارية: قل بوضوح "هذا ليس إلزاميًا" أو "الأمر اختياري".
+- أبقِ الكلمات الألمانية الرسمية مثل Jobcenter و Bürgergeld و AOK كما هي إذا كانت أسماء رسمية.
+`
+};
       text: `
 Du bist professioneller Übersetzer und Sprachvereinfacher für Hilfe24.
 
