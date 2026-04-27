@@ -571,19 +571,18 @@ function renderShortByLanguage(info, lang) {
       .replace(/\.$/, "");
   }
 
-  function shorten(text, max = 75) {
-    const clean = cleanSentence(text);
-    if (clean.length <= max) return clean;
-    return clean.slice(0, max).replace(/\s+\S*$/, "") + "...";
-  }
-
   function pushLine(text) {
     const clean = cleanSentence(text);
     if (!clean) return;
     lines.push(clean + ".");
   }
 
-  function buildTypeLine() {
+  function hasAny(text, words) {
+    const lower = String(text || "").toLowerCase();
+    return words.some((word) => lower.includes(word));
+  }
+
+  function typeLine() {
     if (duty === "pflicht") {
       if (briefart && sender) return `Das ist ein wichtiger ${briefart} von ${sender}`;
       if (sender) return `Das ist ein wichtiger Brief von ${sender}`;
@@ -612,60 +611,95 @@ function renderShortByLanguage(info, lang) {
     return "Das ist ein Brief";
   }
 
-  pushLine(buildTypeLine());
+  function shortNextStep() {
+    const text = cleanSentence(nextStep || actions[0] || summary || topic);
+
+    if (!text) return "";
+
+    if (hasAny(text, ["termin", "erscheinen", "kommen", "jobcenter", "melde"])) {
+      return "Gehen Sie zum genannten Termin";
+    }
+
+    if (hasAny(text, ["zahlen", "zahlung", "betrag", "überweisen", "forderung"])) {
+      return amount ? `Prüfen und zahlen Sie den Betrag von ${amount}` : "Prüfen Sie die Forderung und zahlen Sie fristgerecht";
+    }
+
+    if (hasAny(text, ["unterlagen", "nachweise", "einreichen", "schicken", "senden"])) {
+      return "Schicken Sie die genannten Unterlagen";
+    }
+
+    if (hasAny(text, ["freiwillig", "angebot", "teilnehmen", "untersuchung"])) {
+      return "Sie entscheiden selbst, ob Sie das Angebot nutzen möchten";
+    }
+
+    if (text.length <= 90) return text;
+
+    return "Prüfen Sie den Brief und den nächsten Schritt";
+  }
+
+  function shortConsequence() {
+    const text = cleanSentence(consequence);
+
+    if (!text) return "";
+
+    if (hasAny(text, ["10", "prozent", "%", "bürgergeld", "gekürzt", "minderung"])) {
+      return "Sonst kann Bürgergeld gekürzt werden";
+    }
+
+    if (hasAny(text, ["zwangsvollstreckung", "zwangsweise", "einziehung"])) {
+      return "Sonst können weitere Kosten oder Zwangsvollstreckung folgen";
+    }
+
+    if (hasAny(text, ["keine nachteile", "keinerlei nachteile", "keinen nachteil"])) {
+      return "Wenn Sie nicht teilnehmen, entstehen keine Nachteile";
+    }
+
+    if (text.length <= 95) return "Sonst: " + text;
+
+    return "Sonst können Nachteile entstehen";
+  }
+
+  pushLine(typeLine());
 
   if (duty === "freiwillig" || duty === "information" || duty === "werbung") {
     if (summary) {
-      pushLine(shorten(summary, 75));
+      pushLine(summary.length <= 95 ? summary : topic || "Es geht um eine Information oder ein Angebot");
     } else if (topic) {
-      pushLine(shorten(topic, 75));
+      pushLine(topic.length <= 95 ? topic : "Es geht um eine Information oder ein Angebot");
     }
 
-    if (nextStep) {
-      pushLine(shorten(nextStep, 75));
-    } else if (duty === "freiwillig") {
-      pushLine("Sie müssen nichts tun, wenn Sie das Angebot nicht nutzen möchten");
-    } else if (duty === "information") {
-      pushLine("Sie müssen meistens nichts tun");
-    } else if (duty === "werbung") {
-      pushLine("Reagieren Sie nur, wenn Sie das Angebot wirklich nutzen möchten");
-    }
+    pushLine(shortNextStep());
 
-    if (consequence) {
-      pushLine(shorten(consequence, 75));
-    }
+    const consequenceLine = shortConsequence();
+    if (consequenceLine) pushLine(consequenceLine);
 
     return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
   }
 
-  if (nextStep) {
-    pushLine(shorten(nextStep, 75));
-  } else if (actions[0]) {
-    pushLine(shorten(actions[0], 75));
-  } else if (summary) {
-    pushLine(shorten(summary, 75));
-  } else if (topic) {
-    pushLine(shorten(topic, 75));
-  }
+  const step = shortNextStep();
+  if (step) pushLine(step);
 
   if (appointment) {
-    pushLine(`Termin: ${shorten(appointment, 65)}`);
+    pushLine(`Termin: ${cleanSentence(appointment)}`);
   } else if (deadline) {
-    pushLine(`Frist: ${shorten(deadline, 65)}`);
+    pushLine(`Frist: ${cleanSentence(deadline)}`);
   }
 
   if (amount) {
-    pushLine(`Betrag: ${shorten(amount, 70)}`);
-  } else if (documents.length > 0) {
+    pushLine(`Betrag: ${cleanSentence(amount)}`);
+  }
+
+  if (documents.length > 0) {
     pushLine(`Mitbringen/Schicken: ${documents.slice(0, 3).join(", ")}`);
   }
 
   if (deadline && appointment) {
-    pushLine(`Frist: ${shorten(deadline, 65)}`);
+    pushLine(`Frist: ${cleanSentence(deadline)}`);
   }
 
-  if (consequence) {
-    pushLine(`Sonst: ${shorten(consequence, 75)}`);
+  const consequenceLine = shortConsequence();
+  if (consequenceLine) {
+    pushLine(consequenceLine);
   } else if (urgency === "hoch") {
     pushLine("Bitte schnell prüfen");
   }
