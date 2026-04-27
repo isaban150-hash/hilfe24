@@ -816,6 +816,17 @@ function localizeDetailHeadings(text, lang) {
 }
 
 function buildTranslationPrompt(text, langMeta, keepHeadingTokens = false) {
+  const tokenRule = keepHeadingTokens
+    ? `
+- Überschrift-Tokens wie [[HEAD_FROM]], [[HEAD_PERSON]], [[HEAD_TOPIC]], [[HEAD_IMPORTANT]], [[HEAD_WHEN]], [[HEAD_ELSE]], [[HEAD_SUMMARY]] müssen exakt unverändert bleiben.
+- Diese Tokens nicht übersetzen.
+- Diese Tokens nicht löschen.
+- Diese Tokens nicht verändern.
+`
+    : `
+- Lasse keine technischen Tokens wie [[...]] im Ergebnis stehen.
+`;
+
   return `
 Du bist professioneller Übersetzer und Sprachvereinfacher für Hilfe24.
 
@@ -841,15 +852,9 @@ SEHR WICHTIG:
 - Fristen, Daten, Beträge und Folgen müssen vollständig übersetzt und exakt erhalten bleiben.
 - Formuliere einfach, klar und alltagstauglich.
 - Vermeide schwere Amtssprache.
-- Übersetze auch Formulierungen wie:
-  - "innerhalb einer Woche nach Eingang dieser Mahnung"
-  - "zwangsweise Einziehung"
-  - "Mahngebühren"
-  - "Säumniszuschläge"
-  natürlich und verständlich in ${langMeta.label}.
-- Lasse KEINE doppelten eckigen Klammern wie [[...]] im Ergebnis stehen.
+- Übersetze schwierige Begriffe natürlich und verständlich.
+${tokenRule}
 - Gib NUR den fertigen übersetzten Text zurück.
-${keepHeadingTokens ? '- Die Überschrift-Tokens [[HEAD_FROM]], [[HEAD_TOPIC]], [[HEAD_IMPORTANT]], [[HEAD_WHEN]], [[HEAD_ELSE]], [[HEAD_SUMMARY]] dürfen NICHT verändert werden.' : ''}
 
 Deutscher Text:
 ${text}
