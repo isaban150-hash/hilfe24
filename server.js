@@ -560,8 +560,8 @@ function renderShortByLanguage(info, lang) {
   const topic = String(info.worum_geht_es || "").trim();
   const summary = String(info.kurz_gesagt || "").trim();
   const consequence = String(info.folge_wenn_nichts || "").trim();
-  const importantPoints = dedupe(info.wichtigste_punkte || []);
   const actions = dedupe(info.was_ist_zu_tun || []);
+  const importantPoints = dedupe(info.wichtigste_punkte || []);
   const lines = [];
 
   function cleanSentence(text) {
@@ -576,13 +576,20 @@ function renderShortByLanguage(info, lang) {
     return words.some((word) => lower.includes(word));
   }
 
+  function shorten(text, max = 150) {
+    const clean = cleanSentence(text);
+    if (clean.length <= max) return clean;
+    return clean.slice(0, max).replace(/\s+\S*$/, "") + "...";
+  }
+
   const allText = [
+    sender,
     briefart,
     topic,
     summary,
     consequence,
-    importantPoints.join(" "),
-    actions.join(" ")
+    actions.join(" "),
+    importantPoints.join(" ")
   ].join(" ");
 
   const isInfoOrOffer = hasAny(allText, [
@@ -592,7 +599,7 @@ function renderShortByLanguage(info, lang) {
     "angebot",
     "freiwillig",
     "kostenfrei",
-    "kostenlose",
+    "kostenlos",
     "wenn sie möchten",
     "wenn sie teilnehmen möchten",
     "keine nachteile",
@@ -606,50 +613,115 @@ function renderShortByLanguage(info, lang) {
     "keine negativen folgen"
   ]);
 
+  const isMoney = hasAny(allText, [
+    "mahnung",
+    "rechnung",
+    "forderung",
+    "zahlen",
+    "zahlung",
+    "betrag",
+    "€",
+    "euro",
+    "säumniszuschlag",
+    "bußgeld"
+  ]);
+
+  const isAppointment = hasAny(allText, [
+    "termin",
+    "erscheinen",
+    "einladung",
+    "vorsprechen",
+    "gespräch",
+    "rendezvous",
+    "randevu"
+  ]);
+
+  const isSeriousAuthority = hasAny(allText, [
+    "jobcenter",
+    "gericht",
+    "polizei",
+    "stadt",
+    "finanzamt",
+    "ausländerbehörde",
+    "rentenversicherung",
+    "krankenkasse"
+  ]);
+
   const hasAction = actions.length > 0;
 
   if (sender) {
-    lines.push(`Das ist ein Brief von ${sender}.`);
+    if (briefart) {
+      lines.push(`Das ist ein ${briefart} von ${sender}.`);
+    } else {
+      lines.push(`Das ist ein Brief von ${sender}.`);
+    }
+  } else if (briefart) {
+    lines.push(`Das ist ein ${briefart}.`);
   }
 
   if (person) {
     lines.push(`Der Brief betrifft ${person}.`);
   }
 
-  if (summary) {
-    lines.push(cleanSentence(summary) + ".");
-  } else if (topic) {
-    lines.push(cleanSentence(topic) + ".");
-  } else if (importantPoints[0]) {
-    lines.push(cleanSentence(importantPoints[0]) + ".");
-  }
-
   if (isInfoOrOffer && !hasAction) {
+    if (topic) {
+      lines.push(shorten(topic, 120) + ".");
+    } else if (summary) {
+      lines.push(shorten(summary, 120) + ".");
+    }
+
     lines.push("Das ist eine Information oder ein freiwilliges Angebot.");
+
+    if (hasNoDisadvantage) {
+      lines.push("Wenn Sie nicht teilnehmen, entstehen keine Nachteile.");
+    } else if (consequence) {
+      lines.push("Folge: " + shorten(consequence, 130) + ".");
+    }
+
+    return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
   }
 
   if (hasAction) {
-    const firstAction = cleanSentence(actions[0]);
-    if (firstAction) {
-      lines.push(firstAction + ".");
-    }
+    lines.push(shorten(actions[0], 150) + ".");
+  } else if (summary) {
+    lines.push(shorten(summary, 150) + ".");
+  } else if (topic) {
+    lines.push(shorten(topic, 150) + ".");
+  } else if (importantPoints[0]) {
+    lines.push(shorten(importantPoints[0], 150) + ".");
   }
 
-  if (info.termin) {
+  if (isAppointment && info.termin) {
     lines.push(`Termin: ${cleanSentence(info.termin)}.`);
-  } else if (info.frist) {
+  } else if (info.termin) {
+    lines.push(`Termin: ${cleanSentence(info.termin)}.`);
+  }
+
+  if (info.frist) {
     lines.push(`Frist: ${cleanSentence(info.frist)}.`);
   }
 
-  if (hasNoDisadvantage) {
-    lines.push("Wenn Sie nicht teilnehmen, entstehen keine Nachteile.");
-  } else if (consequence) {
-    lines.push(`Sonst: ${cleanSentence(consequence)}.`);
+  if (actions.length > 1) {
+    lines.push(shorten(actions[1], 140) + ".");
+  }
+
+  if (isMoney && !actions.some((a) => hasAny(a, ["zahlen", "zahlung", "betrag", "überweisen"]))) {
+    const moneyPoint = importantPoints.find((p) => hasAny(p, ["€", "euro", "betrag", "zahlen", "zahlung", "forderung"]));
+    if (moneyPoint) lines.push(shorten(moneyPoint, 140) + ".");
+  }
+
+  if (consequence) {
+    if (hasNoDisadvantage) {
+      lines.push("Wenn Sie nicht teilnehmen, entstehen keine Nachteile.");
+    } else {
+      lines.push("Sonst: " + shorten(consequence, 140) + ".");
+    }
+  } else if (isSeriousAuthority && !isInfoOrOffer) {
+    lines.push("Bitte prüfen Sie den Brief schnell.");
   }
 
   return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
 }
-
 function renderDetailTemplateGerman(info) {
   const blocks = [];
   const sender = String(info.absender_kurz || info.absender_original || "").trim();
