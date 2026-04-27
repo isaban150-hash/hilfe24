@@ -995,6 +995,11 @@ async function buildFinalAnswerFromText(text, lang) {
   return await buildFinalPayloadFromInfo(info, lang);
 }
 
+async function buildFinalAnswerFromText(text, lang) {
+  const info = await buildInfoFromText(text);
+  return await buildFinalPayloadFromInfo(info, lang);
+}
+
 async function buildFinalAnswerFromImages(bilder, lang) {
   if (!Array.isArray(bilder) || bilder.length === 0) {
     return {
@@ -1003,11 +1008,27 @@ async function buildFinalAnswerFromImages(bilder, lang) {
     };
   }
 
-  if (bilder.length > 6) {
+  if (bilder.length > 3) {
     return {
       ok: false,
-      error: "Du kannst maximal 6 Bilder hochladen."
+      error: "In der kostenlosen Version kannst du maximal 3 Bilder hochladen."
     };
+  }
+
+  for (const bild of bilder) {
+    if (!bild || typeof bild.imageData !== "string" || typeof bild.mimeType !== "string") {
+      return {
+        ok: false,
+        error: "Ein Bild ist ungültig."
+      };
+    }
+
+    if (bild.imageData.length > 8000000) {
+      return {
+        ok: false,
+        error: "Ein Bild ist zu groß. Bitte mach ein kleineres oder klareres Foto."
+      };
+    }
   }
 
   const quality = await checkImageQuality(bilder);
@@ -1028,13 +1049,20 @@ async function buildFinalAnswerFromImages(bilder, lang) {
 
 app.post("/api/brief", async (req, res) => {
   try {
-    const text = req.body.text;
+    const text = String(req.body.text || "");
     const lang = (req.body.lang || "de").toLowerCase();
 
     if (!text || !text.trim()) {
       return res.status(400).json({
         ok: false,
         error: "Kein Brieftext gesendet"
+      });
+    }
+
+    if (text.length > 12000) {
+      return res.status(400).json({
+        ok: false,
+        error: "Der Text ist zu lang. Bitte kürze ihn oder lade nur die wichtigsten Seiten hoch."
       });
     }
 
@@ -1074,6 +1102,13 @@ app.post("/api/tts", async (req, res) => {
       return res.status(400).json({
         ok: false,
         error: "Kein Text für Audio gesendet"
+      });
+    }
+
+    if (text.length > 3000) {
+      return res.status(400).json({
+        ok: false,
+        error: "Der Text ist zu lang zum Vorlesen. Bitte lies nur den wichtigsten Teil vor."
       });
     }
 
