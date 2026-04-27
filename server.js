@@ -1080,8 +1080,8 @@ async function translateFinalTextsIfNeeded(kurzDe, detailsDe, lang) {
     };
   }
 
-const styleRules = {
-  tr: `
+  const styleRules = {
+    tr: `
 TÜRKISCH-STIL:
 - Schreibe natürliches, einfaches Türkisch.
 - Schreibe so, wie man es einer normalen Familie erklären würde.
@@ -1096,16 +1096,14 @@ WICHTIGE TÜRKISCHE LOGIK:
 - Wenn es um Hilfe, Sozialleistung, Unterstützung, Rente, Krankengeld, Pflegegeld, Wohngeld, Bürgergeld, Kindergeld oder ähnliche Leistungen geht:
   Schreibe nicht so, als müsste die Person selbst etwas bezahlen.
   Schreibe klar, dass die Hilfe/Zahlung/Leistung gekürzt, gestoppt oder betroffen sein kann.
-- Nutze einfache Wörter wie:
-  yardım, ödeme, destek, kesilebilir, azaltılabilir, durdurulabilir.
+- Nutze einfache Wörter wie: yardım, ödeme, destek, kesilebilir, azaltılabilir, durdurulabilir.
 - Bei Terminen: "randevuya gidin" oder "randevuya gitmeniz gerekiyor".
 - Bei Unterlagen: "belgeleri götürün" wenn man sie zum Termin mitbringen soll.
 - Bei Unterlagen per Post/online: "belgeleri gönderin".
 - Bei Fristen: "son tarih" oder "bu tarihe kadar".
 - Bei freiwilligen Angeboten: klar sagen "zorunlu değil" oder "isteğe bağlı".
 `,
-
-  bg: `
+    bg: `
 BULGARISCH-STIL:
 - Пиши на ясен и естествен български.
 - Обяснявай така, че човек без преводач да разбере веднага.
@@ -1125,8 +1123,7 @@ BULGARISCH-STIL:
 - При документи за изпращане: "изпратете документите".
 - При доброволни предложения: ясно кажи "не е задължително" или "по желание".
 `,
-
-  ar: `
+    ar: `
 ARABISCH-STIL:
 - اكتب بلغة عربية واضحة وبسيطة ومفهومة.
 - استخدم أسلوبًا قريبًا من الكلام اليومي المحترم.
@@ -1137,9 +1134,7 @@ ARABISCH-STIL:
 - النص القصير يجب أن يوضح بسرعة: ما الرسالة؟ ماذا يجب أن أفعل؟ متى؟ ماذا أحضر أو أرسل أو أدفع؟ ماذا يحدث إذا لم أفعل؟
 
 منطق عربي مهم:
-- فرّق بوضوح بين حالتين:
-  هل يجب على الشخص أن يدفع مالاً؟
-  أم أن مساعدة/دفعة/إعانة يمكن أن تُخفّض أو تتوقف؟
+- فرّق بوضوح بين حالتين: هل يجب على الشخص أن يدفع مالاً؟ أم أن مساعدة/دفعة/إعانة يمكن أن تُخفّض أو تتوقف؟
 - إذا كان الموضوع عن مساعدة من الدولة، دعم، راتب تقاعد، مرضية، Pflegegeld، Wohngeld، Bürgergeld، Kindergeld أو أي إعانة:
   لا تكتب وكأن الشخص يجب أن يدفع مالاً.
   اكتب بوضوح أن المساعدة أو الدفعة أو الإعانة قد تُخفّض أو تتوقف أو تتأثر.
@@ -1149,7 +1144,10 @@ ARABISCH-STIL:
 - عند العروض الاختيارية: قل بوضوح "هذا ليس إلزاميًا" أو "الأمر اختياري".
 - أبقِ الكلمات الألمانية الرسمية مثل Jobcenter و Bürgergeld و AOK كما هي إذا كانت أسماء رسمية.
 `
-};
+  };
+
+  const raw = await callGemini([
+    {
       text: `
 Du bist professioneller Übersetzer und Sprachvereinfacher für Hilfe24.
 
@@ -1224,7 +1222,6 @@ ${cleanDetails}
 
   const parsed = extractJson(raw);
 
-  const parsed = extractJson(raw);
   const kurz = cleanText(parsed.kurz || "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -1241,7 +1238,6 @@ ${cleanDetails}
     details: localizeDetailHeadings(detailsRaw, langMeta.code)
   };
 }
-
 
 async function buildFinalPayloadFromInfo(info, lang) {
   const langCode = getLanguageMeta(lang).code;
