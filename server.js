@@ -901,80 +901,19 @@ async function checkImageQuality(bilder) {
 
 async function translateDetailIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
+  const clean = cleanText(text);
+
+  if (!clean) return "";
 
   if (langMeta.code === "de") {
-    return localizeDetailHeadings(text, "de");
+    return localizeDetailHeadings(clean, "de");
   }
 
-  const rawBlocks = String(text || "")
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter(Boolean);
+  const translatedRaw = await callGemini([
+    { text: buildTranslationPrompt(clean, langMeta, true) }
+  ]);
 
-  const translatedBlocks = [];
-
-  for (const block of rawBlocks) {
-    const tokenMatch = block.match(/^(\[\[HEAD_[A-Z_]+\]\])/);
-
-    if (!tokenMatch) {
-      const translatedRaw = await callGemini([
-        { text: buildTranslationPrompt(block, langMeta, false) }
-      ]);
-      translatedBlocks.push(cleanText(translatedRaw));
-      continue;
-    }
-
-    const token = tokenMatch[1];
-    const content = block.slice(token.length).trim();
-
-    if (!content) {
-      translatedBlocks.push(token);
-      continue;
-    }
-
-    const translatedRaw = await callGemini([
-      { text: buildTranslationPrompt(content, langMeta, false) }
-    ]);
-
-    let translatedContent = cleanText(translatedRaw);
-
-    if (langMeta.code === "ar") {
-      const smoothedArabic = await callGemini([
-        {
-          text: `
-Du bist ein professioneller arabischer Sprachredakteur für Hilfe24.
-
-Du bekommst bereits auf Arabisch übersetzten Erklärungstext zu einem Brief.
-Deine Aufgabe ist NUR, den Text natürlicher, flüssiger und klarer auf Arabisch zu formulieren.
-
-SEHR WICHTIG:
-- Die Bedeutung muss exakt gleich bleiben.
-- Keine Information weglassen.
-- Keine Information hinzufügen.
-- Keine Zusammenfassung.
-- Keine Mischsprache.
-- Keine deutschen Sätze oder Satzteile.
-- Eigennamen, Adressen, Daten, Uhrzeiten, Beträge, Behördennamen und Ortsnamen exakt erhalten.
-- Formuliere in natürlichem, gut verständlichem Alltagsarabisch.
-- Vermeide steife oder wörtlich aus dem Deutschen klingende Formulierungen.
-- Nutze eher kurze bis mittlere Sätze.
-- Warnungen, Pflichten, Termine und Folgen müssen klar und deutlich bleiben.
-- Gib NUR den fertigen arabischen Text zurück.
-
-Arabischer Text:
-${translatedContent}
-`
-        }
-      ]);
-
-      translatedContent = cleanText(smoothedArabic);
-    }
-
-    translatedBlocks.push(`${token}\n${translatedContent}`);
-  }
-
-  const result = translatedBlocks
-    .join("\n\n")
+  const result = cleanText(translatedRaw)
     .replace(/\[\[\s*/g, "[[")
     .replace(/\s*\]\]/g, "]]")
     .replace(/[ \t]+\n/g, "\n")
@@ -983,7 +922,6 @@ ${translatedContent}
 
   return localizeDetailHeadings(result, langMeta.code);
 }
-
 async function translateShortIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
   const clean = cleanText(text);
