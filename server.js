@@ -571,15 +571,10 @@ function renderShortByLanguage(info, lang) {
       .replace(/\.$/, "");
   }
 
-  function shorten(text, max = 95) {
+  function shorten(text, max = 75) {
     const clean = cleanSentence(text);
     if (clean.length <= max) return clean;
     return clean.slice(0, max).replace(/\s+\S*$/, "") + "...";
-  }
-
-  function hasAny(text, words) {
-    const lower = String(text || "").toLowerCase();
-    return words.some((word) => lower.includes(word));
   }
 
   function pushLine(text) {
@@ -621,13 +616,13 @@ function renderShortByLanguage(info, lang) {
 
   if (duty === "freiwillig" || duty === "information" || duty === "werbung") {
     if (summary) {
-      pushLine(shorten(summary, 95));
+      pushLine(shorten(summary, 75));
     } else if (topic) {
-      pushLine(shorten(topic, 95));
+      pushLine(shorten(topic, 75));
     }
 
     if (nextStep) {
-      pushLine(shorten(nextStep, 95));
+      pushLine(shorten(nextStep, 75));
     } else if (duty === "freiwillig") {
       pushLine("Sie müssen nichts tun, wenn Sie das Angebot nicht nutzen möchten");
     } else if (duty === "information") {
@@ -637,26 +632,26 @@ function renderShortByLanguage(info, lang) {
     }
 
     if (consequence) {
-      pushLine(shorten(consequence, 95));
+      pushLine(shorten(consequence, 75));
     }
 
     return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
   }
 
   if (nextStep) {
-    pushLine(shorten(nextStep, 95));
+    pushLine(shorten(nextStep, 75));
   } else if (actions[0]) {
-    pushLine(shorten(actions[0], 95));
+    pushLine(shorten(actions[0], 75));
   } else if (summary) {
-    pushLine(shorten(summary, 95));
+    pushLine(shorten(summary, 75));
   } else if (topic) {
-    pushLine(shorten(topic, 95));
+    pushLine(shorten(topic, 75));
   }
 
   if (appointment) {
-    pushLine(`Termin: ${shorten(appointment, 85)}`);
+    pushLine(`Termin: ${shorten(appointment, 65)}`);
   } else if (deadline) {
-    pushLine(`Frist: ${shorten(deadline, 85)}`);
+    pushLine(`Frist: ${shorten(deadline, 65)}`);
   }
 
   if (amount) {
@@ -666,11 +661,11 @@ function renderShortByLanguage(info, lang) {
   }
 
   if (deadline && appointment) {
-    pushLine(`Frist: ${shorten(deadline, 85)}`);
+    pushLine(`Frist: ${shorten(deadline, 65)}`);
   }
 
   if (consequence) {
-    pushLine(`Sonst: ${shorten(consequence, 95)}`);
+    pushLine(`Sonst: ${shorten(consequence, 75)}`);
   } else if (urgency === "hoch") {
     pushLine("Bitte schnell prüfen");
   }
