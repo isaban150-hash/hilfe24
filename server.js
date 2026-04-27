@@ -1219,10 +1219,10 @@ ${cleanKurz}
 DETAILTEXT_DEUTSCH:
 ${cleanDetails}
 `
-  
-`
     }
   ]);
+
+  const parsed = extractJson(raw);
 
   const parsed = extractJson(raw);
   const kurz = cleanText(parsed.kurz || "")
