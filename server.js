@@ -998,52 +998,6 @@ async function buildFinalAnswerFromText(text, lang) {
   return await buildFinalPayloadFromInfo(info, lang);
 }
 
-async function buildFinalAnswerFromImages(bilder, lang) {
-  if (!Array.isArray(bilder) || bilder.length === 0) {
-    return {
-      ok: false,
-      error: "Kein Bild gesendet"
-    };
-  }
-
-  if (bilder.length > 3) {
-    return {
-      ok: false,
-      error: "In der kostenlosen Version kannst du maximal 3 Bilder hochladen."
-    };
-  }
-
-  for (const bild of bilder) {
-    if (!bild || typeof bild.imageData !== "string" || typeof bild.mimeType !== "string") {
-      return {
-        ok: false,
-        error: "Ein Bild ist ungültig."
-      };
-    }
-
-    if (bild.imageData.length > 8000000) {
-      return {
-        ok: false,
-        error: "Ein Bild ist zu groß. Bitte mach ein kleineres oder klareres Foto."
-      };
-    }
-  }
-
-  const quality = await checkImageQuality(bilder);
-
-  if (!quality.ok) {
-    return {
-      ok: true,
-      quality_ok: false,
-      hinweis: quality.hinweis || "Bitte schick ein besseres Foto vom Brief.",
-      kurz: "",
-      details: ""
-    };
-  }
-
-  const info = await buildInfoFromImages(bilder);
-  return await buildFinalPayloadFromInfo(info, lang);
-}
 
 app.post("/api/brief", async (req, res) => {
   try {
