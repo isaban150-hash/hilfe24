@@ -994,10 +994,63 @@ async function synthesizeMp3(text, lang) {
 
 
 
+async function buildFinalPayloadFromInfo(info, lang) {
+  const langCode = getLanguageMeta(lang).code;
+
+  const shortDe = cleanText(renderShortByLanguage(info, "de"));
+  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
+
+  const translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
+
+  return {
+    ok: true,
+    quality_ok: true,
+    hinweis: "",
+    kurz: translated.kurz,
+    details: translated.details
+  };
+}
+
+async function buildAudioText(text, lang) {
+  return cleanText(text);
+}
+
+async function synthesizeMp3(text, lang) {
+  const langMeta = getLanguageMeta(lang);
+
+  const request = {
+    input: { text },
+    voice: {
+      languageCode: langMeta.ttsLanguageCode,
+      ssmlGender: langMeta.ttsGender
+    },
+    audioConfig: {
+      audioEncoding: "MP3",
+      speakingRate: 0.92,
+      pitch: 0
+    }
+  };
+
+  if (langMeta.ttsVoiceName) {
+    request.voice.name = langMeta.ttsVoiceName;
+  }
+
+  const [response] = await ttsClient.synthesizeSpeech(request);
+
+  if (!response.audioContent) {
+    throw new Error("Keine TTS-Audioantwort erhalten");
+  }
+
+  return Buffer.isBuffer(response.audioContent)
+    ? response.audioContent.toString("base64")
+    : Buffer.from(response.audioContent, "binary").toString("base64");
+}
+
 async function buildFinalAnswerFromText(text, lang) {
   const info = await buildInfoFromText(text);
   return await buildFinalPayloadFromInfo(info, lang);
 }
+
 async function buildFinalAnswerFromImages(bilder, lang) {
   if (!Array.isArray(bilder) || bilder.length === 0) {
     return {
