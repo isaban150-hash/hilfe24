@@ -894,6 +894,29 @@ async function checkImageQuality(bilder) {
   return extractJson(raw);
 }
 
+async function translateDetailIfNeeded(text, lang) {
+  const langMeta = getLanguageMeta(lang);
+
+  if (langMeta.code === "de") {
+    return localizeDetailHeadings(text, "de");
+  }
+
+  const translatedRaw = await callGemini([
+    { text: buildTranslationPrompt(text, langMeta, true) }
+  ]);
+
+  let result = cleanText(translatedRaw);
+
+  result = result
+    .replace(/\[\[\s*/g, "")
+    .replace(/\s*\]\]/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return localizeDetailHeadings(result, langMeta.code);
+}
+
 async function translateShortIfNeeded(text, lang) {
   const langMeta = getLanguageMeta(lang);
   const clean = cleanText(text);
@@ -908,42 +931,24 @@ async function translateShortIfNeeded(text, lang) {
 
   return cleanText(translatedRaw);
 }
-function buildAudioRewritePrompt(text, lang) {
-  const meta = getLanguageMeta(lang);
 
-  return `
-Du bist Hilfe24.
+async function buildFinalPayloadFromInfo(info, lang) {
+  const langCode = getLanguageMeta(lang).code;
 
-Du bekommst einen fertigen Erklärungstext.
-Deine Aufgabe ist NUR, daraus einen gut vorlesbaren Audiotext in ${meta.label} zu machen.
+  const shortDe = cleanText(renderShortByLanguage(info, "de"));
+  const kurz = await translateShortIfNeeded(shortDe, langCode);
 
-SEHR WICHTIG:
-- Der Inhalt muss inhaltlich exakt gleich bleiben.
-- Du darfst nichts hinzufügen.
-- Du darfst nichts weglassen.
-- Du darfst nichts erklären, verbessern oder umdeuten.
-- Du darfst keine Information vereinfachen, wenn sich dadurch der Sinn ändert.
-- Du darfst keine neue Formulierung erfinden, die inhaltlich mehr sagt als der Originaltext.
-- Du sollst den Text nur so anpassen, dass er besser vorgelesen werden kann.
-- Erlaubt sind nur minimale Änderungen für bessere Hörbarkeit:
-  - sehr kleine Satztrennungen
-  - Satzzeichen verbessern
-  - Zeilenumbrüche glätten
-  - schwer lesbare Listen in gut hörbaren Fließtext umwandeln
-- Beträge, Daten, Fristen, Namen, Folgen und Aussagen müssen exakt erhalten bleiben.
-- Keine Mischsprache.
-- Keine deutschen Wörter mitten im Satz, außer echte Eigennamen.
-- Kein Markdown.
-- Keine Sternchen.
-- Keine Aufzählungszeichen.
-- Keine Überschriften wie "Worum geht es?" oder "Bis wann?", wenn sie nicht schon im Originaltext stehen.
-- Gib nur den fertigen Audiotext zurück.
+  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
+  const details = await translateDetailIfNeeded(detailTemplateDe, langCode);
 
-Originaltext:
-${text}
-`;
+  return {
+    ok: true,
+    quality_ok: true,
+    hinweis: "",
+    kurz,
+    details
+  };
 }
-
 async function buildAudioText(text, lang) {
   return cleanText(text);
 }
