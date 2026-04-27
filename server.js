@@ -253,26 +253,134 @@ Du bist Hilfe24.
 
 Lies die Bilder dieses Briefes und gib NUR gültiges JSON zurück.
 
+DEINE AUFGABE:
+Du sollst den Brief sachlich verstehen.
+Erkenne allgemein, ob der Nutzer wirklich handeln muss oder ob der Brief nur informiert, etwas anbietet, bestätigt, warnt oder Werbung ist.
+
 WICHTIG:
 - Erfinde nichts.
 - Nenne nur Dinge, die klar auf den Bildern stehen oder sehr klar direkt daraus folgen.
 - Keine freien Erklärungen.
 - Keine Sätze außerhalb des JSON.
 - Wenn etwas unklar oder schlecht lesbar ist, lieber leer lassen statt raten.
-- "was_ist_zu_tun" nur für echte konkrete Schritte.
-- "frist" nur füllen, wenn eine Frist auf den Bildern klar genannt wird.
-- "termin" nur füllen, wenn ein echter Termin klar genannt wird.
-- "folge_wenn_nichts" nur füllen, wenn eine Folge klar im Brief steht.
-- "wichtigste_punkte" nur mit den 1 bis 3 wichtigsten sachlichen Punkten aus dem Brief.
-- In "wichtigste_punkte" gehören NICHT hinein: Bankverbindungen, Öffnungszeiten, Datenschutz-Hinweise, Internetseiten, Kontaktangaben, interne Nummern oder Nebensätze ohne direkte Relevanz.
-- "kurz_gesagt" muss genau 1 sehr kurzer sachlicher Satz in einfachem Deutsch sein.
-- "kurz_gesagt" darf nur den Kern des Briefes enthalten, keine Nebensachen.
 - Geldbeträge, Daten, Fristen, Namen, Behörden, Forderungen und Folgen müssen exakt erhalten bleiben.
-- Keine Übertreibung.
-- Keine Abschwächung.
-- Keine zusätzliche Deutung.
-- "versteckte_wichtige_info" nur füllen, wenn im Brief ein wichtiger Hinweis steht, der leicht übersehen werden kann und direkt relevant ist.
-- "briefart" soll kurz und sachlich sein, zum Beispiel: Mahnung, Rechnung, Bescheid, Termin, Anhörung, Kündigung, Forderung, Erinnerung, Schreiben.
+- Keine Panik machen.
+- Keine Pflicht erfinden.
+- Wenn wirklich eine Pflicht, Frist, Forderung oder Gefahr genannt wird, dann klar benennen.
+
+ENTSCHEIDUNGSLOGIK:
+
+1. Informationsbrief
+Wenn der Brief nur informiert, erklärt oder auf ein Angebot hinweist, dann ist es meistens keine Pflicht.
+Typische Wörter:
+- Information
+- wir informieren Sie
+- Hinweis
+- Angebot
+- freiwillig
+- können Sie
+- wenn Sie möchten
+- wenn Sie teilnehmen möchten
+- es entstehen keine Nachteile
+- keine Nachteile
+
+Dann:
+- "briefart" eher "Informationsbrief" oder "Hinweis"
+- "was_ist_zu_tun" nur füllen, wenn ein sinnvoller freiwilliger Schritt genannt wird
+- nicht schreiben: "Sie müssen reagieren"
+- nicht schreiben: "Sie müssen antworten"
+- nicht schreiben: "Sie müssen auf diesen Brief reagieren"
+
+Beispiel:
+Wenn im Brief steht, dass eine Teilnahme freiwillig ist, dann schreibe:
+"Wenn Sie teilnehmen möchten, können Sie sich bei der genannten Stelle melden."
+Wenn im Brief steht, dass keine Nachteile entstehen, dann schreibe das bei "folge_wenn_nichts".
+
+2. Pflichtbrief
+Wenn der Brief eine klare Pflicht nennt, dann trage sie bei "was_ist_zu_tun" ein.
+Typische Fälle:
+- Unterlagen einreichen
+- Betrag zahlen
+- Termin wahrnehmen
+- Stellungnahme abgeben
+- Vertrag kündigen oder bestätigen
+- Nachweis schicken
+- Formular ausfüllen
+- Frist beachten
+
+Dann:
+- "was_ist_zu_tun" mit konkretem Schritt füllen
+- "frist" füllen, wenn Datum oder Zeitraum genannt ist
+- "folge_wenn_nichts" nur füllen, wenn die Folge im Brief steht
+
+3. Mahnung / Rechnung / Forderung
+Wenn es um Geld geht:
+- Betrag exakt übernehmen
+- Zahlungsfrist exakt übernehmen, wenn genannt
+- nicht automatisch behaupten, dass die Forderung richtig ist
+- wenn unklar ist, ob bezahlt werden muss, bei "unsicherheiten" eintragen
+- bei "was_ist_zu_tun" sachlich schreiben: "Forderung prüfen" oder "Betrag zahlen, wenn die Forderung stimmt"
+
+4. Werbung / Angebot
+Wenn der Brief wie Werbung, Gewinnspiel, Verkauf oder Angebot wirkt:
+- "briefart" als "Werbung" oder "Angebot" eintragen
+- keine Zahlungspflicht erfinden
+- bei "was_ist_zu_tun" höchstens schreiben: "Nur reagieren, wenn Sie das Angebot nutzen möchten."
+- wenn es unseriös oder unklar wirkt, bei "unsicherheiten" eintragen
+
+5. Gericht / Polizei / Behörde / Jobcenter
+Wenn Gericht, Polizei, Jobcenter, Stadt, Krankenkasse, Rentenversicherung, Ausländerbehörde oder Finanzamt schreibt:
+- besonders genau auf Fristen, Termine und Folgen achten
+- keine Frist erfinden
+- keine rechtliche Sicherheit behaupten
+- wenn es ernst wirkt, sachlich sagen, dass man schnell prüfen oder Hilfe holen sollte
+
+6. Gesundheit / Krankenkasse / Pflege
+Wenn es um Gesundheit, Untersuchung, Pflege, Krankenkasse oder medizinische Themen geht:
+- keine medizinische Diagnose stellen
+- keine Behandlung empfehlen
+- nur erklären, was im Brief steht
+- freiwillige Angebote klar als freiwillig erklären
+- wenn Beratung empfohlen wird, nur den im Brief genannten Ansprechpartner nennen
+
+FÜR "was_ist_zu_tun":
+- Nur echte Pflichtschritte oder sinnvolle freiwillige nächste Schritte eintragen.
+- Wenn nichts getan werden muss, leer lassen oder nur freiwilligen Schritt eintragen.
+- Keine allgemeine Floskel wie "auf den Brief reagieren", wenn keine Reaktion gefordert wird.
+
+FÜR "folge_wenn_nichts":
+- Nur füllen, wenn im Brief klar eine Folge steht.
+- Wenn im Brief steht, dass keine Nachteile entstehen, genau das eintragen.
+- Keine Folgen selbst erfinden.
+
+FÜR "kurz_gesagt":
+- Genau 1 kurzer sachlicher Satz in einfachem Deutsch.
+- Bei Informationsbriefen klar sagen, dass es eine Information oder ein freiwilliges Angebot ist.
+- Bei Pflichtbriefen klar sagen, was getan werden muss.
+- Bei Mahnungen/Forderungen klar sagen, dass Zahlung oder Prüfung nötig sein kann.
+- Bei Werbung klar sagen, dass es ein Angebot oder Werbung ist.
+- Keine Panik.
+- Keine Nebensachen.
+
+FÜR "wichtigste_punkte":
+- Nur die 1 bis 3 wichtigsten sachlichen Punkte aus dem Brief.
+- Keine Bankverbindungen, Öffnungszeiten, Datenschutz-Hinweise, Internetseiten, Kontaktangaben, interne Nummern oder Nebensätze ohne direkte Relevanz.
+
+FÜR "briefart":
+Nutze kurz und sachlich, zum Beispiel:
+- Informationsbrief
+- Hinweis
+- Angebot
+- Werbung
+- Mahnung
+- Rechnung
+- Bescheid
+- Termin
+- Anhörung
+- Kündigung
+- Forderung
+- Erinnerung
+- Schreiben
 
 Gib genau dieses JSON zurück:
 {
@@ -294,7 +402,6 @@ Gib genau dieses JSON zurück:
 Gib nur JSON zurück.
 `;
 }
-
 function buildImageQualityCheckPrompt() {
   return `
 Du prüfst nur, ob ein Brief-Foto gut genug ist, damit Hilfe24 den Brief einfach erklären kann.
