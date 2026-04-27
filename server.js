@@ -554,15 +554,14 @@ function actionText(code, language) {
 }
 
 function renderShortByLanguage(info, lang) {
-  const senderRaw = info.absender_kurz || info.absender_original || "";
-  const sender = senderRaw.trim();
+  const sender = String(info.absender_kurz || info.absender_original || "").trim();
   const person = String(info.betroffene_person || "").trim();
-  const topic = String(info.worum_geht_es || "").trim();
-  const consequence = String(info.folge_wenn_nichts || "").trim();
   const briefart = String(info.briefart || "").trim();
+  const topic = String(info.worum_geht_es || "").trim();
+  const summary = String(info.kurz_gesagt || "").trim();
+  const consequence = String(info.folge_wenn_nichts || "").trim();
   const importantPoints = dedupe(info.wichtigste_punkte || []);
-  const actionCodes = dedupe((info.was_ist_zu_tun || []).map(simplifyActionBase));
-  const firstAction = actionCodes[0] || "";
+  const actions = dedupe(info.was_ist_zu_tun || []);
   const lines = [];
 
   function cleanSentence(text) {
@@ -580,11 +579,11 @@ function renderShortByLanguage(info, lang) {
   const allText = [
     briefart,
     topic,
+    summary,
     consequence,
     importantPoints.join(" "),
-    (info.was_ist_zu_tun || []).join(" "),
-    String(info.kurz_gesagt || "")
-  ].join(" ").toLowerCase();
+    actions.join(" ")
+  ].join(" ");
 
   const isInfoOrOffer = hasAny(allText, [
     "information",
@@ -592,9 +591,10 @@ function renderShortByLanguage(info, lang) {
     "hinweis",
     "angebot",
     "freiwillig",
+    "kostenfrei",
+    "kostenlose",
     "wenn sie möchten",
     "wenn sie teilnehmen möchten",
-    "können sie",
     "keine nachteile",
     "keinerlei nachteile"
   ]);
@@ -602,228 +602,49 @@ function renderShortByLanguage(info, lang) {
   const hasNoDisadvantage = hasAny(consequence, [
     "keine nachteile",
     "keinerlei nachteile",
-    "keine negativen folgen",
-    "keine folgen",
-    "keinen nachteil"
+    "keinen nachteil",
+    "keine negativen folgen"
   ]);
 
-  const hasRealAction = Boolean(firstAction);
+  const hasAction = actions.length > 0;
 
-  function addSenderLine() {
-    if (lang === "tr") {
-      if (sender) lines.push(`Bu, ${sender} tarafından gönderilen bir mektup.`);
-      return;
-    }
-
-    if (lang === "bg") {
-      if (sender) lines.push(`Това е писмо от ${sender}.`);
-      return;
-    }
-
-    if (lang === "ar") {
-      if (sender) lines.push(`هذه رسالة من ${sender}.`);
-      return;
-    }
-
-    if (sender) lines.push(`Das ist ein Brief von ${sender}.`);
+  if (sender) {
+    lines.push(`Das ist ein Brief von ${sender}.`);
   }
 
-  function addPersonLine() {
-    if (!person) return;
-
-    if (lang === "tr") {
-      lines.push(`Mektup ${person} ile ilgilidir.`);
-      return;
-    }
-
-    if (lang === "bg") {
-      lines.push(`Писмото се отнася за ${person}.`);
-      return;
-    }
-
-    if (lang === "ar") {
-      lines.push(`الرسالة تخص ${person}.`);
-      return;
-    }
-
+  if (person) {
     lines.push(`Der Brief betrifft ${person}.`);
   }
 
-  function addTopicLine() {
-    if (!topic) return;
-
-    if (lang === "tr") {
-      lines.push(cleanSentence(topic) + ".");
-      return;
-    }
-
-    if (lang === "bg") {
-      lines.push(cleanSentence(topic) + ".");
-      return;
-    }
-
-    if (lang === "ar") {
-      lines.push(cleanSentence(topic) + ".");
-      return;
-    }
-
+  if (summary) {
+    lines.push(cleanSentence(summary) + ".");
+  } else if (topic) {
     lines.push(cleanSentence(topic) + ".");
+  } else if (importantPoints[0]) {
+    lines.push(cleanSentence(importantPoints[0]) + ".");
   }
 
-  function addInfoLogicLines() {
-    if (lang === "tr") {
-      if (isInfoOrOffer) lines.push("Bu mektup bilgi amaçlıdır.");
-      if (!hasRealAction) lines.push("Şu anda zorunlu bir cevap vermeniz gerekmiyor.");
-      if (hasNoDisadvantage) lines.push("Katılmak istemezseniz sigorta güvenceniz için bir dezavantaj oluşmaz.");
-      return;
-    }
-
-    if (lang === "bg") {
-      if (isInfoOrOffer) lines.push("Това писмо е с информационна цел.");
-      if (!hasRealAction) lines.push("В момента не е нужно задължително да отговаряте.");
-      if (hasNoDisadvantage) lines.push("Ако не участвате, няма да има неблагоприятни последици за Вашата здравна осигуровка.");
-      return;
-    }
-
-    if (lang === "ar") {
-      if (isInfoOrOffer) lines.push("هذه الرسالة للمعلومة فقط.");
-      if (!hasRealAction) lines.push("لا يجب عليك الرد بشكل إلزامي الآن.");
-      if (hasNoDisadvantage) lines.push("إذا لم تشارك، فلن يحدث أي ضرر لتأمينك الصحي.");
-      return;
-    }
-
-    if (isInfoOrOffer) lines.push("Das ist eine Information.");
-    if (!hasRealAction) lines.push("Du musst nicht zwingend antworten.");
-    if (hasNoDisadvantage) lines.push("Wenn du nicht teilnimmst, entstehen keine Nachteile für deinen Versicherungsschutz.");
+  if (isInfoOrOffer && !hasAction) {
+    lines.push("Das ist eine Information oder ein freiwilliges Angebot.");
   }
 
-  function addActionLine() {
-    if (!firstAction) return;
-
-    const map = {
-      de: {
-        register: "Du musst dich anmelden.",
-        register_city: "Die Person muss bei der Stadt angemeldet werden.",
-        register_jobcenter: "Die Person muss beim Jobcenter angemeldet werden.",
-        send_documents: "Du musst Unterlagen schicken.",
-        pay: "Du musst zahlen.",
-        reply: "Du musst antworten.",
-        sign: "Du musst unterschreiben.",
-        cancel: "Du musst kündigen.",
-        attend_appointment: "Du musst zu dem angegebenen Termin erscheinen.",
-        object_if_disagree: "Wenn du nicht einverstanden bist, musst du widersprechen oder dich melden.",
-        contact: "Du musst dich melden."
-      },
-      tr: {
-        register: "Kayıt olmanız gerekiyor.",
-        register_city: "Kişiyi belediyeye kaydetmeniz gerekiyor.",
-        register_jobcenter: "Kişiyi Jobcenter'a kaydetmeniz gerekiyor.",
-        send_documents: "Belgeleri göndermeniz gerekiyor.",
-        pay: "Ödeme yapmanız gerekiyor.",
-        reply: "Cevap vermeniz gerekiyor.",
-        sign: "İmzalamanız gerekiyor.",
-        cancel: "İptal etmeniz gerekiyor.",
-        attend_appointment: "Belirtilen randevuya gitmeniz gerekiyor.",
-        object_if_disagree: "Kabul etmiyorsanız itiraz etmeniz veya iletişime geçmeniz gerekiyor.",
-        contact: "İletişime geçmeniz gerekiyor."
-      },
-      bg: {
-        register: "Трябва да се регистрирате.",
-        register_city: "Трябва да регистрирате лицето в общината.",
-        register_jobcenter: "Трябва да регистрирате лицето в Jobcenter.",
-        send_documents: "Трябва да изпратите документите.",
-        pay: "Трябва да платите.",
-        reply: "Трябва да отговорите.",
-        sign: "Трябва да подпишете.",
-        cancel: "Трябва да прекратите.",
-        attend_appointment: "Трябва да отидете на посочения час.",
-        object_if_disagree: "Ако не сте съгласни, трябва да възразите или да се свържете.",
-        contact: "Трябва да се свържете."
-      },
-      ar: {
-        register: "يجب عليك التسجيل.",
-        register_city: "يجب عليك تسجيل الشخص في البلدية.",
-        register_jobcenter: "يجب عليك تسجيل الشخص في الجوب سنتر.",
-        send_documents: "يجب عليك إرسال المستندات.",
-        pay: "يجب عليك الدفع.",
-        reply: "يجب عليك الرد.",
-        sign: "يجب عليك التوقيع.",
-        cancel: "يجب عليك الإلغاء.",
-        attend_appointment: "يجب عليك الذهاب إلى الموعد المحدد.",
-        object_if_disagree: "إذا لم تكن موافقًا، يجب عليك الاعتراض أو التواصل.",
-        contact: "يجب عليك التواصل."
-      }
-    };
-
-    lines.push(map[lang]?.[firstAction] || map.de[firstAction] || "");
-  }
-
-  function addWhenLine() {
-    if (info.termin) {
-      const t = cleanSentence(info.termin);
-      if (lang === "tr") lines.push(`Tarih: ${t}.`);
-      else if (lang === "bg") lines.push(`Дата: ${t}.`);
-      else if (lang === "ar") lines.push(`الموعد: ${t}.`);
-      else lines.push(`Termin: ${t}.`);
-      return;
-    }
-
-    if (info.frist) {
-      const f = cleanSentence(info.frist);
-      if (lang === "tr") lines.push(`Son tarih: ${f}.`);
-      else if (lang === "bg") lines.push(`Срок: ${f}.`);
-      else if (lang === "ar") lines.push(`آخر موعد: ${f}.`);
-      else lines.push(`Frist: ${f}.`);
-    }
-  }
-
-  function addConsequenceLine() {
-    if (!consequence) return;
-
-    if (hasNoDisadvantage && isInfoOrOffer) return;
-
-    const c = cleanSentence(consequence);
-
-    if (lang === "tr") {
-      lines.push(`Aksi halde: ${c}.`);
-      return;
-    }
-
-    if (lang === "bg") {
-      lines.push(`Иначе: ${c}.`);
-      return;
-    }
-
-    if (lang === "ar") {
-      lines.push(`وإلا: ${c}.`);
-      return;
-    }
-
-    lines.push(`Sonst: ${c}.`);
-  }
-
-  addSenderLine();
-  addPersonLine();
-
-  if (isInfoOrOffer && !hasRealAction) {
-    addTopicLine();
-    addInfoLogicLines();
-  } else {
+  if (hasAction) {
+    const firstAction = cleanSentence(actions[0]);
     if (firstAction) {
-      addActionLine();
-    } else if (topic) {
-      addTopicLine();
-    } else if (importantPoints[0]) {
-      lines.push(cleanSentence(importantPoints[0]) + ".");
-    } else {
-      if (lang === "tr") lines.push("Bu mektupla ilgili bilgileri kontrol etmelisiniz.");
-      else if (lang === "bg") lines.push("Трябва да проверите информацията в това писмо.");
-      else if (lang === "ar") lines.push("يجب عليك مراجعة المعلومات في هذه الرسالة.");
-      else lines.push("Du solltest diesen Brief prüfen.");
+      lines.push(firstAction + ".");
     }
+  }
 
-    addWhenLine();
-    addConsequenceLine();
+  if (info.termin) {
+    lines.push(`Termin: ${cleanSentence(info.termin)}.`);
+  } else if (info.frist) {
+    lines.push(`Frist: ${cleanSentence(info.frist)}.`);
+  }
+
+  if (hasNoDisadvantage) {
+    lines.push("Wenn Sie nicht teilnehmen, entstehen keine Nachteile.");
+  } else if (consequence) {
+    lines.push(`Sonst: ${cleanSentence(consequence)}.`);
   }
 
   return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
