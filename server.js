@@ -990,15 +990,8 @@ async function synthesizeMp3(text, lang) {
     : Buffer.from(response.audioContent, "binary").toString("base64");
 }
 
-async function buildFinalAnswerFromText(text, lang) {
-  const info = await buildInfoFromText(text);
-  return await buildFinalPayloadFromInfo(info, lang);
-}
 
-async function buildFinalAnswerFromText(text, lang) {
-  const info = await buildInfoFromText(text);
-  return await buildFinalPayloadFromInfo(info, lang);
-}
+
 
 async function buildFinalAnswerFromImages(bilder, lang) {
   if (!Array.isArray(bilder) || bilder.length === 0) {
