@@ -1102,14 +1102,12 @@ function protectCriticalValues(text) {
   let out = String(text || "");
 
   tokens.forEach((value, index) => {
-    const tokenPlain = `H24TOKEN${index}`;
-    const tokenWrapped = `[[H24TOKEN${index}]]`;
-    const tokenLoose = new RegExp(`\$begin:math:display$\\\\\[\\\\s\*H24TOKEN\$\{index\}\\\\s\*\\$end:math:display$\\]`, "g");
+    const realValue = String(value);
 
     out = out
-      .replaceAll(tokenWrapped, String(value))
-      .replaceAll(tokenPlain, String(value))
-      .replace(tokenLoose, String(value));
+      .split(`[[H24TOKEN${index}]]`).join(realValue)
+      .split(`[H24TOKEN${index}]`).join(realValue)
+      .split(`H24TOKEN${index}`).join(realValue);
   });
 
   return out;
