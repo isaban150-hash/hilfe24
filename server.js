@@ -1247,23 +1247,26 @@ Gib genau dieses JSON zurück:
   "kurz": "",
   "details": ""
 }
-
 KURZTEXT_DEUTSCH:
-${cleanKurz}
+${protectedKurz.text}
 
 DETAILTEXT_DEUTSCH:
-${cleanDetails}
+${protectedDetails.text}
 `
     }
   ]);
 
   const parsed = extractJson(raw);
 
-  const kurz = cleanText(parsed.kurz || "")
+  KURZTEXT_DEUTSCH:
+${protectedKurz.text}
+
+DETAILTEXT_DEUTSCH:
+const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.tokens)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  const detailsRaw = cleanText(parsed.details || "")
+  const detailsRaw = restoreCriticalValues(cleanText(parsed.details || ""), protectedDetails.tokens)
     .replace(/\[\[\s*/g, "[[")
     .replace(/\s*\]\]/g, "]]")
     .replace(/[ \t]+\n/g, "\n")
