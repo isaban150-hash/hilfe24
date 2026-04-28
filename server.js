@@ -1271,6 +1271,17 @@ WICHTIGE REGEL FÜR DEN KURZTEXT:
 - Der Kurztext darf nicht ausführlicher werden als der deutsche Kurztext.
 - Keine Gesetzesdetails, Paragrafen, Telefonnummern, vollständige Adressen oder Zusatzinformationen in den Kurztext übernehmen, wenn sie nicht ausdrücklich im deutschen Kurztext stehen.
 
+WICHTIGE REGEL FÜR INKASSO, MAHNUNG, FORDERUNG UND MAHNBESCHEID:
+- Wenn es um Inkasso, Mahnung, Forderung, offene Rechnung, Zahlungsaufforderung, Mahnbescheid oder Mahngericht geht, schreibe NICHT, dass die Person zu einem Termin gehen muss, außer im Text steht wirklich ein konkreter Termin mit Ort.
+- Bei Forderungen soll der Kurztext immer sagen:
+  Forderung prüfen.
+  Wenn die Forderung stimmt: zahlen.
+  Wenn die Forderung nicht stimmt: widersprechen oder Hilfe holen.
+- Schreibe bei Forderungen nicht "zum Termin gehen", nicht "zum genannten Termin erscheinen", nicht "Randevuya gidin" und nicht "اذهب إلى الموعد", wenn kein echter Termin im Brief steht.
+- Wenn kein konkreter Termin vorhanden ist, verwende Wörter wie "Frist", "Zahlung", "Forderung", "Mahnung" oder "Prüfung", aber nicht "Termin".
+- Wenn im Brief ein Betrag steht, nenne den Betrag im Kurztext.
+- Wenn eine Folge genannt wird, erkläre kurz: Es können zusätzliche Kosten, Mahnverfahren, Vollstreckung oder rechtliche Schritte folgen.
+
 KURZTEXT_DEUTSCH:
 ${protectedKurz.text}
 
