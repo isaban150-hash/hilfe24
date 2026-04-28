@@ -1096,7 +1096,7 @@ WICHTIGE TÜRKISCHE LOGIK:
 - Wenn es um Hilfe, Sozialleistung, Unterstützung, Rente, Krankengeld, Pflegegeld, Wohngeld, Bürgergeld, Kindergeld oder ähnliche Leistungen geht:
   Schreibe nicht so, als müsste die Person selbst etwas bezahlen.
   Schreibe klar, dass die Hilfe/Zahlung/Leistung gekürzt, gestoppt oder betroffen sein kann.
-- Nutze einfache Wörter wie: yardım, ödeme, destek, kesilebilir, azaltılabilir, durdurulabilir.
+- - Wenn es um Geld geht, prüfe genau: Muss die Person selbst etwas zahlen, oder kann eine Hilfe/Leistung gekürzt werden? Bei Leistungen schreibe einfach: "yardım kesilebilir", "destek azalabilir", "ödeme durdurulabilir" oder "Bürgergeld azaltılabilir". Schreibe NICHT "Bürgergeld ödemeniz", wenn gemeint ist, dass Bürgergeld gekürzt wird.
 - Bei Terminen: "randevuya gidin" oder "randevuya gitmeniz gerekiyor".
 - Bei Unterlagen: "belgeleri götürün" wenn man sie zum Termin mitbringen soll.
 - Bei Unterlagen per Post/online: "belgeleri gönderin".
