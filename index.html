@@ -327,9 +327,13 @@
       <div id="frageError" class="error hidden"></div>
 
       <div id="frageAntwortBox" class="hidden">
-        <div class="section-title">Antwort</div>
-        <div id="frageAntwort" class="detail-box"></div>
-      </div>
+  <div class="section-title">Antwort</div>
+  <div id="frageAntwort" class="detail-box"></div>
+
+  <div class="audio-row">
+    <button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Antwort vorlesen</button>
+  </div>
+</div>
     </div>
   </div>
 
@@ -359,7 +363,7 @@
     const frageErrorEl = document.getElementById("frageError");
     const frageAntwortBoxEl = document.getElementById("frageAntwortBox");
     const frageAntwortEl = document.getElementById("frageAntwort");
-
+const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
     const readShortBtn = document.getElementById("readShortBtn");
     const readAllBtn = document.getElementById("readAllBtn");
     const stopBtn = document.getElementById("stopBtn");
@@ -804,7 +808,15 @@
         }
       });
     }
-
+if (readFrageAntwortBtn) {
+  readFrageAntwortBtn.addEventListener("click", async () => {
+    try {
+      await playServerAudio(frageAntwortEl ? frageAntwortEl.textContent : "");
+    } catch (error) {
+      setError(error.message || "Audio konnte nicht geladen werden.");
+    }
+  });
+}
     if (readShortBtn) {
       readShortBtn.addEventListener("click", async () => {
         try {
