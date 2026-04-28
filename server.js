@@ -1102,6 +1102,8 @@ WICHTIGE TÜRKISCHE LOGIK:
 - Bei Unterlagen per Post/online: "belgeleri gönderin".
 - Bei Fristen: "son tarih" oder "bu tarihe kadar".
 - Bei freiwilligen Angeboten: klar sagen "zorunlu değil" oder "isteğe bağlı".
+- Datumsangaben, Uhrzeiten, Fristen und Beträge müssen exakt übernommen werden. Wenn im Deutschen "29.04.2026" steht, darf daraus niemals nur "04.2026" werden.
+- Wenn eine Leistung gekürzt wird, schreibe einfach: "Bürgergeld’iniz %10 azaltılabilir", "yardımınız azaltılabilir" oder "destek kesilebilir". Vermeide unklare Formulierungen wie "ödeme kesintisi", wenn die Person nicht selbst zahlen muss.
 `,
     bg: `
 BULGARISCH-STIL:
