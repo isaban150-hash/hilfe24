@@ -1283,6 +1283,13 @@ Gib genau dieses JSON zurück:
 {
   "kurz": "",
   "details": ""
+WICHTIGE REGEL FÜR DEN KURZTEXT:
+- Für den Kurztext darfst du NUR den Inhalt von KURZTEXT_DEUTSCH verwenden.
+- Du darfst KEINE Informationen aus DETAILTEXT_DEUTSCH in den Kurztext übernehmen.
+- Wenn eine Information nur im Detailtext steht, bleibt sie im Detailtext.
+- Der Kurztext darf nicht ausführlicher werden als der deutsche Kurztext.
+- Keine Gesetzesdetails, Paragrafen, Telefonnummern, vollständige Adressen oder Zusatzinformationen in den Kurztext übernehmen, wenn sie nicht ausdrücklich im deutschen Kurztext stehen.
+
 WICHTIGE REGEL FÜR FORDERUNG, INKASSO, MAHNUNG, MAHNBESCHEID, MAHNGERICHT UND VOLLSTRECKUNG:
 - Diese Regel gilt für alle Briefe mit Inkasso, Mahnung, Forderung, offene Rechnung, Zahlungsaufforderung, Mahnbescheid, Mahngericht, Gläubiger, Schuldner, Vollstreckungstitel, Zwangsvollstreckung, Gerichtsvollzieher, Pfändung oder offenem Betrag.
 - Schreibe bei solchen Briefen NIEMALS, dass die Person zu einem Termin gehen muss, außer im Text steht wirklich ein konkreter Termin mit Ort.
@@ -1324,6 +1331,23 @@ FALL 3: VOLLSTRECKUNGSTITEL / ZWANGSVOLLSTRECKUNG / PFÄNDUNG / GERICHTSVOLLZIEH
   6. Wenn die Forderung falsch ist: nicht ignorieren, sondern sofort rechtliche Hilfe holen.
   7. Sonst können Pfändung, Vollstreckung oder weitere Kosten folgen.
 - Bei Vollstreckungstitel nicht locker schreiben "einfach widersprechen". Stattdessen: sofort prüfen lassen / Hilfe holen.
+
+WICHTIGE REGEL FÜR ARZTBRIEF, KRANKENHAUSBERICHT, BEFUND, NOTAUFNAHME UND ENTLASSUNGSBERICHT:
+- Wenn es um Arztbrief, Krankenhausbericht, Befund, Diagnose, Therapie, Notaufnahme, Entlassungsbericht, Medikament, Empfehlung, Kontrolle, Hausarzt, Facharzt oder Klinik geht, behandle es als medizinisches Dokument.
+- Schreibe bei medizinischen Dokumenten NICHT so, als wäre es eine Behörde, Mahnung, Forderung oder Pflichtzahlung.
+- Schreibe nicht: "Sonst entstehen Nachteile", "rechtliche Schritte", "Kosten", "Vollstreckung" oder ähnliche Behörden-/Inkasso-Sätze, wenn das nicht im Text steht.
+- Bei medizinischen Dokumenten soll der Kurztext einfach erklären:
+  1. Das ist ein medizinischer Bericht / Arztbrief / Krankenhausbericht.
+  2. Es geht um Untersuchung, Diagnose, Behandlung oder Empfehlung.
+  3. Dokument aufbewahren.
+  4. Hausarzt oder zuständigen Arzt zeigen.
+  5. Bei starken Beschwerden oder Verschlechterung medizinische Hilfe holen.
+- Wenn Medikamente, Kontrollen oder Empfehlungen genannt werden, erwähne sie kurz und einfach.
+- Keine Diagnose erfinden.
+- Keine Behandlung erfinden.
+- Keine medizinische Sicherheit versprechen.
+- Wenn etwas unklar ist, schreibe: "Bitte mit dem Arzt oder der Ärztin besprechen."
+
 KURZTEXT_DEUTSCH:
 ${protectedKurz.text}
 
