@@ -1282,13 +1282,13 @@ ${protectedDetails.text}
 
   const parsed = extractJson(raw);
 
-  const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.tokens)
+ const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.tokens)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
   const detailsRaw = restoreCriticalValues(cleanText(parsed.details || ""), protectedDetails.tokens)
-    .replace(/$begin:math:display$\\\[\\s\*\/g\, \"\[\[\"\)
-    \.replace\(\/\\s\*$end:math:display$\]/g, "]]")
+    .replace(/\[\[\s*/g, "[[")
+    .replace(/\s*\]\]/g, "]]")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
