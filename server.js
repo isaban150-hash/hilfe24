@@ -1276,6 +1276,7 @@ ${protectedKurz.text}
 
 DETAILTEXT_DEUTSCH:
 ${protectedDetails.text}
+`
     }
   ]);
 
@@ -1286,8 +1287,8 @@ ${protectedDetails.text}
     .trim();
 
   const detailsRaw = restoreCriticalValues(cleanText(parsed.details || ""), protectedDetails.tokens)
-    .replace(/\[\[\s*/g, "[[")
-    .replace(/\s*\]\]/g, "]]")
+    .replace(/$begin:math:display$\\\[\\s\*\/g\, \"\[\[\"\)
+    \.replace\(\/\\s\*$end:math:display$\]/g, "]]")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -1297,15 +1298,14 @@ ${protectedDetails.text}
     details: localizeDetailHeadings(detailsRaw, langMeta.code)
   };
 }
-async function buildFinalPayloadFromInfo(info, lang) {
+ async function buildFinalPayloadFromInfo(info, lang) {
   const langCode = getLanguageMeta(lang).code;
-
-  const shortDe = cleanText(renderShortByLanguage(info, "de"));
+const shortDe = cleanText(renderShortByLanguage(info, "de"));
   const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
 
   const translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
 
-  return {
+return {
     ok: true,
     quality_ok: true,
     hinweis: "",
