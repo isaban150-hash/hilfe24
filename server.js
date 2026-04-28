@@ -1283,31 +1283,47 @@ Gib genau dieses JSON zurück:
 {
   "kurz": "",
   "details": ""
-WICHTIGE REGEL FÜR DEN KURZTEXT:
-- Für den Kurztext darfst du NUR den Inhalt von KURZTEXT_DEUTSCH verwenden.
-- Du darfst KEINE Informationen aus DETAILTEXT_DEUTSCH in den Kurztext übernehmen.
-- Wenn eine Information nur im Detailtext steht, bleibt sie im Detailtext.
-- Der Kurztext darf nicht ausführlicher werden als der deutsche Kurztext.
-- Keine Gesetzesdetails, Paragrafen, Telefonnummern, vollständige Adressen oder Zusatzinformationen in den Kurztext übernehmen, wenn sie nicht ausdrücklich im deutschen Kurztext stehen.
-
-WICHTIGE REGEL FÜR FORDERUNG, INKASSO, MAHNUNG, ZAHLUNGSAUFFORDERUNG, MAHNBESCHEID UND MAHNGERICHT:
-- Diese Regel gilt für alle Briefe mit Inkasso, Mahnung, Forderung, offene Rechnung, Zahlungsaufforderung, Mahnbescheid, Mahngericht, Vollstreckung, Inkassokosten, Gläubiger, Schuldner oder offenem Betrag.
+WICHTIGE REGEL FÜR FORDERUNG, INKASSO, MAHNUNG, MAHNBESCHEID, MAHNGERICHT UND VOLLSTRECKUNG:
+- Diese Regel gilt für alle Briefe mit Inkasso, Mahnung, Forderung, offene Rechnung, Zahlungsaufforderung, Mahnbescheid, Mahngericht, Gläubiger, Schuldner, Vollstreckungstitel, Zwangsvollstreckung, Gerichtsvollzieher, Pfändung oder offenem Betrag.
 - Schreibe bei solchen Briefen NIEMALS, dass die Person zu einem Termin gehen muss, außer im Text steht wirklich ein konkreter Termin mit Ort.
 - Schreibe nicht: "zum Termin gehen", "zum genannten Termin erscheinen", "Randevuya gidin", "اذهب إلى الموعد" oder ähnliche Formulierungen, wenn kein echter Termin vorhanden ist.
-- Bei Forderungen muss der Kurztext immer diese Reihenfolge haben:
-  1. Das ist eine Forderung/Mahnung/Zahlungsaufforderung von dem Absender.
-  2. Es geht um den offenen Betrag.
-  3. Prüfen Sie zuerst, ob die Forderung stimmt.
-  4. Wenn die Forderung stimmt: zahlen.
-  5. Wenn die Forderung nicht stimmt: widersprechen oder Hilfe holen.
-  6. Sonst können zusätzliche Kosten, Mahnverfahren, Vollstreckung oder rechtliche Schritte folgen.
 - Der Betrag darf im Kurztext nur EINMAL genannt werden.
 - Schreibe nicht doppelt: "82,64 Euro" und danach noch einmal "Betrag: 82,64 Euro".
-- Schreibe bei Forderungen nicht nur "zahlen". Immer zuerst "prüfen".
-- Wenn keine genaue Zahlungsfrist im Brief steht, schreibe nicht "Frist" und erfinde keine Frist.
-- Wenn ein Mahnbescheid oder Mahngericht erwähnt wird, erkläre einfach: "Es können zusätzliche Kosten oder gerichtliche Schritte folgen."
-- Wenn der Brief unklar ist, schreibe: "Forderung prüfen und bei Unsicherheit Hilfe holen."
+- Wenn keine genaue Frist im Brief steht, erfinde keine Frist.
 
+UNTERSCHEIDE BEI FORDERUNGEN IMMER ZWISCHEN DIESEN 3 FÄLLEN:
+
+FALL 1: NORMALE FORDERUNG / INKASSO / MAHNUNG
+- Wenn es nur um Inkasso, Mahnung, offene Rechnung, Zahlungsaufforderung oder offene Forderung geht, aber NICHT um Mahnbescheid, Amtsgericht, Vollstreckungstitel oder Zwangsvollstreckung:
+  1. Schreibe: Das ist eine Forderung/Mahnung/Zahlungsaufforderung von dem Absender.
+  2. Nenne den offenen Betrag einmal.
+  3. Schreibe: Forderung zuerst prüfen.
+  4. Wenn die Forderung stimmt: zahlen oder Ratenzahlung klären.
+  5. Wenn die Forderung nicht stimmt: widersprechen oder Hilfe holen.
+  6. Sonst können zusätzliche Kosten oder rechtliche Schritte folgen.
+- Schreibe bei normalem Inkasso nicht so, als wäre schon eine endgültige Vollstreckung sicher.
+
+FALL 2: MAHNBESCHEID / MAHNGERICHT / AMTSGERICHT / WIDERSPRUCH
+- Wenn im Brief Mahnbescheid, Mahngericht, Amtsgericht, Widerspruch, Anspruch widersprechen oder Widerspruchsformular steht:
+  1. Schreibe: Es geht um einen Mahnbescheid oder Widerspruch gegen eine Forderung.
+  2. Schreibe: Forderung genau prüfen.
+  3. Wenn die Forderung falsch ist oder unklar ist: rechtzeitig widersprechen oder Hilfe holen.
+  4. Wenn eine Frist genannt wird, nenne die Frist.
+  5. Wenn keine Frist genannt wird, erfinde keine Frist.
+  6. Schreibe: Wenn man nichts macht, kann die Forderung rechtskräftig werden und weitere Kosten verursachen.
+- Schreibe hier nicht einfach nur "zahlen".
+- Schreibe hier nicht "zum Termin gehen", wenn kein Termin vorhanden ist.
+
+FALL 3: VOLLSTRECKUNGSTITEL / ZWANGSVOLLSTRECKUNG / PFÄNDUNG / GERICHTSVOLLZIEHER
+- Wenn im Brief Vollstreckungstitel, vollstreckbarer Titel, Zwangsvollstreckung, Pfändung, Gerichtsvollzieher, titulierte Forderung oder rechtskräftig steht:
+  1. Schreibe: Das ist ernster als eine normale Mahnung.
+  2. Schreibe: Es gibt bereits einen Vollstreckungstitel oder es geht um Vollstreckung.
+  3. Nenne den Betrag einmal.
+  4. Schreibe: Sofort prüfen lassen oder Hilfe holen.
+  5. Wenn die Forderung stimmt: zahlen oder Ratenzahlung vereinbaren.
+  6. Wenn die Forderung falsch ist: nicht ignorieren, sondern sofort rechtliche Hilfe holen.
+  7. Sonst können Pfändung, Vollstreckung oder weitere Kosten folgen.
+- Bei Vollstreckungstitel nicht locker schreiben "einfach widersprechen". Stattdessen: sofort prüfen lassen / Hilfe holen.
 KURZTEXT_DEUTSCH:
 ${protectedKurz.text}
 
