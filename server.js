@@ -1101,8 +1101,21 @@ function protectCriticalValues(text) {
  function restoreCriticalValues(text, tokens = []) {
   let out = String(text || "");
 
-  tokens.forEach((value, index) => {
-    const realValue = String(value);
+  tokens.forEach((entry, index) => {
+    let realValue = "";
+
+    if (typeof entry === "string" || typeof entry === "number") {
+      realValue = String(entry);
+    } else if (entry && typeof entry === "object") {
+      realValue = String(
+        entry.value ||
+        entry.text ||
+        entry.original ||
+        entry.raw ||
+        entry.replacement ||
+        ""
+      );
+    }
 
     out = out
       .split(`[[H24TOKEN${index}]]`).join(realValue)
