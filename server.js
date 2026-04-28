@@ -1289,6 +1289,8 @@ WICHTIGE REGEL FÜR DEN KURZTEXT:
 - Wenn eine Information nur im Detailtext steht, bleibt sie im Detailtext.
 - Der Kurztext darf nicht ausführlicher werden als der deutsche Kurztext.
 - Keine Gesetzesdetails, Paragrafen, Telefonnummern, vollständige Adressen oder Zusatzinformationen in den Kurztext übernehmen, wenn sie nicht ausdrücklich im deutschen Kurztext stehen.
+- Der Kurztext soll einfach, direkt und hilfreich sein.
+- Der Kurztext soll keine Angst machen, aber klare Risiken nennen, wenn sie im Brief stehen.
 
 WICHTIGE REGEL FÜR FORDERUNG, INKASSO, MAHNUNG, MAHNBESCHEID, MAHNGERICHT UND VOLLSTRECKUNG:
 - Diese Regel gilt für alle Briefe mit Inkasso, Mahnung, Forderung, offene Rechnung, Zahlungsaufforderung, Mahnbescheid, Mahngericht, Gläubiger, Schuldner, Vollstreckungstitel, Zwangsvollstreckung, Gerichtsvollzieher, Pfändung oder offenem Betrag.
@@ -1332,21 +1334,28 @@ FALL 3: VOLLSTRECKUNGSTITEL / ZWANGSVOLLSTRECKUNG / PFÄNDUNG / GERICHTSVOLLZIEH
   7. Sonst können Pfändung, Vollstreckung oder weitere Kosten folgen.
 - Bei Vollstreckungstitel nicht locker schreiben "einfach widersprechen". Stattdessen: sofort prüfen lassen / Hilfe holen.
 
-WICHTIGE REGEL FÜR ARZTBRIEF, KRANKENHAUSBERICHT, BEFUND, NOTAUFNAHME UND ENTLASSUNGSBERICHT:
-- Wenn es um Arztbrief, Krankenhausbericht, Befund, Diagnose, Therapie, Notaufnahme, Entlassungsbericht, Medikament, Empfehlung, Kontrolle, Hausarzt, Facharzt oder Klinik geht, behandle es als medizinisches Dokument.
-- Schreibe bei medizinischen Dokumenten NICHT so, als wäre es eine Behörde, Mahnung, Forderung oder Pflichtzahlung.
-- Schreibe nicht: "Sonst entstehen Nachteile", "rechtliche Schritte", "Kosten", "Vollstreckung" oder ähnliche Behörden-/Inkasso-Sätze, wenn das nicht im Text steht.
-- Bei medizinischen Dokumenten soll der Kurztext einfach erklären:
+WICHTIGE REGEL FÜR ARZTBRIEF, KRANKENHAUSBERICHT, BEFUND, NOTAUFNAHME, ENTLASSUNGSBERICHT UND MEDIZINISCHE DOKUMENTE:
+- Diese Regel gilt für alle medizinischen Dokumente mit Wörtern wie Arztbrief, Krankenhausbericht, Befund, Diagnose, Therapie, Behandlung, Notaufnahme, ZNA, Entlassungsbericht, Medikament, Kontrolle, Hausarzt, Facharzt, Klinik, Krankenhaus, Röntgen, MRT, CT, Labor, OP, Impfung, Tetanus, Verband, Wunde, Verletzung, Schmerz oder Empfehlung.
+- Behandle solche Dokumente als medizinischen Bericht, NICHT als Behörde, NICHT als Inkasso, NICHT als Gericht und NICHT als Pflichttermin.
+- Schreibe bei medizinischen Dokumenten NIEMALS, dass die Person zu einem Termin gehen muss, außer im Text steht wirklich ein konkreter Arzttermin mit Datum, Uhrzeit und Ort.
+- Schreibe bei medizinischen Dokumenten NICHT: "zum Termin gehen", "zum genannten Termin erscheinen", "Randevuya gidin", "اذهب إلى الموعد" oder ähnliche Formulierungen, wenn kein echter Termin im Text steht.
+- Schreibe bei medizinischen Dokumenten NICHT: "rechtliche Schritte", "Kosten", "Vollstreckung", "Strafe", "negative Folgen", "ungünstige Folgen" oder ähnliche Behörden-/Inkasso-Sätze, wenn das nicht ausdrücklich im Text steht.
+- Schreibe nicht allgemein "sonst entstehen Nachteile".
+- Schreibe stattdessen medizinisch und ruhig:
   1. Das ist ein medizinischer Bericht / Arztbrief / Krankenhausbericht.
-  2. Es geht um Untersuchung, Diagnose, Behandlung oder Empfehlung.
+  2. Es geht um Untersuchung, Diagnose, Behandlung, Befund oder Empfehlung.
   3. Dokument aufbewahren.
-  4. Hausarzt oder zuständigen Arzt zeigen.
-  5. Bei starken Beschwerden oder Verschlechterung medizinische Hilfe holen.
-- Wenn Medikamente, Kontrollen oder Empfehlungen genannt werden, erwähne sie kurz und einfach.
+  4. Hausarzt, Facharzt oder zuständigen Arzt zeigen.
+  5. Empfehlungen, Kontrollen oder Medikamente beachten, wenn sie im Text stehen.
+  6. Bei starken Beschwerden, Verschlechterung, Atemnot, starken Schmerzen, Fieber, Blutung, Taubheit, Lähmung, Schwindel, Brustschmerz oder Unsicherheit medizinische Hilfe holen.
+- Wenn im Brief eine Empfehlung steht, z. B. MRT, Kontrolle, Impfung, Verbandwechsel, Hausarzt, Facharzt oder weitere Untersuchung, erwähne diese Empfehlung kurz und einfach.
+- Wenn Medikamente genannt werden, erwähne sie nur, wenn sie im Text stehen.
 - Keine Diagnose erfinden.
 - Keine Behandlung erfinden.
+- Keine Heilung versprechen.
 - Keine medizinische Sicherheit versprechen.
 - Wenn etwas unklar ist, schreibe: "Bitte mit dem Arzt oder der Ärztin besprechen."
+- Der Kurztext soll bei medizinischen Dokumenten nicht bedrohlich klingen. Er soll beruhigend, klar und praktisch sein.
 
 KURZTEXT_DEUTSCH:
 ${protectedKurz.text}
