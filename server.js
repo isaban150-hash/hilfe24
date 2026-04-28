@@ -1505,6 +1505,36 @@ app.post("/api/brief", async (req, res) => {
   }
 });
 
+app.post("/api/brief", async (req, res) => {
+  try {
+    const text = String(req.body.text || "");
+    const lang = (req.body.lang || "de").toLowerCase();
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Brieftext gesendet"
+      });
+    }
+
+    if (text.length > 12000) {
+      return res.status(400).json({
+        ok: false,
+        error: "Der Text ist zu lang. Bitte kürze ihn oder lade nur die wichtigsten Seiten hoch."
+      });
+    }
+
+    const result = await buildFinalAnswerFromText(text, lang);
+    return res.json(result);
+  } catch (error) {
+    console.error("Fehler /api/brief:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
+  }
+});
+
 app.post("/api/brief-bild", async (req, res) => {
   try {
     const bilder = req.body.bilder || [];
@@ -1517,6 +1547,98 @@ app.post("/api/brief-bild", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
+    });
+  }
+});
+
+app.post("/api/frage", async (req, res) => {
+  try {
+    const briefText = cleanText(req.body.briefText || "");
+    const erklaerungKurz = cleanText(req.body.kurz || "");
+    const erklaerungDetails = cleanText(req.body.details || "");
+    const frage = cleanText(req.body.frage || "");
+    const lang = (req.body.lang || "de").toLowerCase();
+    const langMeta = getLanguageMeta(lang);
+
+    if (!frage) {
+      return res.status(400).json({
+        ok: false,
+        error: "Keine Frage gesendet"
+      });
+    }
+
+    if (!briefText && !erklaerungKurz && !erklaerungDetails) {
+      return res.status(400).json({
+        ok: false,
+        error: "Kein Brief-Kontext vorhanden"
+      });
+    }
+
+    if (frage.length > 1500) {
+      return res.status(400).json({
+        ok: false,
+        error: "Die Frage ist zu lang. Bitte kürzer formulieren."
+      });
+    }
+
+    const raw = await callGemini([
+      {
+        text: `
+Du bist Hilfe24. Du hilfst Menschen, Briefe zu verstehen und den nächsten sinnvollen Schritt zu finden.
+
+Der Nutzer stellt eine Frage zu einem bereits hochgeladenen Brief.
+
+Antworte in dieser Sprache: ${langMeta.label}
+
+WICHTIG:
+- Antworte einfach, klar und praktisch.
+- Antworte passend zum Brief.
+- Erfinde keine Fristen, Beträge, Termine oder Rechte.
+- Wenn etwas im Brief nicht sicher steht, sage das klar.
+- Keine Panik machen.
+- Keine langen Fachtexte.
+- Wenn es um Gericht, Polizei, Frist, Mahnung, Inkasso oder Behörden geht: sage klar, dass man es nicht ignorieren soll.
+- Wenn es um Medizin geht: keine Diagnose erfinden, sondern erklären und bei Unsicherheit Arzt/Ärztin empfehlen.
+- Wenn es um Geld/Forderung geht: immer erst prüfen, dann zahlen oder widersprechen/Hilfe holen.
+- Wenn es um Anträge oder Rechte geht: keine sichere Zusage machen, sondern sagen, ob es sich lohnen könnte, das zu prüfen.
+- Wenn eine Antwort an eine Stelle sinnvoll ist, biete einen kurzen Textvorschlag an.
+- Wenn Unterlagen fehlen könnten, nenne eine kurze Unterlagenliste.
+- Wenn der Nutzer nach WhatsApp, E-Mail, Brief oder PDF fragt, formuliere einen passenden Text.
+
+ANTWORT-AUFBAU:
+1. Kurze direkte Antwort.
+2. Was bedeutet das für den Nutzer?
+3. Was sollte der Nutzer jetzt tun?
+4. Falls passend: kurzer Textvorschlag.
+
+BRIEF-KURZ-ERKLÄRUNG:
+${erklaerungKurz}
+
+BRIEF-DETAILS:
+${erklaerungDetails}
+
+ORIGINAL-BRIEF-TEXT:
+${briefText.slice(0, 12000)}
+
+FRAGE DES NUTZERS:
+${frage}
+`
+      }
+    ]);
+
+    const antwort = cleanText(raw)
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    return res.json({
+      ok: true,
+      antwort
+    });
+  } catch (error) {
+    console.error("Fehler /api/frage:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Fehler bei der Frage"
     });
   }
 });
