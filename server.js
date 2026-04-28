@@ -1264,13 +1264,18 @@ Gib genau dieses JSON zurück:
   "kurz": "",
   "details": ""
 }
+WICHTIGE REGEL FÜR DEN KURZTEXT:
+- Für den Kurztext darfst du NUR den Inhalt von KURZTEXT_DEUTSCH verwenden.
+- Du darfst KEINE Informationen aus DETAILTEXT_DEUTSCH in den Kurztext übernehmen.
+- Wenn eine Information nur im Detailtext steht, bleibt sie im Detailtext.
+- Der Kurztext darf nicht ausführlicher werden als der deutsche Kurztext.
+- Keine Gesetzesdetails, Paragrafen, Telefonnummern, vollständige Adressen oder Zusatzinformationen in den Kurztext übernehmen, wenn sie nicht ausdrücklich im deutschen Kurztext stehen.
 
 KURZTEXT_DEUTSCH:
 ${protectedKurz.text}
 
 DETAILTEXT_DEUTSCH:
 ${protectedDetails.text}
-`
     }
   ]);
 
