@@ -1247,6 +1247,7 @@ Gib genau dieses JSON zurück:
   "kurz": "",
   "details": ""
 }
+
 KURZTEXT_DEUTSCH:
 ${protectedKurz.text}
 
@@ -1258,11 +1259,7 @@ ${protectedDetails.text}
 
   const parsed = extractJson(raw);
 
-  KURZTEXT_DEUTSCH:
-${protectedKurz.text}
-
-DETAILTEXT_DEUTSCH:
-const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.tokens)
+  const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.tokens)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
@@ -1278,7 +1275,6 @@ const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.t
     details: localizeDetailHeadings(detailsRaw, langMeta.code)
   };
 }
-
 async function buildFinalPayloadFromInfo(info, lang) {
   const langCode = getLanguageMeta(lang).code;
 
