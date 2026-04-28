@@ -248,6 +248,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="card">
@@ -306,6 +307,30 @@
       <div class="section-title">Mehr Details</div>
       <div id="detailText" class="detail-box"></div>
     </div>
+
+    <div id="frageCard" class="card hidden">
+      <div class="section-title">Frage zu diesem Brief stellen</div>
+
+      <div class="sub">
+        Du kannst jetzt zu diesem Brief eine Frage stellen. Zum Beispiel:
+        „Muss ich antworten?“, „Kann ich widersprechen?“, „Was muss ich jetzt tun?“
+      </div>
+
+      <label for="frageText">Deine Frage</label>
+      <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
+
+      <div class="button-row">
+        <button id="frageBtn" class="btn-primary" type="button">Frage stellen</button>
+      </div>
+
+      <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
+      <div id="frageError" class="error hidden"></div>
+
+      <div id="frageAntwortBox" class="hidden">
+        <div class="section-title">Antwort</div>
+        <div id="frageAntwort" class="detail-box"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -327,6 +352,14 @@
     const kurzTextEl = document.getElementById("kurzText");
     const detailTextEl = document.getElementById("detailText");
 
+    const frageCardEl = document.getElementById("frageCard");
+    const frageTextEl = document.getElementById("frageText");
+    const frageBtn = document.getElementById("frageBtn");
+    const frageStatusEl = document.getElementById("frageStatus");
+    const frageErrorEl = document.getElementById("frageError");
+    const frageAntwortBoxEl = document.getElementById("frageAntwortBox");
+    const frageAntwortEl = document.getElementById("frageAntwort");
+
     const readShortBtn = document.getElementById("readShortBtn");
     const readAllBtn = document.getElementById("readAllBtn");
     const stopBtn = document.getElementById("stopBtn");
@@ -337,6 +370,7 @@
     let currentLang = "de";
     let currentKurzText = "";
     let currentDetailText = "";
+    let currentBriefText = "";
     let activeRequestId = 0;
     let activeAudioUrl = "";
 
@@ -423,10 +457,23 @@
     function clearResults() {
       if (kurzTextEl) kurzTextEl.textContent = "";
       if (detailTextEl) detailTextEl.textContent = "";
+
+      if (frageTextEl) frageTextEl.value = "";
+      if (frageAntwortEl) frageAntwortEl.textContent = "";
+      if (frageErrorEl) frageErrorEl.textContent = "";
+      if (frageStatusEl) frageStatusEl.textContent = "";
+
       currentKurzText = "";
       currentDetailText = "";
+      currentBriefText = "";
+
       hide(resultCardEl);
       hide(detailCardEl);
+      hide(frageCardEl);
+      hide(frageAntwortBoxEl);
+      hide(frageErrorEl);
+      hide(frageStatusEl);
+
       stopAudio();
     }
 
@@ -497,8 +544,8 @@
         })
       });
 
-    const data = await response.json();
-     
+      const data = await response.json();
+
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "TTS-Fehler");
       }
@@ -563,6 +610,7 @@
 
         if (files.length > 0) {
           const bilder = [];
+
           for (const file of files) {
             const imageData = await fileToBase64(file);
             bilder.push({
@@ -620,9 +668,11 @@
         currentLang = lang;
         currentKurzText = data.kurz || "";
         currentDetailText = data.details || "";
+        currentBriefText = text || "";
 
         show(resultCardEl);
         show(detailCardEl);
+        show(frageCardEl);
         setOk("Der Brief wurde erklärt.");
       } catch (err) {
         if (requestId !== activeRequestId) return;
@@ -635,6 +685,79 @@
           if (analyseBtn) analyseBtn.disabled = false;
           if (resetBtn) resetBtn.disabled = false;
         }
+      }
+    }
+
+    async function askQuestionAboutLetter() {
+      const frage = frageTextEl ? frageTextEl.value.trim() : "";
+      const lang = langEl ? langEl.value : currentLang || "de";
+
+      if (!frage) {
+        if (frageErrorEl) {
+          frageErrorEl.textContent = "Bitte schreibe zuerst eine Frage.";
+          show(frageErrorEl);
+        }
+        return;
+      }
+
+      if (!currentKurzText && !currentDetailText) {
+        if (frageErrorEl) {
+          frageErrorEl.textContent = "Bitte erkläre zuerst einen Brief.";
+          show(frageErrorEl);
+        }
+        return;
+      }
+
+      if (frageBtn) frageBtn.disabled = true;
+
+      if (frageStatusEl) {
+        frageStatusEl.textContent = "Antwort wird erstellt...";
+        show(frageStatusEl);
+      }
+
+      if (frageErrorEl) {
+        frageErrorEl.textContent = "";
+        hide(frageErrorEl);
+      }
+
+      if (frageAntwortEl) frageAntwortEl.textContent = "";
+      hide(frageAntwortBoxEl);
+
+      try {
+        const response = await fetch("/api/frage", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            lang,
+            frage,
+            briefText: currentBriefText,
+            kurz: currentKurzText,
+            details: currentDetailText
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Die Frage konnte nicht beantwortet werden.");
+        }
+
+        if (frageAntwortEl) frageAntwortEl.textContent = data.antwort || "";
+        show(frageAntwortBoxEl);
+      } catch (err) {
+        if (frageErrorEl) {
+          frageErrorEl.textContent = err.message || "Fehler bei der Frage.";
+          show(frageErrorEl);
+        }
+      } finally {
+        if (frageStatusEl) {
+          frageStatusEl.textContent = "";
+          hide(frageStatusEl);
+        }
+
+        if (frageBtn) frageBtn.disabled = false;
       }
     }
 
@@ -668,24 +791,29 @@
       resetBtn.addEventListener("click", resetAll);
     }
 
-   if (readAllBtn) {
-  readAllBtn.addEventListener("click", async () => {
-    try {
-      await playServerAudio(currentDetailText || currentKurzText);
-    } catch (error) {
-      setError(error.message || "Audio konnte nicht geladen werden.");
+    if (frageBtn) {
+      frageBtn.addEventListener("click", askQuestionAboutLetter);
     }
-  });
-}
- if (readShortBtn) {
-  readShortBtn.addEventListener("click", async () => {
-    try {
-      await playServerAudio(currentKurzText);
-    } catch (error) {
-      setError(error.message || "Audio konnte nicht geladen werden.");
+
+    if (readAllBtn) {
+      readAllBtn.addEventListener("click", async () => {
+        try {
+          await playServerAudio(currentDetailText || currentKurzText);
+        } catch (error) {
+          setError(error.message || "Audio konnte nicht geladen werden.");
+        }
+      });
     }
-  });
-}
+
+    if (readShortBtn) {
+      readShortBtn.addEventListener("click", async () => {
+        try {
+          await playServerAudio(currentKurzText);
+        } catch (error) {
+          setError(error.message || "Audio konnte nicht geladen werden.");
+        }
+      });
+    }
 
     if (stopBtn) {
       stopBtn.addEventListener("click", stopAudio);
