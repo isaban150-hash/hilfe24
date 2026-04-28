@@ -1263,7 +1263,6 @@ Gib genau dieses JSON zurück:
 {
   "kurz": "",
   "details": ""
-}
 WICHTIGE REGEL FÜR DEN KURZTEXT:
 - Für den Kurztext darfst du NUR den Inhalt von KURZTEXT_DEUTSCH verwenden.
 - Du darfst KEINE Informationen aus DETAILTEXT_DEUTSCH in den Kurztext übernehmen.
@@ -1271,16 +1270,23 @@ WICHTIGE REGEL FÜR DEN KURZTEXT:
 - Der Kurztext darf nicht ausführlicher werden als der deutsche Kurztext.
 - Keine Gesetzesdetails, Paragrafen, Telefonnummern, vollständige Adressen oder Zusatzinformationen in den Kurztext übernehmen, wenn sie nicht ausdrücklich im deutschen Kurztext stehen.
 
-WICHTIGE REGEL FÜR INKASSO, MAHNUNG, FORDERUNG UND MAHNBESCHEID:
-- Wenn es um Inkasso, Mahnung, Forderung, offene Rechnung, Zahlungsaufforderung, Mahnbescheid oder Mahngericht geht, schreibe NICHT, dass die Person zu einem Termin gehen muss, außer im Text steht wirklich ein konkreter Termin mit Ort.
-- Bei Forderungen soll der Kurztext immer sagen:
-  Forderung prüfen.
-  Wenn die Forderung stimmt: zahlen.
-  Wenn die Forderung nicht stimmt: widersprechen oder Hilfe holen.
-- Schreibe bei Forderungen nicht "zum Termin gehen", nicht "zum genannten Termin erscheinen", nicht "Randevuya gidin" und nicht "اذهب إلى الموعد", wenn kein echter Termin im Brief steht.
-- Wenn kein konkreter Termin vorhanden ist, verwende Wörter wie "Frist", "Zahlung", "Forderung", "Mahnung" oder "Prüfung", aber nicht "Termin".
-- Wenn im Brief ein Betrag steht, nenne den Betrag im Kurztext.
-- Wenn eine Folge genannt wird, erkläre kurz: Es können zusätzliche Kosten, Mahnverfahren, Vollstreckung oder rechtliche Schritte folgen.
+WICHTIGE REGEL FÜR FORDERUNG, INKASSO, MAHNUNG, ZAHLUNGSAUFFORDERUNG, MAHNBESCHEID UND MAHNGERICHT:
+- Diese Regel gilt für alle Briefe mit Inkasso, Mahnung, Forderung, offene Rechnung, Zahlungsaufforderung, Mahnbescheid, Mahngericht, Vollstreckung, Inkassokosten, Gläubiger, Schuldner oder offenem Betrag.
+- Schreibe bei solchen Briefen NIEMALS, dass die Person zu einem Termin gehen muss, außer im Text steht wirklich ein konkreter Termin mit Ort.
+- Schreibe nicht: "zum Termin gehen", "zum genannten Termin erscheinen", "Randevuya gidin", "اذهب إلى الموعد" oder ähnliche Formulierungen, wenn kein echter Termin vorhanden ist.
+- Bei Forderungen muss der Kurztext immer diese Reihenfolge haben:
+  1. Das ist eine Forderung/Mahnung/Zahlungsaufforderung von dem Absender.
+  2. Es geht um den offenen Betrag.
+  3. Prüfen Sie zuerst, ob die Forderung stimmt.
+  4. Wenn die Forderung stimmt: zahlen.
+  5. Wenn die Forderung nicht stimmt: widersprechen oder Hilfe holen.
+  6. Sonst können zusätzliche Kosten, Mahnverfahren, Vollstreckung oder rechtliche Schritte folgen.
+- Der Betrag darf im Kurztext nur EINMAL genannt werden.
+- Schreibe nicht doppelt: "82,64 Euro" und danach noch einmal "Betrag: 82,64 Euro".
+- Schreibe bei Forderungen nicht nur "zahlen". Immer zuerst "prüfen".
+- Wenn keine genaue Zahlungsfrist im Brief steht, schreibe nicht "Frist" und erfinde keine Frist.
+- Wenn ein Mahnbescheid oder Mahngericht erwähnt wird, erkläre einfach: "Es können zusätzliche Kosten oder gerichtliche Schritte folgen."
+- Wenn der Brief unklar ist, schreibe: "Forderung prüfen und bei Unsicherheit Hilfe holen."
 
 KURZTEXT_DEUTSCH:
 ${protectedKurz.text}
