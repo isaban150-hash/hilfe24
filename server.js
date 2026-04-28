@@ -1072,7 +1072,42 @@ async function translateFinalTextsIfNeeded(kurzDe, detailsDe, lang) {
 
   const cleanKurz = cleanText(kurzDe);
   const cleanDetails = cleanText(detailsDe);
+function protectCriticalValues(text) {
+    const tokens = [];
+    let output = String(text || "");
 
+    const patterns = [
+      /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g,          // 29.04.2026
+      /\b\d{1,2}:\d{2}\s*Uhr\b/g,              // 10:00 Uhr
+      /\b\d{1,2}:\d{2}\b/g,                    // 10:00
+      /\b\d+[,.]\d{2}\s*€\b/g,                 // 89,50 €
+      /\b\d+\s*%\b/g,                          // 10 %
+      /\b\d+\s*Prozent\b/gi,                   // 10 Prozent
+      /\b§\s*\d+[a-zA-Z]?\b/g,                 // § 59
+      /\bSGB\s*[IVX]+\b/g                      // SGB II
+    ];
+
+    for (const pattern of patterns) {
+      output = output.replace(pattern, (match) => {
+        const key = `__H24TOKEN${tokens.length}__`;
+        tokens.push({ key, value: match });
+        return key;
+      });
+    }
+
+    return { text: output, tokens };
+  }
+
+  function restoreCriticalValues(text, tokens) {
+    let output = String(text || "");
+    for (const item of tokens || []) {
+      output = output.split(item.key).join(item.value);
+    }
+    return output;
+  }
+
+  const protectedKurz = protectCriticalValues(cleanKurz);
+  const protectedDetails = protectCriticalValues(cleanDetails);
   if (langMeta.code === "de") {
     return {
       kurz: cleanKurz,
