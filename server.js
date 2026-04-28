@@ -1078,7 +1078,7 @@ function protectCriticalValues(text) {
 
     const patterns = [
       /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g,          // 29.04.2026
-      /\b\d{1,2}:\d{2}\s*Uhr\b/g,              // 10:00 Uhr
+    
       /\b\d{1,2}:\d{2}\b/g,                    // 10:00
       /\b\d+[,.]\d{2}\s*€\b/g,                 // 89,50 €
       /\b\d+\s*%\b/g,                          // 10 %
