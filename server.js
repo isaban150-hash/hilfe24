@@ -1098,13 +1098,22 @@ function protectCriticalValues(text) {
     return { text: output, tokens };
   }
 
-  function restoreCriticalValues(text, tokens) {
-    let output = String(text || "");
-    for (const item of tokens || []) {
-      output = output.split(item.key).join(item.value);
-    }
-    return output;
-  }
+ function restoreCriticalValues(text, tokens = []) {
+  let out = String(text || "");
+
+  tokens.forEach((value, index) => {
+    const tokenPlain = `H24TOKEN${index}`;
+    const tokenWrapped = `[[H24TOKEN${index}]]`;
+    const tokenLoose = new RegExp(`\$begin:math:display$\\\\\[\\\\s\*H24TOKEN\$\{index\}\\\\s\*\\$end:math:display$\\]`, "g");
+
+    out = out
+      .replaceAll(tokenWrapped, String(value))
+      .replaceAll(tokenPlain, String(value))
+      .replace(tokenLoose, String(value));
+  });
+
+  return out;
+}
 
   const protectedKurz = protectCriticalValues(cleanKurz);
   const protectedDetails = protectCriticalValues(cleanDetails);
