@@ -25,7 +25,13 @@ const PORT = process.env.PORT || 8080;
 const apiKey = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
 const ttsClient = createTtsClient();
-
+function getTodayGerman() {
+  return new Date().toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
 app.use(express.json({ limit: "25mb" }));
 app.use(express.static(__dirname));
 
@@ -1162,7 +1168,7 @@ const metaText = JSON.stringify(meta, null, 2);
 Du bist Hilfe24. Du hilfst Menschen nach einem Schreiben beim nächsten konkreten Schritt.
 
 Ausgewählte Sprache des Nutzers: ${langMeta.label}
-Heutiges Datum: ${heute}
+${getTodayGerman()}
 
 WICHTIG:
 Wenn der Nutzer eine E-Mail, Vorlage, Antwort, WhatsApp, Brieftext, PDF-Text, Absage, Terminverschiebung, Krankmeldung, Ratenzahlung, Widerspruch, Nachfrage oder Unterlagen-Nachreichung möchte:
