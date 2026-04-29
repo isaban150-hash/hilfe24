@@ -293,7 +293,7 @@ Beispiele:
 Wenn so etwas sicher im Schreiben steht, exakt übernehmen.
 Wenn nichts sicher erkennbar ist, referenzen leer lassen.
 Nichts erfinden.
- Heutiges Datum: ${heute}
+ Heutiges Datum: ${new Date().toLocaleDateString("de-DE")}
  WICHTIG:
 - Nicht raten.
 - Keine Fristen, Termine, Beträge oder Folgen erfinden.
