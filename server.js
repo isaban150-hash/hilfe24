@@ -315,7 +315,18 @@ Beispiele:
 Wenn so etwas sicher im Schreiben steht, exakt übernehmen.
 Wenn nichts sicher erkennbar ist, referenzen leer lassen.
 Nichts erfinden.
+E-MAIL-ADRESSE:
+Suche im Schreiben nach einer klar erkennbaren E-Mail-Adresse des Absenders oder der zuständigen Stelle.
+Trage sie bei "email_adresse" ein.
+Beispiele:
+- info@firma.de
+- service@krankenkasse.de
+- badsalzuflen.025@jobcenter-lippe.de
 
+Nur echte E-Mail-Adressen übernehmen.
+Keine Telefonnummer eintragen.
+Keine Internetseite eintragen.
+Wenn keine E-Mail-Adresse sicher erkennbar ist, leer lassen.
 Heutiges Datum: ${getTodayGerman()}
 
 WICHTIG:
@@ -482,10 +493,10 @@ Der Satz soll den Kern treffen.
 
 Gib genau dieses JSON zurück:
 {
-  "absender_original": "",
-  "absender_kurz": "",
-  "briefart": "",
-  "betroffene_person": "",
+ "absender_original": "",
+"absender_kurz": "",
+"email_adresse": "",
+"briefart": "",
   "worum_geht_es": "",
   "wichtigste_punkte": [],
   "was_ist_zu_tun": [],
@@ -1017,6 +1028,7 @@ async function buildFinalPayloadFromInfo(info, lang) {
     meta: {
       briefart: info.briefart,
       absender: info.absender_kurz || info.absender_original,
+     email_adresse: info.email_adresse,
       person: info.betroffene_person,
       termin: info.termin,
       frist: info.frist,
@@ -1298,7 +1310,14 @@ AKTIONEN:
 
 FORM FÜR DEUTSCHE E-MAIL:
 Empfänger: [E-Mail-Adresse oder Hinweis]
+WICHTIG FÜR EMPFÄNGER:
+Wenn in den erkannten Daten "email_adresse" vorhanden ist, schreibe:
+Empfänger: [email_adresse]
 
+Wenn keine email_adresse vorhanden ist, schreibe:
+Empfänger: Bitte E-Mail-Adresse aus dem Brief übernehmen.
+
+Schreibe beim Empfänger nicht nur den Namen der Behörde, wenn eine E-Mail erstellt werden soll.
 Betreff: [passender Betreff mit Termin/Referenz, wenn vorhanden]
 
 Sehr geehrte Damen und Herren,
