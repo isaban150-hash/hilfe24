@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hilfe24</title>
+
   <style>
     :root {
       --bg: #f5f7fb;
@@ -74,7 +75,7 @@
     }
 
     textarea {
-      min-height: 160px;
+      min-height: 150px;
       resize: vertical;
     }
 
@@ -105,6 +106,11 @@
       padding: 12px 16px;
       font-size: 16px;
       cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
     }
 
     .btn-primary {
@@ -200,6 +206,7 @@
       color: var(--danger);
       font-weight: bold;
       margin-top: 10px;
+      line-height: 1.5;
     }
 
     .audio-status {
@@ -230,12 +237,12 @@
       }
 
       .short-box {
-        font-size: 24px;
+        font-size: 22px;
         line-height: 1.9;
       }
 
       .detail-box {
-        font-size: 20px;
+        font-size: 18px;
         line-height: 1.9;
       }
 
@@ -253,6 +260,7 @@
   <div class="wrap">
     <div class="card">
       <h1>Hilfe24</h1>
+
       <div class="sub">
         Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.
       </div>
@@ -303,23 +311,23 @@
       <audio id="audioPlayer" controls class="hidden"></audio>
     </div>
 
- <div id="detailToggleCard" class="card hidden">
-  <button id="toggleDetailsBtn" class="btn-secondary" type="button">
-    📋 Mehr Details anzeigen
-  </button>
-</div>
+    <div id="detailToggleCard" class="card hidden">
+      <button id="toggleDetailsBtn" class="btn-secondary" type="button">
+        📋 Mehr Details anzeigen
+      </button>
+    </div>
 
-<div id="detailCard" class="card hidden">
-  <div class="section-title">Mehr Details</div>
-  <div id="detailText" class="detail-box"></div>
-</div>
+    <div id="detailCard" class="card hidden">
+      <div class="section-title">Mehr Details</div>
+      <div id="detailText" class="detail-box"></div>
+    </div>
 
     <div id="frageCard" class="card hidden">
       <div class="section-title">Frage zu diesem Brief stellen</div>
 
       <div class="sub">
         Du kannst jetzt zu diesem Brief eine Frage stellen. Zum Beispiel:
-        „Muss ich antworten?“, „Kann ich widersprechen?“, „Was muss ich jetzt tun?“
+        „Ich bin krank“, „Schreib mir eine E-Mail“, „Was muss ich tun?“
       </div>
 
       <label for="frageText">Deine Frage</label>
@@ -333,13 +341,15 @@
       <div id="frageError" class="error hidden"></div>
 
       <div id="frageAntwortBox" class="hidden">
-  <div class="section-title">Antwort</div>
-  <div id="frageAntwort" class="detail-box"></div>
+        <div class="section-title">Antwort</div>
+        <div id="frageAntwort" class="detail-box"></div>
 
-  <div class="audio-row">
-    <button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Antwort vorlesen</button>
-  </div>
-</div>
+        <div class="audio-row">
+          <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
+            🔊 Antwort vorlesen
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -348,8 +358,10 @@
     const briefTextEl = document.getElementById("briefText");
     const bilderEl = document.getElementById("bilder");
     const previewGridEl = document.getElementById("previewGrid");
+
     const analyseBtn = document.getElementById("analyseBtn");
     const resetBtn = document.getElementById("resetBtn");
+
     const statusEl = document.getElementById("status");
     const errorBoxEl = document.getElementById("errorBox");
     const okBoxEl = document.getElementById("okBox");
@@ -358,10 +370,11 @@
     const warningTextEl = document.getElementById("warningText");
 
     const resultCardEl = document.getElementById("resultCard");
-    const detailCardEl = document.getElementById("detailCard");
+    const kurzTextEl = document.getElementById("kurzText");
+
     const detailToggleCardEl = document.getElementById("detailToggleCard");
     const toggleDetailsBtn = document.getElementById("toggleDetailsBtn");
-    const kurzTextEl = document.getElementById("kurzText");
+    const detailCardEl = document.getElementById("detailCard");
     const detailTextEl = document.getElementById("detailText");
 
     const frageCardEl = document.getElementById("frageCard");
@@ -371,7 +384,8 @@
     const frageErrorEl = document.getElementById("frageError");
     const frageAntwortBoxEl = document.getElementById("frageAntwortBox");
     const frageAntwortEl = document.getElementById("frageAntwort");
-const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
+    const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
+
     const readShortBtn = document.getElementById("readShortBtn");
     const readAllBtn = document.getElementById("readAllBtn");
     const stopBtn = document.getElementById("stopBtn");
@@ -379,7 +393,7 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
     const audioPlayerEl = document.getElementById("audioPlayer");
     const audioStatusEl = document.getElementById("audioStatus");
 
-
+    let currentLang = "de";
     let currentKurzText = "";
     let currentDetailText = "";
     let currentBriefText = "";
@@ -458,10 +472,12 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
 
     function stopAudio() {
       if (!audioPlayerEl) return;
+
       audioPlayerEl.pause();
       audioPlayerEl.currentTime = 0;
       audioPlayerEl.removeAttribute("src");
       audioPlayerEl.load();
+
       revokeAudioUrl();
       clearAudioStatus();
       hide(audioPlayerEl);
@@ -476,15 +492,19 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
       if (frageErrorEl) frageErrorEl.textContent = "";
       if (frageStatusEl) frageStatusEl.textContent = "";
 
-      currentLang = lang;
-      currentKurzText = data.kurz || "";
-      currentDetailText = data.details || "";
-      currentBriefText = text || "";
+      currentKurzText = "";
+      currentDetailText = "";
+      currentBriefText = "";
       currentMeta = {};
+
       hide(resultCardEl);
       hide(detailCardEl);
       hide(detailToggleCardEl);
-    if (toggleDetailsBtn) toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+
+      if (toggleDetailsBtn) {
+        toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+      }
+
       hide(frageCardEl);
       hide(frageAntwortBoxEl);
       hide(frageErrorEl);
@@ -505,6 +525,7 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
       if (briefTextEl) briefTextEl.value = "";
       if (bilderEl) bilderEl.value = "";
       if (previewGridEl) previewGridEl.innerHTML = "";
+
       activeRequestId++;
       clearOutputState();
     }
@@ -513,6 +534,7 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
       if (!previewGridEl || !bilderEl) return;
 
       previewGridEl.innerHTML = "";
+
       const files = Array.from(bilderEl.files || []);
 
       for (const file of files.slice(0, 6)) {
@@ -526,11 +548,13 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
     async function fileToBase64(file) {
       return await new Promise((resolve, reject) => {
         const reader = new FileReader();
+
         reader.onload = () => {
           const result = String(reader.result || "");
           const base64 = result.split(",")[1] || "";
           resolve(base64);
         };
+
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
@@ -554,14 +578,10 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
         headers: {
           "Content-Type": "application/json"
         },
-       body: JSON.stringify({
-  lang,
-  frage,
-  briefText: currentBriefText,
-  kurz: currentKurzText,
-  details: currentDetailText,
-  meta: currentMeta
-})
+        body: JSON.stringify({
+          text,
+          lang
+        })
       });
 
       const data = await response.json();
@@ -678,6 +698,7 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
             warningTextEl.textContent =
               data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
           }
+
           show(warningCardEl);
           return;
         }
@@ -689,12 +710,18 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
         currentKurzText = data.kurz || "";
         currentDetailText = data.details || "";
         currentBriefText = text || "";
-show(resultCardEl);
-show(detailToggleCardEl);
-hide(detailCardEl);
-show(frageCardEl);
-if (toggleDetailsBtn) toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
-setOk("Der Brief wurde erklärt.");
+        currentMeta = data.meta || {};
+
+        show(resultCardEl);
+        show(detailToggleCardEl);
+        hide(detailCardEl);
+        show(frageCardEl);
+
+        if (toggleDetailsBtn) {
+          toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+        }
+
+        setOk("Der Brief wurde erklärt.");
       } catch (err) {
         if (requestId !== activeRequestId) return;
 
@@ -755,7 +782,8 @@ setOk("Der Brief wurde erklärt.");
             frage,
             briefText: currentBriefText,
             kurz: currentKurzText,
-            details: currentDetailText
+            details: currentDetailText,
+            meta: currentMeta
           })
         });
 
@@ -765,7 +793,10 @@ setOk("Der Brief wurde erklärt.");
           throw new Error(data.error || "Die Frage konnte nicht beantwortet werden.");
         }
 
-        if (frageAntwortEl) frageAntwortEl.textContent = data.antwort || "";
+        if (frageAntwortEl) {
+          frageAntwortEl.textContent = data.antwort || "";
+        }
+
         show(frageAntwortBoxEl);
       } catch (err) {
         if (frageErrorEl) {
@@ -811,21 +842,33 @@ setOk("Der Brief wurde erklärt.");
     if (resetBtn) {
       resetBtn.addEventListener("click", resetAll);
     }
-if (toggleDetailsBtn) {
-  toggleDetailsBtn.addEventListener("click", () => {
-    if (!detailCardEl) return;
 
-    if (detailCardEl.classList.contains("hidden")) {
-      show(detailCardEl);
-      toggleDetailsBtn.textContent = "📋 Details ausblenden";
-    } else {
-      hide(detailCardEl);
-      toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+    if (toggleDetailsBtn) {
+      toggleDetailsBtn.addEventListener("click", () => {
+        if (!detailCardEl) return;
+
+        if (detailCardEl.classList.contains("hidden")) {
+          show(detailCardEl);
+          toggleDetailsBtn.textContent = "📋 Details ausblenden";
+        } else {
+          hide(detailCardEl);
+          toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+        }
+      });
     }
-  });
-}
+
     if (frageBtn) {
       frageBtn.addEventListener("click", askQuestionAboutLetter);
+    }
+
+    if (readShortBtn) {
+      readShortBtn.addEventListener("click", async () => {
+        try {
+          await playServerAudio(currentKurzText);
+        } catch (error) {
+          setError(error.message || "Audio konnte nicht geladen werden.");
+        }
+      });
     }
 
     if (readAllBtn) {
@@ -837,19 +880,11 @@ if (toggleDetailsBtn) {
         }
       });
     }
-if (readFrageAntwortBtn) {
-  readFrageAntwortBtn.addEventListener("click", async () => {
-    try {
-      await playServerAudio(frageAntwortEl ? frageAntwortEl.textContent : "");
-    } catch (error) {
-      setError(error.message || "Audio konnte nicht geladen werden.");
-    }
-  });
-}
-    if (readShortBtn) {
-      readShortBtn.addEventListener("click", async () => {
+
+    if (readFrageAntwortBtn) {
+      readFrageAntwortBtn.addEventListener("click", async () => {
         try {
-          await playServerAudio(currentKurzText);
+          await playServerAudio(frageAntwortEl ? frageAntwortEl.textContent : "");
         } catch (error) {
           setError(error.message || "Audio konnte nicht geladen werden.");
         }
