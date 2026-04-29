@@ -25,6 +25,7 @@ const PORT = process.env.PORT || 8080;
 const apiKey = process.env.GEMINI_API_KEY;
 const MODEL = "gemini-2.5-flash";
 const ttsClient = createTtsClient();
+
 function getTodayGerman() {
   return new Date().toLocaleDateString("de-DE", {
     day: "2-digit",
@@ -32,6 +33,7 @@ function getTodayGerman() {
     year: "numeric"
   });
 }
+
 app.use(express.json({ limit: "25mb" }));
 app.use(express.static(__dirname));
 
@@ -56,6 +58,7 @@ function getLanguageMeta(lang) {
         ttsVoiceName: "",
         ttsGender: "FEMALE"
       };
+
     case "bg":
       return {
         code: "bg",
@@ -64,6 +67,7 @@ function getLanguageMeta(lang) {
         ttsVoiceName: "",
         ttsGender: "FEMALE"
       };
+
     case "ar":
       return {
         code: "ar",
@@ -72,6 +76,7 @@ function getLanguageMeta(lang) {
         ttsVoiceName: "",
         ttsGender: "FEMALE"
       };
+
     default:
       return {
         code: "de",
@@ -92,9 +97,15 @@ async function callGemini(parts) {
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        contents: [{ parts }]
+        contents: [
+          {
+            parts
+          }
+        ]
       })
     }
   );
@@ -150,6 +161,7 @@ function normalizeString(value) {
 
 function normalizeArray(value) {
   if (!Array.isArray(value)) return [];
+
   return value
     .map((item) => normalizeString(item))
     .filter(Boolean);
@@ -158,6 +170,7 @@ function normalizeArray(value) {
 function normalizeInfo(info) {
   function normalizePerson(value) {
     const v = normalizeString(value);
+
     if (!v) return "";
 
     const lower = v.toLowerCase();
@@ -220,11 +233,11 @@ function normalizeInfo(info) {
     ),
 
     naechster_schritt: normalizeString(info.naechster_schritt),
-   betrag: normalizeString(info.betrag),
-unterlagen: normalizeArray(info.unterlagen),
-referenzen: normalizeArray(info.referenzen),
+    betrag: normalizeString(info.betrag),
+    unterlagen: normalizeArray(info.unterlagen),
+    referenzen: normalizeArray(info.referenzen),
 
-antwort_sprache: normalizeChoice(
+    antwort_sprache: normalizeChoice(
       info.antwort_sprache,
       ["de", "tr", "bg", "ar", "unklar"],
       "unklar"
@@ -279,6 +292,7 @@ DENKE IMMER SO:
 6. Was passiert, wenn nichts gemacht wird?
 7. Was ist der nächste sinnvolle Schritt?
 8. Welche Aktionen passen dazu?
+
 REFERENZEN / NUMMERN:
 Suche wichtige Identifikationsdaten im Schreiben und trage sie bei "referenzen" ein.
 Beispiele:
@@ -296,11 +310,14 @@ Beispiele:
 - Mein Zeichen
 - Ihr Zeichen
 - Bearbeitungsnummer
+
 Wenn so etwas sicher im Schreiben steht, exakt übernehmen.
 Wenn nichts sicher erkennbar ist, referenzen leer lassen.
 Nichts erfinden.
- Heutiges Datum: ${new Date().toLocaleDateString("de-DE")}
- WICHTIG:
+
+Heutiges Datum: ${getTodayGerman()}
+
+WICHTIG:
 - Nicht raten.
 - Keine Fristen, Termine, Beträge oder Folgen erfinden.
 - Keine Diagnose erfinden.
@@ -482,10 +499,10 @@ Gib genau dieses JSON zurück:
   "naechster_schritt": "",
   "betrag": "",
   "unterlagen": [],
+  "referenzen": [],
   "antwort_sprache": "unklar",
   "passende_aktionen": []
-"referenzen": [],
-
+}
 
 Gib nur gültiges JSON zurück.
 Keine Erklärung.
@@ -506,56 +523,29 @@ function buildExtractionPromptForImages() {
   return buildExtractionPromptBase("image");
 }
 
-function buildImageQualityCheckPrompt() {
-  return `
-Du prüfst nur, ob ein Brief-Foto gut genug ist, damit Hilfe24 den Brief einfach erklären kann.
-
-Antworte NUR als JSON.
-
-Gib genau dieses JSON zurück:
-{
-  "ok": true,
-  "problem": "",
-  "hinweis": ""
-}
-
-Regeln:
-- "ok": true, wenn der Brief insgesamt gut genug lesbar ist
-- "ok": false nur dann, wenn das Bild klar schlecht ist
-- Sei nicht zu streng
-- Ein Foto muss NICHT perfekt sein
-- Wenn die ganze Seite sichtbar und der Text größtenteils lesbar ist, dann setze "ok": true
-- Nicht wegen jeder kleinen Unsicherheit stoppen
-- Nicht wegen möglicher fehlender Seite stoppen, wenn die sichtbare Seite gut genug erkennbar ist
-- Nur blockieren bei klaren Problemen
-
-Blockiere nur bei:
-- Bild stark unscharf
-- Bild zu dunkel
-- großer Schatten auf wichtigem Text
-- Seite stark abgeschnitten
-- Brief viel zu klein im Bild
-- sehr viel Hintergrund und Text kaum lesbar
-- wichtige Teile klar nicht lesbar
-`;
-}
-
 function toSentence(text) {
   if (!text) return "";
+
   const t = String(text).trim().replace(/\.$/, "");
+
   if (!t) return "";
+
   return t.charAt(0).toUpperCase() + t.slice(1) + ".";
 }
 
 function dedupe(arr) {
   const out = [];
+
   for (const item of arr) {
     const t = String(item || "").trim();
+
     if (!t) continue;
+
     if (!out.some((x) => x.toLowerCase() === t.toLowerCase())) {
       out.push(t);
     }
   }
+
   return out;
 }
 
@@ -575,7 +565,6 @@ function renderShortByLanguage(info, lang) {
   const duty = String(info.pflicht_oder_freiwillig || "unklar").trim();
   const urgency = String(info.dringlichkeit || "unklar").trim();
   const documents = dedupe(info.unterlagen || []);
-  
   const summary = String(info.kurz_gesagt || "").trim();
   const actions = dedupe(info.was_ist_zu_tun || []);
   const topic = String(info.worum_geht_es || "").trim();
@@ -593,6 +582,7 @@ function renderShortByLanguage(info, lang) {
   function pushLine(text) {
     const clean = cleanSentence(text);
     if (!clean) return;
+
     lines.push(clean + ".");
   }
 
@@ -600,6 +590,7 @@ function renderShortByLanguage(info, lang) {
     if (briefart && sender) return `Das ist ein ${briefart} von ${sender}`;
     if (sender) return `Das ist ein Schreiben von ${sender}`;
     if (briefart) return `Das ist ein ${briefart}`;
+
     return "Das ist ein Schreiben";
   }
 
@@ -658,7 +649,10 @@ function renderShortByLanguage(info, lang) {
   pushLine(typeLine());
 
   const step = shortNextStep();
-  if (step) pushLine(step);
+
+  if (step) {
+    pushLine(step);
+  }
 
   if (appointment) {
     pushLine(`Termin: ${cleanSentence(appointment)}`);
@@ -672,14 +666,14 @@ function renderShortByLanguage(info, lang) {
 
   if (documents.length > 0) {
     pushLine(`Mitbringen/Schicken: ${documents.slice(0, 3).join(", ")}`);
-  
+  }
 
-}
   if (deadline && appointment) {
     pushLine(`Frist: ${cleanSentence(deadline)}`);
   }
 
   const consequenceLine = shortConsequence();
+
   if (consequenceLine) {
     pushLine(consequenceLine);
   } else if (urgency === "hoch") {
@@ -699,8 +693,9 @@ function renderDetailTemplateGerman(info) {
   const importantPoints = dedupe(info.wichtigste_punkte || []);
   const actions = dedupe(info.was_ist_zu_tun || []);
   const documents = dedupe(info.unterlagen || []);
-  const person = String(info.betroffene_person || "").trim();
   const references = dedupe(info.referenzen || []);
+  const person = String(info.betroffene_person || "").trim();
+
   function safeSentence(text) {
     return toSentence(String(text || "").trim());
   }
@@ -730,9 +725,11 @@ function renderDetailTemplateGerman(info) {
   if (documents.length > 0) {
     importantLines.push(`Wichtige Unterlagen: ${documents.slice(0, 5).join(", ")}.`);
   }
-if (references.length > 0) {
-  importantLines.push(`Wichtige Nummern/Zeichen: ${references.slice(0, 5).join(", ")}.`);
-}
+
+  if (references.length > 0) {
+    importantLines.push(`Wichtige Nummern/Zeichen: ${references.slice(0, 5).join(", ")}.`);
+  }
+
   if (hiddenInfo) {
     importantLines.push(safeSentence(hiddenInfo));
   }
@@ -742,8 +739,14 @@ if (references.length > 0) {
   }
 
   const whenParts = [];
-  if (info.frist) whenParts.push(`Frist: ${String(info.frist).trim()}.`);
-  if (info.termin) whenParts.push(`Termin: ${String(info.termin).trim()}.`);
+
+  if (info.frist) {
+    whenParts.push(`Frist: ${String(info.frist).trim()}.`);
+  }
+
+  if (info.termin) {
+    whenParts.push(`Termin: ${String(info.termin).trim()}.`);
+  }
 
   if (whenParts.length > 0) {
     blocks.push(`[[HEAD_WHEN]]\n${whenParts.join(" ")}`);
@@ -771,6 +774,7 @@ function localizeDetailHeadings(text, lang) {
       "[[HEAD_ELSE]]": "Was passiert sonst?",
       "[[HEAD_SUMMARY]]": "Kurz gesagt:"
     },
+
     tr: {
       "[[HEAD_FROM]]": "Kim yazıyor?",
       "[[HEAD_PERSON]]": "Bu mektup kimin için?",
@@ -780,6 +784,7 @@ function localizeDetailHeadings(text, lang) {
       "[[HEAD_ELSE]]": "Yoksa ne olur?",
       "[[HEAD_SUMMARY]]": "Kısaca:"
     },
+
     bg: {
       "[[HEAD_FROM]]": "Кой е изпратил писмото?",
       "[[HEAD_PERSON]]": "За кого е писмото?",
@@ -789,6 +794,7 @@ function localizeDetailHeadings(text, lang) {
       "[[HEAD_ELSE]]": "Какво става иначе?",
       "[[HEAD_SUMMARY]]": "Накратко:"
     },
+
     ar: {
       "[[HEAD_FROM]]": "من أرسل الرسالة؟",
       "[[HEAD_PERSON]]": "لمن هذه الرسالة؟",
@@ -827,12 +833,18 @@ function protectCriticalValues(text) {
   for (const pattern of patterns) {
     output = output.replace(pattern, (match) => {
       const key = `__H24TOKEN${tokens.length}__`;
-      tokens.push({ key, value: match });
+      tokens.push({
+        key,
+        value: match
+      });
       return key;
     });
   }
 
-  return { text: output, tokens };
+  return {
+    text: output,
+    tokens
+  };
 }
 
 function restoreCriticalValues(text, tokens = []) {
@@ -840,6 +852,7 @@ function restoreCriticalValues(text, tokens = []) {
 
   for (const entry of tokens) {
     if (!entry || !entry.key) continue;
+
     out = out.split(entry.key).join(entry.value);
   }
 
@@ -872,6 +885,7 @@ TÜRKISCH-STIL:
 - Termin varsa tarih ve saati aynen koru.
 - Bürgergeld gibi resmi isimleri gerekirse aynen bırak.
 `,
+
     bg: `
 BULGARISCH-STIL:
 - Пиши ясно, естествено и кратко.
@@ -880,6 +894,7 @@ BULGARISCH-STIL:
 - Разграничавай плащане от намаляване/спиране на помощ.
 - Запази датите, часовете и сумите точно.
 `,
+
     ar: `
 ARABISCH-STIL:
 - اكتب بلغة عربية بسيطة وواضحة وقصيرة.
@@ -953,15 +968,25 @@ ${protectedDetails.text}
 }
 
 async function buildInfoFromText(text) {
-  const rawJson = await callGemini([{ text: buildExtractionPromptForText(text) }]);
+  const rawJson = await callGemini([
+    {
+      text: buildExtractionPromptForText(text)
+    }
+  ]);
+
   return normalizeInfo(extractJson(rawJson));
 }
 
 async function buildInfoFromImages(bilder) {
-  const parts = [{ text: buildExtractionPromptForImages() }];
+  const parts = [
+    {
+      text: buildExtractionPromptForImages()
+    }
+  ];
 
   for (const bild of bilder) {
     if (!bild.imageData || !bild.mimeType) continue;
+
     parts.push({
       inline_data: {
         mime_type: bild.mimeType,
@@ -971,6 +996,7 @@ async function buildInfoFromImages(bilder) {
   }
 
   const rawJson = await callGemini(parts);
+
   return normalizeInfo(extractJson(rawJson));
 }
 
@@ -995,7 +1021,7 @@ async function buildFinalPayloadFromInfo(info, lang) {
       frist: info.frist,
       betrag: info.betrag,
       unterlagen: info.unterlagen,
-     referenzen: info.referenzen,
+      referenzen: info.referenzen,
       dringlichkeit: info.dringlichkeit,
       pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
       naechster_schritt: info.naechster_schritt,
@@ -1053,7 +1079,9 @@ async function synthesizeMp3(text, lang) {
   const langMeta = getLanguageMeta(lang);
 
   const request = {
-    input: { text },
+    input: {
+      text
+    },
     voice: {
       languageCode: langMeta.ttsLanguageCode,
       ssmlGender: langMeta.ttsGender
@@ -1100,9 +1128,11 @@ app.post("/api/brief", async (req, res) => {
     }
 
     const result = await buildFinalAnswerFromText(text, lang);
+
     return res.json(result);
   } catch (error) {
     console.error("Fehler /api/brief:", error);
+
     return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
@@ -1116,9 +1146,11 @@ app.post("/api/brief-bild", async (req, res) => {
     const lang = (req.body.lang || "de").toLowerCase();
 
     const result = await buildFinalAnswerFromImages(bilder, lang);
+
     return res.json(result);
   } catch (error) {
     console.error("Fehler /api/brief-bild:", error);
+
     return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
@@ -1134,13 +1166,11 @@ app.post("/api/frage", async (req, res) => {
     const frage = cleanText(req.body.frage || "");
     const lang = (req.body.lang || "de").toLowerCase();
     const langMeta = getLanguageMeta(lang);
-const meta = req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
-const metaText = JSON.stringify(meta, null, 2);
-    const heute = new Date().toLocaleDateString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    });
+
+    const meta = req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
+    const metaText = JSON.stringify(meta, null, 2);
+
+    const heute = getTodayGerman();
 
     if (!frage) {
       return res.status(400).json({
@@ -1169,7 +1199,45 @@ const metaText = JSON.stringify(meta, null, 2);
 Du bist Hilfe24. Du hilfst Menschen nach einem Schreiben beim nächsten konkreten Schritt.
 
 Ausgewählte Sprache des Nutzers: ${langMeta.label}
-${getTodayGerman()}
+Heutiges Datum: ${heute}
+
+ERKANNTE DATEN AUS DEM SCHREIBEN:
+${metaText}
+
+WICHTIGE REGEL FÜR ERKANNTE DATEN:
+Wenn erkannte Daten vorhanden sind, nutze sie für E-Mail, Brief oder PDF.
+Besonders wichtig:
+- person
+- termin
+- frist
+- betrag
+- unterlagen
+- referenzen
+- absender
+- antwort_sprache
+
+Referenzen wie Aktenzeichen, Kundennummer, BG-Nummer, Versicherungsnummer, Rechnungsnummer, Mahnnummer, "Mein Zeichen" oder "Ihr Zeichen" müssen in offiziellen Antworten übernommen werden, wenn sie vorhanden sind.
+
+Wenn Referenzen vorhanden sind, schreibe sie entweder in den Betreff oder in den ersten Satz.
+Beispiele:
+"ich beziehe mich auf Ihr Schreiben und das Aktenzeichen ..."
+"Betreff: Terminabsage – Aktenzeichen ..."
+
+Keine Referenzen erfinden.
+
+NAMEN-REGEL:
+Wenn in den erkannten Daten "person" vorhanden ist, ist das die betroffene Person.
+Bei E-Mail, Brief oder PDF muss dieser Name automatisch in die Unterschrift übernommen werden.
+Schreibe dann nicht [Name], sondern den echten Namen aus "person".
+
+Beispiel:
+Wenn person = "Kalinka Todorova", dann endet die E-Mail mit:
+
+Mit freundlichen Grüßen
+
+Kalinka Todorova
+
+Nur wenn kein Name sicher erkannt wurde, darf [Name] stehen.
 
 WICHTIG:
 Wenn der Nutzer eine E-Mail, Vorlage, Antwort, WhatsApp, Brieftext, PDF-Text, Absage, Terminverschiebung, Krankmeldung, Ratenzahlung, Widerspruch, Nachfrage oder Unterlagen-Nachreichung möchte:
@@ -1190,16 +1258,16 @@ OFFIZIELLE ANTWORTSPRACHE:
 AKTIONEN:
 1. Wenn Nutzer krank ist und es um Termin geht:
    - Terminabsage / Bitte um neuen Termin schreiben
-   - Datum, Uhrzeit, Ansprechpartner, Ort, Aktenzeichen nur übernehmen, wenn sicher vorhanden
-  - Wenn der Nutzer schreibt, dass Krankmeldung, Krankschreibung, AU oder Arbeitsunfähigkeitsbescheinigung beigefügt wird oder vorhanden ist, schreibe exakt:
-  "Die Arbeitsunfähigkeitsbescheinigung füge ich als Anlage bei."
-  Und ergänze am Ende:
-  "Anlage:
-  - Arbeitsunfähigkeitsbescheinigung"
-- Wenn der Nutzer nicht sagt, dass eine Bescheinigung vorhanden ist, schreibe:
-  "Falls erforderlich, reiche ich eine ärztliche Bescheinigung nach."
-   - Sonst schreiben: "Falls erforderlich, reiche ich eine ärztliche Bescheinigung nach."
-   - Bitte um Bestätigung
+   - Datum, Uhrzeit, Ansprechpartner, Ort, Aktenzeichen, Mein Zeichen, Kundennummer oder andere Referenzen übernehmen, wenn vorhanden.
+   - Wenn der Nutzer schreibt, dass Krankmeldung, Krankschreibung, AU oder Arbeitsunfähigkeitsbescheinigung beigefügt wird oder vorhanden ist, schreibe exakt:
+     "Die Arbeitsunfähigkeitsbescheinigung füge ich als Anlage bei."
+     Und ergänze am Ende:
+     "Anlage:
+     - Arbeitsunfähigkeitsbescheinigung"
+   - Wenn der Nutzer nicht sagt, dass eine Bescheinigung vorhanden ist, schreibe:
+     "Falls erforderlich, reiche ich eine ärztliche Bescheinigung nach."
+   - Bitte um kurze schriftliche Bestätigung.
+   - Bitte um neuen Termin.
 
 2. Wenn Nutzer Termin bestätigen will:
    - kurze Terminbestätigung schreiben
@@ -1230,7 +1298,7 @@ AKTIONEN:
 FORM FÜR DEUTSCHE E-MAIL:
 Empfänger: [E-Mail-Adresse oder Hinweis]
 
-Betreff: [passender Betreff]
+Betreff: [passender Betreff mit Termin/Referenz, wenn vorhanden]
 
 Sehr geehrte Damen und Herren,
 
@@ -1238,12 +1306,22 @@ Sehr geehrte Damen und Herren,
 
 Mit freundlichen Grüßen
 
-[Name]
+[Name oder erkannte Person]
 
-Wenn ein konkreter Ansprechpartner sicher genannt ist:
-Sehr geehrte Frau [Name],
-oder
-Sehr geehrter Herr [Name],
+WICHTIG:
+Wenn "person" in den erkannten Daten vorhanden ist, ersetze [Name] immer durch diesen Namen.
+
+QUALITÄT:
+- Der Text muss sofort kopierbar sein.
+- Höflich, klar, kurz und professionell.
+- Keine langen Erklärungen vor der Vorlage.
+- Keine erfundenen Daten.
+- Keine Drohungen.
+- Keine emotionalen Sätze.
+- Bei Behörden/Gericht/Jobcenter/Krankenkasse/Finanzamt/Rente: sachlich.
+- Bei Gericht/Polizei: keine falschen rechtlichen Aussagen.
+- Wenn der Nutzer krank ist und es um einen Termin geht, ist der Haupttext immer:
+  krankheitsbedingte Absage + Bitte um neuen Termin + Hinweis auf Bescheinigung + Bitte um Bestätigung.
 
 BRIEF-KURZ-ERKLÄRUNG:
 ${erklaerungKurz}
@@ -1270,6 +1348,7 @@ ${frage}
     });
   } catch (error) {
     console.error("Fehler /api/frage:", error);
+
     return res.status(500).json({
       ok: false,
       error: error.message || "Fehler bei der Frage"
@@ -1307,6 +1386,7 @@ app.post("/api/tts", async (req, res) => {
     });
   } catch (error) {
     console.error("Fehler /api/tts:", error);
+
     return res.status(500).json({
       ok: false,
       error: error.message || "TTS-Fehler"
