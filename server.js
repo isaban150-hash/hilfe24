@@ -1240,18 +1240,25 @@ Keine Referenzen erfinden.
 
 NAMEN-REGEL:
 Wenn in den erkannten Daten "person" vorhanden ist, ist das die betroffene Person.
-Bei E-Mail, Brief oder PDF muss dieser Name automatisch in die Unterschrift übernommen werden.
-Schreibe dann nicht [Name], sondern den echten Namen aus "person".
+
+Bei jeder fertigen E-Mail, jedem Brief und jedem PDF-Text gilt:
+- Die Antwort MUSS am Ende mit dem Namen aus "person" unterschrieben werden.
+- Schreibe niemals nur "Mit freundlichen Grüßen" ohne Namen darunter.
+- Schreibe niemals [Name], wenn "person" vorhanden ist.
+- Der Name muss direkt unter "Mit freundlichen Grüßen" stehen.
 
 Beispiel:
-Wenn person = "Kalinka Todorova", dann endet die E-Mail mit:
+Wenn person = "Kalinka Todorova", dann MUSS die E-Mail so enden:
 
 Mit freundlichen Grüßen
 
 Kalinka Todorova
 
-Nur wenn kein Name sicher erkannt wurde, darf [Name] stehen.
+Wenn kein Name sicher erkannt wurde, schreibe:
 
+Mit freundlichen Grüßen
+
+[Name]
 WICHTIG:
 Wenn der Nutzer eine E-Mail, Vorlage, Antwort, WhatsApp, Brieftext, PDF-Text, Absage, Terminverschiebung, Krankmeldung, Ratenzahlung, Widerspruch, Nachfrage oder Unterlagen-Nachreichung möchte:
 - Nicht lange erklären.
@@ -1326,10 +1333,11 @@ Sehr geehrte Damen und Herren,
 
 Mit freundlichen Grüßen
 
-[Name oder erkannte Person]
+[erkannte Person, sonst Name-Platzhalter]
 
 WICHTIG:
-Wenn "person" in den erkannten Daten vorhanden ist, ersetze [Name] immer durch diesen Namen.
+Wenn "person" in den erkannten Daten vorhanden ist, muss der Name aus "person" unter "Mit freundlichen Grüßen" stehen.
+Die E-Mail darf nicht ohne Namen enden.
 
 QUALITÄT:
 - Der Text muss sofort kopierbar sein.
