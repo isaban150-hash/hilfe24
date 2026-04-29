@@ -208,6 +208,7 @@ function normalizeInfo(info) {
   return {
     absender_original: normalizeString(info.absender_original),
     absender_kurz: normalizeString(info.absender_kurz),
+    email_adresse: normalizeString(info.email_adresse),
     briefart: normalizeString(info.briefart),
     betroffene_person: normalizePerson(info.betroffene_person),
     worum_geht_es: normalizeString(info.worum_geht_es),
