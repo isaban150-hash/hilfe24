@@ -290,11 +290,11 @@ Beispiele:
 - Mein Zeichen
 - Ihr Zeichen
 - Bearbeitungsnummer
-
 Wenn so etwas sicher im Schreiben steht, exakt übernehmen.
 Wenn nichts sicher erkennbar ist, referenzen leer lassen.
 Nichts erfinden.
-WICHTIG:
+ Heutiges Datum: ${heute}
+ WICHTIG:
 - Nicht raten.
 - Keine Fristen, Termine, Beträge oder Folgen erfinden.
 - Keine Diagnose erfinden.
@@ -1127,7 +1127,8 @@ app.post("/api/frage", async (req, res) => {
     const frage = cleanText(req.body.frage || "");
     const lang = (req.body.lang || "de").toLowerCase();
     const langMeta = getLanguageMeta(lang);
-
+const meta = req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
+const metaText = JSON.stringify(meta, null, 2);
     const heute = new Date().toLocaleDateString("de-DE", {
       day: "2-digit",
       month: "2-digit",
@@ -1183,7 +1184,13 @@ AKTIONEN:
 1. Wenn Nutzer krank ist und es um Termin geht:
    - Terminabsage / Bitte um neuen Termin schreiben
    - Datum, Uhrzeit, Ansprechpartner, Ort, Aktenzeichen nur übernehmen, wenn sicher vorhanden
-   - Krankmeldung nur erwähnen, wenn Nutzer sagt, dass sie vorhanden ist oder beigefügt wird
+  - Wenn der Nutzer schreibt, dass Krankmeldung, Krankschreibung, AU oder Arbeitsunfähigkeitsbescheinigung beigefügt wird oder vorhanden ist, schreibe exakt:
+  "Die Arbeitsunfähigkeitsbescheinigung füge ich als Anlage bei."
+  Und ergänze am Ende:
+  "Anlage:
+  - Arbeitsunfähigkeitsbescheinigung"
+- Wenn der Nutzer nicht sagt, dass eine Bescheinigung vorhanden ist, schreibe:
+  "Falls erforderlich, reiche ich eine ärztliche Bescheinigung nach."
    - Sonst schreiben: "Falls erforderlich, reiche ich eine ärztliche Bescheinigung nach."
    - Bitte um Bestätigung
 
