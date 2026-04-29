@@ -672,7 +672,7 @@ function renderShortByLanguage(info, lang) {
 
   if (documents.length > 0) {
     pushLine(`Mitbringen/Schicken: ${documents.slice(0, 3).join(", ")}`);
-  }
+  
 
 }
   if (deadline && appointment) {
