@@ -673,8 +673,7 @@ function renderShortByLanguage(info, lang) {
   if (documents.length > 0) {
     pushLine(`Mitbringen/Schicken: ${documents.slice(0, 3).join(", ")}`);
   }
-if (references.length > 0) {
-  importantLines.push(`Wichtige Nummern/Zeichen: ${references.slice(0, 5).join(", ")}.`);
+
 }
   if (deadline && appointment) {
     pushLine(`Frist: ${cleanSentence(deadline)}`);
@@ -701,7 +700,7 @@ function renderDetailTemplateGerman(info) {
   const actions = dedupe(info.was_ist_zu_tun || []);
   const documents = dedupe(info.unterlagen || []);
   const person = String(info.betroffene_person || "").trim();
-
+  const references = dedupe(info.referenzen || []);
   function safeSentence(text) {
     return toSentence(String(text || "").trim());
   }
@@ -731,7 +730,9 @@ function renderDetailTemplateGerman(info) {
   if (documents.length > 0) {
     importantLines.push(`Wichtige Unterlagen: ${documents.slice(0, 5).join(", ")}.`);
   }
-
+if (references.length > 0) {
+  importantLines.push(`Wichtige Nummern/Zeichen: ${references.slice(0, 5).join(", ")}.`);
+}
   if (hiddenInfo) {
     importantLines.push(safeSentence(hiddenInfo));
   }
