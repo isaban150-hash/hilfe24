@@ -379,10 +379,11 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
     const audioPlayerEl = document.getElementById("audioPlayer");
     const audioStatusEl = document.getElementById("audioStatus");
 
-    let currentLang = "de";
+
     let currentKurzText = "";
     let currentDetailText = "";
     let currentBriefText = "";
+    let currentMeta = {};
     let activeRequestId = 0;
     let activeAudioUrl = "";
 
@@ -475,10 +476,11 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
       if (frageErrorEl) frageErrorEl.textContent = "";
       if (frageStatusEl) frageStatusEl.textContent = "";
 
-      currentKurzText = "";
-      currentDetailText = "";
-      currentBriefText = "";
-
+      currentLang = lang;
+      currentKurzText = data.kurz || "";
+      currentDetailText = data.details || "";
+      currentBriefText = text || "";
+      currentMeta = {};
       hide(resultCardEl);
       hide(detailCardEl);
       hide(detailToggleCardEl);
@@ -552,10 +554,14 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          text,
-          lang
-        })
+       body: JSON.stringify({
+  lang,
+  frage,
+  briefText: currentBriefText,
+  kurz: currentKurzText,
+  details: currentDetailText,
+  meta: currentMeta
+})
       });
 
       const data = await response.json();
