@@ -214,10 +214,11 @@ function normalizeInfo(info) {
     ),
 
     naechster_schritt: normalizeString(info.naechster_schritt),
-    betrag: normalizeString(info.betrag),
-    unterlagen: normalizeArray(info.unterlagen),
+   betrag: normalizeString(info.betrag),
+unterlagen: normalizeArray(info.unterlagen),
+referenzen: normalizeArray(info.referenzen),
 
-    antwort_sprache: normalizeChoice(
+antwort_sprache: normalizeChoice(
       info.antwort_sprache,
       ["de", "tr", "bg", "ar", "unklar"],
       "unklar"
@@ -272,7 +273,27 @@ DENKE IMMER SO:
 6. Was passiert, wenn nichts gemacht wird?
 7. Was ist der nächste sinnvolle Schritt?
 8. Welche Aktionen passen dazu?
+REFERENZEN / NUMMERN:
+Suche wichtige Identifikationsdaten im Schreiben und trage sie bei "referenzen" ein.
+Beispiele:
+- Aktenzeichen
+- Kundennummer
+- BG-Nummer
+- Versicherungsnummer
+- Mitgliedsnummer
+- Vertragsnummer
+- Rechnungsnummer
+- Mahnnummer
+- Geschäftszeichen
+- Kassenzeichen
+- Fallnummer
+- Mein Zeichen
+- Ihr Zeichen
+- Bearbeitungsnummer
 
+Wenn so etwas sicher im Schreiben steht, exakt übernehmen.
+Wenn nichts sicher erkennbar ist, referenzen leer lassen.
+Nichts erfinden.
 WICHTIG:
 - Nicht raten.
 - Keine Fristen, Termine, Beträge oder Folgen erfinden.
@@ -457,7 +478,8 @@ Gib genau dieses JSON zurück:
   "unterlagen": [],
   "antwort_sprache": "unklar",
   "passende_aktionen": []
-}
+"referenzen": [],
+
 
 Gib nur gültiges JSON zurück.
 Keine Erklärung.
@@ -547,6 +569,7 @@ function renderShortByLanguage(info, lang) {
   const duty = String(info.pflicht_oder_freiwillig || "unklar").trim();
   const urgency = String(info.dringlichkeit || "unklar").trim();
   const documents = dedupe(info.unterlagen || []);
+  
   const summary = String(info.kurz_gesagt || "").trim();
   const actions = dedupe(info.was_ist_zu_tun || []);
   const topic = String(info.worum_geht_es || "").trim();
@@ -644,7 +667,9 @@ function renderShortByLanguage(info, lang) {
   if (documents.length > 0) {
     pushLine(`Mitbringen/Schicken: ${documents.slice(0, 3).join(", ")}`);
   }
-
+if (references.length > 0) {
+  importantLines.push(`Wichtige Nummern/Zeichen: ${references.slice(0, 5).join(", ")}.`);
+}
   if (deadline && appointment) {
     pushLine(`Frist: ${cleanSentence(deadline)}`);
   }
@@ -963,6 +988,7 @@ async function buildFinalPayloadFromInfo(info, lang) {
       frist: info.frist,
       betrag: info.betrag,
       unterlagen: info.unterlagen,
+     referenzen: info.referenzen,
       dringlichkeit: info.dringlichkeit,
       pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
       naechster_schritt: info.naechster_schritt,
