@@ -303,10 +303,16 @@
       <audio id="audioPlayer" controls class="hidden"></audio>
     </div>
 
-    <div id="detailCard" class="card hidden">
-      <div class="section-title">Mehr Details</div>
-      <div id="detailText" class="detail-box"></div>
-    </div>
+ <div id="detailToggleCard" class="card hidden">
+  <button id="toggleDetailsBtn" class="btn-secondary" type="button">
+    📋 Mehr Details anzeigen
+  </button>
+</div>
+
+<div id="detailCard" class="card hidden">
+  <div class="section-title">Mehr Details</div>
+  <div id="detailText" class="detail-box"></div>
+</div>
 
     <div id="frageCard" class="card hidden">
       <div class="section-title">Frage zu diesem Brief stellen</div>
@@ -353,6 +359,8 @@
 
     const resultCardEl = document.getElementById("resultCard");
     const detailCardEl = document.getElementById("detailCard");
+    const detailToggleCardEl = document.getElementById("detailToggleCard");
+    const toggleDetailsBtn = document.getElementById("toggleDetailsBtn");
     const kurzTextEl = document.getElementById("kurzText");
     const detailTextEl = document.getElementById("detailText");
 
@@ -473,6 +481,8 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
 
       hide(resultCardEl);
       hide(detailCardEl);
+      hide(detailToggleCardEl);
+    if (toggleDetailsBtn) toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
       hide(frageCardEl);
       hide(frageAntwortBoxEl);
       hide(frageErrorEl);
@@ -673,11 +683,12 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
         currentKurzText = data.kurz || "";
         currentDetailText = data.details || "";
         currentBriefText = text || "";
-
-        show(resultCardEl);
-        show(detailCardEl);
-        show(frageCardEl);
-        setOk("Der Brief wurde erklärt.");
+show(resultCardEl);
+show(detailToggleCardEl);
+hide(detailCardEl);
+show(frageCardEl);
+if (toggleDetailsBtn) toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+setOk("Der Brief wurde erklärt.");
       } catch (err) {
         if (requestId !== activeRequestId) return;
 
@@ -794,7 +805,19 @@ const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
     if (resetBtn) {
       resetBtn.addEventListener("click", resetAll);
     }
+if (toggleDetailsBtn) {
+  toggleDetailsBtn.addEventListener("click", () => {
+    if (!detailCardEl) return;
 
+    if (detailCardEl.classList.contains("hidden")) {
+      show(detailCardEl);
+      toggleDetailsBtn.textContent = "📋 Details ausblenden";
+    } else {
+      hide(detailCardEl);
+      toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+    }
+  });
+}
     if (frageBtn) {
       frageBtn.addEventListener("click", askQuestionAboutLetter);
     }
