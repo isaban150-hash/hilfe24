@@ -882,7 +882,21 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
         if (frageBtn) frageBtn.disabled = false;
       }
     }
+if (openBriefBtn) {
+  openBriefBtn.addEventListener("click", () => {
+    hide(homeCardEl);
+    show(briefInputCardEl);
+  });
+}
 
+function showComingSoon() {
+  alert("Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark.");
+}
+
+if (soonAntraegeBtn) soonAntraegeBtn.addEventListener("click", showComingSoon);
+if (soonAntwortBtn) soonAntwortBtn.addEventListener("click", showComingSoon);
+if (soonFotoBtn) soonFotoBtn.addEventListener("click", showComingSoon);
+if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
     if (bilderEl) {
       bilderEl.addEventListener("change", () => {
         activeRequestId++;
