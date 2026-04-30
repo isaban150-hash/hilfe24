@@ -950,6 +950,25 @@ ARABISCH-STIL:
 - فرّق بين دفع المال وبين تخفيض أو إيقاف المساعدة.
 - حافظ على التاريخ والوقت والمبلغ كما هو.
 `
+ ro: `
+RUMÄNISCH-STIL:
+- Scrie în română clară, simplă și naturală.
+- Folosește propoziții scurte.
+- Nu folosi limbaj administrativ greu.
+- Textul scurt trebuie să explice imediat: ce este scrisoarea, ce trebuie făcut, termenul sau programarea, documentele sau suma și ce se întâmplă dacă nu faci nimic.
+- Nu inventa informații.
+- Păstrează exact datele, orele, sumele, numerele de dosar și denumirile oficiale.
+`,
+
+    en: `
+ENGLISCH-STIL:
+- Write in simple, natural English.
+- Use short sentences.
+- Avoid complicated official language.
+- The short text must quickly explain: what this is, what to do, deadline or appointment, documents or amount, and what happens if nothing is done.
+- Do not invent information.
+- Keep dates, times, amounts, reference numbers and official names exactly as written.
+`
   };
 
   const raw = await callGemini([
