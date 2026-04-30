@@ -831,9 +831,28 @@ function localizeDetailHeadings(text, lang) {
       "[[HEAD_WHEN]]": "إلى متى؟",
       "[[HEAD_ELSE]]": "ماذا يحدث إذا لم أفعل شيئًا؟",
       "[[HEAD_SUMMARY]]": "باختصار:"
-    }
-  };
+        },
+ 
+ro: {
+      "[[HEAD_FROM]]": "Cine a trimis scrisoarea?",
+      "[[HEAD_PERSON]]": "Pentru cine este scrisoarea?",
+      "[[HEAD_TOPIC]]": "Despre ce este vorba?",
+      "[[HEAD_IMPORTANT]]": "Ce este important acum?",
+      "[[HEAD_WHEN]]": "Până când?",
+      "[[HEAD_ELSE]]": "Ce se întâmplă dacă nu faci nimic?",
+      "[[HEAD_SUMMARY]]": "Pe scurt:"
+    },
 
+    en: {
+      "[[HEAD_FROM]]": "Who sent this?",
+      "[[HEAD_PERSON]]": "Who is this letter for?",
+      "[[HEAD_TOPIC]]": "What is it about?",
+      "[[HEAD_IMPORTANT]]": "What is important now?",
+      "[[HEAD_WHEN]]": "By when?",
+      "[[HEAD_ELSE]]": "What happens if nothing is done?",
+      "[[HEAD_SUMMARY]]": "In short:"
+    }
+ };
   const dict = maps[lang] || maps.de;
   let result = String(text || "");
 
