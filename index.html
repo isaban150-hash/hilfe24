@@ -1184,12 +1184,37 @@ if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
   };
 
   window.addEventListener("load", function () {
-    const langEl = document.getElementById("homeLang");
-    if (langEl) {
-      langEl.addEventListener("change", window.updateHomeLanguage);
-    }
-    window.updateHomeLanguage();
-  });
+  const langEl = document.getElementById("homeLang");
+
+  if (langEl) {
+    langEl.addEventListener("change", window.updateHomeLanguage);
+  }
+
+  window.updateHomeLanguage();
+
+  const openBriefBtn = document.getElementById("openBriefBtn");
+  const homeCard = document.getElementById("homeCard");
+  const briefInputCard = document.getElementById("briefInputCard");
+  const briefLang = document.getElementById("lang");
+
+  if (openBriefBtn) {
+    openBriefBtn.addEventListener("click", function () {
+      if (langEl && briefLang) {
+        briefLang.value = langEl.value;
+      }
+
+      if (homeCard) {
+        homeCard.classList.add("hidden");
+        homeCard.style.display = "none";
+      }
+
+      if (briefInputCard) {
+        briefInputCard.classList.remove("hidden");
+        briefInputCard.style.display = "block";
+      }
+    });
+  }
+});
 </script>
 </body>
 </html>
