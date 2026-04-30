@@ -932,16 +932,23 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 };
 
 function updateHomeLanguage() {
-  const lang = homeLangEl ? homeLangEl.value : "de";
+  const homeLangSelect = document.getElementById("homeLang");
+  const subTitle = document.getElementById("homeSubTitle");
+  const langLabel = document.getElementById("homeLangLabel");
+  const questionTitle = document.getElementById("homeQuestionTitle");
+
+  const lang = homeLangSelect ? homeLangSelect.value : "de";
   const texts = homeTexts[lang] || homeTexts.de;
 
-  if (homeSubTitleEl) homeSubTitleEl.textContent = texts.sub;
-  if (homeLangLabelEl) homeLangLabelEl.textContent = texts.langLabel;
-  if (homeQuestionTitleEl) homeQuestionTitleEl.textContent = texts.question;
+  if (subTitle) subTitle.textContent = texts.sub;
+  if (langLabel) langLabel.textContent = texts.langLabel;
+  if (questionTitle) questionTitle.textContent = texts.question;
 }
 
-if (homeLangEl) {
-  homeLangEl.addEventListener("change", updateHomeLanguage);
+const homeLangSelect = document.getElementById("homeLang");
+
+if (homeLangSelect) {
+  homeLangSelect.addEventListener("change", updateHomeLanguage);
 }
 
 updateHomeLanguage();
