@@ -898,7 +898,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
         if (frageBtn) frageBtn.disabled = false;
       }
-  const homeTexts = {
+const homeTexts = {
   de: {
     sub: "Verstehen. Antworten. Erledigen.",
     langLabel: "Sprache auswählen",
@@ -937,8 +937,8 @@ function updateHomeLanguage() {
   const langLabel = document.getElementById("homeLangLabel");
   const questionTitle = document.getElementById("homeQuestionTitle");
 
-  const lang = homeLangSelect ? homeLangSelect.value : "de";
-  const texts = homeTexts[lang] || homeTexts.de;
+  const selectedLang = homeLangSelect ? homeLangSelect.value : "de";
+  const texts = homeTexts[selectedLang] || homeTexts.de;
 
   if (subTitle) subTitle.textContent = texts.sub;
   if (langLabel) langLabel.textContent = texts.langLabel;
