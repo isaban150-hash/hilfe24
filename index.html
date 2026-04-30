@@ -290,7 +290,21 @@
   <div class="sub">
     Verstehen. Antworten. Erledigen.
   </div>
+<div class="sub">
+  Verstehen. Antworten. Erledigen.
+</div>
 
+<label for="homeLang">Sprache auswählen</label>
+<select id="homeLang">
+  <option value="de">🇩🇪 Deutsch</option>
+  <option value="tr">🇹🇷 Türkisch</option>
+  <option value="bg">🇧🇬 Bulgarisch</option>
+  <option value="ar">🌍 Arabisch</option>
+  <option value="ro">🇷🇴 Rumänisch</option>
+  <option value="en">🇬🇧 Englisch</option>
+</select>
+
+<div class="section-title">Wobei brauchst du Hilfe?</div>
   <div class="section-title">Wobei brauchst du Hilfe?</div>
 
   <div class="home-grid">
@@ -299,10 +313,10 @@
       <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
     </button>
 
-    <button id="soonAntraegeBtn" class="home-btn" type="button">
-      📝 Anträge & Vorteile
-      <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Kindergeld, Pflegegrad</span>
-    </button>
+   <button id="soonAntraegeBtn" class="home-btn" type="button">
+  📝 Anträge & Vorteile
+  <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge</span>
+</button>
 
     <button id="soonAntwortBtn" class="home-btn" type="button">
       ✍️ Antwort erstellen
@@ -419,7 +433,7 @@
   <script>
    const homeCardEl = document.getElementById("homeCard");
 const briefInputCardEl = document.getElementById("briefInputCard");
-
+const homeLangEl = document.getElementById("homeLang");
 const openBriefBtn = document.getElementById("openBriefBtn");
 const soonAntraegeBtn = document.getElementById("soonAntraegeBtn");
 const soonAntwortBtn = document.getElementById("soonAntwortBtn");
@@ -885,6 +899,11 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
     }
 if (openBriefBtn) {
   openBriefBtn.addEventListener("click", () => {
+    if (homeLangEl && langEl) {
+      langEl.value = homeLangEl.value;
+      currentLang = homeLangEl.value;
+    }
+
     hide(homeCardEl);
     show(briefInputCardEl);
   });
