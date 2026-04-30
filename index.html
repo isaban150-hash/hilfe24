@@ -895,7 +895,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
         if (frageBtn) frageBtn.disabled = false;
       }
-   const homeTexts = {
+  const homeTexts = {
   de: {
     sub: "Verstehen. Antworten. Erledigen.",
     langLabel: "Sprache auswählen",
@@ -933,22 +933,19 @@ function updateHomeLanguage() {
   const texts = homeTexts[lang] || homeTexts.de;
 
   if (homeSubTitleEl) homeSubTitleEl.textContent = texts.sub;
- if (homeLangEl) {
-  homeLangEl.addEventListener("change", updateHomeLanguage);
-}
-
-
-updateHomeLanguage();
+  if (homeLangLabelEl) homeLangLabelEl.textContent = texts.langLabel;
   if (homeQuestionTitleEl) homeQuestionTitleEl.textContent = texts.question;
 }
 
 if (homeLangEl) {
   homeLangEl.addEventListener("change", updateHomeLanguage);
-  updateHomeLanguage();
+}
+
+updateHomeLanguage();
 }
     }
 
-    if (openBriefBtn) {
+   if (openBriefBtn) {
   openBriefBtn.addEventListener("click", () => {
     if (homeLangEl && langEl) {
       langEl.value = homeLangEl.value;
@@ -959,7 +956,6 @@ if (homeLangEl) {
     show(briefInputCardEl);
   });
 }
-
 function showComingSoon() {
   alert("Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark.");
 }
