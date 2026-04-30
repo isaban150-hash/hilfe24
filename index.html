@@ -135,7 +135,33 @@
     .hidden {
       display: none;
     }
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
 
+.home-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  text-align: left;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+}
+
+.home-btn span {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1.4;
+}
     .preview-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -258,7 +284,43 @@
 
 <body>
   <div class="wrap">
-    <div class="card">
+ <div id="homeCard" class="card">
+  <h1>Hilfe24</h1>
+
+  <div class="sub">
+    Verstehen. Antworten. Erledigen.
+  </div>
+
+  <div class="section-title">Wobei brauchst du Hilfe?</div>
+
+  <div class="home-grid">
+    <button id="openBriefBtn" class="home-btn" type="button">
+      📄 Schreiben verstehen
+      <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
+    </button>
+
+    <button id="soonAntraegeBtn" class="home-btn" type="button">
+      📝 Anträge & Vorteile
+      <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Kindergeld, Pflegegrad</span>
+    </button>
+
+    <button id="soonAntwortBtn" class="home-btn" type="button">
+      ✍️ Antwort erstellen
+      <span>E-Mail, Brief, PDF, Kündigung, Reklamation</span>
+    </button>
+
+    <button id="soonFotoBtn" class="home-btn" type="button">
+      📸 Foto fragen
+      <span>Produkt, Medikament, Screenshot, Anleitung, Technik</span>
+    </button>
+
+    <button id="soonHilfeBtn" class="home-btn" type="button">
+      ❓ Allgemeine Hilfe
+      <span>Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit</span>
+    </button>
+  </div>
+</div>
+   <div id="briefInputCard" class="card hidden">
       <h1>Hilfe24</h1>
 
       <div class="sub">
@@ -354,6 +416,14 @@
   </div>
 
   <script>
+   const homeCardEl = document.getElementById("homeCard");
+const briefInputCardEl = document.getElementById("briefInputCard");
+
+const openBriefBtn = document.getElementById("openBriefBtn");
+const soonAntraegeBtn = document.getElementById("soonAntraegeBtn");
+const soonAntwortBtn = document.getElementById("soonAntwortBtn");
+const soonFotoBtn = document.getElementById("soonFotoBtn");
+const soonHilfeBtn = document.getElementById("soonHilfeBtn");
     const langEl = document.getElementById("lang");
     const briefTextEl = document.getElementById("briefText");
     const bilderEl = document.getElementById("bilder");
