@@ -291,8 +291,12 @@
 <div id="homeSubTitle" class="sub">
   Verstehen. Antworten. Erledigen.
 </div>
-<label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
-<select id="homeLang">
+if (homeLangEl) {
+  homeLangEl.addEventListener("change", updateHomeLanguage);
+}
+
+updateHomeLanguage();
+<select <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
   <option value="de">🇩🇪 Deutsch</option>
   <option value="tr">🇹🇷 Türkisch</option>
   <option value="bg">🇧🇬 Bulgarisch</option>
@@ -935,6 +939,7 @@ function updateHomeLanguage() {
  if (homeLangEl) {
   homeLangEl.addEventListener("change", updateHomeLanguage);
 }
+
 
 updateHomeLanguage();
   if (homeQuestionTitleEl) homeQuestionTitleEl.textContent = texts.question;
