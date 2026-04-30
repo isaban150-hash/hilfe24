@@ -302,7 +302,6 @@
 </select>
 
 <div id="homeQuestionTitle" class="section-title">Wobei brauchst du Hilfe?</div>
-
   <div class="home-grid">
     <button id="openBriefBtn" class="home-btn" type="button">
       📄 Schreiben verstehen
@@ -933,7 +932,11 @@ function updateHomeLanguage() {
   const texts = homeTexts[lang] || homeTexts.de;
 
   if (homeSubTitleEl) homeSubTitleEl.textContent = texts.sub;
-  if (homeLangLabelEl) homeLangLabelEl.textContent = texts.langLabel;
+ if (homeLangEl) {
+  homeLangEl.addEventListener("change", updateHomeLanguage);
+}
+
+updateHomeLanguage();
   if (homeQuestionTitleEl) homeQuestionTitleEl.textContent = texts.question;
 }
 
