@@ -76,7 +76,23 @@ function getLanguageMeta(lang) {
         ttsVoiceName: "",
         ttsGender: "FEMALE"
       };
+case "ro":
+      return {
+        code: "ro",
+        label: "Rumänisch",
+        ttsLanguageCode: "ro-RO",
+        ttsVoiceName: "",
+        ttsGender: "FEMALE"
+      };
 
+    case "en":
+      return {
+        code: "en",
+        label: "Englisch",
+        ttsLanguageCode: "en-US",
+        ttsVoiceName: "",
+        ttsGender: "FEMALE"
+      };
     default:
       return {
         code: "de",
