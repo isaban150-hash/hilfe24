@@ -430,6 +430,9 @@
    const homeCardEl = document.getElementById("homeCard");
 const briefInputCardEl = document.getElementById("briefInputCard");
 const homeLangEl = document.getElementById("homeLang");
+const homeSubTitleEl = document.getElementById("homeSubTitle");
+const homeLangLabelEl = document.getElementById("homeLangLabel");
+const homeQuestionTitleEl = document.getElementById("homeQuestionTitle");
 const openBriefBtn = document.getElementById("openBriefBtn");
 const soonAntraegeBtn = document.getElementById("soonAntraegeBtn");
 const soonAntwortBtn = document.getElementById("soonAntwortBtn");
@@ -892,8 +895,55 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
         if (frageBtn) frageBtn.disabled = false;
       }
+   const homeTexts = {
+  de: {
+    sub: "Verstehen. Antworten. Erledigen.",
+    langLabel: "Sprache auswählen",
+    question: "Wobei brauchst du Hilfe?"
+  },
+  tr: {
+    sub: "Anla. Cevap yaz. İşini hallet.",
+    langLabel: "Dil seç",
+    question: "Hangi konuda yardıma ihtiyacın var?"
+  },
+  bg: {
+    sub: "Разбери. Отговори. Реши проблема.",
+    langLabel: "Избери език",
+    question: "За какво имаш нужда от помощ?"
+  },
+  ar: {
+    sub: "افهم. أجب. أنجز الأمر.",
+    langLabel: "اختر اللغة",
+    question: "بماذا تحتاج إلى مساعدة؟"
+  },
+  ro: {
+    sub: "Înțelege. Răspunde. Rezolvă.",
+    langLabel: "Alege limba",
+    question: "Cu ce ai nevoie de ajutor?"
+  },
+  en: {
+    sub: "Understand. Reply. Get it done.",
+    langLabel: "Choose language",
+    question: "What do you need help with?"
+  }
+};
+
+function updateHomeLanguage() {
+  const lang = homeLangEl ? homeLangEl.value : "de";
+  const texts = homeTexts[lang] || homeTexts.de;
+
+  if (homeSubTitleEl) homeSubTitleEl.textContent = texts.sub;
+  if (homeLangLabelEl) homeLangLabelEl.textContent = texts.langLabel;
+  if (homeQuestionTitleEl) homeQuestionTitleEl.textContent = texts.question;
+}
+
+if (homeLangEl) {
+  homeLangEl.addEventListener("change", updateHomeLanguage);
+  updateHomeLanguage();
+}
     }
-if (openBriefBtn) {
+
+    if (openBriefBtn) {
   openBriefBtn.addEventListener("click", () => {
     if (homeLangEl && langEl) {
       langEl.value = homeLangEl.value;
