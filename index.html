@@ -291,12 +291,9 @@
 <div id="homeSubTitle" class="sub">
   Verstehen. Antworten. Erledigen.
 </div>
-if (homeLangEl) {
-  homeLangEl.addEventListener("change", updateHomeLanguage);
-}
 
-updateHomeLanguage();
-<select <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
+<label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
+<select id="homeLang">
   <option value="de">🇩🇪 Deutsch</option>
   <option value="tr">🇹🇷 Türkisch</option>
   <option value="bg">🇧🇬 Bulgarisch</option>
@@ -305,7 +302,7 @@ updateHomeLanguage();
   <option value="en">🇬🇧 Englisch</option>
 </select>
 
-<div id="homeQuestionTitle" class="section-title">Wobei brauchst du Hilfe?</div>
+<div id="homeQuestionTitle" class="section-title">Wobei brauchst du Hilfe?</div>div>
   <div class="home-grid">
     <button id="openBriefBtn" class="home-btn" type="button">
       📄 Schreiben verstehen
