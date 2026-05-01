@@ -1510,5 +1510,84 @@
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
   </script>
+<script>
+(function () {
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  function getLang() {
+    var langEl = el("lang");
+    return langEl ? langEl.value : "de";
+  }
+
+  var quickTexts = {
+    de: {
+      what: "Was muss ich tun?",
+      deadline: "Bis wann?",
+      consequence: "Was passiert, wenn ich nichts mache?",
+      reply: "Schreib mir eine Antwort"
+    },
+    tr: {
+      what: "Ne yapmam gerekiyor?",
+      deadline: "Son tarih ne zaman?",
+      consequence: "Hiçbir şey yapmazsam ne olur?",
+      reply: "Bana bir cevap yaz"
+    },
+    bg: {
+      what: "Какво трябва да направя?",
+      deadline: "До кога?",
+      consequence: "Какво ще стане, ако не направя нищо?",
+      reply: "Напиши ми отговор"
+    },
+    ro: {
+      what: "Ce trebuie să fac?",
+      deadline: "Până când?",
+      consequence: "Ce se întâmplă dacă nu fac nimic?",
+      reply: "Scrie-mi un răspuns"
+    },
+    en: {
+      what: "What do I have to do?",
+      deadline: "By when?",
+      consequence: "What happens if I do nothing?",
+      reply: "Write me a reply"
+    },
+    ar: {
+      what: "ماذا يجب أن أفعل؟",
+      deadline: "إلى متى؟",
+      consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+      reply: "اكتب لي ردًا"
+    }
+  };
+
+  function setQuickText(buttonId, key) {
+    var btn = el(buttonId);
+    var textarea = el("frageText");
+    if (!btn || !textarea) return;
+
+    btn.onclick = function () {
+      var lang = getLang();
+      var t = quickTexts[lang] || quickTexts.de;
+
+      textarea.value = t[key];
+      textarea.focus();
+
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+  }
+
+  function bindQuickButtons() {
+    setQuickText("quickWhatBtn", "what");
+    setQuickText("quickDeadlineBtn", "deadline");
+    setQuickText("quickConsequenceBtn", "consequence");
+    setQuickText("quickReplyBtn", "reply");
+  }
+
+  bindQuickButtons();
+  window.addEventListener("load", bindQuickButtons);
+  setTimeout(bindQuickButtons, 500);
+  setTimeout(bindQuickButtons, 1500);
+})();
+</script>
 </body>
 </html>
