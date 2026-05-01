@@ -413,10 +413,21 @@
       </div>
 
       <div class="button-row">
-        <button id="quickWhatBtn" class="btn-secondary" type="button">Was muss ich tun?</button>
-        <button id="quickDeadlineBtn" class="btn-secondary" type="button">Bis wann?</button>
-        <button id="quickConsequenceBtn" class="btn-secondary" type="button">Was passiert, wenn ich nichts mache?</button>
-        <button id="quickReplyBtn" class="btn-secondary" type="button">Schreib mir eine Antwort</button>
+       <button id="quickWhatBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('next_steps')">
+  Was muss ich tun?
+</button>
+
+<button id="quickDeadlineBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('deadline')">
+  Bis wann?
+</button>
+
+<button id="quickConsequenceBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('consequence')">
+  Was passiert, wenn ich nichts mache?
+</button>
+
+<button id="quickReplyBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('reply')">
+  Schreib mir eine Antwort
+</button>
       </div>
 
       <label id="frageTextLabel" for="frageText">Deine Frage</label>
@@ -1513,6 +1524,71 @@
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
   </script>
+window.h24UpdateHome = updateHomeLanguage;
+    window.h24OpenBrief = openBriefArea;
+  </script>
 
+  <script>
+    function h24SetQuestionMode(mode) {
+      var langEl = document.getElementById("lang");
+      var textarea = document.getElementById("frageText");
+
+      if (!textarea) {
+        alert("Fehler: Fragefeld wurde nicht gefunden.");
+        return;
+      }
+
+      var lang = langEl ? langEl.value : "de";
+
+      var texts = {
+        de: {
+          next_steps: "Was muss ich tun?",
+          deadline: "Bis wann?",
+          consequence: "Was passiert, wenn ich nichts mache?",
+          reply: "Schreib mir eine Antwort"
+        },
+        tr: {
+          next_steps: "Ne yapmam gerekiyor?",
+          deadline: "Son tarih ne zaman?",
+          consequence: "Hiçbir şey yapmazsam ne olur?",
+          reply: "Bana bir cevap yaz"
+        },
+        bg: {
+          next_steps: "Какво трябва да направя?",
+          deadline: "До кога?",
+          consequence: "Какво ще стане, ако не направя нищо?",
+          reply: "Напиши ми отговор"
+        },
+        ro: {
+          next_steps: "Ce trebuie să fac?",
+          deadline: "Până când?",
+          consequence: "Ce se întâmplă dacă nu fac nimic?",
+          reply: "Scrie-mi un răspuns"
+        },
+        en: {
+          next_steps: "What do I have to do?",
+          deadline: "By when?",
+          consequence: "What happens if I do nothing?",
+          reply: "Write me a reply"
+        },
+        ar: {
+          next_steps: "ماذا يجب أن أفعل؟",
+          deadline: "إلى متى؟",
+          consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+          reply: "اكتب لي ردًا"
+        }
+      };
+
+      var t = texts[lang] || texts.de;
+
+      textarea.value = t[mode] || "";
+      window.frageMode = mode || "free";
+
+      textarea.focus();
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  </script>
+</body>
+</html>
 </body>
 </html>
