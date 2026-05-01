@@ -1748,5 +1748,81 @@ if (resetBtn) {
   window.addEventListener("load", startBriefFix);
 })();
 </script>
+<script>
+(function () {
+  function h24El(id) {
+    return document.getElementById(id);
+  }
+
+  function h24Set(id, text) {
+    var el = h24El(id);
+    if (el) el.textContent = text;
+  }
+
+  function h24GetBriefLang() {
+    var langEl = h24El("lang");
+    if (!langEl) return "de";
+
+    var value = langEl.value || "";
+    var text = "";
+
+    if (langEl.options && langEl.selectedIndex >= 0) {
+      text = langEl.options[langEl.selectedIndex].textContent || "";
+    }
+
+    if (value === "tr" || text.indexOf("Türkisch") !== -1 || text.indexOf("Türkçe") !== -1) {
+      return "tr";
+    }
+
+    return "de";
+  }
+
+  window.h24ForceBriefLanguage = function () {
+    var lang = h24GetBriefLang();
+
+    if (lang === "tr") {
+      h24Set("briefSubTitle", "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.");
+      h24Set("briefTextLabel", "Mektup metni");
+      h24Set("briefPhotoLabel", "Mektup fotoğrafları yükle");
+      h24Set("photoHintText", "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.");
+      h24Set("analyzeBtn", "Mektubu açıkla");
+      h24Set("resetBtn", "← Ana sayfaya dön");
+
+      var briefText = h24El("briefText");
+      if (briefText) {
+        briefText.placeholder = "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır";
+      }
+    } else {
+      h24Set("briefSubTitle", "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.");
+      h24Set("briefTextLabel", "Brief als Text");
+      h24Set("briefPhotoLabel", "Brief-Fotos hochladen");
+      h24Set("photoHintText", "Du kannst bis zu 6 Bilder vom selben Brief hochladen.");
+      h24Set("analyzeBtn", "Brief erklären");
+      h24Set("resetBtn", "← Zurück zur Startseite");
+
+      var briefTextDe = h24El("briefText");
+      if (briefTextDe) {
+        briefTextDe.placeholder = "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst";
+      }
+    }
+  };
+
+  function h24StartBriefFix() {
+    var langEl = h24El("lang");
+
+    if (langEl) {
+      langEl.onchange = window.h24ForceBriefLanguage;
+    }
+
+    window.h24ForceBriefLanguage();
+
+    setTimeout(window.h24ForceBriefLanguage, 300);
+    setTimeout(window.h24ForceBriefLanguage, 1000);
+  }
+
+  h24StartBriefFix();
+  window.addEventListener("load", h24StartBriefFix);
+})();
+</script>
 </body>
 </html>
