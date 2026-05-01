@@ -386,53 +386,61 @@
         <button id="stopBtn" class="btn-danger" type="button">⏹️ Stopp</button>
       </div>
 
+      <div id="audioStatus" class="audio-status hidden"></div>
       <audio id="audioPlayer" controls class="hidden"></audio>
-</div>
+    </div>
 
-<div id="detailCard" class="card hidden">
-  <div class="section-title">Mehr Details</div>
-  <div id="detailText" class="detail-box"></div>
-</div>
-
-<div id="frageCard" class="card hidden">
-  <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
-
-  <div id="frageHelp" class="sub">
-    Du kannst alles fragen, was du an diesem Brief nicht verstehst.
-  </div>
-
-  <div id="quickQuestionTitle" class="sub" style="font-weight:700; color: var(--text);">
-    Schnellfragen:
-  </div>
-
-  <div class="button-row">
-    <button id="quickWhatBtn" class="btn-secondary" type="button">Was muss ich tun?</button>
-    <button id="quickDeadlineBtn" class="btn-secondary" type="button">Bis wann?</button>
-    <button id="quickConsequenceBtn" class="btn-secondary" type="button">Was passiert, wenn ich nichts mache?</button>
-    <button id="quickReplyBtn" class="btn-secondary" type="button">Schreib mir eine Antwort</button>
-  </div>
-
-  <label id="frageTextLabel" for="frageText">Deine Frage</label>
-  <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
-
-  <div class="button-row">
-    <button id="frageBtn" class="btn-primary" type="button">Frage stellen</button>
-  </div>
-
-  <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
-  <div id="frageError" class="error hidden"></div>
-
-  <div id="frageAntwortBox" class="hidden">
-    <div id="frageAntwortTitle" class="section-title">Antwort</div>
-    <div id="frageAntwort" class="detail-box"></div>
-
-    <div class="audio-row">
-      <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
-        🔊 Antwort vorlesen
+    <div id="detailToggleCard" class="card hidden">
+      <button id="toggleDetailsBtn" class="btn-secondary" type="button">
+        📋 Mehr Details anzeigen
       </button>
     </div>
-  </div>
-</div>
+
+    <div id="detailCard" class="card hidden">
+      <div class="section-title">Mehr Details</div>
+      <div id="detailText" class="detail-box"></div>
+    </div>
+
+    <div id="frageCard" class="card hidden">
+      <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
+
+      <div id="frageHelp" class="sub">
+        Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.
+      </div>
+
+      <div id="quickQuestionTitle" class="sub" style="font-weight:700; color: var(--text);">
+        Schnellfragen:
+      </div>
+
+      <div class="button-row">
+        <button id="quickWhatBtn" class="btn-secondary" type="button">Was muss ich tun?</button>
+        <button id="quickDeadlineBtn" class="btn-secondary" type="button">Bis wann?</button>
+        <button id="quickConsequenceBtn" class="btn-secondary" type="button">Was passiert, wenn ich nichts mache?</button>
+        <button id="quickReplyBtn" class="btn-secondary" type="button">Schreib mir eine Antwort</button>
+      </div>
+
+      <label id="frageTextLabel" for="frageText">Deine Frage</label>
+      <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
+
+      <div class="button-row">
+        <button id="frageBtn" class="btn-primary" type="button">Frage stellen</button>
+      </div>
+
+      <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
+      <div id="frageError" class="error hidden"></div>
+
+      <div id="frageAntwortBox" class="hidden">
+        <div id="frageAntwortTitle" class="section-title">Antwort</div>
+        <div id="frageAntwort" class="detail-box"></div>
+
+        <div class="audio-row">
+          <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
+            🔊 Antwort vorlesen
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -586,97 +594,197 @@
       }
     };
 
-   const uiTexts = {
-  de: {
-    noInput: "Bitte füge Text ein oder lade mindestens ein Bild hoch.",
-    maxImages: "Du kannst aktuell maximal 3 Bilder hochladen.",
-    waiting: "Bitte warten... Der Brief wird geprüft.",
-    ok: "Der Brief wurde erklärt.",
-    serverError: "Serverfehler. Bitte später nochmal versuchen.",
-    noAudioText: "Es gibt keinen Text zum Vorlesen.",
-    audioLoading: "Audio wird geladen...",
-    audioError: "Audio konnte nicht geladen werden.",
-    questionEmpty: "Bitte schreibe zuerst eine Frage.",
-    questionNeedLetter: "Bitte erkläre zuerst einen Brief.",
-    questionLoading: "Antwort wird erstellt...",
-    questionError: "Die Frage konnte nicht beantwortet werden."
-  },
+    const uiTexts = {
+      de: {
+        waiting: "Bitte warten... Der Brief wird geprüft.",
+        noInput: "Bitte füge Text ein oder lade mindestens ein Bild hoch.",
+        maxImages: "Du kannst aktuell maximal 3 Bilder hochladen.",
+        serverError: "Serverfehler. Bitte später nochmal versuchen.",
+        okExplained: "Der Brief wurde erklärt.",
+        noAudioText: "Es gibt keinen Text zum Vorlesen.",
+        audioLoading: "Audio wird geladen...",
+        audioError: "Audio konnte nicht geladen werden.",
+        questionMissing: "Bitte schreibe zuerst eine Frage.",
+        explainFirst: "Bitte erkläre zuerst einen Brief.",
+        questionLoading: "Antwort wird erstellt...",
+        questionError: "Die Frage konnte nicht beantwortet werden.",
+        detailsShow: "📋 Mehr Details anzeigen",
+        detailsHide: "📋 Details ausblenden",
+        comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark."
+      },
+      tr: {
+        waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
+        noInput: "Lütfen metin ekle veya en az bir fotoğraf yükle.",
+        maxImages: "Şu anda en fazla 3 fotoğraf yükleyebilirsin.",
+        serverError: "Sunucu hatası. Lütfen daha sonra tekrar dene.",
+        okExplained: "Mektup açıklandı.",
+        noAudioText: "Okunacak metin yok.",
+        audioLoading: "Ses yükleniyor...",
+        audioError: "Ses yüklenemedi.",
+        questionMissing: "Lütfen önce bir soru yaz.",
+        explainFirst: "Lütfen önce bir mektubu açıkla.",
+        questionLoading: "Cevap oluşturuluyor...",
+        questionError: "Soru cevaplanamadı.",
+        detailsShow: "📋 Daha fazla detay göster",
+        detailsHide: "📋 Detayları gizle",
+        comingSoon: "Bu bölüm daha sonra gelecek. Önce yazıyı anlamayı güçlü yapıyoruz."
+      },
+      bg: {
+        waiting: "Моля, изчакай... Писмото се проверява.",
+        noInput: "Моля, въведи текст или качи поне една снимка.",
+        maxImages: "В момента можеш да качиш най-много 3 снимки.",
+        serverError: "Грешка в сървъра. Моля, опитай отново по-късно.",
+        okExplained: "Писмото беше обяснено.",
+        noAudioText: "Няма текст за прочитане.",
+        audioLoading: "Аудиото се зарежда...",
+        audioError: "Аудиото не можа да се зареди.",
+        questionMissing: "Моля, първо напиши въпрос.",
+        explainFirst: "Моля, първо обясни писмо.",
+        questionLoading: "Отговорът се създава...",
+        questionError: "Въпросът не можа да бъде отговорен.",
+        detailsShow: "📋 Покажи повече подробности",
+        detailsHide: "📋 Скрий подробностите",
+        comingSoon: "Този раздел ще бъде добавен по-късно. Първо правим разбирането на писма силно."
+      },
+      ro: {
+        waiting: "Te rog așteaptă... Scrisoarea este verificată.",
+        noInput: "Te rog să introduci text sau să încarci cel puțin o poză.",
+        maxImages: "Momentan poți încărca maximum 3 poze.",
+        serverError: "Eroare de server. Te rog încearcă din nou mai târziu.",
+        okExplained: "Scrisoarea a fost explicată.",
+        noAudioText: "Nu există text de citit.",
+        audioLoading: "Audio se încarcă...",
+        audioError: "Audio nu a putut fi încărcat.",
+        questionMissing: "Te rog scrie mai întâi o întrebare.",
+        explainFirst: "Te rog explică mai întâi o scrisoare.",
+        questionLoading: "Răspunsul este creat...",
+        questionError: "Întrebarea nu a putut fi răspunsă.",
+        detailsShow: "📋 Arată mai multe detalii",
+        detailsHide: "📋 Ascunde detaliile",
+        comingSoon: "Această zonă va veni mai târziu. Mai întâi facem înțelegerea scrisorilor foarte bună."
+      },
+      en: {
+        waiting: "Please wait... The letter is being checked.",
+        noInput: "Please enter text or upload at least one photo.",
+        maxImages: "You can currently upload a maximum of 3 photos.",
+        serverError: "Server error. Please try again later.",
+        okExplained: "The letter was explained.",
+        noAudioText: "There is no text to read aloud.",
+        audioLoading: "Audio is loading...",
+        audioError: "Audio could not be loaded.",
+        questionMissing: "Please write a question first.",
+        explainFirst: "Please explain a letter first.",
+        questionLoading: "Answer is being created...",
+        questionError: "The question could not be answered.",
+        detailsShow: "📋 Show more details",
+        detailsHide: "📋 Hide details",
+        comingSoon: "This area will come later. First we are making document understanding strong."
+      },
+      ar: {
+        waiting: "يرجى الانتظار... يتم فحص الرسالة.",
+        noInput: "يرجى إدخال نص أو رفع صورة واحدة على الأقل.",
+        maxImages: "يمكنك حاليًا رفع 3 صور كحد أقصى.",
+        serverError: "خطأ في الخادم. يرجى المحاولة لاحقًا.",
+        okExplained: "تم شرح الرسالة.",
+        noAudioText: "لا يوجد نص للقراءة.",
+        audioLoading: "يتم تحميل الصوت...",
+        audioError: "تعذر تحميل الصوت.",
+        questionMissing: "يرجى كتابة سؤال أولًا.",
+        explainFirst: "يرجى شرح رسالة أولًا.",
+        questionLoading: "يتم إنشاء الإجابة...",
+        questionError: "تعذر الإجابة على السؤال.",
+        detailsShow: "📋 عرض المزيد من التفاصيل",
+        detailsHide: "📋 إخفاء التفاصيل",
+        comingSoon: "سيأتي هذا القسم لاحقًا. أولًا نجعل فهم الرسائل قويًا."
+      }
+    };
 
-  tr: {
-    noInput: "Lütfen metin gir veya en az bir fotoğraf yükle.",
-    maxImages: "Şu anda en fazla 3 fotoğraf yükleyebilirsin.",
-    waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
-    ok: "Mektup açıklandı.",
-    serverError: "Sunucu hatası. Lütfen daha sonra tekrar dene.",
-    noAudioText: "Okunacak metin yok.",
-    audioLoading: "Ses yükleniyor...",
-    audioError: "Ses yüklenemedi.",
-    questionEmpty: "Lütfen önce bir soru yaz.",
-    questionNeedLetter: "Lütfen önce bir mektubu açıkla.",
-    questionLoading: "Cevap oluşturuluyor...",
-    questionError: "Soru cevaplanamadı."
-  },
-
-  bg: {
-    noInput: "Моля, въведи текст или качи поне една снимка.",
-    maxImages: "В момента можеш да качиш най-много 3 снимки.",
-    waiting: "Моля, изчакай... Писмото се проверява.",
-    ok: "Писмото беше обяснено.",
-    serverError: "Грешка в сървъра. Моля, опитай отново по-късно.",
-    noAudioText: "Няма текст за прочитане.",
-    audioLoading: "Аудиото се зарежда...",
-    audioError: "Аудиото не можа да се зареди.",
-    questionEmpty: "Моля, първо напиши въпрос.",
-    questionNeedLetter: "Моля, първо обясни писмо.",
-    questionLoading: "Отговорът се създава...",
-    questionError: "Въпросът не можа да бъде отговорен."
-  },
-
-  ro: {
-    noInput: "Te rog să introduci text sau să încarci cel puțin o poză.",
-    maxImages: "Momentan poți încărca maximum 3 poze.",
-    waiting: "Te rog așteaptă... Scrisoarea este verificată.",
-    ok: "Scrisoarea a fost explicată.",
-    serverError: "Eroare de server. Te rog încearcă din nou mai târziu.",
-    noAudioText: "Nu există text de citit.",
-    audioLoading: "Audio se încarcă...",
-    audioError: "Audio nu a putut fi încărcat.",
-    questionEmpty: "Te rog scrie mai întâi o întrebare.",
-    questionNeedLetter: "Te rog explică mai întâi o scrisoare.",
-    questionLoading: "Răspunsul este creat...",
-    questionError: "Întrebarea nu a putut fi răspunsă."
-  },
-
-  en: {
-    noInput: "Please enter text or upload at least one photo.",
-    maxImages: "You can currently upload a maximum of 3 photos.",
-    waiting: "Please wait... The letter is being checked.",
-    ok: "The letter was explained.",
-    serverError: "Server error. Please try again later.",
-    noAudioText: "There is no text to read aloud.",
-    audioLoading: "Audio is loading...",
-    audioError: "Audio could not be loaded.",
-    questionEmpty: "Please write a question first.",
-    questionNeedLetter: "Please explain a letter first.",
-    questionLoading: "Answer is being created...",
-    questionError: "The question could not be answered."
-  },
-
-  ar: {
-    noInput: "يرجى إدخال نص أو رفع صورة واحدة على الأقل.",
-    maxImages: "يمكنك حاليًا رفع 3 صور كحد أقصى.",
-    waiting: "يرجى الانتظار... يتم فحص الرسالة.",
-    ok: "تم شرح الرسالة.",
-    serverError: "خطأ في الخادم. يرجى المحاولة لاحقًا.",
-    noAudioText: "لا يوجد نص للقراءة.",
-    audioLoading: "يتم تحميل الصوت...",
-    audioError: "تعذر تحميل الصوت.",
-    questionEmpty: "يرجى كتابة سؤال أولًا.",
-    questionNeedLetter: "يرجى شرح رسالة أولًا.",
-    questionLoading: "يتم إنشاء الإجابة...",
-    questionError: "تعذر الإجابة على السؤال."
-  }
-};
+    const questionTexts = {
+      de: {
+        title: "Frage zu diesem Brief stellen",
+        help: "Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.",
+        quickTitle: "Schnellfragen:",
+        what: "Was muss ich tun?",
+        deadline: "Bis wann?",
+        consequence: "Was passiert, wenn ich nichts mache?",
+        reply: "Schreib mir eine Antwort",
+        label: "Deine Frage",
+        placeholder: "Schreibe hier deine Frage zu diesem Brief",
+        button: "Frage stellen",
+        answerTitle: "Antwort",
+        readAnswer: "🔊 Antwort vorlesen"
+      },
+      tr: {
+        title: "Bu mektupla ilgili soru sor",
+        help: "Bu mektupla ilgili anlamadığın her şeyi sorabilirsin. Kendi sorunu yazabilir veya hızlı sorulardan birini seçebilirsin.",
+        quickTitle: "Hızlı sorular:",
+        what: "Ne yapmam gerekiyor?",
+        deadline: "Son tarih ne zaman?",
+        consequence: "Hiçbir şey yapmazsam ne olur?",
+        reply: "Bana bir cevap yaz",
+        label: "Sorun",
+        placeholder: "Bu mektupla ilgili sorunu buraya yaz",
+        button: "Soru sor",
+        answerTitle: "Cevap",
+        readAnswer: "🔊 Cevabı sesli oku"
+      },
+      bg: {
+        title: "Задай въпрос за това писмо",
+        help: "Можеш да попиташ всичко, което не разбираш в това писмо. Можеш да напишеш свой въпрос или да избереш бърз въпрос.",
+        quickTitle: "Бързи въпроси:",
+        what: "Какво трябва да направя?",
+        deadline: "До кога?",
+        consequence: "Какво ще стане, ако не направя нищо?",
+        reply: "Напиши ми отговор",
+        label: "Твоят въпрос",
+        placeholder: "Напиши тук въпроса си за това писмо",
+        button: "Задай въпрос",
+        answerTitle: "Отговор",
+        readAnswer: "🔊 Прочети отговора"
+      },
+      ro: {
+        title: "Pune o întrebare despre această scrisoare",
+        help: "Poți întreba orice nu înțelegi din această scrisoare. Poți scrie propria întrebare sau poți alege o întrebare rapidă.",
+        quickTitle: "Întrebări rapide:",
+        what: "Ce trebuie să fac?",
+        deadline: "Până când?",
+        consequence: "Ce se întâmplă dacă nu fac nimic?",
+        reply: "Scrie-mi un răspuns",
+        label: "Întrebarea ta",
+        placeholder: "Scrie aici întrebarea ta despre această scrisoare",
+        button: "Pune întrebarea",
+        answerTitle: "Răspuns",
+        readAnswer: "🔊 Citește răspunsul"
+      },
+      en: {
+        title: "Ask a question about this letter",
+        help: "You can ask anything you do not understand about this letter. You can write your own question or choose a quick question.",
+        quickTitle: "Quick questions:",
+        what: "What do I have to do?",
+        deadline: "By when?",
+        consequence: "What happens if I do nothing?",
+        reply: "Write me a reply",
+        label: "Your question",
+        placeholder: "Write your question about this letter here",
+        button: "Ask question",
+        answerTitle: "Answer",
+        readAnswer: "🔊 Read answer aloud"
+      },
+      ar: {
+        title: "اسأل سؤالًا عن هذه الرسالة",
+        help: "يمكنك أن تسأل عن أي شيء لا تفهمه في هذه الرسالة. يمكنك كتابة سؤالك أو اختيار سؤال سريع.",
+        quickTitle: "أسئلة سريعة:",
+        what: "ماذا يجب أن أفعل؟",
+        deadline: "إلى متى؟",
+        consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+        reply: "اكتب لي ردًا",
+        label: "سؤالك",
+        placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
+        button: "اطرح السؤال",
+        answerTitle: "الإجابة",
+        readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
+      }
+    };
 
     const homeCardEl = document.getElementById("homeCard");
     const briefInputCardEl = document.getElementById("briefInputCard");
@@ -721,6 +829,15 @@
     const frageAntwortBoxEl = document.getElementById("frageAntwortBox");
     const frageAntwortEl = document.getElementById("frageAntwort");
     const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
+    const frageTitleEl = document.getElementById("frageTitle");
+    const frageHelpEl = document.getElementById("frageHelp");
+    const quickQuestionTitleEl = document.getElementById("quickQuestionTitle");
+    const quickWhatBtn = document.getElementById("quickWhatBtn");
+    const quickDeadlineBtn = document.getElementById("quickDeadlineBtn");
+    const quickConsequenceBtn = document.getElementById("quickConsequenceBtn");
+    const quickReplyBtn = document.getElementById("quickReplyBtn");
+    const frageTextLabelEl = document.getElementById("frageTextLabel");
+    const frageAntwortTitleEl = document.getElementById("frageAntwortTitle");
 
     const readShortBtn = document.getElementById("readShortBtn");
     const readAllBtn = document.getElementById("readAllBtn");
@@ -787,6 +904,39 @@
       if (resetBtn) resetBtn.textContent = t.back;
 
       currentLang = lang;
+      updateQuestionLanguage();
+    }
+
+    function updateQuestionLanguage() {
+      const lang = langEl ? langEl.value : currentLang || "de";
+      const t = questionTexts[lang] || questionTexts.de;
+
+      if (frageTitleEl) frageTitleEl.textContent = t.title;
+      if (frageHelpEl) frageHelpEl.textContent = t.help;
+      if (quickQuestionTitleEl) quickQuestionTitleEl.textContent = t.quickTitle;
+      if (quickWhatBtn) quickWhatBtn.textContent = t.what;
+      if (quickDeadlineBtn) quickDeadlineBtn.textContent = t.deadline;
+      if (quickConsequenceBtn) quickConsequenceBtn.textContent = t.consequence;
+      if (quickReplyBtn) quickReplyBtn.textContent = t.reply;
+      if (frageTextLabelEl) frageTextLabelEl.textContent = t.label;
+      if (frageTextEl) frageTextEl.placeholder = t.placeholder;
+      if (frageBtn) frageBtn.textContent = t.button;
+      if (frageAntwortTitleEl) frageAntwortTitleEl.textContent = t.answerTitle;
+      if (readFrageAntwortBtn) readFrageAntwortBtn.textContent = t.readAnswer;
+    }
+
+    function setQuickQuestion(button, key) {
+      if (!button) return;
+
+      button.addEventListener("click", () => {
+        const lang = langEl ? langEl.value : currentLang || "de";
+        const t = questionTexts[lang] || questionTexts.de;
+
+        if (frageTextEl) {
+          frageTextEl.value = t[key];
+          frageTextEl.focus();
+        }
+      });
     }
 
     function openBriefArea() {
@@ -956,6 +1106,74 @@
       });
     }
 
+    async function compressImageForUpload(file) {
+      if (!file || !file.type || !file.type.startsWith("image/")) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: file.type || "image/jpeg",
+          imageData
+        };
+      }
+
+      const maxSize = 1600;
+      const quality = 0.75;
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = dataUrl;
+      });
+
+      const originalWidth = img.naturalWidth || img.width;
+      const originalHeight = img.naturalHeight || img.height;
+
+      if (!originalWidth || !originalHeight) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: file.type || "image/jpeg",
+          imageData
+        };
+      }
+
+      const scale = Math.min(1, maxSize / Math.max(originalWidth, originalHeight));
+      const width = Math.round(originalWidth * scale);
+      const height = Math.round(originalHeight * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", quality);
+      });
+
+      if (!blob) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: file.type || "image/jpeg",
+          imageData
+        };
+      }
+
+      const imageData = await fileToBase64(blob);
+
+      return {
+        mimeType: "image/jpeg",
+        imageData
+      };
+    }
+
     function base64ToBlob(base64, mimeType) {
       const byteCharacters = atob(base64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -1046,10 +1264,10 @@
           const bilder = [];
 
           for (const file of files) {
-            const imageData = await fileToBase64(file);
+            const compressed = await compressImageForUpload(file);
             bilder.push({
-              mimeType: file.type || "image/jpeg",
-              imageData
+              mimeType: compressed.mimeType,
+              imageData: compressed.imageData
             });
           }
 
@@ -1292,480 +1510,5 @@
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
   </script>
-<script>
-(function () {
-  function qEl(id) {
-    return document.getElementById(id);
-  }
-
-  function qSet(id, text) {
-    var item = qEl(id);
-    if (item) item.textContent = text;
-  }
-
-  function qGetLang() {
-    var langEl = qEl("lang");
-    return langEl ? langEl.value : "de";
-  }
-
-  var questionTexts = {
-    de: {
-      title: "Frage zu diesem Brief stellen",
-      help: "Du kannst jetzt zu diesem Brief eine Frage stellen. Zum Beispiel: „Muss ich reagieren?“, „Was passiert, wenn ich nichts mache?“, „Schreib mir eine E-Mail.“",
-      label: "Deine Frage",
-      placeholder: "Schreibe hier deine Frage zu diesem Brief",
-      button: "Frage stellen",
-      loading: "Antwort wird erstellt...",
-      answerTitle: "Antwort",
-      readAnswer: "🔊 Antwort vorlesen"
-    },
-
-    tr: {
-      title: "Bu mektupla ilgili soru sor",
-      help: "Bu mektupla ilgili bir soru sorabilirsin. Örneğin: „Cevap vermem gerekiyor mu?“, „Hiçbir şey yapmazsam ne olur?“, „Bana bir e-posta yaz.“",
-      label: "Sorun",
-      placeholder: "Bu mektupla ilgili sorunu buraya yaz",
-      button: "Soru sor",
-      loading: "Cevap oluşturuluyor...",
-      answerTitle: "Cevap",
-      readAnswer: "🔊 Cevabı sesli oku"
-    },
-
-    bg: {
-      title: "Задай въпрос за това писмо",
-      help: "Можеш да зададеш въпрос за това писмо. Например: „Трябва ли да отговоря?“, „Какво ще стане, ако не направя нищо?“, „Напиши ми имейл.“",
-      label: "Твоят въпрос",
-      placeholder: "Напиши тук въпроса си за това писмо",
-      button: "Задай въпрос",
-      loading: "Отговорът се създава...",
-      answerTitle: "Отговор",
-      readAnswer: "🔊 Прочети отговора"
-    },
-
-    ro: {
-      title: "Pune o întrebare despre această scrisoare",
-      help: "Poți pune o întrebare despre această scrisoare. De exemplu: „Trebuie să răspund?“, „Ce se întâmplă dacă nu fac nimic?“, „Scrie-mi un e-mail.“",
-      label: "Întrebarea ta",
-      placeholder: "Scrie aici întrebarea ta despre această scrisoare",
-      button: "Pune întrebarea",
-      loading: "Răspunsul este creat...",
-      answerTitle: "Răspuns",
-      readAnswer: "🔊 Citește răspunsul"
-    },
-
-    en: {
-      title: "Ask a question about this letter",
-      help: "You can ask a question about this letter. For example: “Do I have to reply?”, “What happens if I do nothing?”, “Write me an email.”",
-      label: "Your question",
-      placeholder: "Write your question about this letter here",
-      button: "Ask question",
-      loading: "Answer is being created...",
-      answerTitle: "Answer",
-      readAnswer: "🔊 Read answer aloud"
-    },
-
-    ar: {
-      title: "اسأل سؤالًا عن هذه الرسالة",
-      help: "يمكنك طرح سؤال عن هذه الرسالة. مثلًا: „هل يجب أن أرد؟“، „ماذا يحدث إذا لم أفعل شيئًا؟“، „اكتب لي بريدًا إلكترونيًا.“",
-      label: "سؤالك",
-      placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
-      button: "اطرح السؤال",
-      loading: "يتم إنشاء الإجابة...",
-      answerTitle: "الإجابة",
-      readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
-    }
-  };
-
-  window.h24UpdateQuestionArea = function () {
-    var lang = qGetLang();
-    var t = questionTexts[lang] || questionTexts.de;
-
-    qSet("frageTitle", t.title);
-    qSet("frageHelp", t.help);
-    qSet("frageTextLabel", t.label);
-    qSet("frageBtn", t.button);
-    qSet("frageStatus", t.loading);
-    qSet("frageAntwortTitle", t.answerTitle);
-    qSet("readFrageAntwortBtn", t.readAnswer);
-
-    var textarea = qEl("frageText");
-    if (textarea) {
-      textarea.placeholder = t.placeholder;
-    }
-  };
-
-  function startQuestionAreaFix() {
-    var langEl = qEl("lang");
-
-    if (langEl) {
-      langEl.addEventListener("change", window.h24UpdateQuestionArea);
-    }
-
-    window.h24UpdateQuestionArea();
-    setTimeout(window.h24UpdateQuestionArea, 300);
-    setTimeout(window.h24UpdateQuestionArea, 1000);
-  }
-
-  startQuestionAreaFix();
-  window.addEventListener("load", startQuestionAreaFix);
-})();
-</script>
-<script>
-(function () {
-  function qEl(id) {
-    return document.getElementById(id);
-  }
-
-  function qSet(id, text) {
-    var item = qEl(id);
-    if (item) item.textContent = text;
-  }
-
-  function qGetLang() {
-    var langEl = qEl("lang");
-    return langEl ? langEl.value : "de";
-  }
-
-  var questionTexts = {
-    de: {
-      title: "Frage zu diesem Brief stellen",
-      help: "Du kannst alles fragen, was du an diesem Brief nicht verstehst.",
-      quickTitle: "Schnellfragen:",
-      what: "Was muss ich tun?",
-      deadline: "Bis wann?",
-      consequence: "Was passiert, wenn ich nichts mache?",
-      reply: "Schreib mir eine Antwort",
-      label: "Deine Frage",
-      placeholder: "Schreibe hier deine Frage zu diesem Brief",
-      button: "Frage stellen",
-      loading: "Antwort wird erstellt...",
-      answerTitle: "Antwort",
-      readAnswer: "🔊 Antwort vorlesen"
-    },
-
-    tr: {
-      title: "Bu mektupla ilgili soru sor",
-      help: "Bu mektupla ilgili anlamadığın her şeyi sorabilirsin.",
-      quickTitle: "Hızlı sorular:",
-      what: "Ne yapmam gerekiyor?",
-      deadline: "Son tarih ne zaman?",
-      consequence: "Hiçbir şey yapmazsam ne olur?",
-      reply: "Bana bir cevap yaz",
-      label: "Sorun",
-      placeholder: "Bu mektupla ilgili sorunu buraya yaz",
-      button: "Soru sor",
-      loading: "Cevap oluşturuluyor...",
-      answerTitle: "Cevap",
-      readAnswer: "🔊 Cevabı sesli oku"
-    },
-
-    bg: {
-      title: "Задай въпрос за това писмо",
-      help: "Можеш да попиташ всичко, което не разбираш в това писмо.",
-      quickTitle: "Бързи въпроси:",
-      what: "Какво трябва да направя?",
-      deadline: "До кога?",
-      consequence: "Какво ще стане, ако не направя нищо?",
-      reply: "Напиши ми отговор",
-      label: "Твоят въпрос",
-      placeholder: "Напиши тук въпроса си за това писмо",
-      button: "Задай въпрос",
-      loading: "Отговорът се създава...",
-      answerTitle: "Отговор",
-      readAnswer: "🔊 Прочети отговора"
-    },
-
-    ro: {
-      title: "Pune o întrebare despre această scrisoare",
-      help: "Poți întreba orice nu înțelegi din această scrisoare.",
-      quickTitle: "Întrebări rapide:",
-      what: "Ce trebuie să fac?",
-      deadline: "Până când?",
-      consequence: "Ce se întâmplă dacă nu fac nimic?",
-      reply: "Scrie-mi un răspuns",
-      label: "Întrebarea ta",
-      placeholder: "Scrie aici întrebarea ta despre această scrisoare",
-      button: "Pune întrebarea",
-      loading: "Răspunsul este creat...",
-      answerTitle: "Răspuns",
-      readAnswer: "🔊 Citește răspunsul"
-    },
-
-    en: {
-      title: "Ask a question about this letter",
-      help: "You can ask anything you do not understand about this letter.",
-      quickTitle: "Quick questions:",
-      what: "What do I have to do?",
-      deadline: "By when?",
-      consequence: "What happens if I do nothing?",
-      reply: "Write me a reply",
-      label: "Your question",
-      placeholder: "Write your question about this letter here",
-      button: "Ask question",
-      loading: "Answer is being created...",
-      answerTitle: "Answer",
-      readAnswer: "🔊 Read answer aloud"
-    },
-
-    ar: {
-      title: "اسأل سؤالًا عن هذه الرسالة",
-      help: "يمكنك أن تسأل عن أي شيء لا تفهمه في هذه الرسالة.",
-      quickTitle: "أسئلة سريعة:",
-      what: "ماذا يجب أن أفعل؟",
-      deadline: "إلى متى؟",
-      consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
-      reply: "اكتب لي ردًا",
-      label: "سؤالك",
-      placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
-      button: "اطرح السؤال",
-      loading: "يتم إنشاء الإجابة...",
-      answerTitle: "الإجابة",
-      readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
-    }
-  };
-
-  window.h24UpdateQuestionArea = function () {
-    var lang = qGetLang();
-    var t = questionTexts[lang] || questionTexts.de;
-
-    qSet("frageTitle", t.title);
-    qSet("frageHelp", t.help);
-    qSet("quickQuestionTitle", t.quickTitle);
-    qSet("quickWhatBtn", t.what);
-    qSet("quickDeadlineBtn", t.deadline);
-    qSet("quickConsequenceBtn", t.consequence);
-    qSet("quickReplyBtn", t.reply);
-    qSet("frageTextLabel", t.label);
-    qSet("frageBtn", t.button);
-    qSet("frageStatus", t.loading);
-    qSet("frageAntwortTitle", t.answerTitle);
-    qSet("readFrageAntwortBtn", t.readAnswer);
-
-    var textarea = qEl("frageText");
-    if (textarea) {
-      textarea.placeholder = t.placeholder;
-    }
-  };
-
-  function setQuickQuestion(buttonId, textKey) {
-    var btn = qEl(buttonId);
-    if (!btn) return;
-
-    btn.onclick = function () {
-      var lang = qGetLang();
-      var t = questionTexts[lang] || questionTexts.de;
-      var textarea = qEl("frageText");
-
-      if (textarea) {
-        textarea.value = t[textKey];
-        textarea.focus();
-      }
-    };
-  }
-
-  function startQuestionAreaFix() {
-    var langEl = qEl("lang");
-
-    if (langEl) {
-      langEl.addEventListener("change", window.h24UpdateQuestionArea);
-    }
-
-    setQuickQuestion("quickWhatBtn", "what");
-    setQuickQuestion("quickDeadlineBtn", "deadline");
-    setQuickQuestion("quickConsequenceBtn", "consequence");
-    setQuickQuestion("quickReplyBtn", "reply");
-
-    window.h24UpdateQuestionArea();
-
-    setTimeout(window.h24UpdateQuestionArea, 300);
-    setTimeout(window.h24UpdateQuestionArea, 1000);
-  }
-
-  startQuestionAreaFix();
-  window.addEventListener("load", startQuestionAreaFix);
-})();
-</script>
-<script>
-(function () {
-  function h24q(id) {
-    return document.getElementById(id);
-  }
-
-  function h24qSet(id, text) {
-    var el = h24q(id);
-    if (el) el.textContent = text;
-  }
-
-  function h24qLang() {
-    var langEl = h24q("lang");
-    return langEl ? langEl.value : "de";
-  }
-
-  var h24QuestionTexts = {
-    de: {
-      title: "Frage zu diesem Brief stellen",
-      help: "Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.",
-      quickTitle: "Schnellfragen:",
-      what: "Was muss ich tun?",
-      deadline: "Bis wann?",
-      consequence: "Was passiert, wenn ich nichts mache?",
-      reply: "Schreib mir eine Antwort",
-      label: "Deine Frage",
-      placeholder: "Schreibe hier deine Frage zu diesem Brief",
-      button: "Frage stellen",
-      loading: "Antwort wird erstellt...",
-      answerTitle: "Antwort",
-      readAnswer: "🔊 Antwort vorlesen"
-    },
-
-    tr: {
-      title: "Bu mektupla ilgili soru sor",
-      help: "Bu mektupla ilgili anlamadığın her şeyi sorabilirsin. Kendi sorunu yazabilir veya aşağıdaki hızlı sorulardan birine dokunabilirsin.",
-      quickTitle: "Hızlı sorular:",
-      what: "Ne yapmam gerekiyor?",
-      deadline: "Son tarih ne zaman?",
-      consequence: "Hiçbir şey yapmazsam ne olur?",
-      reply: "Bana bir cevap yaz",
-      label: "Sorun",
-      placeholder: "Bu mektupla ilgili sorunu buraya yaz",
-      button: "Soru sor",
-      loading: "Cevap oluşturuluyor...",
-      answerTitle: "Cevap",
-      readAnswer: "🔊 Cevabı sesli oku"
-    },
-
-    bg: {
-      title: "Задай въпрос за това писмо",
-      help: "Можеш да попиташ всичко, което не разбираш в това писмо. Можеш да напишеш свой въпрос или да избереш бърз въпрос.",
-      quickTitle: "Бързи въпроси:",
-      what: "Какво трябва да направя?",
-      deadline: "До кога?",
-      consequence: "Какво ще стане, ако не направя нищо?",
-      reply: "Напиши ми отговор",
-      label: "Твоят въпрос",
-      placeholder: "Напиши тук въпроса си за това писмо",
-      button: "Задай въпрос",
-      loading: "Отговорът се създава...",
-      answerTitle: "Отговор",
-      readAnswer: "🔊 Прочети отговора"
-    },
-
-    ro: {
-      title: "Pune o întrebare despre această scrisoare",
-      help: "Poți întreba orice nu înțelegi din această scrisoare. Poți scrie propria întrebare sau poți alege o întrebare rapidă.",
-      quickTitle: "Întrebări rapide:",
-      what: "Ce trebuie să fac?",
-      deadline: "Până când?",
-      consequence: "Ce se întâmplă dacă nu fac nimic?",
-      reply: "Scrie-mi un răspuns",
-      label: "Întrebarea ta",
-      placeholder: "Scrie aici întrebarea ta despre această scrisoare",
-      button: "Pune întrebarea",
-      loading: "Răspunsul este creat...",
-      answerTitle: "Răspuns",
-      readAnswer: "🔊 Citește răspunsul"
-    },
-
-    en: {
-      title: "Ask a question about this letter",
-      help: "You can ask anything you do not understand about this letter. You can write your own question or choose a quick question below.",
-      quickTitle: "Quick questions:",
-      what: "What do I have to do?",
-      deadline: "By when?",
-      consequence: "What happens if I do nothing?",
-      reply: "Write me a reply",
-      label: "Your question",
-      placeholder: "Write your question about this letter here",
-      button: "Ask question",
-      loading: "Answer is being created...",
-      answerTitle: "Answer",
-      readAnswer: "🔊 Read answer aloud"
-    },
-
-    ar: {
-      title: "اسأل سؤالًا عن هذه الرسالة",
-      help: "يمكنك أن تسأل عن أي شيء لا تفهمه في هذه الرسالة. يمكنك كتابة سؤالك أو اختيار سؤال سريع من الأسفل.",
-      quickTitle: "أسئلة سريعة:",
-      what: "ماذا يجب أن أفعل؟",
-      deadline: "إلى متى؟",
-      consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
-      reply: "اكتب لي ردًا",
-      label: "سؤالك",
-      placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
-      button: "اطرح السؤال",
-      loading: "يتم إنشاء الإجابة...",
-      answerTitle: "الإجابة",
-      readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
-    }
-  };
-
-  window.h24ForceQuestionLanguage = function () {
-    var lang = h24qLang();
-    var t = h24QuestionTexts[lang] || h24QuestionTexts.de;
-
-    h24qSet("frageTitle", t.title);
-    h24qSet("frageHelp", t.help);
-    h24qSet("quickQuestionTitle", t.quickTitle);
-    h24qSet("quickWhatBtn", t.what);
-    h24qSet("quickDeadlineBtn", t.deadline);
-    h24qSet("quickConsequenceBtn", t.consequence);
-    h24qSet("quickReplyBtn", t.reply);
-    h24qSet("frageTextLabel", t.label);
-    h24qSet("frageBtn", t.button);
-    h24qSet("frageStatus", t.loading);
-    h24qSet("frageAntwortTitle", t.answerTitle);
-    h24qSet("readFrageAntwortBtn", t.readAnswer);
-
-    var textarea = h24q("frageText");
-    if (textarea) {
-      textarea.placeholder = t.placeholder;
-    }
-  };
-
-  function h24SetQuickButton(btnId, key) {
-    var btn = h24q(btnId);
-    if (!btn) return;
-
-    btn.onclick = function () {
-      var lang = h24qLang();
-      var t = h24QuestionTexts[lang] || h24QuestionTexts.de;
-      var textarea = h24q("frageText");
-
-      if (textarea) {
-        textarea.value = t[key];
-        textarea.focus();
-      }
-    };
-  }
-
-  function h24StartQuestionFix() {
-    var langEl = h24q("lang");
-    var analyzeBtn = h24q("analyzeBtn");
-
-    if (langEl) {
-      langEl.addEventListener("change", window.h24ForceQuestionLanguage);
-    }
-
-    if (analyzeBtn) {
-      analyzeBtn.addEventListener("click", function () {
-        setTimeout(window.h24ForceQuestionLanguage, 500);
-        setTimeout(window.h24ForceQuestionLanguage, 1500);
-      });
-    }
-
-    h24SetQuickButton("quickWhatBtn", "what");
-    h24SetQuickButton("quickDeadlineBtn", "deadline");
-    h24SetQuickButton("quickConsequenceBtn", "consequence");
-    h24SetQuickButton("quickReplyBtn", "reply");
-
-    window.h24ForceQuestionLanguage();
-    setTimeout(window.h24ForceQuestionLanguage, 500);
-    setTimeout(window.h24ForceQuestionLanguage, 1500);
-  }
-
-  h24StartQuestionFix();
-  window.addEventListener("load", h24StartQuestionFix);
-})();
-</script>
 </body>
 </html>
