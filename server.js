@@ -1524,13 +1524,14 @@ Nicht wie ein langer KI-Aufsatz.
 `
   }
 ]);
-    return res.json({
-      ok: true,
-      antwort
-    });
-  } catch (error) {
-    console.error("Fehler /api/frage:", error);
+   const antwort = cleanText(raw)
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
 
+return res.json({
+  ok: true,
+  antwort
+});
     return res.status(500).json({
       ok: false,
       error: error.message || "Fehler bei der Frage"
