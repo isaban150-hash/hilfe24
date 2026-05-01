@@ -401,36 +401,35 @@
       <div id="detailText" class="detail-box"></div>
     </div>
 
-    <div id="frageCard" class="card hidden">
-      <div class="section-title">Frage zu diesem Brief stellen</div>
+    <<div id="frageCard" class="card hidden">
+  <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
 
-      <div class="sub">
-        Du kannst jetzt zu diesem Brief eine Frage stellen. Zum Beispiel:
-        „Ich bin krank“, „Schreib mir eine E-Mail“, „Was muss ich tun?“
-      </div>
+  <div id="frageHelp" class="sub">
+    Du kannst jetzt zu diesem Brief eine Frage stellen. Zum Beispiel:
+    „Muss ich reagieren?“, „Was passiert, wenn ich nichts mache?“, „Schreib mir eine E-Mail.“
+  </div>
 
-      <label for="frageText">Deine Frage</label>
-      <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
+  <label id="frageTextLabel" for="frageText">Deine Frage</label>
+  <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
 
-      <div class="button-row">
-        <button id="frageBtn" class="btn-primary" type="button">Frage stellen</button>
-      </div>
+  <div class="button-row">
+    <button id="frageBtn" class="btn-primary" type="button">Frage stellen</button>
+  </div>
 
-      <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
-      <div id="frageError" class="error hidden"></div>
+  <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
+  <div id="frageError" class="error hidden"></div>
 
-      <div id="frageAntwortBox" class="hidden">
-        <div class="section-title">Antwort</div>
-        <div id="frageAntwort" class="detail-box"></div>
+  <div id="frageAntwortBox" class="hidden">
+    <div id="frageAntwortTitle" class="section-title">Antwort</div>
+    <div id="frageAntwort" class="detail-box"></div>
 
-        <div class="audio-row">
-          <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
-            🔊 Antwort vorlesen
-          </button>
-        </div>
-      </div>
+    <div class="audio-row">
+      <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
+        🔊 Antwort vorlesen
+      </button>
     </div>
-
+  </div>
+</div>
   </div>
 
   <script>
@@ -1290,5 +1289,123 @@
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
   </script>
+<script>
+(function () {
+  function qEl(id) {
+    return document.getElementById(id);
+  }
+
+  function qSet(id, text) {
+    var item = qEl(id);
+    if (item) item.textContent = text;
+  }
+
+  function qGetLang() {
+    var langEl = qEl("lang");
+    return langEl ? langEl.value : "de";
+  }
+
+  var questionTexts = {
+    de: {
+      title: "Frage zu diesem Brief stellen",
+      help: "Du kannst jetzt zu diesem Brief eine Frage stellen. Zum Beispiel: „Muss ich reagieren?“, „Was passiert, wenn ich nichts mache?“, „Schreib mir eine E-Mail.“",
+      label: "Deine Frage",
+      placeholder: "Schreibe hier deine Frage zu diesem Brief",
+      button: "Frage stellen",
+      loading: "Antwort wird erstellt...",
+      answerTitle: "Antwort",
+      readAnswer: "🔊 Antwort vorlesen"
+    },
+
+    tr: {
+      title: "Bu mektupla ilgili soru sor",
+      help: "Bu mektupla ilgili bir soru sorabilirsin. Örneğin: „Cevap vermem gerekiyor mu?“, „Hiçbir şey yapmazsam ne olur?“, „Bana bir e-posta yaz.“",
+      label: "Sorun",
+      placeholder: "Bu mektupla ilgili sorunu buraya yaz",
+      button: "Soru sor",
+      loading: "Cevap oluşturuluyor...",
+      answerTitle: "Cevap",
+      readAnswer: "🔊 Cevabı sesli oku"
+    },
+
+    bg: {
+      title: "Задай въпрос за това писмо",
+      help: "Можеш да зададеш въпрос за това писмо. Например: „Трябва ли да отговоря?“, „Какво ще стане, ако не направя нищо?“, „Напиши ми имейл.“",
+      label: "Твоят въпрос",
+      placeholder: "Напиши тук въпроса си за това писмо",
+      button: "Задай въпрос",
+      loading: "Отговорът се създава...",
+      answerTitle: "Отговор",
+      readAnswer: "🔊 Прочети отговора"
+    },
+
+    ro: {
+      title: "Pune o întrebare despre această scrisoare",
+      help: "Poți pune o întrebare despre această scrisoare. De exemplu: „Trebuie să răspund?“, „Ce se întâmplă dacă nu fac nimic?“, „Scrie-mi un e-mail.“",
+      label: "Întrebarea ta",
+      placeholder: "Scrie aici întrebarea ta despre această scrisoare",
+      button: "Pune întrebarea",
+      loading: "Răspunsul este creat...",
+      answerTitle: "Răspuns",
+      readAnswer: "🔊 Citește răspunsul"
+    },
+
+    en: {
+      title: "Ask a question about this letter",
+      help: "You can ask a question about this letter. For example: “Do I have to reply?”, “What happens if I do nothing?”, “Write me an email.”",
+      label: "Your question",
+      placeholder: "Write your question about this letter here",
+      button: "Ask question",
+      loading: "Answer is being created...",
+      answerTitle: "Answer",
+      readAnswer: "🔊 Read answer aloud"
+    },
+
+    ar: {
+      title: "اسأل سؤالًا عن هذه الرسالة",
+      help: "يمكنك طرح سؤال عن هذه الرسالة. مثلًا: „هل يجب أن أرد؟“، „ماذا يحدث إذا لم أفعل شيئًا؟“، „اكتب لي بريدًا إلكترونيًا.“",
+      label: "سؤالك",
+      placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
+      button: "اطرح السؤال",
+      loading: "يتم إنشاء الإجابة...",
+      answerTitle: "الإجابة",
+      readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
+    }
+  };
+
+  window.h24UpdateQuestionArea = function () {
+    var lang = qGetLang();
+    var t = questionTexts[lang] || questionTexts.de;
+
+    qSet("frageTitle", t.title);
+    qSet("frageHelp", t.help);
+    qSet("frageTextLabel", t.label);
+    qSet("frageBtn", t.button);
+    qSet("frageStatus", t.loading);
+    qSet("frageAntwortTitle", t.answerTitle);
+    qSet("readFrageAntwortBtn", t.readAnswer);
+
+    var textarea = qEl("frageText");
+    if (textarea) {
+      textarea.placeholder = t.placeholder;
+    }
+  };
+
+  function startQuestionAreaFix() {
+    var langEl = qEl("lang");
+
+    if (langEl) {
+      langEl.addEventListener("change", window.h24UpdateQuestionArea);
+    }
+
+    window.h24UpdateQuestionArea();
+    setTimeout(window.h24UpdateQuestionArea, 300);
+    setTimeout(window.h24UpdateQuestionArea, 1000);
+  }
+
+  startQuestionAreaFix();
+  window.addEventListener("load", startQuestionAreaFix);
+})();
+</script>
 </body>
 </html>
