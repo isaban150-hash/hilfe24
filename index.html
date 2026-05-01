@@ -1684,5 +1684,69 @@ if (resetBtn) {
   window.addEventListener("load", start);
 })();
 </script>
+<script>
+(function () {
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  function setText(id, text) {
+    var item = el(id);
+    if (item) item.textContent = text;
+  }
+
+  window.h24UpdateBrief = function () {
+    var briefLang = el("lang");
+    var lang = briefLang ? briefLang.value : "de";
+
+    var de = {
+      sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
+      textLabel: "Brief als Text",
+      photoLabel: "Brief-Fotos hochladen",
+      placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+      hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
+      analyze: "Brief erklären",
+      back: "← Zurück zur Startseite"
+    };
+
+    var tr = {
+      sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
+      textLabel: "Mektup metni",
+      photoLabel: "Mektup fotoğrafları yükle",
+      placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
+      hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
+      analyze: "Mektubu açıkla",
+      back: "← Ana sayfaya dön"
+    };
+
+    var t = lang === "tr" ? tr : de;
+
+    setText("briefSubTitle", t.sub);
+    setText("briefTextLabel", t.textLabel);
+    setText("briefPhotoLabel", t.photoLabel);
+    setText("photoHintText", t.hint);
+    setText("analyzeBtn", t.analyze);
+    setText("resetBtn", t.back);
+
+    var textArea = el("briefText");
+    if (textArea) {
+      textArea.placeholder = t.placeholder;
+    }
+  };
+
+  function startBriefFix() {
+    var briefLang = el("lang");
+
+    if (briefLang) {
+      briefLang.onchange = window.h24UpdateBrief;
+    }
+
+    window.h24UpdateBrief();
+  }
+
+  startBriefFix();
+  window.addEventListener("load", startBriefFix);
+})();
+</script>
 </body>
 </html>
