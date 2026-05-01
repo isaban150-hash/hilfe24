@@ -1518,7 +1518,8 @@ function updateBriefLanguage() {
   function startHilfe24Fix() {
     var langEl = byId("homeLang");
     var openBtn = byId("openBriefBtn");
-
+    var resetBtn = byId("resetBtn");
+    
   if (langEl) {
   langEl.onchange = window.updateHomeLanguage;
 }
@@ -1535,7 +1536,35 @@ if (openBtn) {
     updateBriefLanguage();
   };
 }
- window.updateHomeLanguage();
+if (resetBtn) {
+  resetBtn.onclick = function (event) {
+    event.preventDefault();
+
+    var homeCard = byId("homeCard");
+    var briefInputCard = byId("briefInputCard");
+    var briefText = byId("briefText");
+    var bilder = byId("bilder");
+    var previewGrid = byId("previewGrid");
+
+    if (briefText) briefText.value = "";
+    if (bilder) bilder.value = "";
+    if (previewGrid) previewGrid.innerHTML = "";
+
+    if (briefInputCard) {
+      briefInputCard.classList.add("hidden");
+      briefInputCard.style.display = "none";
+    }
+
+    if (homeCard) {
+      homeCard.classList.remove("hidden");
+      homeCard.style.display = "block";
+    }
+
+    window.updateHomeLanguage();
+    window.scrollTo(0, 0);
+  };
+}
+    window.updateHomeLanguage();
  updateBriefLanguage();
   }
 
