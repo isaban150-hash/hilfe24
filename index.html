@@ -584,42 +584,97 @@
       }
     };
 
-    const uiTexts = {
-      de: {
-        waiting: "Bitte warten... Der Brief wird geprüft.",
-        noInput: "Bitte füge Text ein oder lade mindestens ein Bild hoch.",
-        maxImages: "Du kannst aktuell maximal 3 Bilder hochladen.",
-        serverError: "Serverfehler. Bitte später nochmal versuchen.",
-        okExplained: "Der Brief wurde erklärt.",
-        noAudioText: "Es gibt keinen Text zum Vorlesen.",
-        audioLoading: "Audio wird geladen...",
-        audioError: "Audio konnte nicht geladen werden.",
-        questionMissing: "Bitte schreibe zuerst eine Frage.",
-        explainFirst: "Bitte erkläre zuerst einen Brief.",
-        questionLoading: "Antwort wird erstellt...",
-        questionError: "Die Frage konnte nicht beantwortet werden.",
-        detailsShow: "📋 Mehr Details anzeigen",
-        detailsHide: "📋 Details ausblenden",
-        comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark."
-      },
-      tr: {
-        waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
-        noInput: "Lütfen metin ekle veya en az bir fotoğraf yükle.",
-        maxImages: "Şu anda en fazla 3 fotoğraf yükleyebilirsin.",
-        serverError: "Sunucu hatası. Lütfen daha sonra tekrar dene.",
-        okExplained: "Mektup açıklandı.",
-        noAudioText: "Okunacak metin yok.",
-        audioLoading: "Ses yükleniyor...",
-        audioError: "Ses yüklenemedi.",
-        questionMissing: "Lütfen önce bir soru yaz.",
-        explainFirst: "Lütfen önce bir mektubu açıkla.",
-        questionLoading: "Cevap oluşturuluyor...",
-        questionError: "Soru cevaplanamadı.",
-        detailsShow: "📋 Daha fazla detay göster",
-        detailsHide: "📋 Detayları gizle",
-        comingSoon: "Bu bölüm daha sonra gelecek. Önce yazıyı anlamayı güçlü yapıyoruz."
-      }
-    };
+   const uiTexts = {
+  de: {
+    noInput: "Bitte füge Text ein oder lade mindestens ein Bild hoch.",
+    maxImages: "Du kannst aktuell maximal 3 Bilder hochladen.",
+    waiting: "Bitte warten... Der Brief wird geprüft.",
+    ok: "Der Brief wurde erklärt.",
+    serverError: "Serverfehler. Bitte später nochmal versuchen.",
+    noAudioText: "Es gibt keinen Text zum Vorlesen.",
+    audioLoading: "Audio wird geladen...",
+    audioError: "Audio konnte nicht geladen werden.",
+    questionEmpty: "Bitte schreibe zuerst eine Frage.",
+    questionNeedLetter: "Bitte erkläre zuerst einen Brief.",
+    questionLoading: "Antwort wird erstellt...",
+    questionError: "Die Frage konnte nicht beantwortet werden."
+  },
+
+  tr: {
+    noInput: "Lütfen metin gir veya en az bir fotoğraf yükle.",
+    maxImages: "Şu anda en fazla 3 fotoğraf yükleyebilirsin.",
+    waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
+    ok: "Mektup açıklandı.",
+    serverError: "Sunucu hatası. Lütfen daha sonra tekrar dene.",
+    noAudioText: "Okunacak metin yok.",
+    audioLoading: "Ses yükleniyor...",
+    audioError: "Ses yüklenemedi.",
+    questionEmpty: "Lütfen önce bir soru yaz.",
+    questionNeedLetter: "Lütfen önce bir mektubu açıkla.",
+    questionLoading: "Cevap oluşturuluyor...",
+    questionError: "Soru cevaplanamadı."
+  },
+
+  bg: {
+    noInput: "Моля, въведи текст или качи поне една снимка.",
+    maxImages: "В момента можеш да качиш най-много 3 снимки.",
+    waiting: "Моля, изчакай... Писмото се проверява.",
+    ok: "Писмото беше обяснено.",
+    serverError: "Грешка в сървъра. Моля, опитай отново по-късно.",
+    noAudioText: "Няма текст за прочитане.",
+    audioLoading: "Аудиото се зарежда...",
+    audioError: "Аудиото не можа да се зареди.",
+    questionEmpty: "Моля, първо напиши въпрос.",
+    questionNeedLetter: "Моля, първо обясни писмо.",
+    questionLoading: "Отговорът се създава...",
+    questionError: "Въпросът не можа да бъде отговорен."
+  },
+
+  ro: {
+    noInput: "Te rog să introduci text sau să încarci cel puțin o poză.",
+    maxImages: "Momentan poți încărca maximum 3 poze.",
+    waiting: "Te rog așteaptă... Scrisoarea este verificată.",
+    ok: "Scrisoarea a fost explicată.",
+    serverError: "Eroare de server. Te rog încearcă din nou mai târziu.",
+    noAudioText: "Nu există text de citit.",
+    audioLoading: "Audio se încarcă...",
+    audioError: "Audio nu a putut fi încărcat.",
+    questionEmpty: "Te rog scrie mai întâi o întrebare.",
+    questionNeedLetter: "Te rog explică mai întâi o scrisoare.",
+    questionLoading: "Răspunsul este creat...",
+    questionError: "Întrebarea nu a putut fi răspunsă."
+  },
+
+  en: {
+    noInput: "Please enter text or upload at least one photo.",
+    maxImages: "You can currently upload a maximum of 3 photos.",
+    waiting: "Please wait... The letter is being checked.",
+    ok: "The letter was explained.",
+    serverError: "Server error. Please try again later.",
+    noAudioText: "There is no text to read aloud.",
+    audioLoading: "Audio is loading...",
+    audioError: "Audio could not be loaded.",
+    questionEmpty: "Please write a question first.",
+    questionNeedLetter: "Please explain a letter first.",
+    questionLoading: "Answer is being created...",
+    questionError: "The question could not be answered."
+  },
+
+  ar: {
+    noInput: "يرجى إدخال نص أو رفع صورة واحدة على الأقل.",
+    maxImages: "يمكنك حاليًا رفع 3 صور كحد أقصى.",
+    waiting: "يرجى الانتظار... يتم فحص الرسالة.",
+    ok: "تم شرح الرسالة.",
+    serverError: "خطأ في الخادم. يرجى المحاولة لاحقًا.",
+    noAudioText: "لا يوجد نص للقراءة.",
+    audioLoading: "يتم تحميل الصوت...",
+    audioError: "تعذر تحميل الصوت.",
+    questionEmpty: "يرجى كتابة سؤال أولًا.",
+    questionNeedLetter: "يرجى شرح رسالة أولًا.",
+    questionLoading: "يتم إنشاء الإجابة...",
+    questionError: "تعذر الإجابة على السؤال."
+  }
+};
 
     const homeCardEl = document.getElementById("homeCard");
     const briefInputCardEl = document.getElementById("briefInputCard");
