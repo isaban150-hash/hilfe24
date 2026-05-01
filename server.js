@@ -1518,15 +1518,19 @@ einfach, klar, vollständig, ruhig, praktisch.
 Nicht wie Amtssprache.
 Nicht wie Werbung.
 Nicht wie ein langer KI-Aufsatz.
+    Nicht wie ein langer KI-Aufsatz.
+`
+      }
+    ]);
+
     const antwort = cleanText(raw)
       .replace(/\n{3,}/g, "\n\n")
       .trim();
-`
-  }
-]);
-const antwort = cleanText(raw)
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+
+    return res.json({
+      ok: true,
+      antwort
+    });
 
     return res.json({
       ok: true,
