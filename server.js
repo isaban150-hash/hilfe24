@@ -1293,16 +1293,59 @@ Frage-Modus:
 ${frageMode}
 
 AUFGABE:
-WICHTIG ZUM FRAGE-MODUS:
 Wenn frageMode = "next_steps":
-Der Nutzer will wissen, was er jetzt tun muss.
-Antworte handlungsorientiert.
+Der Nutzer will nur wissen: Was muss ich jetzt tun?
+Antworte kurz, direkt und handlungsorientiert.
 Keine lange Hintergrundgeschichte.
-Nutze nur:
+Keine langen Erklärungen zum ganzen Brief.
+Keine Wiederholung aller Details.
+
+Nutze nur diese Struktur in der Sprache des Nutzers:
 - Kurz gesagt
 - Was du jetzt tun solltest
 - Wichtig
-Maximal 5 klare Schritte.
+
+Maximal:
+- Kurz gesagt: 2 bis 3 Sätze
+- Was du jetzt tun solltest: 3 bis 5 Schritte
+- Wichtig: 1 bis 3 Sätze
+
+Bei Türkisch nutze genau diese Überschriften:
+Kısaca:
+Şimdi ne yapmalısın?
+Önemli:
+
+Bei Deutsch:
+Kurz gesagt:
+Was du jetzt tun solltest:
+Wichtig:
+
+Bei Bulgarisch:
+Накратко:
+Какво трябва да направиш сега?
+Важно:
+
+Bei Rumänisch:
+Pe scurt:
+Ce trebuie să faci acum?
+Important:
+
+Bei Englisch:
+In short:
+What you should do now:
+Important:
+
+Bei Arabisch:
+باختصار:
+ماذا يجب أن تفعل الآن؟
+مهم:
+
+Wenn es um Inkasso, Mahnung, Gericht, Frist oder Behörde geht:
+- Frist nennen, wenn vorhanden
+- Risiko nennen, wenn vorhanden
+- nicht automatisch Zahlung empfehlen
+- bei ernsten Fällen Beratung/Anwalt/Stelle erwähnen
+- trotzdem kurz bleiben
 
 Wenn frageMode = "deadline":
 Der Nutzer will die Frist wissen.
