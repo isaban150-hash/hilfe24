@@ -357,7 +357,7 @@
 
       <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
       <input id="bilder" type="file" accept="image/*" multiple />
-      <div id="photoHintText" class="sub">Du kannst bis zu 6 Bilder vom selben Brief hochladen.</div>
+     <div id="photoHintText" class="sub">Du kannst bis zu 3 Bilder vom selben Brief hochladen.</div>
 
       <div id="previewGrid" class="preview-grid"></div>
 
@@ -527,62 +527,67 @@
       }
     };
 
-    const briefTexts = {
-      de: {
-        sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
-        textLabel: "Brief als Text",
-        photoLabel: "Brief-Fotos hochladen",
-        placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-        hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
-        analyze: "Brief erklären",
-        back: "← Zurück zur Startseite"
-      },
-      tr: {
-        sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
-        textLabel: "Mektup metni",
-        photoLabel: "Mektup fotoğrafları yükle",
-        placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
-        hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
-        analyze: "Mektubu açıkla",
-        back: "← Ana sayfaya dön"
-      },
-      bg: {
-        sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
-        textLabel: "Текст на писмото",
-        photoLabel: "Качи снимки на писмото",
-        placeholder: "Постави текста тук, ако не искаш да качваш снимка",
-        hint: "Можеш да качиш до 6 снимки от едно и също писмо.",
-        analyze: "Обясни писмото",
-        back: "← Назад към началната страница"
-      },
-      ro: {
-        sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
-        textLabel: "Textul scrisorii",
-        photoLabel: "Încarcă poze cu scrisoarea",
-        placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
-        hint: "Poți încărca până la 6 poze din aceeași scrisoare.",
-        analyze: "Explică scrisoarea",
-        back: "← Înapoi la pagina principală"
-      },
-      en: {
-        sub: "Understand letters easily. First short and simple. Then with more details.",
-        textLabel: "Letter text",
-        photoLabel: "Upload letter photos",
-        placeholder: "Paste the text here if you do not want to upload a photo",
-        hint: "You can upload up to 6 photos from the same letter.",
-        analyze: "Explain letter",
-        back: "← Back to start page"
-      },
-      ar: {
-        sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
-        textLabel: "نص الرسالة",
-        photoLabel: "ارفع صور الرسالة",
-        placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
-        hint: "يمكنك رفع ما يصل إلى 6 صور من نفس الرسالة.",
-        analyze: "اشرح الرسالة",
-        back: "← الرجوع إلى الصفحة الرئيسية"
-      }
-    };
+const briefTexts = {
+  de: {
+    sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
+    textLabel: "Brief als Text",
+    photoLabel: "Brief-Fotos hochladen",
+    placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+    hint: "Du kannst bis zu 3 Bilder vom selben Brief hochladen.",
+    analyze: "Brief erklären",
+    back: "← Zurück zur Startseite"
+  },
+
+  tr: {
+    sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
+    textLabel: "Mektup metni",
+    photoLabel: "Mektup fotoğrafları yükle",
+    placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
+    hint: "Aynı mektuptan en fazla 3 fotoğraf yükleyebilirsin.",
+    analyze: "Mektubu açıkla",
+    back: "← Ana sayfaya dön"
+  },
+
+  bg: {
+    sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
+    textLabel: "Текст на писмото",
+    photoLabel: "Качи снимки на писмото",
+    placeholder: "Постави текста тук, ако не искаш да качваш снимка",
+    hint: "Можеш да качиш до 3 снимки от едно и също писмо.",
+    analyze: "Обясни писмото",
+    back: "← Назад към началната страница"
+  },
+
+  ro: {
+    sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
+    textLabel: "Textul scrisorii",
+    photoLabel: "Încarcă poze cu scrisoarea",
+    placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
+    hint: "Poți încărca până la 3 poze din aceeași scrisoare.",
+    analyze: "Explică scrisoarea",
+    back: "← Înapoi la pagina principală"
+  },
+
+  en: {
+    sub: "Understand letters easily. First short and simple. Then with more details.",
+    textLabel: "Letter text",
+    photoLabel: "Upload letter photos",
+    placeholder: "Paste the text here if you do not want to upload a photo",
+    hint: "You can upload up to 3 photos from the same letter.",
+    analyze: "Explain letter",
+    back: "← Back to start page"
+  },
+
+  ar: {
+    sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
+    textLabel: "نص الرسالة",
+    photoLabel: "ارفع صور الرسالة",
+    placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
+    hint: "يمكنك رفع ما يصل إلى 3 صور من نفس الرسالة.",
+    analyze: "اشرح الرسالة",
+    back: "← الرجوع إلى الصفحة الرئيسية"
+  }
+};  };
 
     const uiTexts = {
       de: {
@@ -876,7 +881,7 @@
       previewGridEl.innerHTML = "";
       const files = Array.from(bilderEl.files || []);
 
-      for (const file of files.slice(0, 6)) {
+      for (const filefor (const file of files.slice(0, 3)) {
         const img = document.createElement("img");
         img.src = URL.createObjectURL(file);
         img.onload = () => URL.revokeObjectURL(img.src);
@@ -971,10 +976,10 @@
         return;
       }
 
-      if (files.length > 6) {
-        setError(getUiText().maxImages);
-        return;
-      }
+      if (files.length > 3) {
+  setError("Du kannst aktuell maximal 3 Bilder hochladen.");
+  return;
+}
 
       if (analyzeBtn) analyzeBtn.disabled = true;
       if (resetBtn) resetBtn.disabled = true;
