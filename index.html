@@ -401,12 +401,22 @@
       <div id="detailText" class="detail-box"></div>
     </div>
 
-    <<div id="frageCard" class="card hidden">
+  <div id="frageCard" class="card hidden">
   <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
 
   <div id="frageHelp" class="sub">
-    Du kannst jetzt zu diesem Brief eine Frage stellen. Zum Beispiel:
-    „Muss ich reagieren?“, „Was passiert, wenn ich nichts mache?“, „Schreib mir eine E-Mail.“
+    Du kannst alles fragen, was du an diesem Brief nicht verstehst.
+  </div>
+
+  <div id="quickQuestionTitle" class="sub" style="font-weight:700; color: var(--text);">
+    Schnellfragen:
+  </div>
+
+  <div class="button-row">
+    <button id="quickWhatBtn" class="btn-secondary" type="button">Was muss ich tun?</button>
+    <button id="quickDeadlineBtn" class="btn-secondary" type="button">Bis wann?</button>
+    <button id="quickConsequenceBtn" class="btn-secondary" type="button">Was passiert, wenn ich nichts mache?</button>
+    <button id="quickReplyBtn" class="btn-secondary" type="button">Schreib mir eine Antwort</button>
   </div>
 
   <label id="frageTextLabel" for="frageText">Deine Frage</label>
@@ -1399,6 +1409,181 @@
     }
 
     window.h24UpdateQuestionArea();
+    setTimeout(window.h24UpdateQuestionArea, 300);
+    setTimeout(window.h24UpdateQuestionArea, 1000);
+  }
+
+  startQuestionAreaFix();
+  window.addEventListener("load", startQuestionAreaFix);
+})();
+</script>
+<script>
+(function () {
+  function qEl(id) {
+    return document.getElementById(id);
+  }
+
+  function qSet(id, text) {
+    var item = qEl(id);
+    if (item) item.textContent = text;
+  }
+
+  function qGetLang() {
+    var langEl = qEl("lang");
+    return langEl ? langEl.value : "de";
+  }
+
+  var questionTexts = {
+    de: {
+      title: "Frage zu diesem Brief stellen",
+      help: "Du kannst alles fragen, was du an diesem Brief nicht verstehst.",
+      quickTitle: "Schnellfragen:",
+      what: "Was muss ich tun?",
+      deadline: "Bis wann?",
+      consequence: "Was passiert, wenn ich nichts mache?",
+      reply: "Schreib mir eine Antwort",
+      label: "Deine Frage",
+      placeholder: "Schreibe hier deine Frage zu diesem Brief",
+      button: "Frage stellen",
+      loading: "Antwort wird erstellt...",
+      answerTitle: "Antwort",
+      readAnswer: "🔊 Antwort vorlesen"
+    },
+
+    tr: {
+      title: "Bu mektupla ilgili soru sor",
+      help: "Bu mektupla ilgili anlamadığın her şeyi sorabilirsin.",
+      quickTitle: "Hızlı sorular:",
+      what: "Ne yapmam gerekiyor?",
+      deadline: "Son tarih ne zaman?",
+      consequence: "Hiçbir şey yapmazsam ne olur?",
+      reply: "Bana bir cevap yaz",
+      label: "Sorun",
+      placeholder: "Bu mektupla ilgili sorunu buraya yaz",
+      button: "Soru sor",
+      loading: "Cevap oluşturuluyor...",
+      answerTitle: "Cevap",
+      readAnswer: "🔊 Cevabı sesli oku"
+    },
+
+    bg: {
+      title: "Задай въпрос за това писмо",
+      help: "Можеш да попиташ всичко, което не разбираш в това писмо.",
+      quickTitle: "Бързи въпроси:",
+      what: "Какво трябва да направя?",
+      deadline: "До кога?",
+      consequence: "Какво ще стане, ако не направя нищо?",
+      reply: "Напиши ми отговор",
+      label: "Твоят въпрос",
+      placeholder: "Напиши тук въпроса си за това писмо",
+      button: "Задай въпрос",
+      loading: "Отговорът се създава...",
+      answerTitle: "Отговор",
+      readAnswer: "🔊 Прочети отговора"
+    },
+
+    ro: {
+      title: "Pune o întrebare despre această scrisoare",
+      help: "Poți întreba orice nu înțelegi din această scrisoare.",
+      quickTitle: "Întrebări rapide:",
+      what: "Ce trebuie să fac?",
+      deadline: "Până când?",
+      consequence: "Ce se întâmplă dacă nu fac nimic?",
+      reply: "Scrie-mi un răspuns",
+      label: "Întrebarea ta",
+      placeholder: "Scrie aici întrebarea ta despre această scrisoare",
+      button: "Pune întrebarea",
+      loading: "Răspunsul este creat...",
+      answerTitle: "Răspuns",
+      readAnswer: "🔊 Citește răspunsul"
+    },
+
+    en: {
+      title: "Ask a question about this letter",
+      help: "You can ask anything you do not understand about this letter.",
+      quickTitle: "Quick questions:",
+      what: "What do I have to do?",
+      deadline: "By when?",
+      consequence: "What happens if I do nothing?",
+      reply: "Write me a reply",
+      label: "Your question",
+      placeholder: "Write your question about this letter here",
+      button: "Ask question",
+      loading: "Answer is being created...",
+      answerTitle: "Answer",
+      readAnswer: "🔊 Read answer aloud"
+    },
+
+    ar: {
+      title: "اسأل سؤالًا عن هذه الرسالة",
+      help: "يمكنك أن تسأل عن أي شيء لا تفهمه في هذه الرسالة.",
+      quickTitle: "أسئلة سريعة:",
+      what: "ماذا يجب أن أفعل؟",
+      deadline: "إلى متى؟",
+      consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+      reply: "اكتب لي ردًا",
+      label: "سؤالك",
+      placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
+      button: "اطرح السؤال",
+      loading: "يتم إنشاء الإجابة...",
+      answerTitle: "الإجابة",
+      readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
+    }
+  };
+
+  window.h24UpdateQuestionArea = function () {
+    var lang = qGetLang();
+    var t = questionTexts[lang] || questionTexts.de;
+
+    qSet("frageTitle", t.title);
+    qSet("frageHelp", t.help);
+    qSet("quickQuestionTitle", t.quickTitle);
+    qSet("quickWhatBtn", t.what);
+    qSet("quickDeadlineBtn", t.deadline);
+    qSet("quickConsequenceBtn", t.consequence);
+    qSet("quickReplyBtn", t.reply);
+    qSet("frageTextLabel", t.label);
+    qSet("frageBtn", t.button);
+    qSet("frageStatus", t.loading);
+    qSet("frageAntwortTitle", t.answerTitle);
+    qSet("readFrageAntwortBtn", t.readAnswer);
+
+    var textarea = qEl("frageText");
+    if (textarea) {
+      textarea.placeholder = t.placeholder;
+    }
+  };
+
+  function setQuickQuestion(buttonId, textKey) {
+    var btn = qEl(buttonId);
+    if (!btn) return;
+
+    btn.onclick = function () {
+      var lang = qGetLang();
+      var t = questionTexts[lang] || questionTexts.de;
+      var textarea = qEl("frageText");
+
+      if (textarea) {
+        textarea.value = t[textKey];
+        textarea.focus();
+      }
+    };
+  }
+
+  function startQuestionAreaFix() {
+    var langEl = qEl("lang");
+
+    if (langEl) {
+      langEl.addEventListener("change", window.h24UpdateQuestionArea);
+    }
+
+    setQuickQuestion("quickWhatBtn", "what");
+    setQuickQuestion("quickDeadlineBtn", "deadline");
+    setQuickQuestion("quickConsequenceBtn", "consequence");
+    setQuickQuestion("quickReplyBtn", "reply");
+
+    window.h24UpdateQuestionArea();
+
     setTimeout(window.h24UpdateQuestionArea, 300);
     setTimeout(window.h24UpdateQuestionArea, 1000);
   }
