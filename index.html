@@ -1319,20 +1319,69 @@ if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
       langEl.addEventListener("change", window.updateHomeLanguage);
     }
 
-    if (openBtn) {
-      openBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        window.openBriefArea();
-      });
+   if (openBtn) {
+  openBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+    window.openBriefArea();
+
+    if (window.updateBriefLanguageOnly) {
+      window.updateBriefLanguageOnly();
     }
-
-    window.updateHomeLanguage();
   });
+}
+window.updateBriefLanguageOnly = function () {
+  ...
+};
+  var briefLangEl = document.getElementById("lang");
+  var lang = briefLangEl ? briefLangEl.value : "de";
 
-  window.addEventListener("load", function () {
-    window.updateHomeLanguage();
-  });
-})();
+  var texts = {
+    de: {
+      sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
+      textLabel: "Brief als Text",
+      photoLabel: "Brief-Fotos hochladen",
+      placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+      hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
+      analyze: "Brief erklären",
+      reset: "Alles zurücksetzen"
+    },
+    tr: {
+      sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
+      textLabel: "Mektup metni",
+      photoLabel: "Mektup fotoğrafları yükle",
+      placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
+      hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
+      analyze: "Mektubu açıkla",
+      reset: "Her şeyi sıfırla"
+    }
+  };
+
+  var t = texts[lang] || texts.de;
+
+  var briefSubTitle = document.getElementById("briefSubTitle");
+  var briefTextLabel = document.getElementById("briefTextLabel");
+  var briefPhotoLabel = document.getElementById("briefPhotoLabel");
+  var briefText = document.getElementById("briefText");
+  var photoHintText = document.getElementById("photoHintText");
+  var analyzeBtn = document.getElementById("analyzeBtn");
+  var resetBtn = document.getElementById("resetBtn");
+
+  if (briefSubTitle) briefSubTitle.textContent = t.sub;
+  if (briefTextLabel) briefTextLabel.textContent = t.textLabel;
+  if (briefPhotoLabel) briefPhotoLabel.textContent = t.photoLabel;
+  if (briefText) briefText.placeholder = t.placeholder;
+  if (photoHintText) photoHintText.textContent = t.hint;
+  if (analyzeBtn) analyzeBtn.textContent = t.analyze;
+  if (resetBtn) resetBtn.textContent = t.reset;
+}
+
+var briefLangField = document.getElementById("lang");
+
+if (briefLangField) {
+  briefLangField.addEventListener("change", updateBriefLanguageOnly);
+}
+
+updateBriefLanguageOnly();
 </script>
 </body>
 </html>
