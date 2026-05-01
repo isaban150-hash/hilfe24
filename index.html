@@ -354,7 +354,7 @@
 
      <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
       <input id="bilder" type="file" accept="image/*" multiple />
-      <div class="hint">Du kannst bis zu 6 Bilder vom selben Brief hochladen.</div>
+  <div id="photoHintText" class="sub">Du kannst bis zu 6 Bilder vom selben Brief hochladen.</div>
 
       <div id="previewGrid" class="preview-grid"></div>
 
@@ -1488,7 +1488,7 @@ function updateBriefLanguage() {
     placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
     hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
     analyze: "Brief erklären",
-    reset: "Alles zurücksetzen"
+    reset: "← Zurück zur Startseite"
   };
 
   var tr = {
@@ -1498,7 +1498,7 @@ function updateBriefLanguage() {
     placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
     hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
     analyze: "Mektubu açıkla",
-    reset: "Her şeyi sıfırla"
+    reset: "← Ana sayfaya dön"
   };
 
   var t = lang === "tr" ? tr : de;
