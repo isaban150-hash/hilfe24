@@ -133,35 +133,37 @@
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
-.home-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-top: 16px;
-}
 
-.home-btn {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 18px;
-  text-align: left;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
-}
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
 
-.home-btn span {
-  display: block;
-  margin-top: 6px;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--muted);
-  line-height: 1.4;
-}
+    .home-btn {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: left;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+    }
+
+    .home-btn span {
+      display: block;
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     .preview-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -283,84 +285,85 @@
 </head>
 
 <body>
- <div class="wrap">
+  <div class="wrap">
 
-  <div id="homeCard" class="card">
-  <h1>Hilfe24</h1>
-
-  <div id="homeSubTitle" class="sub">
-    Verstehen. Antworten. Erledigen.
-  </div>
-
-  <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
-<select id="homeLang" onchange="window.h24UpdateHome && window.h24UpdateHome()">
-    <option value="de">🇩🇪 Deutsch</option>
-    <option value="tr">🇹🇷 Türkisch</option>
-    <option value="bg">🇧🇬 Bulgarisch</option>
-    <option value="ar">🌍 Arabisch</option>
-    <option value="ro">🇷🇴 Rumänisch</option>
-    <option value="en">🇬🇧 Englisch</option>
-  </select>
-
-  <div id="homeQuestionTitle" class="section-title">
-    Wobei brauchst du Hilfe?
-  </div>
-
-  <div class="home-grid">
- <button id="openBriefBtn" class="home-btn" type="button" onclick="window.h24OpenBrief && window.h24OpenBrief()">
-  📄 Schreiben verstehen
-  <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
-</button>
-
-    <button id="soonAntraegeBtn" class="home-btn" type="button">
-      📝 Anträge & Vorteile
-      <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge</span>
-    </button>
-
-    <button id="soonAntwortBtn" class="home-btn" type="button">
-      ✍️ Antwort erstellen
-      <span>E-Mail, Brief, PDF, Kündigung, Reklamation</span>
-    </button>
-
-    <button id="soonFotoBtn" class="home-btn" type="button">
-      📸 Foto fragen
-      <span>Produkt, Medikament, Screenshot, Anleitung, Technik</span>
-    </button>
-
-    <button id="soonHilfeBtn" class="home-btn" type="button">
-      ❓ Alltag & Beruf
-      <span>Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation</span>
-    </button>
-  </div>
-</div>
-   <div id="briefInputCard" class="card hidden">
+    <div id="homeCard" class="card">
       <h1>Hilfe24</h1>
 
-     <div id="briefSubTitle" class="sub">
-  Briefe einfach verstehen. Erst kurz und einfach.
-  Danach mit mehr Details.
-</div>
-     <select id="lang">
-  <option value="de">🇩🇪 Deutsch</option>
-  <option value="tr">🇹🇷 Türkisch</option>
-  <option value="bg">🇧🇬 Bulgarisch</option>
-  <option value="ar">🌍 Arabisch</option>
-  <option value="ro">🇷🇴 Rumänisch</option>
-  <option value="en">🇬🇧 Englisch</option>
-</select>
+      <div id="homeSubTitle" class="sub">
+        Verstehen. Antworten. Erledigen.
+      </div>
 
-     <label id="briefTextLabel" for="briefText">Brief als Text</label>
+      <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
+      <select id="homeLang">
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="tr">🇹🇷 Türkisch</option>
+        <option value="bg">🇧🇬 Bulgarisch</option>
+        <option value="ar">🌍 Arabisch</option>
+        <option value="ro">🇷🇴 Rumänisch</option>
+        <option value="en">🇬🇧 Englisch</option>
+      </select>
+
+      <div id="homeQuestionTitle" class="section-title">
+        Wobei brauchst du Hilfe?
+      </div>
+
+      <div class="home-grid">
+        <button id="openBriefBtn" class="home-btn" type="button">
+          📄 Schreiben verstehen
+          <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
+        </button>
+
+        <button id="soonAntraegeBtn" class="home-btn" type="button">
+          📝 Anträge & Vorteile
+          <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge</span>
+        </button>
+
+        <button id="soonAntwortBtn" class="home-btn" type="button">
+          ✍️ Antwort erstellen
+          <span>E-Mail, Brief, PDF, Kündigung, Reklamation</span>
+        </button>
+
+        <button id="soonFotoBtn" class="home-btn" type="button">
+          📸 Foto fragen
+          <span>Produkt, Medikament, Screenshot, Anleitung, Technik</span>
+        </button>
+
+        <button id="soonHilfeBtn" class="home-btn" type="button">
+          ❓ Alltag & Beruf
+          <span>Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="briefInputCard" class="card hidden">
+      <h1>Hilfe24</h1>
+
+      <div id="briefSubTitle" class="sub">
+        Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.
+      </div>
+
+      <select id="lang">
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="tr">🇹🇷 Türkisch</option>
+        <option value="bg">🇧🇬 Bulgarisch</option>
+        <option value="ar">🌍 Arabisch</option>
+        <option value="ro">🇷🇴 Rumänisch</option>
+        <option value="en">🇬🇧 Englisch</option>
+      </select>
+
+      <label id="briefTextLabel" for="briefText">Brief als Text</label>
       <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
 
-     <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
+      <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
       <input id="bilder" type="file" accept="image/*" multiple />
-  <div id="photoHintText" class="sub">Du kannst bis zu 6 Bilder vom selben Brief hochladen.</div>
+      <div id="photoHintText" class="sub">Du kannst bis zu 6 Bilder vom selben Brief hochladen.</div>
 
       <div id="previewGrid" class="preview-grid"></div>
 
       <div class="button-row">
-      <button id="analyzeBtn" class="btn-primary" type="button">Brief erklären</button>
-        <button id="resetBtn" class="btn-secondary" type="button">Alles zurücksetzen</button>
+        <button id="analyzeBtn" class="btn-primary" type="button">Brief erklären</button>
+        <button id="resetBtn" class="btn-secondary" type="button">← Zurück zur Startseite</button>
       </div>
 
       <div id="status" class="loader hidden">Bitte warten...</div>
@@ -406,8 +409,9 @@
         „Ich bin krank“, „Schreib mir eine E-Mail“, „Was muss ich tun?“
       </div>
 
-    <label for="frageText">Deine Frage</label>
-<textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
+      <label for="frageText">Deine Frage</label>
+      <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
+
       <div class="button-row">
         <button id="frageBtn" class="btn-primary" type="button">Frage stellen</button>
       </div>
@@ -426,26 +430,215 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <script>
-   const homeCardEl = document.getElementById("homeCard");
-const briefInputCardEl = document.getElementById("briefInputCard");
-const homeLangEl = document.getElementById("homeLang");
-const homeSubTitleEl = document.getElementById("homeSubTitle");
-const homeLangLabelEl = document.getElementById("homeLangLabel");
-const homeQuestionTitleEl = document.getElementById("homeQuestionTitle");
-const openBriefBtn = document.getElementById("openBriefBtn");
-const soonAntraegeBtn = document.getElementById("soonAntraegeBtn");
-const soonAntwortBtn = document.getElementById("soonAntwortBtn");
-const soonFotoBtn = document.getElementById("soonFotoBtn");
-const soonHilfeBtn = document.getElementById("soonHilfeBtn");
+    const homeTexts = {
+      de: {
+        sub: "Verstehen. Antworten. Erledigen.",
+        langLabel: "Sprache auswählen",
+        question: "Wobei brauchst du Hilfe?",
+        brief: "📄 Schreiben verstehen",
+        briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
+        antraege: "📝 Anträge & Vorteile",
+        antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
+        antwort: "✍️ Antwort erstellen",
+        antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
+        foto: "📸 Foto fragen",
+        fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
+        hilfe: "❓ Alltag & Beruf",
+        hilfeSub: "Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation"
+      },
+      tr: {
+        sub: "Anla. Cevap yaz. İşini hallet.",
+        langLabel: "Dil seç",
+        question: "Hangi konuda yardıma ihtiyacın var?",
+        brief: "📄 Yazıyı anlamak",
+        briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
+        antraege: "📝 Başvurular & haklar",
+        antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
+        antwort: "✍️ Cevap oluştur",
+        antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
+        foto: "📸 Fotoğraf sor",
+        fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
+        hilfe: "❓ Günlük yaşam & iş",
+        hilfeSub: "Günlük yaşam, sağlık, okul, iş, serbest meslek, bakım dokümantasyonu"
+      },
+      bg: {
+        sub: "Разбери. Отговори. Реши проблема.",
+        langLabel: "Избери език",
+        question: "За какво имаш нужда от помощ?",
+        brief: "📄 Разбиране на писмо",
+        briefSub: "Писма, имейли, SMS, WhatsApp, официални документи",
+        antraege: "📝 Молби & права",
+        antraegeSub: "Jobcenter, пенсия, здравна каса, жилищна помощ, грижи, семейство, училище, пари и още много молби",
+        antwort: "✍️ Създай отговор",
+        antwortSub: "Имейл, писмо, PDF, прекратяване, рекламация",
+        foto: "📸 Попитай със снимка",
+        fotoSub: "Продукт, лекарство, снимка от екран, инструкция, техника",
+        hilfe: "❓ Ежедневие & работа",
+        hilfeSub: "Ежедневие, здраве, училище, работа, самостоятелна дейност, документация в грижите"
+      },
+      ro: {
+        sub: "Înțelege. Răspunde. Rezolvă.",
+        langLabel: "Alege limba",
+        question: "Cu ce ai nevoie de ajutor?",
+        brief: "📄 Înțelege documentul",
+        briefSub: "Scrisori, e-mailuri, SMS, WhatsApp, acte oficiale",
+        antraege: "📝 Cereri & beneficii",
+        antraegeSub: "Jobcenter, pensie, asigurare medicală, ajutor pentru locuință, îngrijire, familie, școală, bani și multe alte cereri",
+        antwort: "✍️ Creează răspuns",
+        antwortSub: "E-mail, scrisoare, PDF, anulare, reclamație",
+        foto: "📸 Întreabă cu poză",
+        fotoSub: "Produs, medicament, captură de ecran, instrucțiuni, tehnică",
+        hilfe: "❓ Viață & muncă",
+        hilfeSub: "Viață de zi cu zi, sănătate, școală, muncă, activitate independentă, documentație în îngrijire"
+      },
+      en: {
+        sub: "Understand. Reply. Get it done.",
+        langLabel: "Choose language",
+        question: "What do you need help with?",
+        brief: "📄 Understand a document",
+        briefSub: "Letters, emails, SMS, WhatsApp, official mail",
+        antraege: "📝 Applications & benefits",
+        antraegeSub: "Jobcenter, pension, health insurance, housing benefit, care level, family, school, money and many more applications",
+        antwort: "✍️ Create a reply",
+        antwortSub: "Email, letter, PDF, cancellation, complaint",
+        foto: "📸 Ask with a photo",
+        fotoSub: "Product, medication, screenshot, instructions, tech",
+        hilfe: "❓ Everyday life & work",
+        hilfeSub: "Daily life, health, school, work, self-employment, care documentation"
+      },
+      ar: {
+        sub: "افهم. أجب. أنجز الأمر.",
+        langLabel: "اختر اللغة",
+        question: "بماذا تحتاج إلى مساعدة؟",
+        brief: "📄 فهم الرسالة",
+        briefSub: "رسائل، بريد إلكتروني، SMS، واتساب، رسائل رسمية",
+        antraege: "📝 طلبات & حقوق",
+        antraegeSub: "Jobcenter، التقاعد، التأمين الصحي، السكن، الرعاية، العائلة، المدرسة، المال وطلبات أخرى كثيرة",
+        antwort: "✍️ إنشاء رد",
+        antwortSub: "بريد إلكتروني، رسالة، PDF، إلغاء، شكوى",
+        foto: "📸 اسأل بصورة",
+        fotoSub: "منتج، دواء، لقطة شاشة، تعليمات، تقنية",
+        hilfe: "❓ الحياة اليومية & العمل",
+        hilfeSub: "الحياة اليومية، الصحة، المدرسة، العمل، العمل الحر، توثيق الرعاية"
+      }
+    };
+
+    const briefTexts = {
+      de: {
+        sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
+        textLabel: "Brief als Text",
+        photoLabel: "Brief-Fotos hochladen",
+        placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+        hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
+        analyze: "Brief erklären",
+        back: "← Zurück zur Startseite"
+      },
+      tr: {
+        sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
+        textLabel: "Mektup metni",
+        photoLabel: "Mektup fotoğrafları yükle",
+        placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
+        hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
+        analyze: "Mektubu açıkla",
+        back: "← Ana sayfaya dön"
+      },
+      bg: {
+        sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
+        textLabel: "Текст на писмото",
+        photoLabel: "Качи снимки на писмото",
+        placeholder: "Постави текста тук, ако не искаш да качваш снимка",
+        hint: "Можеш да качиш до 6 снимки от едно и също писмо.",
+        analyze: "Обясни писмото",
+        back: "← Назад към началната страница"
+      },
+      ro: {
+        sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
+        textLabel: "Textul scrisorii",
+        photoLabel: "Încarcă poze cu scrisoarea",
+        placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
+        hint: "Poți încărca până la 6 poze din aceeași scrisoare.",
+        analyze: "Explică scrisoarea",
+        back: "← Înapoi la pagina principală"
+      },
+      en: {
+        sub: "Understand letters easily. First short and simple. Then with more details.",
+        textLabel: "Letter text",
+        photoLabel: "Upload letter photos",
+        placeholder: "Paste the text here if you do not want to upload a photo",
+        hint: "You can upload up to 6 photos from the same letter.",
+        analyze: "Explain letter",
+        back: "← Back to start page"
+      },
+      ar: {
+        sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
+        textLabel: "نص الرسالة",
+        photoLabel: "ارفع صور الرسالة",
+        placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
+        hint: "يمكنك رفع ما يصل إلى 6 صور من نفس الرسالة.",
+        analyze: "اشرح الرسالة",
+        back: "← الرجوع إلى الصفحة الرئيسية"
+      }
+    };
+
+    const uiTexts = {
+      de: {
+        waiting: "Bitte warten... Der Brief wird geprüft.",
+        noInput: "Bitte füge Text ein oder lade mindestens ein Bild hoch.",
+        maxImages: "Du kannst maximal 6 Bilder hochladen.",
+        serverError: "Serverfehler. Bitte später nochmal versuchen.",
+        okExplained: "Der Brief wurde erklärt.",
+        noAudioText: "Es gibt keinen Text zum Vorlesen.",
+        audioLoading: "Audio wird geladen...",
+        audioError: "Audio konnte nicht geladen werden.",
+        questionMissing: "Bitte schreibe zuerst eine Frage.",
+        explainFirst: "Bitte erkläre zuerst einen Brief.",
+        questionLoading: "Antwort wird erstellt...",
+        questionError: "Die Frage konnte nicht beantwortet werden.",
+        detailsShow: "📋 Mehr Details anzeigen",
+        detailsHide: "📋 Details ausblenden",
+        comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark."
+      },
+      tr: {
+        waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
+        noInput: "Lütfen metin ekle veya en az bir fotoğraf yükle.",
+        maxImages: "En fazla 6 fotoğraf yükleyebilirsin.",
+        serverError: "Sunucu hatası. Lütfen daha sonra tekrar dene.",
+        okExplained: "Mektup açıklandı.",
+        noAudioText: "Okunacak metin yok.",
+        audioLoading: "Ses yükleniyor...",
+        audioError: "Ses yüklenemedi.",
+        questionMissing: "Lütfen önce bir soru yaz.",
+        explainFirst: "Lütfen önce bir mektubu açıkla.",
+        questionLoading: "Cevap oluşturuluyor...",
+        questionError: "Soru cevaplanamadı.",
+        detailsShow: "📋 Daha fazla detay göster",
+        detailsHide: "📋 Detayları gizle",
+        comingSoon: "Bu bölüm daha sonra gelecek. Önce yazıyı anlamayı güçlü yapıyoruz."
+      }
+    };
+
+    const homeCardEl = document.getElementById("homeCard");
+    const briefInputCardEl = document.getElementById("briefInputCard");
+    const homeLangEl = document.getElementById("homeLang");
+    const homeSubTitleEl = document.getElementById("homeSubTitle");
+    const homeLangLabelEl = document.getElementById("homeLangLabel");
+    const homeQuestionTitleEl = document.getElementById("homeQuestionTitle");
+
+    const openBriefBtn = document.getElementById("openBriefBtn");
+    const soonAntraegeBtn = document.getElementById("soonAntraegeBtn");
+    const soonAntwortBtn = document.getElementById("soonAntwortBtn");
+    const soonFotoBtn = document.getElementById("soonFotoBtn");
+    const soonHilfeBtn = document.getElementById("soonHilfeBtn");
+
     const langEl = document.getElementById("lang");
     const briefTextEl = document.getElementById("briefText");
     const bilderEl = document.getElementById("bilder");
     const previewGridEl = document.getElementById("previewGrid");
-
-    const analyseBtn = document.getElementById("analyseBtn");
+    const analyzeBtn = document.getElementById("analyzeBtn");
     const resetBtn = document.getElementById("resetBtn");
 
     const statusEl = document.getElementById("status");
@@ -487,12 +680,82 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
     let activeRequestId = 0;
     let activeAudioUrl = "";
 
+    function getUiText() {
+      return uiTexts[currentLang] || uiTexts.de;
+    }
+
     function show(el) {
       if (el) el.classList.remove("hidden");
     }
 
     function hide(el) {
       if (el) el.classList.add("hidden");
+    }
+
+    function setButton(id, title, subtitle) {
+      const btn = document.getElementById(id);
+      if (btn) btn.innerHTML = title + "<span>" + subtitle + "</span>";
+    }
+
+    function updateHomeLanguage() {
+      const lang = homeLangEl ? homeLangEl.value : "de";
+      const t = homeTexts[lang] || homeTexts.de;
+
+      if (homeSubTitleEl) homeSubTitleEl.textContent = t.sub;
+      if (homeLangLabelEl) homeLangLabelEl.textContent = t.langLabel;
+      if (homeQuestionTitleEl) homeQuestionTitleEl.textContent = t.question;
+
+      setButton("openBriefBtn", t.brief, t.briefSub);
+      setButton("soonAntraegeBtn", t.antraege, t.antraegeSub);
+      setButton("soonAntwortBtn", t.antwort, t.antwortSub);
+      setButton("soonFotoBtn", t.foto, t.fotoSub);
+      setButton("soonHilfeBtn", t.hilfe, t.hilfeSub);
+    }
+
+    function updateBriefLanguage() {
+      const lang = langEl ? langEl.value : "de";
+      const t = briefTexts[lang] || briefTexts.de;
+
+      const briefSubTitle = document.getElementById("briefSubTitle");
+      const briefTextLabel = document.getElementById("briefTextLabel");
+      const briefPhotoLabel = document.getElementById("briefPhotoLabel");
+      const photoHintText = document.getElementById("photoHintText");
+
+      if (briefSubTitle) briefSubTitle.textContent = t.sub;
+      if (briefTextLabel) briefTextLabel.textContent = t.textLabel;
+      if (briefPhotoLabel) briefPhotoLabel.textContent = t.photoLabel;
+      if (photoHintText) photoHintText.textContent = t.hint;
+      if (briefTextEl) briefTextEl.placeholder = t.placeholder;
+      if (analyzeBtn) analyzeBtn.textContent = t.analyze;
+      if (resetBtn) resetBtn.textContent = t.back;
+
+      currentLang = lang;
+    }
+
+    function openBriefArea() {
+      if (homeLangEl && langEl) {
+        langEl.value = homeLangEl.value;
+        currentLang = homeLangEl.value;
+      }
+
+      hide(homeCardEl);
+      show(briefInputCardEl);
+      updateBriefLanguage();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function goBackHome() {
+      if (briefTextEl) briefTextEl.value = "";
+      if (bilderEl) bilderEl.value = "";
+      if (previewGridEl) previewGridEl.innerHTML = "";
+
+      activeRequestId++;
+      clearOutputState();
+
+      hide(briefInputCardEl);
+      show(homeCardEl);
+      updateHomeLanguage();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function setStatus(text) {
@@ -588,7 +851,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
       hide(detailToggleCardEl);
 
       if (toggleDetailsBtn) {
-        toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
+        toggleDetailsBtn.textContent = getUiText().detailsShow;
       }
 
       hide(frageCardEl);
@@ -607,20 +870,10 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
       clearResults();
     }
 
-    function resetAll() {
-      if (briefTextEl) briefTextEl.value = "";
-      if (bilderEl) bilderEl.value = "";
-      if (previewGridEl) previewGridEl.innerHTML = "";
-
-      activeRequestId++;
-      clearOutputState();
-    }
-
     function renderPreviews() {
       if (!previewGridEl || !bilderEl) return;
 
       previewGridEl.innerHTML = "";
-
       const files = Array.from(bilderEl.files || []);
 
       for (const file of files.slice(0, 6)) {
@@ -664,10 +917,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          text,
-          lang
-        })
+        body: JSON.stringify({ text, lang })
       });
 
       const data = await response.json();
@@ -682,14 +932,14 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
     async function playServerAudio(text) {
       if (!text || !text.trim()) {
-        alert("Es gibt keinen Text zum Vorlesen.");
+        alert(getUiText().noAudioText);
         return;
       }
 
       const lang = langEl ? langEl.value : currentLang || "de";
 
       stopAudio();
-      setAudioStatus("Audio wird geladen...");
+      setAudioStatus(getUiText().audioLoading);
 
       try {
         const audioUrl = await fetchTtsAudio(text, lang);
@@ -702,7 +952,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
         await audioPlayerEl.play();
       } catch (err) {
         clearAudioStatus();
-        setError(err.message || "Audio konnte nicht geladen werden.");
+        setError(err.message || getUiText().audioError);
       }
     }
 
@@ -713,22 +963,23 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
       const files = bilderEl ? Array.from(bilderEl.files || []) : [];
       const lang = langEl ? langEl.value : "de";
 
+      currentLang = lang;
       clearOutputState();
 
       if (!text && files.length === 0) {
-        setError("Bitte füge Text ein oder lade mindestens ein Bild hoch.");
+        setError(getUiText().noInput);
         return;
       }
 
       if (files.length > 6) {
-        setError("Du kannst maximal 6 Bilder hochladen.");
+        setError(getUiText().maxImages);
         return;
       }
 
-      if (analyseBtn) analyseBtn.disabled = true;
+      if (analyzeBtn) analyzeBtn.disabled = true;
       if (resetBtn) resetBtn.disabled = true;
 
-      setStatus("Bitte warten... Der Brief wird geprüft.");
+      setStatus(getUiText().waiting);
 
       try {
         let response;
@@ -747,24 +998,14 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
           response = await fetch("/api/brief-bild", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              lang,
-              bilder
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lang, bilder })
           });
         } else {
           response = await fetch("/api/brief", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              lang,
-              text
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lang, text })
           });
         }
 
@@ -781,8 +1022,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
         if (data.quality_ok === false) {
           if (warningTextEl) {
-            warningTextEl.textContent =
-              data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+            warningTextEl.textContent = data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
           }
 
           show(warningCardEl);
@@ -803,20 +1043,18 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
         hide(detailCardEl);
         show(frageCardEl);
 
-        if (toggleDetailsBtn) {
-          toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
-        }
+        if (toggleDetailsBtn) toggleDetailsBtn.textContent = getUiText().detailsShow;
 
-        setOk("Der Brief wurde erklärt.");
+        setOk(getUiText().okExplained);
       } catch (err) {
         if (requestId !== activeRequestId) return;
 
         clearStatus();
-        setError("Serverfehler. Bitte später nochmal versuchen.");
+        setError(getUiText().serverError);
         console.error(err);
       } finally {
         if (requestId === activeRequestId) {
-          if (analyseBtn) analyseBtn.disabled = false;
+          if (analyzeBtn) analyzeBtn.disabled = false;
           if (resetBtn) resetBtn.disabled = false;
         }
       }
@@ -825,10 +1063,11 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
     async function askQuestionAboutLetter() {
       const frage = frageTextEl ? frageTextEl.value.trim() : "";
       const lang = langEl ? langEl.value : currentLang || "de";
+      currentLang = lang;
 
       if (!frage) {
         if (frageErrorEl) {
-          frageErrorEl.textContent = "Bitte schreibe zuerst eine Frage.";
+          frageErrorEl.textContent = getUiText().questionMissing;
           show(frageErrorEl);
         }
         return;
@@ -836,7 +1075,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
       if (!currentKurzText && !currentDetailText) {
         if (frageErrorEl) {
-          frageErrorEl.textContent = "Bitte erkläre zuerst einen Brief.";
+          frageErrorEl.textContent = getUiText().explainFirst;
           show(frageErrorEl);
         }
         return;
@@ -845,7 +1084,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
       if (frageBtn) frageBtn.disabled = true;
 
       if (frageStatusEl) {
-        frageStatusEl.textContent = "Antwort wird erstellt...";
+        frageStatusEl.textContent = getUiText().questionLoading;
         show(frageStatusEl);
       }
 
@@ -860,9 +1099,7 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
       try {
         const response = await fetch("/api/frage", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             lang,
             frage,
@@ -876,17 +1113,14 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
         const data = await response.json();
 
         if (!response.ok || !data.ok) {
-          throw new Error(data.error || "Die Frage konnte nicht beantwortet werden.");
+          throw new Error(data.error || getUiText().questionError);
         }
 
-        if (frageAntwortEl) {
-          frageAntwortEl.textContent = data.antwort || "";
-        }
-
+        if (frageAntwortEl) frageAntwortEl.textContent = data.antwort || "";
         show(frageAntwortBoxEl);
       } catch (err) {
         if (frageErrorEl) {
-          frageErrorEl.textContent = err.message || "Fehler bei der Frage.";
+          frageErrorEl.textContent = err.message || getUiText().questionError;
           show(frageErrorEl);
         }
       } finally {
@@ -897,945 +1131,109 @@ const soonHilfeBtn = document.getElementById("soonHilfeBtn");
 
         if (frageBtn) frageBtn.disabled = false;
       }
-const homeTexts = {
-  de: {
-    sub: "Verstehen. Antworten. Erledigen.",
-    langLabel: "Sprache auswählen",
-    question: "Wobei brauchst du Hilfe?"
-  },
-  tr: {
-    sub: "Anla. Cevap yaz. İşini hallet.",
-    langLabel: "Dil seç",
-    question: "Hangi konuda yardıma ihtiyacın var?"
-  },
-  bg: {
-    sub: "Разбери. Отговори. Реши проблема.",
-    langLabel: "Избери език",
-    question: "За какво имаш нужда от помощ?"
-  },
-  ar: {
-    sub: "افهم. أجب. أنجز الأمر.",
-    langLabel: "اختر اللغة",
-    question: "بماذا تحتاج إلى مساعدة؟"
-  },
-  ro: {
-    sub: "Înțelege. Răspunde. Rezolvă.",
-    langLabel: "Alege limba",
-    question: "Cu ce ai nevoie de ajutor?"
-  },
-  en: {
-    sub: "Understand. Reply. Get it done.",
-    langLabel: "Choose language",
-    question: "What do you need help with?"
-  }
-};
-
-function updateHomeLanguage() {
-  const homeLangSelect = document.getElementById("homeLang");
-  const subTitle = document.getElementById("homeSubTitle");
-  const langLabel = document.getElementById("homeLangLabel");
-  const questionTitle = document.getElementById("homeQuestionTitle");
-
-  const selectedLang = homeLangSelect ? homeLangSelect.value : "de";
-  const texts = homeTexts[selectedLang] || homeTexts.de;
-
-  if (subTitle) subTitle.textContent = texts.sub;
-  if (langLabel) langLabel.textContent = texts.langLabel;
-  if (questionTitle) questionTitle.textContent = texts.question;
-}
-
-const homeLangSelect = document.getElementById("homeLang");
-
-if (homeLangSelect) {
-  homeLangSelect.addEventListener("change", updateHomeLanguage);
-}
-
-updateHomeLanguage();
-.addEventListener("load", updateHomeLanguage);
-
-   if (openBriefBtn) {
-  openBriefBtn.addEventListener("click", () => {
-    if (homeLangEl && langEl) {
-      langEl.value = homeLangEl.value;
-      currentLang = homeLangEl.value;
     }
 
-    hide(homeCardEl);
-    show(briefInputCardEl);
-  });
-}
-function showComingSoon() {
-  alert("Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark.");
-}
-
-if (soonAntraegeBtn) soonAntraegeBtn.addEventListener("click", showComingSoon);
-if (soonAntwortBtn) soonAntwortBtn.addEventListener("click", showComingSoon);
-if (soonFotoBtn) soonFotoBtn.addEventListener("click", showComingSoon);
-if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
-    if (bilderEl) {
-      bilderEl.addEventListener("change", () => {
-        activeRequestId++;
-        clearOutputState();
-        renderPreviews();
-      });
+    function showComingSoon() {
+      alert(getUiText().comingSoon);
     }
 
-    if (langEl) {
-      langEl.addEventListener("change", () => {
-        activeRequestId++;
-        clearOutputState();
-      });
-    }
+    function setupEvents() {
+      if (homeLangEl) homeLangEl.addEventListener("change", updateHomeLanguage);
+      if (openBriefBtn) openBriefBtn.addEventListener("click", openBriefArea);
 
-    if (briefTextEl) {
-      briefTextEl.addEventListener("input", () => {
-        activeRequestId++;
-        clearOutputState();
-      });
-    }
+      if (soonAntraegeBtn) soonAntraegeBtn.addEventListener("click", showComingSoon);
+      if (soonAntwortBtn) soonAntwortBtn.addEventListener("click", showComingSoon);
+      if (soonFotoBtn) soonFotoBtn.addEventListener("click", showComingSoon);
+      if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
 
-    if (analyseBtn) {
-      analyseBtn.addEventListener("click", explainLetter);
-    }
-
-    if (resetBtn) {
-      resetBtn.addEventListener("click", resetAll);
-    }
-
-    if (toggleDetailsBtn) {
-      toggleDetailsBtn.addEventListener("click", () => {
-        if (!detailCardEl) return;
-
-        if (detailCardEl.classList.contains("hidden")) {
-          show(detailCardEl);
-          toggleDetailsBtn.textContent = "📋 Details ausblenden";
-        } else {
-          hide(detailCardEl);
-          toggleDetailsBtn.textContent = "📋 Mehr Details anzeigen";
-        }
-      });
-    }
-
-    if (frageBtn) {
-      frageBtn.addEventListener("click", askQuestionAboutLetter);
-    }
-
-    if (readShortBtn) {
-      readShortBtn.addEventListener("click", async () => {
-        try {
-          await playServerAudio(currentKurzText);
-        } catch (error) {
-          setError(error.message || "Audio konnte nicht geladen werden.");
-        }
-      });
-    }
-
-    if (readAllBtn) {
-      readAllBtn.addEventListener("click", async () => {
-        try {
-          await playServerAudio(currentDetailText || currentKurzText);
-        } catch (error) {
-          setError(error.message || "Audio konnte nicht geladen werden.");
-        }
-      });
-    }
-
-    if (readFrageAntwortBtn) {
-      readFrageAntwortBtn.addEventListener("click", async () => {
-        try {
-          await playServerAudio(frageAntwortEl ? frageAntwortEl.textContent : "");
-        } catch (error) {
-          setError(error.message || "Audio konnte nicht geladen werden.");
-        }
-      });
-    }
-
-    if (stopBtn) {
-      stopBtn.addEventListener("click", stopAudio);
-    }
-
-    if (audioPlayerEl) {
-      audioPlayerEl.addEventListener("ended", () => {
-        clearAudioStatus();
-      });
-    }
-
-<script>
-  window.updateHomeLanguage = function () {
-    const langEl = document.getElementById("homeLang");
-    const lang = langEl ? langEl.value : "de";
-
-    const texts = {
-      de: {
-        sub: "Verstehen. Antworten. Erledigen.",
-        langLabel: "Sprache auswählen",
-        question: "Wobei brauchst du Hilfe?",
-        brief: "📄 Schreiben verstehen",
-        briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
-        antraege: "📝 Anträge & Vorteile",
-        antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
-        antwort: "✍️ Antwort erstellen",
-        antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
-        foto: "📸 Foto fragen",
-        fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
-        hilfe: "❓ Alltag & Beruf",
-        hilfeSub: "Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation"
-      },
-      tr: {
-        sub: "Anla. Cevap yaz. İşini hallet.",
-        langLabel: "Dil seç",
-        question: "Hangi konuda yardıma ihtiyacın var?",
-        brief: "📄 Yazıyı anlamak",
-        briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
-        antraege: "📝 Başvurular & haklar",
-        antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
-        antwort: "✍️ Cevap oluştur",
-        antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
-        foto: "📸 Fotoğraf sor",
-        fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
-        hilfe: "❓ Günlük yaşam & iş",
-        hilfeSub: "Günlük yaşam, sağlık, okul, iş, serbest meslek, bakım dokümantasyonu"
-      },
-      bg: {
-        sub: "Разбери. Отговори. Реши проблема.",
-        langLabel: "Избери език",
-        question: "За какво имаш нужда от помощ?",
-        brief: "📄 Разбиране на писмо",
-        briefSub: "Писма, имейли, SMS, WhatsApp, официални документи",
-        antraege: "📝 Молби & права",
-        antraegeSub: "Jobcenter, пенсия, здравна каса, жилищна помощ, грижи, семейство, училище, пари и още много молби",
-        antwort: "✍️ Създай отговор",
-        antwortSub: "Имейл, писмо, PDF, прекратяване, рекламация",
-        foto: "📸 Попитай със снимка",
-        fotoSub: "Продукт, лекарство, снимка от екран, инструкция, техника",
-        hilfe: "❓ Ежедневие & работа",
-        hilfeSub: "Ежедневие, здраве, училище, работа, самостоятелна дейност, документация в грижите"
-      },
-      ar: {
-        sub: "افهم. أجب. أنجز الأمر.",
-        langLabel: "اختر اللغة",
-        question: "بماذا تحتاج إلى مساعدة؟",
-        brief: "📄 فهم الرسالة",
-        briefSub: "رسائل، بريد إلكتروني، SMS، واتساب، رسائل رسمية",
-        antraege: "📝 طلبات & حقوق",
-        antraegeSub: "Jobcenter، التقاعد، التأمين الصحي، السكن، الرعاية، العائلة، المدرسة، المال وطلبات أخرى كثيرة",
-        antwort: "✍️ إنشاء رد",
-        antwortSub: "بريد إلكتروني، رسالة، PDF، إلغاء، شكوى",
-        foto: "📸 اسأل بصورة",
-        fotoSub: "منتج، دواء، لقطة شاشة، تعليمات، تقنية",
-        hilfe: "❓ الحياة اليومية & العمل",
-        hilfeSub: "الحياة اليومية، الصحة، المدرسة، العمل، العمل الحر، توثيق الرعاية"
-      },
-      ro: {
-        sub: "Înțelege. Răspunde. Rezolvă.",
-        langLabel: "Alege limba",
-        question: "Cu ce ai nevoie de ajutor?",
-        brief: "📄 Înțelege documentul",
-        briefSub: "Scrisori, e-mailuri, SMS, WhatsApp, acte oficiale",
-        antraege: "📝 Cereri & beneficii",
-        antraegeSub: "Jobcenter, pensie, asigurare medicală, ajutor pentru locuință, îngrijire, familie, școală, bani și multe alte cereri",
-        antwort: "✍️ Creează răspuns",
-        antwortSub: "E-mail, scrisoare, PDF, anulare, reclamație",
-        foto: "📸 Întreabă cu poză",
-        fotoSub: "Produs, medicament, captură de ecran, instrucțiuni, tehnică",
-        hilfe: "❓ Viață & muncă",
-        hilfeSub: "Viață de zi cu zi, sănătate, școală, muncă, activitate independentă, documentație în îngrijire"
-      },
-      en: {
-        sub: "Understand. Reply. Get it done.",
-        langLabel: "Choose language",
-        question: "What do you need help with?",
-        brief: "📄 Understand a document",
-        briefSub: "Letters, emails, SMS, WhatsApp, official mail",
-        antraege: "📝 Applications & benefits",
-        antraegeSub: "Jobcenter, pension, health insurance, housing benefit, care level, family, school, money and many more applications",
-        antwort: "✍️ Create a reply",
-        antwortSub: "Email, letter, PDF, cancellation, complaint",
-        foto: "📸 Ask with a photo",
-        fotoSub: "Product, medication, screenshot, instructions, tech",
-        hilfe: "❓ Everyday life & work",
-        hilfeSub: "Daily life, health, school, work, self-employment, care documentation"
+      if (bilderEl) {
+        bilderEl.addEventListener("change", () => {
+          activeRequestId++;
+          clearOutputState();
+          renderPreviews();
+        });
       }
-    };
 
-    const t = texts[lang] || texts.de;
+      if (langEl) {
+        langEl.addEventListener("change", () => {
+          currentLang = langEl.value;
+          activeRequestId++;
+          clearOutputState();
+          updateBriefLanguage();
+        });
+      }
 
-    const sub = document.getElementById("homeSubTitle");
-    const label = document.getElementById("homeLangLabel");
-    const question = document.getElementById("homeQuestionTitle");
+      if (briefTextEl) {
+        briefTextEl.addEventListener("input", () => {
+          activeRequestId++;
+          clearOutputState();
+        });
+      }
 
-    if (sub) sub.textContent = t.sub;
-    if (label) label.textContent = t.langLabel;
-    if (question) question.textContent = t.question;
+      if (analyzeBtn) analyzeBtn.addEventListener("click", explainLetter);
+      if (resetBtn) resetBtn.addEventListener("click", goBackHome);
 
-    function setBtn(id, title, subtitle) {
-      const btn = document.getElementById(id);
-      if (btn) {
-        btn.innerHTML = title + "<span>" + subtitle + "</span>";
+      if (toggleDetailsBtn) {
+        toggleDetailsBtn.addEventListener("click", () => {
+          if (!detailCardEl) return;
+
+          if (detailCardEl.classList.contains("hidden")) {
+            show(detailCardEl);
+            toggleDetailsBtn.textContent = getUiText().detailsHide;
+          } else {
+            hide(detailCardEl);
+            toggleDetailsBtn.textContent = getUiText().detailsShow;
+          }
+        });
+      }
+
+      if (frageBtn) frageBtn.addEventListener("click", askQuestionAboutLetter);
+
+      if (readShortBtn) {
+        readShortBtn.addEventListener("click", async () => {
+          try {
+            await playServerAudio(currentKurzText);
+          } catch (error) {
+            setError(error.message || getUiText().audioError);
+          }
+        });
+      }
+
+      if (readAllBtn) {
+        readAllBtn.addEventListener("click", async () => {
+          try {
+            await playServerAudio(currentDetailText || currentKurzText);
+          } catch (error) {
+            setError(error.message || getUiText().audioError);
+          }
+        });
+      }
+
+      if (readFrageAntwortBtn) {
+        readFrageAntwortBtn.addEventListener("click", async () => {
+          try {
+            await playServerAudio(frageAntwortEl ? frageAntwortEl.textContent : "");
+          } catch (error) {
+            setError(error.message || getUiText().audioError);
+          }
+        });
+      }
+
+      if (stopBtn) stopBtn.addEventListener("click", stopAudio);
+
+      if (audioPlayerEl) {
+        audioPlayerEl.addEventListener("ended", () => {
+          clearAudioStatus();
+        });
       }
     }
 
-    setBtn("openBriefBtn", t.brief, t.briefSub);
-    setBtn("soonAntraegeBtn", t.antraege, t.antraegeSub);
-    setBtn("soonAntwortBtn", t.antwort, t.antwortSub);
-    setBtn("soonFotoBtn", t.foto, t.fotoSub);
-    setBtn("soonHilfeBtn", t.hilfe, t.hilfeSub);
-  };
-
-  window.openBriefArea = function () {
-    const langEl = document.getElementById("homeLang");
-    const briefLang = document.getElementById("lang");
-    const homeCard = document.getElementById("homeCard");
-    const briefInputCard = document.getElementById("briefInputCard");
-
-    if (langEl && briefLang) {
-      briefLang.value = langEl.value;
-      window.currentLang = langEl.value;
-    }
-
-    window.updateHomeLanguage();
-
-    if (homeCard) {
-      homeCard.classList.add("hidden");
-      homeCard.style.display = "none";
-    }
-
-    if (briefInputCard) {
-      briefInputCard.classList.remove("hidden");
-      briefInputCard.style.display = "block";
-    }
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  window.addEventListener("load", function () {
-    const langEl = document.getElementById("homeLang");
-    const openBriefBtn = document.getElementById("openBriefBtn");
-
-    if (langEl) {
-      langEl.addEventListener("change", window.updateHomeLanguage);
-    }
-
-    if (openBriefBtn) {
-      openBriefBtn.addEventListener("click", window.openBriefArea);
-    }
-
-    window.updateHomeLanguage();
-  });
-</script>
-<script>
-(function () {
-  function setText(id, text) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = text;
-  }
-
-  function setButton(id, title, subtitle) {
-    var btn = document.getElementById(id);
-    if (btn) {
-      btn.innerHTML = title + "<span>" + subtitle + "</span>";
-    }
-  }
-
-  window.updateHomeLanguage = function () {
-    var langEl = document.getElementById("homeLang");
-    var lang = langEl ? langEl.value : "de";
-
-    var texts = {
-      de: {
-        sub: "Verstehen. Antworten. Erledigen.",
-        langLabel: "Sprache auswählen",
-        question: "Wobei brauchst du Hilfe?",
-        brief: "📄 Schreiben verstehen",
-        briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
-        antraege: "📝 Anträge & Vorteile",
-        antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
-        antwort: "✍️ Antwort erstellen",
-        antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
-        foto: "📸 Foto fragen",
-        fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
-        hilfe: "❓ Alltag & Beruf",
-        hilfeSub: "Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation"
-      },
-      tr: {
-        sub: "Anla. Cevap yaz. İşini hallet.",
-        langLabel: "Dil seç",
-        question: "Hangi konuda yardıma ihtiyacın var?",
-        brief: "📄 Yazıyı anlamak",
-        briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
-        antraege: "📝 Başvurular & haklar",
-        antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
-        antwort: "✍️ Cevap oluştur",
-        antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
-        foto: "📸 Fotoğraf sor",
-        fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
-        hilfe: "❓ Günlük yaşam & iş",
-        hilfeSub: "Günlük yaşam, sağlık, okul, iş, serbest meslek, bakım dokümantasyonu"
-      }
-    };
-
-    var t = texts[lang] || texts.de;
-
-    setText("homeSubTitle", t.sub);
-    setText("homeLangLabel", t.langLabel);
-    setText("homeQuestionTitle", t.question);
-
-    setButton("openBriefBtn", t.brief, t.briefSub);
-    setButton("soonAntraegeBtn", t.antraege, t.antraegeSub);
-    setButton("soonAntwortBtn", t.antwort, t.antwortSub);
-    setButton("soonFotoBtn", t.foto, t.fotoSub);
-    setButton("soonHilfeBtn", t.hilfe, t.hilfeSub);
-  };
-
-  window.openBriefArea = function () {
-    var homeLang = document.getElementById("homeLang");
-    var briefLang = document.getElementById("lang");
-    var homeCard = document.getElementById("homeCard");
-    var briefInputCard = document.getElementById("briefInputCard");
-
-    if (homeLang && briefLang) {
-      briefLang.value = homeLang.value;
-      window.currentLang = homeLang.value;
-    }
-
-    if (homeCard) {
-      homeCard.classList.add("hidden");
-      homeCard.style.display = "none";
-    }
-
-    if (briefInputCard) {
-      briefInputCard.classList.remove("hidden");
-      briefInputCard.style.display = "block";
-    }
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  window.addEventListener("DOMContentLoaded", function () {
-    var langEl = document.getElementById("homeLang");
-    var openBtn = document.getElementById("openBriefBtn");
-
-    if (langEl) {
-      langEl.addEventListener("change", window.updateHomeLanguage);
-    }
-
-   if (openBtn) {
-  openBtn.addEventListener("click", function (e) {
-    e.preventDefault();
-    window.openBriefArea();
-
-    if (window.updateBriefLanguageOnly) {
-      window.updateBriefLanguageOnly();
-    }
-  });
-}
-window.updateBriefLanguageOnly = function () {
-  ...
-};
-  var briefLangEl = document.getElementById("lang");
-  var lang = briefLangEl ? briefLangEl.value : "de";
-
-  var texts = {
-    de: {
-      sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
-      textLabel: "Brief als Text",
-      photoLabel: "Brief-Fotos hochladen",
-      placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-      hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
-      analyze: "Brief erklären",
-      reset: "Alles zurücksetzen"
-    },
-    tr: {
-      sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
-      textLabel: "Mektup metni",
-      photoLabel: "Mektup fotoğrafları yükle",
-      placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
-      hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
-      analyze: "Mektubu açıkla",
-      reset: "Her şeyi sıfırla"
-    }
- var bg = {
-  sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
-  textLabel: "Текст на писмото",
-  photoLabel: "Качи снимки на писмото",
-  placeholder: "Постави текста тук, ако не искаш да качваш снимка",
-  hint: "Можеш да качиш до 6 снимки от едно и също писмо.",
-  analyze: "Обясни писмото",
-  back: "← Назад към началната страница"
-};
-
-var ro = {
-  sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
-  textLabel: "Textul scrisorii",
-  photoLabel: "Încarcă poze cu scrisoarea",
-  placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
-  hint: "Poți încărca până la 6 poze din aceeași scrisoare.",
-  analyze: "Explică scrisoarea",
-  back: "← Înapoi la pagina principală"
-};
-
-var en = {
-  sub: "Understand letters easily. First short and simple. Then with more details.",
-  textLabel: "Letter text",
-  photoLabel: "Upload letter photos",
-  placeholder: "Paste the text here if you do not want to upload a photo",
-  hint: "You can upload up to 6 photos from the same letter.",
-  analyze: "Explain letter",
-  back: "← Back to start page"
-};
-
-var ar = {
-  sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
-  textLabel: "نص الرسالة",
-  photoLabel: "ارفع صور الرسالة",
-  placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
-  hint: "يمكنك رفع ما يصل إلى 6 صور من نفس الرسالة.",
-  analyze: "اشرح الرسالة",
-  back: "← الرجوع إلى الصفحة الرئيسية"
-};
-  };
-
-  var texts = {
-  de: { ... },
-  tr: { ... },
-  bg: { ... },
-  ro: { ... },
-  en: { ... },
-  ar: { ... }
-};
-
-  var briefSubTitle = document.getElementById("briefSubTitle");
-  var briefTextLabel = document.getElementById("briefTextLabel");
-  var briefPhotoLabel = document.getElementById("briefPhotoLabel");
-  var briefText = document.getElementById("briefText");
-  var photoHintText = document.getElementById("photoHintText");
-  var analyzeBtn = document.getElementById("analyzeBtn");
-  var resetBtn = document.getElementById("resetBtn");
-
-  if (briefSubTitle) briefSubTitle.textContent = t.sub;
-  if (briefTextLabel) briefTextLabel.textContent = t.textLabel;
-  if (briefPhotoLabel) briefPhotoLabel.textContent = t.photoLabel;
-  if (briefText) briefText.placeholder = t.placeholder;
-  if (photoHintText) photoHintText.textContent = t.hint;
-  if (analyzeBtn) analyzeBtn.textContent = t.analyze;
-  if (resetBtn) resetBtn.textContent = t.reset;
-}
-
-var briefLangField = document.getElementById("lang");
-
-if (briefLangField) {
-  briefLangField.addEventListener("change", updateBriefLanguageOnly);
-}
-
-updateBriefLanguageOnly();
-</script>
-<script>
-(function () {
-  function byId(id) {
-    return document.getElementById(id);
-  }
-
-  function setText(id, text) {
-    var el = byId(id);
-    if (el) el.textContent = text;
-  }
-
-  function setButton(id, title, subtitle) {
-    var btn = byId(id);
-    if (btn) {
-      btn.innerHTML = title + "<span>" + subtitle + "</span>";
-    }
-  }
-
-  function getHomeLang() {
-    var el = byId("homeLang");
-    return el ? el.value : "de";
-  }
-
-  window.updateHomeLanguage = function () {
-    var lang = getHomeLang();
-
-    var de = {
-      sub: "Verstehen. Antworten. Erledigen.",
-      langLabel: "Sprache auswählen",
-      question: "Wobei brauchst du Hilfe?",
-      brief: "📄 Schreiben verstehen",
-      briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
-      antraege: "📝 Anträge & Vorteile",
-      antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
-      antwort: "✍️ Antwort erstellen",
-      antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
-      foto: "📸 Foto fragen",
-      fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
-      hilfe: "❓ Alltag & Beruf",
-      hilfeSub: "Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation"
-    };
-
-    var tr = {
-      sub: "Anla. Cevap yaz. İşini hallet.",
-      langLabel: "Dil seç",
-      question: "Hangi konuda yardıma ihtiyacın var?",
-      brief: "📄 Yazıyı anlamak",
-      briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
-      antraege: "📝 Başvurular & haklar",
-      antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
-      antwort: "✍️ Cevap oluştur",
-      antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
-      foto: "📸 Fotoğraf sor",
-      fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
-      hilfe: "❓ Günlük yaşam & iş",
-      hilfeSub: "Günlük yaşam, sağlık, okul, iş, serbest meslek, bakım dokümantasyonu"
-    };
-
-    var t = lang === "tr" ? tr : de;
-
-    setText("homeSubTitle", t.sub);
-    setText("homeLangLabel", t.langLabel);
-    setText("homeQuestionTitle", t.question);
-
-    setButton("openBriefBtn", t.brief, t.briefSub);
-    setButton("soonAntraegeBtn", t.antraege, t.antraegeSub);
-    setButton("soonAntwortBtn", t.antwort, t.antwortSub);
-    setButton("soonFotoBtn", t.foto, t.fotoSub);
-    setButton("soonHilfeBtn", t.hilfe, t.hilfeSub);
-  };
-
-  window.openBriefArea = function () {
-    var homeLang = byId("homeLang");
-    var briefLang = byId("lang");
-    var homeCard = byId("homeCard");
-    var briefInputCard = byId("briefInputCard");
-
-    if (homeLang && briefLang) {
-      briefLang.value = homeLang.value;
-      window.currentLang = homeLang.value;
-    }
-
-    if (homeCard) {
-      homeCard.classList.add("hidden");
-      homeCard.style.display = "none";
-    }
-
-    if (briefInputCard) {
-      briefInputCard.classList.remove("hidden");
-      briefInputCard.style.display = "block";
-    }
-
-    window.scrollTo(0, 0);
-  };
-function updateBriefLanguage() {
-  var briefLang = byId("lang");
-  var lang = briefLang ? briefLang.value : "de";
-
-  var de = {
-    sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
-    textLabel: "Brief als Text",
-    photoLabel: "Brief-Fotos hochladen",
-    placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-    hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
-    analyze: "Brief erklären",
-    reset: "← Zurück zur Startseite"
-  };
-
-  var tr = {
-    sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
-    textLabel: "Mektup metni",
-    photoLabel: "Mektup fotoğrafları yükle",
-    placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
-    hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
-    analyze: "Mektubu açıkla",
-    reset: "← Ana sayfaya dön"
-  };
-
-  var t = lang === "tr" ? tr : de;
-
-  setText("briefSubTitle", t.sub);
-  setText("briefTextLabel", t.textLabel);
-  setText("briefPhotoLabel", t.photoLabel);
-  setText("photoHintText", t.hint);
-
-  var textarea = byId("briefText");
-  if (textarea) textarea.placeholder = t.placeholder;
-
-  setText("analyzeBtn", t.analyze);
-  setText("resetBtn", t.reset);
-}
- 
-  function startHilfe24Fix() {
-    var langEl = byId("homeLang");
-    var openBtn = byId("openBriefBtn");
-    var resetBtn = byId("resetBtn");
-    
-  if (langEl) {
-  langEl.onchange = window.updateHomeLanguage;
-}
-
-var briefLang = byId("lang");
-if (briefLang) {
-  briefLang.onchange = updateBriefLanguage;
-}
-
-if (openBtn) {
-  openBtn.onclick = function (event) {
-    event.preventDefault();
-    window.openBriefArea();
+    updateHomeLanguage();
     updateBriefLanguage();
-  };
-}
-if (resetBtn) {
-  resetBtn.onclick = function (event) {
-    event.preventDefault();
+    setupEvents();
 
-    var homeCard = byId("homeCard");
-    var briefInputCard = byId("briefInputCard");
-    var briefText = byId("briefText");
-    var bilder = byId("bilder");
-    var previewGrid = byId("previewGrid");
-
-    if (briefText) briefText.value = "";
-    if (bilder) bilder.value = "";
-    if (previewGrid) previewGrid.innerHTML = "";
-
-    if (briefInputCard) {
-      briefInputCard.classList.add("hidden");
-      briefInputCard.style.display = "none";
-    }
-
-    if (homeCard) {
-      homeCard.classList.remove("hidden");
-      homeCard.style.display = "block";
-    }
-
-    window.updateHomeLanguage();
-    window.scrollTo(0, 0);
-  };
-}
-    window.updateHomeLanguage();
- updateBriefLanguage();
-  }
-
-  startHilfe24Fix();
-  window.addEventListener("load", startHilfe24Fix);
-})();
-</script>
-<script>
-(function () {
-  function el(id) {
-    return document.getElementById(id);
-  }
-
-  function setText(id, text) {
-    const item = el(id);
-    if (item) item.textContent = text;
-  }
-
-  function setButton(id, title, subtitle) {
-    const btn = el(id);
-    if (!btn) return;
-    btn.innerHTML = title + "<span>" + subtitle + "</span>";
-  }
-
-  const homeTexts = {
-    de: {
-      sub: "Verstehen. Antworten. Erledigen.",
-      langLabel: "Sprache auswählen",
-      question: "Wobei brauchst du Hilfe?",
-      brief: "📄 Schreiben verstehen",
-      briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
-      antraege: "📝 Anträge & Vorteile",
-      antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
-      antwort: "✍️ Antwort erstellen",
-      antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
-      foto: "📸 Foto fragen",
-      fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
-      hilfe: "❓ Alltag & Beruf",
-      hilfeSub: "Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation"
-    },
-    tr: {
-      sub: "Anla. Cevap yaz. İşini hallet.",
-      langLabel: "Dil seç",
-      question: "Hangi konuda yardıma ihtiyacın var?",
-      brief: "📄 Yazıyı anlamak",
-      briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
-      antraege: "📝 Başvurular & haklar",
-      antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
-      antwort: "✍️ Cevap oluştur",
-      antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
-      foto: "📸 Fotoğraf sor",
-      fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
-      hilfe: "❓ Günlük yaşam & iş",
-      hilfeSub: "Günlük yaşam, sağlık, okul, iş, serbest meslek, bakım dokümantasyonu"
-    }
-  };
-
-  window.h24UpdateHome = function () {
-    const langSelect = el("homeLang");
-    const lang = langSelect ? langSelect.value : "de";
-    const t = homeTexts[lang] || homeTexts.de;
-
-    setText("homeSubTitle", t.sub);
-    setText("homeLangLabel", t.langLabel);
-    setText("homeQuestionTitle", t.question);
-
-    setButton("openBriefBtn", t.brief, t.briefSub);
-    setButton("soonAntraegeBtn", t.antraege, t.antraegeSub);
-    setButton("soonAntwortBtn", t.antwort, t.antwortSub);
-    setButton("soonFotoBtn", t.foto, t.fotoSub);
-    setButton("soonHilfeBtn", t.hilfe, t.hilfeSub);
-  };
-
-  window.h24OpenBrief = function () {
-    const homeLang = el("homeLang");
-    const briefLang = el("lang");
-    const homeCard = el("homeCard");
-    const briefInputCard = el("briefInputCard");
-
-    if (homeLang && briefLang) {
-      briefLang.value = homeLang.value;
-      window.currentLang = homeLang.value;
-    }
-
-    if (homeCard) {
-      homeCard.classList.add("hidden");
-      homeCard.style.display = "none";
-    }
-
-    if (briefInputCard) {
-      briefInputCard.classList.remove("hidden");
-      briefInputCard.style.display = "block";
-    }
-
-    window.scrollTo(0, 0);
-  };
-
-  function start() {
-    const langSelect = el("homeLang");
-    const openBtn = el("openBriefBtn");
-
-    if (langSelect) {
-      langSelect.onchange = window.h24UpdateHome;
-    }
-
-    if (openBtn) {
-      openBtn.onclick = function (event) {
-        event.preventDefault();
-        window.h24OpenBrief();
-      };
-    }
-
-    window.h24UpdateHome();
-  }
-
-  start();
-  window.addEventListener("load", start);
-})();
-</script>
-<script>
-(function () {
-  function el(id) {
-    return document.getElementById(id);
-  }
-
-  function setText(id, text) {
-    var item = el(id);
-    if (item) item.textContent = text;
-  }
-
-  function getBriefLang() {
-    var langEl = el("lang");
-    return langEl ? langEl.value : "de";
-  }
-
-  window.h24UpdateBriefLanguage = function () {
-    var lang = getBriefLang();
-
-    var texts = {
-      de: {
-        sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
-        textLabel: "Brief als Text",
-        photoLabel: "Brief-Fotos hochladen",
-        placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-        hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
-        analyze: "Brief erklären",
-        back: "← Zurück zur Startseite"
-      },
-      tr: {
-        sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
-        textLabel: "Mektup metni",
-        photoLabel: "Mektup fotoğrafları yükle",
-        placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
-        hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
-        analyze: "Mektubu açıkla",
-        back: "← Ana sayfaya dön"
-      },
-      bg: {
-        sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
-        textLabel: "Текст на писмото",
-        photoLabel: "Качи снимки на писмото",
-        placeholder: "Постави текста тук, ако не искаш да качваш снимка",
-        hint: "Можеш да качиш до 6 снимки от едно и също писмо.",
-        analyze: "Обясни писмото",
-        back: "← Назад към началната страница"
-      },
-      ro: {
-        sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
-        textLabel: "Textul scrisorii",
-        photoLabel: "Încarcă poze cu scrisoarea",
-        placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
-        hint: "Poți încărca până la 6 poze din aceeași scrisoare.",
-        analyze: "Explică scrisoarea",
-        back: "← Înapoi la pagina principală"
-      },
-      en: {
-        sub: "Understand letters easily. First short and simple. Then with more details.",
-        textLabel: "Letter text",
-        photoLabel: "Upload letter photos",
-        placeholder: "Paste the text here if you do not want to upload a photo",
-        hint: "You can upload up to 6 photos from the same letter.",
-        analyze: "Explain letter",
-        back: "← Back to start page"
-      },
-      ar: {
-        sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
-        textLabel: "نص الرسالة",
-        photoLabel: "ارفع صور الرسالة",
-        placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
-        hint: "يمكنك رفع ما يصل إلى 6 صور من نفس الرسالة.",
-        analyze: "اشرح الرسالة",
-        back: "← الرجوع إلى الصفحة الرئيسية"
-      }
-    };
-
-    var t = texts[lang] || texts.de;
-
-    setText("briefSubTitle", t.sub);
-    setText("briefTextLabel", t.textLabel);
-    setText("briefPhotoLabel", t.photoLabel);
-    setText("photoHintText", t.hint);
-    setText("analyzeBtn", t.analyze);
-    setText("resetBtn", t.back);
-
-    var briefText = el("briefText");
-    if (briefText) {
-      briefText.placeholder = t.placeholder;
-    }
-  };
-
-  function startBriefLanguageFix() {
-    var langEl = el("lang");
-
-    if (langEl) {
-      langEl.onchange = window.h24UpdateBriefLanguage;
-    }
-
-    window.h24UpdateBriefLanguage();
-    setTimeout(window.h24UpdateBriefLanguage, 300);
-    setTimeout(window.h24UpdateBriefLanguage, 1000);
-  }
-
-  startBriefLanguageFix();
-  window.addEventListener("load", startBriefLanguageFix);
-})();
-</script>
+    window.h24UpdateHome = updateHomeLanguage;
+    window.h24OpenBrief = openBriefArea;
+  </script>
 </body>
 </html>
