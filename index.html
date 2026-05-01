@@ -352,7 +352,7 @@
      <label id="briefTextLabel" for="briefText">Brief als Text</label>
       <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
 
-      <label for="bilder">Brief-Fotos hochladen</label>
+     <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
       <input id="bilder" type="file" accept="image/*" multiple />
       <div class="hint">Du kannst bis zu 6 Bilder vom selben Brief hochladen.</div>
 
@@ -1263,7 +1263,8 @@ if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
     if (briefTextLabel) briefTextLabel.textContent = t.briefTextLabel;
     if (briefPhotoLabel) briefPhotoLabel.textContent = t.briefPhotoLabel;
     if (analyzeBtn) analyzeBtn.textContent = t.analyzeText;
-    if (resetBtn) resetBtn.textContent = t.resetText;
+   if (briefTextArea && t.placeholderText) briefTextArea.placeholder = t.placeholderText;
+if (photoHintText && t.photoHint) photoHintText.textContent = t.photoHint;
   };
 
   window.addEventListener("load", function () {
