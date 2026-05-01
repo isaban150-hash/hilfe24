@@ -1513,24 +1513,6 @@
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
   </script>
-app.post("/api/brief-bild", async (req, res) => {
-  try {
-    const bilder = req.body.bilder || [];
-    const lang = (req.body.lang || "de").toLowerCase();
 
-    const result = await buildFinalAnswerFromImages(bilder, lang);
-
-    return res.json(result);
-  } catch (error) {
-    console.error("Fehler /api/brief-bild:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
-});
-
-app.post("/api/frage", async (req, res) => {
 </body>
 </html>
