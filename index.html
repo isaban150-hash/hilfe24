@@ -1383,5 +1383,122 @@ if (briefLangField) {
 
 updateBriefLanguageOnly();
 </script>
+<script>
+(function () {
+  function byId(id) {
+    return document.getElementById(id);
+  }
+
+  function setText(id, text) {
+    var el = byId(id);
+    if (el) el.textContent = text;
+  }
+
+  function setButton(id, title, subtitle) {
+    var btn = byId(id);
+    if (btn) {
+      btn.innerHTML = title + "<span>" + subtitle + "</span>";
+    }
+  }
+
+  function getHomeLang() {
+    var el = byId("homeLang");
+    return el ? el.value : "de";
+  }
+
+  window.updateHomeLanguage = function () {
+    var lang = getHomeLang();
+
+    var de = {
+      sub: "Verstehen. Antworten. Erledigen.",
+      langLabel: "Sprache auswählen",
+      question: "Wobei brauchst du Hilfe?",
+      brief: "📄 Schreiben verstehen",
+      briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
+      antraege: "📝 Anträge & Vorteile",
+      antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
+      antwort: "✍️ Antwort erstellen",
+      antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
+      foto: "📸 Foto fragen",
+      fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
+      hilfe: "❓ Alltag & Beruf",
+      hilfeSub: "Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation"
+    };
+
+    var tr = {
+      sub: "Anla. Cevap yaz. İşini hallet.",
+      langLabel: "Dil seç",
+      question: "Hangi konuda yardıma ihtiyacın var?",
+      brief: "📄 Yazıyı anlamak",
+      briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
+      antraege: "📝 Başvurular & haklar",
+      antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
+      antwort: "✍️ Cevap oluştur",
+      antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
+      foto: "📸 Fotoğraf sor",
+      fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
+      hilfe: "❓ Günlük yaşam & iş",
+      hilfeSub: "Günlük yaşam, sağlık, okul, iş, serbest meslek, bakım dokümantasyonu"
+    };
+
+    var t = lang === "tr" ? tr : de;
+
+    setText("homeSubTitle", t.sub);
+    setText("homeLangLabel", t.langLabel);
+    setText("homeQuestionTitle", t.question);
+
+    setButton("openBriefBtn", t.brief, t.briefSub);
+    setButton("soonAntraegeBtn", t.antraege, t.antraegeSub);
+    setButton("soonAntwortBtn", t.antwort, t.antwortSub);
+    setButton("soonFotoBtn", t.foto, t.fotoSub);
+    setButton("soonHilfeBtn", t.hilfe, t.hilfeSub);
+  };
+
+  window.openBriefArea = function () {
+    var homeLang = byId("homeLang");
+    var briefLang = byId("lang");
+    var homeCard = byId("homeCard");
+    var briefInputCard = byId("briefInputCard");
+
+    if (homeLang && briefLang) {
+      briefLang.value = homeLang.value;
+      window.currentLang = homeLang.value;
+    }
+
+    if (homeCard) {
+      homeCard.classList.add("hidden");
+      homeCard.style.display = "none";
+    }
+
+    if (briefInputCard) {
+      briefInputCard.classList.remove("hidden");
+      briefInputCard.style.display = "block";
+    }
+
+    window.scrollTo(0, 0);
+  };
+
+  function startHilfe24Fix() {
+    var langEl = byId("homeLang");
+    var openBtn = byId("openBriefBtn");
+
+    if (langEl) {
+      langEl.onchange = window.updateHomeLanguage;
+    }
+
+    if (openBtn) {
+      openBtn.onclick = function (event) {
+        event.preventDefault();
+        window.openBriefArea();
+      };
+    }
+
+    window.updateHomeLanguage();
+  }
+
+  startHilfe24Fix();
+  window.addEventListener("load", startHilfe24Fix);
+})();
+</script>
 </body>
 </html>
