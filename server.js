@@ -1218,20 +1218,21 @@ app.post("/api/brief-bild", async (req, res) => {
   } catch (error) {
     console.error("Fehler /api/brief-bild:", error);
 
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
+  return res.status(500).json({
+  ok: false,
+  error: error.message || "Serverfehler"
 });
+  }
+
 
 app.post("/api/frage", async (req, res) => {
   try {
     const briefText = cleanText(req.body.briefText || "");
     const erklaerungKurz = cleanText(req.body.kurz || "");
     const erklaerungDetails = cleanText(req.body.details || "");
-    const frage = cleanText(req.body.frage || "");
-    const lang = (req.body.lang || "de").toLowerCase();
+  const frage = cleanText(req.body.frage || "");
+const frageMode = cleanText(req.body.frageMode || "free");
+const lang = (req.body.lang || "de").toLowerCase();
     const langMeta = getLanguageMeta(lang);
 
     const meta = req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
@@ -1288,10 +1289,45 @@ ${briefText.slice(0, 12000)}
 
 Frage des Nutzers:
 ${frage}
+Frage-Modus:
+${frageMode}
 
 AUFGABE:
-Beantworte die Frage konkret anhand des Schreibens, der Erklärung und der Nutzerfrage.
+WICHTIG ZUM FRAGE-MODUS:
+Wenn frageMode = "next_steps":
+Der Nutzer will wissen, was er jetzt tun muss.
+Antworte handlungsorientiert.
+Keine lange Hintergrundgeschichte.
+Nutze nur:
+- Kurz gesagt
+- Was du jetzt tun solltest
+- Wichtig
+Maximal 5 klare Schritte.
 
+Wenn frageMode = "deadline":
+Der Nutzer will die Frist wissen.
+Antworte mit:
+- Frist / Termin
+- Was bedeutet das?
+- Was passiert, wenn die Frist verpasst wird?
+Keine lange allgemeine Erklärung.
+
+Wenn frageMode = "consequence":
+Der Nutzer will wissen, was passiert, wenn er nichts macht.
+Antworte mit:
+- mögliche Folgen
+- wie dringend es ist
+- was er jetzt tun sollte
+Keine Vorlage schreiben, außer der Nutzer bittet darum.
+
+Wenn frageMode = "reply":
+Der Nutzer will eine Antwort schreiben.
+Erkläre nicht lange.
+Schreibe direkt einen fertigen Text zum Kopieren.
+Bei deutschen Behörden, Gerichten, Inkasso, Krankenkassen, Jobcenter oder Schulen immer auf Deutsch schreiben.
+
+Wenn frageMode = "free":
+Beantworte die eigene Frage des Nutzers normal, aber weiterhin klar, praktisch und vollständig.
 WICHTIGER STIL:
 - Nicht zu kurz, nicht zu lang, aber vollständig.
 - Keine Begrüßung.
