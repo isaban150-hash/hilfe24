@@ -854,7 +854,8 @@
     let activeRequestId = 0;
     let activeAudioUrl = "";
     let frageMode = "free";
-    
+    window.frageMode = "free";
+  
     function getUiText() {
       return uiTexts[currentLang] || uiTexts.de;
     }
@@ -1376,14 +1377,15 @@
         const response = await fetch("/api/frage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lang,
-            frage,
-            briefText: currentBriefText,
-            kurz: currentKurzText,
-            details: currentDetailText,
-            meta: currentMeta
-          })
+ body: JSON.stringify({
+  lang,
+  frage,
+  frageMode: window.frageMode || "free",
+  briefText: currentBriefText,
+  kurz: currentKurzText,
+  details: currentDetailText,
+  meta: currentMeta
+})
         });
 
         const data = await response.json();
@@ -1580,12 +1582,22 @@
 
     var lang = getLang();
     var texts = quickQuestions[lang] || quickQuestions.de;
-    var text = texts[btn.id] || "";
+   textarea.value = text;
 
-    textarea.value = text;
-    textarea.focus();
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
-  }, true);
+if (btn.id === "quickWhatBtn") {
+  window.frageMode = "next_steps";
+} else if (btn.id === "quickDeadlineBtn") {
+  window.frageMode = "deadline";
+} else if (btn.id === "quickConsequenceBtn") {
+  window.frageMode = "consequence";
+} else if (btn.id === "quickReplyBtn") {
+  window.frageMode = "reply";
+} else {
+  window.frageMode = "free";
+}
+
+textarea.focus();
+textarea.dispatchEvent(new Event("input", { bubbles: true }));
 })();
 </script>
 </body>
