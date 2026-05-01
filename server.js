@@ -1538,7 +1538,7 @@ const antwort = cleanText(raw)
     return res.status(500).json({
       ok: false,
       error: error.message || "Fehler bei der Frage"
-``
+`
       }
     ]);
 
