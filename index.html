@@ -1354,9 +1354,55 @@ window.updateBriefLanguageOnly = function () {
       analyze: "Mektubu açıkla",
       reset: "Her şeyi sıfırla"
     }
+ var bg = {
+  sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
+  textLabel: "Текст на писмото",
+  photoLabel: "Качи снимки на писмото",
+  placeholder: "Постави текста тук, ако не искаш да качваш снимка",
+  hint: "Можеш да качиш до 6 снимки от едно и също писмо.",
+  analyze: "Обясни писмото",
+  back: "← Назад към началната страница"
+};
+
+var ro = {
+  sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
+  textLabel: "Textul scrisorii",
+  photoLabel: "Încarcă poze cu scrisoarea",
+  placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
+  hint: "Poți încărca până la 6 poze din aceeași scrisoare.",
+  analyze: "Explică scrisoarea",
+  back: "← Înapoi la pagina principală"
+};
+
+var en = {
+  sub: "Understand letters easily. First short and simple. Then with more details.",
+  textLabel: "Letter text",
+  photoLabel: "Upload letter photos",
+  placeholder: "Paste the text here if you do not want to upload a photo",
+  hint: "You can upload up to 6 photos from the same letter.",
+  analyze: "Explain letter",
+  back: "← Back to start page"
+};
+
+var ar = {
+  sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
+  textLabel: "نص الرسالة",
+  photoLabel: "ارفع صور الرسالة",
+  placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
+  hint: "يمكنك رفع ما يصل إلى 6 صور من نفس الرسالة.",
+  analyze: "اشرح الرسالة",
+  back: "← الرجوع إلى الصفحة الرئيسية"
+};
   };
 
-  var t = texts[lang] || texts.de;
+  var texts = {
+  de: { ... },
+  tr: { ... },
+  bg: { ... },
+  ro: { ... },
+  en: { ... },
+  ar: { ... }
+};
 
   var briefSubTitle = document.getElementById("briefSubTitle");
   var briefTextLabel = document.getElementById("briefTextLabel");
