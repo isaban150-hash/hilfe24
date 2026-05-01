@@ -1293,13 +1293,14 @@ Frage-Modus:
 ${frageMode}
 
 AUFGABE:
-Wenn frageMode = "next_steps":
-Der Nutzer will nur wissen: Was muss ich jetzt tun?
-Antworte kurz, direkt und handlungsorientiert.
-Keine lange Hintergrundgeschichte.
-Keine langen Erklärungen zum ganzen Brief.
-Keine Wiederholung aller Details.
+HARTE REGEL FÜR frageMode = "next_steps":
+Die Antwort darf maximal 160 Wörter haben.
+Schreibe keine lange Erklärung.
+Keine langen Absätze.
 
+Keine Wiederholung des ganzen Briefes.
+Wenn mehr Informationen wichtig sind, fasse sie in kurzen Stichpunkten zusammen.
+Der Nutzer will jetzt nur wissen, was er tun soll.
 Nutze nur diese Struktur in der Sprache des Nutzers:
 - Kurz gesagt
 - Was du jetzt tun solltest
