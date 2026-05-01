@@ -1730,6 +1730,112 @@ if (resetBtn) {
   window.addEventListener("load", start);
 })();
 </script>
+<script>
+(function () {
+  function el(id) {
+    return document.getElementById(id);
+  }
 
+  function setText(id, text) {
+    var item = el(id);
+    if (item) item.textContent = text;
+  }
+
+  function getBriefLang() {
+    var langEl = el("lang");
+    return langEl ? langEl.value : "de";
+  }
+
+  window.h24UpdateBriefLanguage = function () {
+    var lang = getBriefLang();
+
+    var texts = {
+      de: {
+        sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
+        textLabel: "Brief als Text",
+        photoLabel: "Brief-Fotos hochladen",
+        placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+        hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
+        analyze: "Brief erklären",
+        back: "← Zurück zur Startseite"
+      },
+      tr: {
+        sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
+        textLabel: "Mektup metni",
+        photoLabel: "Mektup fotoğrafları yükle",
+        placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
+        hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
+        analyze: "Mektubu açıkla",
+        back: "← Ana sayfaya dön"
+      },
+      bg: {
+        sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
+        textLabel: "Текст на писмото",
+        photoLabel: "Качи снимки на писмото",
+        placeholder: "Постави текста тук, ако не искаш да качваш снимка",
+        hint: "Можеш да качиш до 6 снимки от едно и също писмо.",
+        analyze: "Обясни писмото",
+        back: "← Назад към началната страница"
+      },
+      ro: {
+        sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
+        textLabel: "Textul scrisorii",
+        photoLabel: "Încarcă poze cu scrisoarea",
+        placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
+        hint: "Poți încărca până la 6 poze din aceeași scrisoare.",
+        analyze: "Explică scrisoarea",
+        back: "← Înapoi la pagina principală"
+      },
+      en: {
+        sub: "Understand letters easily. First short and simple. Then with more details.",
+        textLabel: "Letter text",
+        photoLabel: "Upload letter photos",
+        placeholder: "Paste the text here if you do not want to upload a photo",
+        hint: "You can upload up to 6 photos from the same letter.",
+        analyze: "Explain letter",
+        back: "← Back to start page"
+      },
+      ar: {
+        sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
+        textLabel: "نص الرسالة",
+        photoLabel: "ارفع صور الرسالة",
+        placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
+        hint: "يمكنك رفع ما يصل إلى 6 صور من نفس الرسالة.",
+        analyze: "اشرح الرسالة",
+        back: "← الرجوع إلى الصفحة الرئيسية"
+      }
+    };
+
+    var t = texts[lang] || texts.de;
+
+    setText("briefSubTitle", t.sub);
+    setText("briefTextLabel", t.textLabel);
+    setText("briefPhotoLabel", t.photoLabel);
+    setText("photoHintText", t.hint);
+    setText("analyzeBtn", t.analyze);
+    setText("resetBtn", t.back);
+
+    var briefText = el("briefText");
+    if (briefText) {
+      briefText.placeholder = t.placeholder;
+    }
+  };
+
+  function startBriefLanguageFix() {
+    var langEl = el("lang");
+
+    if (langEl) {
+      langEl.onchange = window.h24UpdateBriefLanguage;
+    }
+
+    window.h24UpdateBriefLanguage();
+    setTimeout(window.h24UpdateBriefLanguage, 300);
+    setTimeout(window.h24UpdateBriefLanguage, 1000);
+  }
+
+  startBriefLanguageFix();
+  window.addEventListener("load", startBriefLanguageFix);
+})();
+</script>
 </body>
 </html>
