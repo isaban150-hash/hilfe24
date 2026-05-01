@@ -1585,5 +1585,187 @@
   window.addEventListener("load", startQuestionAreaFix);
 })();
 </script>
+<script>
+(function () {
+  function h24q(id) {
+    return document.getElementById(id);
+  }
+
+  function h24qSet(id, text) {
+    var el = h24q(id);
+    if (el) el.textContent = text;
+  }
+
+  function h24qLang() {
+    var langEl = h24q("lang");
+    return langEl ? langEl.value : "de";
+  }
+
+  var h24QuestionTexts = {
+    de: {
+      title: "Frage zu diesem Brief stellen",
+      help: "Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.",
+      quickTitle: "Schnellfragen:",
+      what: "Was muss ich tun?",
+      deadline: "Bis wann?",
+      consequence: "Was passiert, wenn ich nichts mache?",
+      reply: "Schreib mir eine Antwort",
+      label: "Deine Frage",
+      placeholder: "Schreibe hier deine Frage zu diesem Brief",
+      button: "Frage stellen",
+      loading: "Antwort wird erstellt...",
+      answerTitle: "Antwort",
+      readAnswer: "🔊 Antwort vorlesen"
+    },
+
+    tr: {
+      title: "Bu mektupla ilgili soru sor",
+      help: "Bu mektupla ilgili anlamadığın her şeyi sorabilirsin. Kendi sorunu yazabilir veya aşağıdaki hızlı sorulardan birine dokunabilirsin.",
+      quickTitle: "Hızlı sorular:",
+      what: "Ne yapmam gerekiyor?",
+      deadline: "Son tarih ne zaman?",
+      consequence: "Hiçbir şey yapmazsam ne olur?",
+      reply: "Bana bir cevap yaz",
+      label: "Sorun",
+      placeholder: "Bu mektupla ilgili sorunu buraya yaz",
+      button: "Soru sor",
+      loading: "Cevap oluşturuluyor...",
+      answerTitle: "Cevap",
+      readAnswer: "🔊 Cevabı sesli oku"
+    },
+
+    bg: {
+      title: "Задай въпрос за това писмо",
+      help: "Можеш да попиташ всичко, което не разбираш в това писмо. Можеш да напишеш свой въпрос или да избереш бърз въпрос.",
+      quickTitle: "Бързи въпроси:",
+      what: "Какво трябва да направя?",
+      deadline: "До кога?",
+      consequence: "Какво ще стане, ако не направя нищо?",
+      reply: "Напиши ми отговор",
+      label: "Твоят въпрос",
+      placeholder: "Напиши тук въпроса си за това писмо",
+      button: "Задай въпрос",
+      loading: "Отговорът се създава...",
+      answerTitle: "Отговор",
+      readAnswer: "🔊 Прочети отговора"
+    },
+
+    ro: {
+      title: "Pune o întrebare despre această scrisoare",
+      help: "Poți întreba orice nu înțelegi din această scrisoare. Poți scrie propria întrebare sau poți alege o întrebare rapidă.",
+      quickTitle: "Întrebări rapide:",
+      what: "Ce trebuie să fac?",
+      deadline: "Până când?",
+      consequence: "Ce se întâmplă dacă nu fac nimic?",
+      reply: "Scrie-mi un răspuns",
+      label: "Întrebarea ta",
+      placeholder: "Scrie aici întrebarea ta despre această scrisoare",
+      button: "Pune întrebarea",
+      loading: "Răspunsul este creat...",
+      answerTitle: "Răspuns",
+      readAnswer: "🔊 Citește răspunsul"
+    },
+
+    en: {
+      title: "Ask a question about this letter",
+      help: "You can ask anything you do not understand about this letter. You can write your own question or choose a quick question below.",
+      quickTitle: "Quick questions:",
+      what: "What do I have to do?",
+      deadline: "By when?",
+      consequence: "What happens if I do nothing?",
+      reply: "Write me a reply",
+      label: "Your question",
+      placeholder: "Write your question about this letter here",
+      button: "Ask question",
+      loading: "Answer is being created...",
+      answerTitle: "Answer",
+      readAnswer: "🔊 Read answer aloud"
+    },
+
+    ar: {
+      title: "اسأل سؤالًا عن هذه الرسالة",
+      help: "يمكنك أن تسأل عن أي شيء لا تفهمه في هذه الرسالة. يمكنك كتابة سؤالك أو اختيار سؤال سريع من الأسفل.",
+      quickTitle: "أسئلة سريعة:",
+      what: "ماذا يجب أن أفعل؟",
+      deadline: "إلى متى؟",
+      consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+      reply: "اكتب لي ردًا",
+      label: "سؤالك",
+      placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
+      button: "اطرح السؤال",
+      loading: "يتم إنشاء الإجابة...",
+      answerTitle: "الإجابة",
+      readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
+    }
+  };
+
+  window.h24ForceQuestionLanguage = function () {
+    var lang = h24qLang();
+    var t = h24QuestionTexts[lang] || h24QuestionTexts.de;
+
+    h24qSet("frageTitle", t.title);
+    h24qSet("frageHelp", t.help);
+    h24qSet("quickQuestionTitle", t.quickTitle);
+    h24qSet("quickWhatBtn", t.what);
+    h24qSet("quickDeadlineBtn", t.deadline);
+    h24qSet("quickConsequenceBtn", t.consequence);
+    h24qSet("quickReplyBtn", t.reply);
+    h24qSet("frageTextLabel", t.label);
+    h24qSet("frageBtn", t.button);
+    h24qSet("frageStatus", t.loading);
+    h24qSet("frageAntwortTitle", t.answerTitle);
+    h24qSet("readFrageAntwortBtn", t.readAnswer);
+
+    var textarea = h24q("frageText");
+    if (textarea) {
+      textarea.placeholder = t.placeholder;
+    }
+  };
+
+  function h24SetQuickButton(btnId, key) {
+    var btn = h24q(btnId);
+    if (!btn) return;
+
+    btn.onclick = function () {
+      var lang = h24qLang();
+      var t = h24QuestionTexts[lang] || h24QuestionTexts.de;
+      var textarea = h24q("frageText");
+
+      if (textarea) {
+        textarea.value = t[key];
+        textarea.focus();
+      }
+    };
+  }
+
+  function h24StartQuestionFix() {
+    var langEl = h24q("lang");
+    var analyzeBtn = h24q("analyzeBtn");
+
+    if (langEl) {
+      langEl.addEventListener("change", window.h24ForceQuestionLanguage);
+    }
+
+    if (analyzeBtn) {
+      analyzeBtn.addEventListener("click", function () {
+        setTimeout(window.h24ForceQuestionLanguage, 500);
+        setTimeout(window.h24ForceQuestionLanguage, 1500);
+      });
+    }
+
+    h24SetQuickButton("quickWhatBtn", "what");
+    h24SetQuickButton("quickDeadlineBtn", "deadline");
+    h24SetQuickButton("quickConsequenceBtn", "consequence");
+    h24SetQuickButton("quickReplyBtn", "reply");
+
+    window.h24ForceQuestionLanguage();
+    setTimeout(window.h24ForceQuestionLanguage, 500);
+    setTimeout(window.h24ForceQuestionLanguage, 1500);
+  }
+
+  h24StartQuestionFix();
+  window.addEventListener("load", h24StartQuestionFix);
+})();
+</script>
 </body>
 </html>
