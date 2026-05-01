@@ -307,10 +307,10 @@
   </div>
 
   <div class="home-grid">
-    <button id="openBriefBtn" class="home-btn" type="button">
-      📄 Schreiben verstehen
-      <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
-    </button>
+   <button id="openBriefBtn" class="home-btn" type="button" onclick="openBriefArea()">
+  📄 Schreiben verstehen
+  <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
+</button>
 
     <button id="soonAntraegeBtn" class="home-btn" type="button">
       📝 Anträge & Vorteile
@@ -406,9 +406,8 @@
         „Ich bin krank“, „Schreib mir eine E-Mail“, „Was muss ich tun?“
       </div>
 
-     <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
-      <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
-
+    <label for="frageText">Deine Frage</label>
+<textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
       <div class="button-row">
         <button id="frageBtn" class="btn-primary" type="button">Frage stellen</button>
       </div>
@@ -952,7 +951,7 @@ if (homeLangSelect) {
 }
 
 updateHomeLanguage();
-window.addEventListener("load", updateHomeLanguage);
+.addEventListener("load", updateHomeLanguage);
 
    if (openBriefBtn) {
   openBriefBtn.addEventListener("click", () => {
@@ -1111,6 +1110,169 @@ if (openBriefBtn) {
         }
       });
     }
+  });
+</script>
+<script>
+  window.updateHomeLanguage = function () {
+    const langEl = document.getElementById("homeLang");
+    const lang = langEl ? langEl.value : "de";
+
+    const texts = {
+      de: {
+        sub: "Verstehen. Antworten. Erledigen.",
+        langLabel: "Sprache auswählen",
+        question: "Wobei brauchst du Hilfe?",
+        brief: "📄 Schreiben verstehen",
+        briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
+        antraege: "📝 Anträge & Vorteile",
+        antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
+        antwort: "✍️ Antwort erstellen",
+        antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
+        foto: "📸 Foto fragen",
+        fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
+        hilfe: "❓ Alltag & Beruf",
+        hilfeSub: "Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation"
+      },
+      tr: {
+        sub: "Anla. Cevap yaz. İşini hallet.",
+        langLabel: "Dil seç",
+        question: "Hangi konuda yardıma ihtiyacın var?",
+        brief: "📄 Yazıyı anlamak",
+        briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
+        antraege: "📝 Başvurular & haklar",
+        antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
+        antwort: "✍️ Cevap oluştur",
+        antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
+        foto: "📸 Fotoğraf sor",
+        fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
+        hilfe: "❓ Günlük yaşam & iş",
+        hilfeSub: "Günlük yaşam, sağlık, okul, iş, serbest meslek, bakım dokümantasyonu"
+      },
+      bg: {
+        sub: "Разбери. Отговори. Реши проблема.",
+        langLabel: "Избери език",
+        question: "За какво имаш нужда от помощ?",
+        brief: "📄 Разбиране на писмо",
+        briefSub: "Писма, имейли, SMS, WhatsApp, официални документи",
+        antraege: "📝 Молби & права",
+        antraegeSub: "Jobcenter, пенсия, здравна каса, жилищна помощ, грижи, семейство, училище, пари и още много молби",
+        antwort: "✍️ Създай отговор",
+        antwortSub: "Имейл, писмо, PDF, прекратяване, рекламация",
+        foto: "📸 Попитай със снимка",
+        fotoSub: "Продукт, лекарство, снимка от екран, инструкция, техника",
+        hilfe: "❓ Ежедневие & работа",
+        hilfeSub: "Ежедневие, здраве, училище, работа, самостоятелна дейност, документация в грижите"
+      },
+      ar: {
+        sub: "افهم. أجب. أنجز الأمر.",
+        langLabel: "اختر اللغة",
+        question: "بماذا تحتاج إلى مساعدة؟",
+        brief: "📄 فهم الرسالة",
+        briefSub: "رسائل، بريد إلكتروني، SMS، واتساب، رسائل رسمية",
+        antraege: "📝 طلبات & حقوق",
+        antraegeSub: "Jobcenter، التقاعد، التأمين الصحي، السكن، الرعاية، العائلة، المدرسة، المال وطلبات أخرى كثيرة",
+        antwort: "✍️ إنشاء رد",
+        antwortSub: "بريد إلكتروني، رسالة، PDF، إلغاء، شكوى",
+        foto: "📸 اسأل بصورة",
+        fotoSub: "منتج، دواء، لقطة شاشة، تعليمات، تقنية",
+        hilfe: "❓ الحياة اليومية & العمل",
+        hilfeSub: "الحياة اليومية، الصحة، المدرسة، العمل، العمل الحر، توثيق الرعاية"
+      },
+      ro: {
+        sub: "Înțelege. Răspunde. Rezolvă.",
+        langLabel: "Alege limba",
+        question: "Cu ce ai nevoie de ajutor?",
+        brief: "📄 Înțelege documentul",
+        briefSub: "Scrisori, e-mailuri, SMS, WhatsApp, acte oficiale",
+        antraege: "📝 Cereri & beneficii",
+        antraegeSub: "Jobcenter, pensie, asigurare medicală, ajutor pentru locuință, îngrijire, familie, școală, bani și multe alte cereri",
+        antwort: "✍️ Creează răspuns",
+        antwortSub: "E-mail, scrisoare, PDF, anulare, reclamație",
+        foto: "📸 Întreabă cu poză",
+        fotoSub: "Produs, medicament, captură de ecran, instrucțiuni, tehnică",
+        hilfe: "❓ Viață & muncă",
+        hilfeSub: "Viață de zi cu zi, sănătate, școală, muncă, activitate independentă, documentație în îngrijire"
+      },
+      en: {
+        sub: "Understand. Reply. Get it done.",
+        langLabel: "Choose language",
+        question: "What do you need help with?",
+        brief: "📄 Understand a document",
+        briefSub: "Letters, emails, SMS, WhatsApp, official mail",
+        antraege: "📝 Applications & benefits",
+        antraegeSub: "Jobcenter, pension, health insurance, housing benefit, care level, family, school, money and many more applications",
+        antwort: "✍️ Create a reply",
+        antwortSub: "Email, letter, PDF, cancellation, complaint",
+        foto: "📸 Ask with a photo",
+        fotoSub: "Product, medication, screenshot, instructions, tech",
+        hilfe: "❓ Everyday life & work",
+        hilfeSub: "Daily life, health, school, work, self-employment, care documentation"
+      }
+    };
+
+    const t = texts[lang] || texts.de;
+
+    const sub = document.getElementById("homeSubTitle");
+    const label = document.getElementById("homeLangLabel");
+    const question = document.getElementById("homeQuestionTitle");
+
+    if (sub) sub.textContent = t.sub;
+    if (label) label.textContent = t.langLabel;
+    if (question) question.textContent = t.question;
+
+    function setBtn(id, title, subtitle) {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.innerHTML = title + "<span>" + subtitle + "</span>";
+      }
+    }
+
+    setBtn("openBriefBtn", t.brief, t.briefSub);
+    setBtn("soonAntraegeBtn", t.antraege, t.antraegeSub);
+    setBtn("soonAntwortBtn", t.antwort, t.antwortSub);
+    setBtn("soonFotoBtn", t.foto, t.fotoSub);
+    setBtn("soonHilfeBtn", t.hilfe, t.hilfeSub);
+  };
+
+  window.openBriefArea = function () {
+    const langEl = document.getElementById("homeLang");
+    const briefLang = document.getElementById("lang");
+    const homeCard = document.getElementById("homeCard");
+    const briefInputCard = document.getElementById("briefInputCard");
+
+    if (langEl && briefLang) {
+      briefLang.value = langEl.value;
+      window.currentLang = langEl.value;
+    }
+
+    window.updateHomeLanguage();
+
+    if (homeCard) {
+      homeCard.classList.add("hidden");
+      homeCard.style.display = "none";
+    }
+
+    if (briefInputCard) {
+      briefInputCard.classList.remove("hidden");
+      briefInputCard.style.display = "block";
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  window.addEventListener("load", function () {
+    const langEl = document.getElementById("homeLang");
+    const openBriefBtn = document.getElementById("openBriefBtn");
+
+    if (langEl) {
+      langEl.addEventListener("change", window.updateHomeLanguage);
+    }
+
+    if (openBriefBtn) {
+      openBriefBtn.addEventListener("click", window.openBriefArea);
+    }
+
+    window.updateHomeLanguage();
   });
 </script>
 </body>
