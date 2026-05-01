@@ -1477,23 +1477,66 @@ updateBriefLanguageOnly();
 
     window.scrollTo(0, 0);
   };
+function updateBriefLanguage() {
+  var briefLang = byId("lang");
+  var lang = briefLang ? briefLang.value : "de";
 
+  var de = {
+    sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
+    textLabel: "Brief als Text",
+    photoLabel: "Brief-Fotos hochladen",
+    placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+    hint: "Du kannst bis zu 6 Bilder vom selben Brief hochladen.",
+    analyze: "Brief erklären",
+    reset: "Alles zurücksetzen"
+  };
+
+  var tr = {
+    sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
+    textLabel: "Mektup metni",
+    photoLabel: "Mektup fotoğrafları yükle",
+    placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
+    hint: "Aynı mektuptan en fazla 6 fotoğraf yükleyebilirsin.",
+    analyze: "Mektubu açıkla",
+    reset: "Her şeyi sıfırla"
+  };
+
+  var t = lang === "tr" ? tr : de;
+
+  setText("briefSubTitle", t.sub);
+  setText("briefTextLabel", t.textLabel);
+  setText("briefPhotoLabel", t.photoLabel);
+  setText("photoHintText", t.hint);
+
+  var textarea = byId("briefText");
+  if (textarea) textarea.placeholder = t.placeholder;
+
+  setText("analyzeBtn", t.analyze);
+  setText("resetBtn", t.reset);
+}
+ 
   function startHilfe24Fix() {
     var langEl = byId("homeLang");
     var openBtn = byId("openBriefBtn");
 
-    if (langEl) {
-      langEl.onchange = window.updateHomeLanguage;
-    }
+  if (langEl) {
+  langEl.onchange = window.updateHomeLanguage;
+}
 
-    if (openBtn) {
-      openBtn.onclick = function (event) {
-        event.preventDefault();
-        window.openBriefArea();
-      };
-    }
+var briefLang = byId("lang");
+if (briefLang) {
+  briefLang.onchange = updateBriefLanguage;
+}
 
-    window.updateHomeLanguage();
+if (openBtn) {
+  openBtn.onclick = function (event) {
+    event.preventDefault();
+    window.openBriefArea();
+    updateBriefLanguage();
+  };
+}
+ window.updateHomeLanguage();
+ updateBriefLanguage();
   }
 
   startHilfe24Fix();
