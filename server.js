@@ -1521,7 +1521,9 @@ Nicht wie ein langer KI-Aufsatz.
     const antwort = cleanText(raw)
       .replace(/\n{3,}/g, "\n\n")
       .trim();
-
+`
+  }
+]);
     return res.json({
       ok: true,
       antwort
