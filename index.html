@@ -1513,92 +1513,24 @@
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
   </script>
-<script>
-(function () {
-  function getEl(id) {
-    return document.getElementById(id);
+app.post("/api/brief-bild", async (req, res) => {
+  try {
+    const bilder = req.body.bilder || [];
+    const lang = (req.body.lang || "de").toLowerCase();
+
+    const result = await buildFinalAnswerFromImages(bilder, lang);
+
+    return res.json(result);
+  } catch (error) {
+    console.error("Fehler /api/brief-bild:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Serverfehler"
+    });
   }
+});
 
-  function getLang() {
-    var langEl = getEl("lang");
-    return langEl ? langEl.value : "de";
-  }
-
-  var quickQuestions = {
-    de: {
-      quickWhatBtn: "Was muss ich tun?",
-      quickDeadlineBtn: "Bis wann?",
-      quickConsequenceBtn: "Was passiert, wenn ich nichts mache?",
-      quickReplyBtn: "Schreib mir eine Antwort"
-    },
-    tr: {
-      quickWhatBtn: "Ne yapmam gerekiyor?",
-      quickDeadlineBtn: "Son tarih ne zaman?",
-      quickConsequenceBtn: "Hiçbir şey yapmazsam ne olur?",
-      quickReplyBtn: "Bana bir cevap yaz"
-    },
-    bg: {
-      quickWhatBtn: "Какво трябва да направя?",
-      quickDeadlineBtn: "До кога?",
-      quickConsequenceBtn: "Какво ще стане, ако не направя нищо?",
-      quickReplyBtn: "Напиши ми отговор"
-    },
-    ro: {
-      quickWhatBtn: "Ce trebuie să fac?",
-      quickDeadlineBtn: "Până când?",
-      quickConsequenceBtn: "Ce se întâmplă dacă nu fac nimic?",
-      quickReplyBtn: "Scrie-mi un răspuns"
-    },
-    en: {
-      quickWhatBtn: "What do I have to do?",
-      quickDeadlineBtn: "By when?",
-      quickConsequenceBtn: "What happens if I do nothing?",
-      quickReplyBtn: "Write me a reply"
-    },
-    ar: {
-      quickWhatBtn: "ماذا يجب أن أفعل؟",
-      quickDeadlineBtn: "إلى متى؟",
-      quickConsequenceBtn: "ماذا يحدث إذا لم أفعل شيئًا؟",
-      quickReplyBtn: "اكتب لي ردًا"
-    }
-  };
-
-  document.addEventListener("click", function (event) {
-    var btn = event.target.closest("button");
-    if (!btn) return;
-
-    var ids = ["quickWhatBtn", "quickDeadlineBtn", "quickConsequenceBtn", "quickReplyBtn"];
-
-    if (!ids.includes(btn.id)) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    var textarea = getEl("frageText");
-    if (!textarea) {
-      alert("Fehler: Fragefeld wurde nicht gefunden.");
-      return;
-    }
-
-    var lang = getLang();
-    var texts = quickQuestions[lang] || quickQuestions.de;
-   textarea.value = text;
-
-if (btn.id === "quickWhatBtn") {
-  window.frageMode = "next_steps";
-} else if (btn.id === "quickDeadlineBtn") {
-  window.frageMode = "deadline";
-} else if (btn.id === "quickConsequenceBtn") {
-  window.frageMode = "consequence";
-} else if (btn.id === "quickReplyBtn") {
-  window.frageMode = "reply";
-} else {
-  window.frageMode = "free";
-}
-
-textarea.focus();
-textarea.dispatchEvent(new Event("input", { bubbles: true }));
-})();
-</script>
+app.post("/api/frage", async (req, res) => {
 </body>
 </html>
