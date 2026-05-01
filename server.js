@@ -1214,7 +1214,11 @@ app.post("/api/brief-bild", async (req, res) => {
 
     const result = await buildFinalAnswerFromImages(bilder, lang);
 
-  return res.status(500).json({
+    return res.json(result);
+  } catch (error) {
+    console.error("Fehler /api/brief-bild:", error);
+
+    return res.status(500).json({
       ok: false,
       error: error.message || "Serverfehler"
     });
