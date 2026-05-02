@@ -902,14 +902,21 @@ stopAudio: "⏹️ Durdur",
     const audioStatusEl = document.getElementById("audioStatus");
 
     let currentLang = "de";
-    let currentKurzText = "";
-    let currentDetailText = "";
-    let currentBriefText = "";
-    let currentMeta = {};
-    let activeRequestId = 0;
-    let activeAudioUrl = "";
-    let frageMode = "free";
-    window.frageMode = "free";
+
+function getSelectedLang() {
+  const langSelect = document.getElementById("lang");
+  return langSelect ? langSelect.value : "de";
+}
+
+let currentKurzText = "";
+let currentDetailText = "";
+let currentBriefText = "";
+let currentMeta = {};
+let activeRequestId = 0;
+let activeAudioUrl = "";
+let frageMode = "free";
+window.frageMode = "free";
+  
   
     function getUiText() {
       return uiTexts[currentLang] || uiTexts.de;
@@ -1260,24 +1267,29 @@ stopAudio: "⏹️ Durdur",
       return new Blob([byteArray], { type: mimeType });
     }
 
-    async function fetchTtsAudio(text, lang) {
-      const response = await fetch("/api/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text, lang })
-      });
+ async function fetchTtsAudio(text, lang) {
+  const selectedLang = getSelectedLang();
 
-      const data = await response.json();
+  const response = await fetch("/api/tts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      text,
+      lang: selectedLang
+    })
+  });
 
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "TTS-Fehler");
-      }
+  const data = await response.json();
 
-      const blob = base64ToBlob(data.audioBase64, data.mimeType || "audio/mpeg");
-      return URL.createObjectURL(blob);
-    }
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || "TTS-Fehler");
+  }
+
+  const blob = base64ToBlob(data.audioBase64, data.mimeType || "audio/mpeg");
+  return URL.createObjectURL(blob);
+}
 
     async function playServerAudio(text) {
       if (!text || !text.trim()) {
@@ -1305,184 +1317,189 @@ stopAudio: "⏹️ Durdur",
       }
     }
 
-    async function explainLetter() {
-      const requestId = ++activeRequestId;
+  async function explainLetter() {
+  const requestId = ++activeRequestId;
 
-      const text = briefTextEl ? briefTextEl.value.trim() : "";
-      const files = bilderEl ? Array.from(bilderEl.files || []) : [];
-      const lang = langEl ? langEl.value : "de";
+  const text = briefTextEl ? briefTextEl.value.trim() : "";
+  const files = bilderEl ? Array.from(bilderEl.files || []) : [];
+  const lang = getSelectedLang();
 
-      currentLang = lang;
-      clearOutputState();
+  currentLang = lang;
+  clearOutputState();
 
-      if (!text && files.length === 0) {
-        setError(getUiText().noInput);
-        return;
-      }
+  if (!text && files.length === 0) {
+    setError(getUiText().noInput);
+    return;
+  }
 
-      if (files.length > 3) {
-        setError(getUiText().maxImages);
-        return;
-      }
+  if (files.length > 3) {
+    setError(getUiText().maxImages);
+    return;
+  }
 
-      if (analyzeBtn) analyzeBtn.disabled = true;
-      if (resetBtn) resetBtn.disabled = true;
+  if (analyzeBtn) analyzeBtn.disabled = true;
+  if (resetBtn) resetBtn.disabled = true;
 
-      setStatus(getUiText().waiting);
+  setStatus(getUiText().waiting);
 
-      try {
-        let response;
-        let data;
+  try {
+    let response;
+    let data;
 
-        if (files.length > 0) {
-          const bilder = [];
+    if (files.length > 0) {
+      const bilder = [];
 
-          for (const file of files) {
-            const compressed = await compressImageForUpload(file);
-            bilder.push({
-              mimeType: compressed.mimeType,
-              imageData: compressed.imageData
-            });
-          }
-
-          response = await fetch("/api/brief-bild", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lang, bilder })
-          });
-        } else {
-          response = await fetch("/api/brief", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lang, text })
-          });
-        }
-
-        data = await response.json();
-
-        if (requestId !== activeRequestId) return;
-
-        clearStatus();
-
-        if (!response.ok || !data.ok) {
-          setError(data.error || "Etwas ist schiefgelaufen.");
-          return;
-        }
-
-        if (data.quality_ok === false) {
-          if (warningTextEl) {
-            warningTextEl.textContent = data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
-          }
-
-          show(warningCardEl);
-          return;
-        }
-
-        if (kurzTextEl) kurzTextEl.textContent = data.kurz || "";
-        if (detailTextEl) detailTextEl.textContent = data.details || "";
-
-        currentLang = lang;
-        currentKurzText = data.kurz || "";
-        currentDetailText = data.details || "";
-        currentBriefText = text || "";
-        currentMeta = data.meta || {};
-
-        show(resultCardEl);
-        show(detailToggleCardEl);
-        hide(detailCardEl);
-        show(frageCardEl);
-
-        if (toggleDetailsBtn) toggleDetailsBtn.textContent = getUiText().detailsShow;
-
-        setOk(getUiText().okExplained);
-      } catch (err) {
-        if (requestId !== activeRequestId) return;
-
-        clearStatus();
-        setError(getUiText().serverError);
-        console.error(err);
-      } finally {
-        if (requestId === activeRequestId) {
-          if (analyzeBtn) analyzeBtn.disabled = false;
-          if (resetBtn) resetBtn.disabled = false;
-        }
-      }
-    }
-
-    async function askQuestionAboutLetter() {
-      const frage = frageTextEl ? frageTextEl.value.trim() : "";
-      const lang = langEl ? langEl.value : currentLang || "de";
-      currentLang = lang;
-
-      if (!frage) {
-        if (frageErrorEl) {
-          frageErrorEl.textContent = getUiText().questionMissing;
-          show(frageErrorEl);
-        }
-        return;
-      }
-
-      if (!currentKurzText && !currentDetailText) {
-        if (frageErrorEl) {
-          frageErrorEl.textContent = getUiText().explainFirst;
-          show(frageErrorEl);
-        }
-        return;
-      }
-
-      if (frageBtn) frageBtn.disabled = true;
-
-      if (frageStatusEl) {
-        frageStatusEl.textContent = getUiText().questionLoading;
-        show(frageStatusEl);
-      }
-
-      if (frageErrorEl) {
-        frageErrorEl.textContent = "";
-        hide(frageErrorEl);
-      }
-
-      if (frageAntwortEl) frageAntwortEl.textContent = "";
-      hide(frageAntwortBoxEl);
-
-      try {
-        const response = await fetch("/api/frage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
- body: JSON.stringify({
-  lang,
-  frage,
-  frageMode: window.frageMode || "free",
-  briefText: currentBriefText,
-  kurz: currentKurzText,
-  details: currentDetailText,
-  meta: currentMeta
-})
+      for (const file of files) {
+        const compressed = await compressImageForUpload(file);
+        bilder.push({
+          mimeType: compressed.mimeType,
+          imageData: compressed.imageData
         });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || getUiText().questionError);
-        }
-
-        if (frageAntwortEl) frageAntwortEl.textContent = data.antwort || "";
-        show(frageAntwortBoxEl);
-      } catch (err) {
-        if (frageErrorEl) {
-          frageErrorEl.textContent = err.message || getUiText().questionError;
-          show(frageErrorEl);
-        }
-      } finally {
-        if (frageStatusEl) {
-          frageStatusEl.textContent = "";
-          hide(frageStatusEl);
-        }
-
-        if (frageBtn) frageBtn.disabled = false;
       }
+
+      response = await fetch("/api/brief-bild", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lang,
+          bilder
+        })
+      });
+    } else {
+      response = await fetch("/api/brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lang,
+          text
+        })
+      });
     }
 
+    data = await response.json();
+
+    if (requestId !== activeRequestId) return;
+
+    clearStatus();
+
+    if (!response.ok || !data.ok) {
+      setError(data.error || "Etwas ist schiefgelaufen.");
+      return;
+    }
+
+    if (data.quality_ok === false) {
+      if (warningTextEl) {
+        warningTextEl.textContent = data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+      }
+
+      show(warningCardEl);
+      return;
+    }
+
+    if (kurzTextEl) kurzTextEl.textContent = data.kurz || "";
+    if (detailTextEl) detailTextEl.textContent = data.details || "";
+
+    currentLang = lang;
+    currentKurzText = data.kurz || "";
+    currentDetailText = data.details || "";
+    currentBriefText = text || "";
+    currentMeta = data.meta || {};
+
+    show(resultCardEl);
+    show(detailToggleCardEl);
+    hide(detailCardEl);
+    show(frageCardEl);
+
+    if (toggleDetailsBtn) toggleDetailsBtn.textContent = getUiText().detailsShow;
+
+    setOk(getUiText().okExplained);
+  } catch (err) {
+    if (requestId !== activeRequestId) return;
+
+    clearStatus();
+    setError(getUiText().serverError);
+    console.error(err);
+  } finally {
+    if (requestId === activeRequestId) {
+      if (analyzeBtn) analyzeBtn.disabled = false;
+      if (resetBtn) resetBtn.disabled = false;
+    }
+  }
+}
+    async function askQuestionAboutLetter() {
+  const frage = frageTextEl ? frageTextEl.value.trim() : "";
+  const lang = getSelectedLang();
+
+  currentLang = lang;
+
+  if (!frage) {
+    if (frageErrorEl) {
+      frageErrorEl.textContent = getUiText().questionMissing;
+      show(frageErrorEl);
+    }
+    return;
+  }
+
+  if (!currentKurzText && !currentDetailText) {
+    if (frageErrorEl) {
+      frageErrorEl.textContent = getUiText().explainFirst;
+      show(frageErrorEl);
+    }
+    return;
+  }
+
+  if (frageBtn) frageBtn.disabled = true;
+
+  if (frageStatusEl) {
+    frageStatusEl.textContent = getUiText().questionLoading;
+    show(frageStatusEl);
+  }
+
+  if (frageErrorEl) {
+    frageErrorEl.textContent = "";
+    hide(frageErrorEl);
+  }
+
+  if (frageAntwortEl) frageAntwortEl.textContent = "";
+  hide(frageAntwortBoxEl);
+
+  try {
+    const response = await fetch("/api/frage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lang,
+        frage,
+        frageMode: window.frageMode || "free",
+        briefText: currentBriefText,
+        kurz: currentKurzText,
+        details: currentDetailText,
+        meta: currentMeta
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || getUiText().questionError);
+    }
+
+    if (frageAntwortEl) frageAntwortEl.textContent = data.antwort || "";
+    show(frageAntwortBoxEl);
+  } catch (err) {
+    if (frageErrorEl) {
+      frageErrorEl.textContent = err.message || getUiText().questionError;
+      show(frageErrorEl);
+    }
+  } finally {
+    if (frageStatusEl) {
+      frageStatusEl.textContent = "";
+      hide(frageStatusEl);
+    }
+
+    if (frageBtn) frageBtn.disabled = false;
+  }
+}
     function showComingSoon() {
       alert(getUiText().comingSoon);
     }
