@@ -395,15 +395,14 @@
       </button>
     </div>
 
-   <div id="detailCard" class="card hidden">
-<button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button>
+  <div id="detailCard" class="card hidden">
+  <div id="detailTitle" class="section-title">Mehr Details</div>
   <div id="detailText" class="detail-box"></div>
 
   <div class="audio-row">
     <button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button>
   </div>
 </div>
-
     <div id="frageCard" class="card hidden">
       <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
 
@@ -625,6 +624,13 @@
         detailsShow: "📋 Mehr Details anzeigen",
         detailsHide: "📋 Details ausblenden",
         comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark."
+     shortTitle: "Kurz erklärt",
+detailTitle: "Mehr Details",
+questionTitle: "Frage zu diesem Brief stellen",
+answerTitle: "Antwort",
+readShort: "🔊 Kurz vorlesen",
+readDetails: "🔊 Details vorlesen",
+stopAudio: "⏹️ Stopp",
       },
       tr: {
         waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
@@ -640,7 +646,14 @@
         questionLoading: "Cevap oluşturuluyor...",
         questionError: "Soru cevaplanamadı.",
         detailsShow: "📋 Daha fazla detay göster",
-        detailsHide: "📋 Detayları gizle",
+        shortTitle: "Kısa açıklama",
+detailTitle: "Daha fazla detay",
+questionTitle: "Bu mektupla ilgili soru sor",
+answerTitle: "Cevap",
+readShort: "🔊 Kısayı sesli oku",
+readDetails: "🔊 Detayları sesli oku",
+stopAudio: "⏹️ Durdur",
+          detailsHide: "📋 Detayları gizle",
         comingSoon: "Bu bölüm daha sonra gelecek. Önce yazıyı anlamayı güçlü yapıyoruz."
       },
       bg: {
@@ -918,7 +931,21 @@
       if (briefTextEl) briefTextEl.placeholder = t.placeholder;
       if (analyzeBtn) analyzeBtn.textContent = t.analyze;
       if (resetBtn) resetBtn.textContent = t.back;
+const shortTitleEl = document.getElementById("shortTitle");
+const detailTitleEl = document.getElementById("detailTitle");
+const questionTitleEl = document.getElementById("frageTitle");
+const answerTitleEl = document.getElementById("answerTitle");
+const readShortBtn = document.getElementById("readShortBtn");
+const readAllBtn = document.getElementById("readAllBtn");
+const stopBtn = document.getElementById("stopBtn");
 
+if (shortTitleEl) shortTitleEl.textContent = t.shortTitle || "Kurz erklärt";
+if (detailTitleEl) detailTitleEl.textContent = t.detailTitle || "Mehr Details";
+if (questionTitleEl) questionTitleEl.textContent = t.questionTitle || "Frage zu diesem Brief stellen";
+if (answerTitleEl) answerTitleEl.textContent = t.answerTitle || "Antwort";
+if (readShortBtn) readShortBtn.textContent = t.readShort || "🔊 Kurz vorlesen";
+if (readAllBtn) readAllBtn.textContent = t.readDetails || "🔊 Details vorlesen";
+if (stopBtn) stopBtn.textContent = t.stopAudio || "⏹️ Stopp";
       currentLang = lang;
       updateQuestionLanguage();
     }
