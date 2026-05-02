@@ -1539,9 +1539,9 @@ Nicht wie ein langer KI-Aufsatz.
     return res.status(500).json({
       ok: false,
       error: error.message || "Fehler bei der Frage"
-`
-      }
-    ]);
+    });
+  }
+});
 
  
 
