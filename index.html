@@ -1615,7 +1615,30 @@ if (stopBtn) stopBtn.textContent = t.stopAudio || "⏹️ Stopp";
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
     }
   </script>
-</body>
-</html>
+// NOTFALL-FIX: Startseiten-Kacheln sicher klickbar machen
+window.h24OpenBrief = function () {
+  var homeCard = document.getElementById("homeCard");
+  var briefInputCard = document.getElementById("briefInputCard");
+
+  if (homeCard) {
+    homeCard.classList.add("hidden");
+    homeCard.style.display = "none";
+  }
+
+  if (briefInputCard) {
+    briefInputCard.classList.remove("hidden");
+    briefInputCard.style.display = "block";
+    briefInputCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  alert("Brief-Bereich wurde nicht gefunden.");
+};
+
+window.openBriefArea = window.h24OpenBrief;
+
+window.showComingSoon = function () {
+  alert("Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark.");
+};
 </body>
 </html>
