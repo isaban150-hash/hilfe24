@@ -506,12 +506,16 @@ Keine Romane.
 FÜR "kurz_gesagt":
 Genau 1 kurzer sachlicher Satz in einfachem Deutsch.
 Der Satz soll den Kern treffen.
-
+Betroffene Person:
+- Wenn im Adressfeld oder im Schreiben ein echter Vor- und Nachname der betroffenen Person steht, schreibe ihn in "betroffene_person".
+- Keine Behörde, keine Firma, keine Stadt und keinen Absender als betroffene Person eintragen.
+- Wenn kein sicherer Personenname erkennbar ist, leer lassen.
 Gib genau dieses JSON zurück:
 {
  "absender_original": "",
 "absender_kurz": "",
 "email_adresse": "",
+"betroffene_person": "",
 "briefart": "",
   "worum_geht_es": "",
   "wichtigste_punkte": [],
