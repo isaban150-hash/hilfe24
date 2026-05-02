@@ -297,11 +297,11 @@
       <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
       <select id="homeLang">
         <option value="de">🇩🇪 Deutsch</option>
-        <option value="tr">🇹🇷 Türkisch</option>
-        <option value="bg">🇧🇬 Bulgarisch</option>
-        <option value="ar">🌍 Arabisch</option>
-        <option value="ro">🇷🇴 Rumänisch</option>
-        <option value="en">🇬🇧 Englisch</option>
+        <option value="tr">🇹🇷 Türkçe</option>
+        <option value="bg">🇧🇬 Български</option>
+        <option value="ar">🌐 العربية</option>
+        <option value="ro">🇷🇴 Română</option>
+        <option value="en">🇬🇧 English</option>
       </select>
 
       <div id="homeQuestionTitle" class="section-title">
@@ -345,11 +345,11 @@
 
       <select id="lang">
         <option value="de">🇩🇪 Deutsch</option>
-        <option value="tr">🇹🇷 Türkisch</option>
-        <option value="bg">🇧🇬 Bulgarisch</option>
-        <option value="ar">🌍 Arabisch</option>
-        <option value="ro">🇷🇴 Rumänisch</option>
-        <option value="en">🇬🇧 Englisch</option>
+        <option value="tr">🇹🇷 Türkçe</option>
+        <option value="bg">🇧🇬 Български</option>
+        <option value="ar">🌐 العربية</option>
+        <option value="ro">🇷🇴 Română</option>
+        <option value="en">🇬🇧 English</option>
       </select>
 
       <label id="briefTextLabel" for="briefText">Brief als Text</label>
@@ -564,7 +564,7 @@
         sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
         textLabel: "Mektup metni",
         photoLabel: "Mektup fotoğrafları yükle",
-        placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yapıştır",
+        placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yaz veya yapıştır",
         hint: "Aynı mektuptan en fazla 3 fotoğraf yükleyebilirsin.",
         analyze: "Mektubu açıkla",
         back: "← Ana sayfaya dön"
@@ -765,21 +765,34 @@ en: {
     };
 
     const questionTexts = {
+      de: {
+        title: "Frage zu diesem Brief stellen",
+        help: "Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.",
+        quickTitle: "Schnellfragen:",
+        what: "Was muss ich tun?",
+        deadline: "Bis wann?",
+        consequence: "Was passiert, wenn ich nichts mache?",
+        reply: "Schreib mir eine Antwort",
+        label: "Deine Frage",
+        placeholder: "Schreibe hier deine Frage zu diesem Brief",
+        button: "Frage stellen",
+        answerTitle: "Antwort",
+        readAnswer: "🔊 Antwort vorlesen"
+      },
       tr: {
-  title: "Bu mektupla ilgili soru sor",
-  help: "Bu mektupla ilgili anlamadığın şeyi sorabilirsin. Kendi sorunu yazabilir veya hızlı sorulardan birini seçebilirsin.",
-  quickTitle: "Sık sorulan sorular:",
-  what: "Ne yapmam gerekiyor?",
-  deadline: "Son tarih ne zaman?",
-  consequence: "Hiçbir şey yapmazsam ne olur?",
-  reply: "Benim için cevap yaz",
-  label: "Sorunuz",
-  placeholder: "Örneğin: Şimdi ne yapmalıyım?",
-  button: "Soruyu gönder",
-  answerTitle: "Cevap",
-  readAnswer: "🔊 Cevabı oku"
-},
-   
+        title: "Bu mektupla ilgili soru sor",
+        help: "Bu mektupla ilgili anlamadığın şeyi sorabilirsin. Kendi sorunu yazabilir veya hızlı sorulardan birini seçebilirsin.",
+        quickTitle: "Sık sorulan sorular:",
+        what: "Ne yapmam gerekiyor?",
+        deadline: "Son tarih ne zaman?",
+        consequence: "Hiçbir şey yapmazsam ne olur?",
+        reply: "Benim için cevap yaz",
+        label: "Sorunuz",
+        placeholder: "Örneğin: Şimdi ne yapmalıyım?",
+        button: "Soruyu gönder",
+        answerTitle: "Cevap",
+        readAnswer: "🔊 Cevabı oku"
+      },
       bg: {
         title: "Задай въпрос за това писмо",
         help: "Можеш да попиташ всичко, което не разбираш в това писмо. Можеш да напишеш свой въпрос или да избереш бърз въпрос.",
@@ -793,6 +806,20 @@ en: {
         button: "Задай въпрос",
         answerTitle: "Отговор",
         readAnswer: "🔊 Прочети отговора"
+      },
+      ar: {
+        title: "اسأل سؤالًا عن هذه الرسالة",
+        help: "يمكنك أن تسأل عن أي شيء لا تفهمه في هذه الرسالة. يمكنك كتابة سؤالك أو اختيار سؤال سريع.",
+        quickTitle: "أسئلة سريعة:",
+        what: "ماذا يجب أن أفعل؟",
+        deadline: "إلى متى؟",
+        consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+        reply: "اكتب لي ردًا",
+        label: "سؤالك",
+        placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
+        button: "اطرح السؤال",
+        answerTitle: "الإجابة",
+        readAnswer: "🔊 اقرأ الإجابة"
       },
       ro: {
         title: "Pune o întrebare despre această scrisoare",
@@ -820,21 +847,7 @@ en: {
         placeholder: "Write your question about this letter here",
         button: "Ask question",
         answerTitle: "Answer",
-        readAnswer: "🔊 Read answer aloud"
-      },
-      ar: {
-        title: "اسأل سؤالًا عن هذه الرسالة",
-        help: "يمكنك أن تسأل عن أي شيء لا تفهمه في هذه الرسالة. يمكنك كتابة سؤالك أو اختيار سؤال سريع.",
-        quickTitle: "أسئلة سريعة:",
-        what: "ماذا يجب أن أفعل؟",
-        deadline: "إلى متى؟",
-        consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
-        reply: "اكتب لي ردًا",
-        label: "سؤالك",
-        placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
-        button: "اطرح السؤال",
-        answerTitle: "الإجابة",
-        readAnswer: "🔊 اقرأ الإجابة بصوت عالٍ"
+        readAnswer: "🔊 Read answer"
       }
     };
 
@@ -1503,6 +1516,11 @@ window.frageMode = "free";
 
     function setupEvents() {
       if (homeLangEl) homeLangEl.addEventListener("change", updateHomeLanguage);
+      if (openBriefBtn) openBriefBtn.addEventListener("click", openBriefArea);
+      if (soonAntraegeBtn) soonAntraegeBtn.addEventListener("click", showComingSoon);
+      if (soonAntwortBtn) soonAntwortBtn.addEventListener("click", showComingSoon);
+      if (soonFotoBtn) soonFotoBtn.addEventListener("click", showComingSoon);
+      if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
       if (bilderEl) {
         bilderEl.addEventListener("change", () => {
           activeRequestId++;
