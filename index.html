@@ -308,31 +308,32 @@
         Wobei brauchst du Hilfe?
       </div>
 
-      <div class="home-grid">
-   <button id="openBriefBtn" class="home-btn" type="button" onclick="openBriefArea()">
-  📄 Schreiben verstehen
-  <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
-</button>
-        <button id="soonAntraegeBtn" class="home-btn" type="button">
-          📝 Anträge & Vorteile
-          <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge</span>
-        </button>
+  <div class="home-grid">
+  <button id="openBriefBtn" class="home-btn" type="button" onclick="window.h24OpenBrief ? window.h24OpenBrief() : openBriefArea()">
+    📄 Schreiben verstehen
+    <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
+  </button>
 
-        <button id="soonAntwortBtn" class="home-btn" type="button">
-          ✍️ Antwort erstellen
-          <span>E-Mail, Brief, PDF, Kündigung, Reklamation</span>
-        </button>
+  <button id="soonAntraegeBtn" class="home-btn" type="button" onclick="showComingSoon()">
+    📝 Anträge & Vorteile
+    <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge</span>
+  </button>
 
-        <button id="soonFotoBtn" class="home-btn" type="button">
-          📸 Foto fragen
-          <span>Produkt, Medikament, Screenshot, Anleitung, Technik</span>
-        </button>
+  <button id="soonAntwortBtn" class="home-btn" type="button" onclick="showComingSoon()">
+    ✍️ Antwort erstellen
+    <span>E-Mail, Brief, PDF, Kündigung, Reklamation</span>
+  </button>
 
-        <button id="soonHilfeBtn" class="home-btn" type="button">
-          ❓ Alltag & Beruf
-          <span>Alltag, Gesundheit, Schule, Arbeit, Selbstständigkeit, Pflege-Dokumentation</span>
-        </button>
-      </div>
+  <button id="soonFotoBtn" class="home-btn" type="button" onclick="showComingSoon()">
+    📸 Foto fragen
+    <span>Produkt, Medikament, Screenshot, Anleitung, Technik</span>
+  </button>
+
+  <button id="soonHilfeBtn" class="home-btn" type="button" onclick="showComingSoon()">
+    ❓ Alltag & Beruf
+    <span>Fragen zu Arbeit, Familie, Pflege, Schule, Verträgen und Alltag</span>
+  </button>
+</div>
     </div>
 
     <div id="briefInputCard" class="card hidden">
