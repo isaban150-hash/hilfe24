@@ -1532,10 +1532,7 @@ Nicht wie ein langer KI-Aufsatz.
       antwort
     });
 
-    return res.json({
-      ok: true,
-      antwort
-    });
+
   } catch (error) {
     console.error("Fehler /api/frage:", error);
 
@@ -1548,23 +1545,7 @@ Nicht wie ein langer KI-Aufsatz.
 
  
 
-    const antwort = cleanText(raw)
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-
-    return res.json({
-      ok: true,
-      antwort
-    });
-  } catch (error) {
-    console.error("Fehler /api/frage:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Fehler bei der Frage"
-    });
-  }
-});
+ 
 
 app.post("/api/tts", async (req, res) => {
   try {
