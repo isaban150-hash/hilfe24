@@ -623,8 +623,15 @@
         questionError: "Die Frage konnte nicht beantwortet werden.",
         detailsShow: "📋 Mehr Details anzeigen",
         detailsHide: "📋 Details ausblenden",
-        comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark."
-     shortTitle: "Kurz erklärt",
+        shortTitle: "Кратко обяснение",
+        detailTitle: "Повече подробности",
+        questionTitle: "Задай въпрос за това писмо",
+        answerTitle: "Отговор",
+        readShort: "🔊 Прочети кратко",
+        readDetails: "🔊 Прочети подробности",
+        stopAudio: "⏹️ Стоп",
+        comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark.",
+        shortTitle: "Kurz erklärt",
 detailTitle: "Mehr Details",
 questionTitle: "Frage zu diesem Brief stellen",
 answerTitle: "Antwort",
@@ -654,6 +661,13 @@ readShort: "🔊 Kısayı sesli oku",
 readDetails: "🔊 Detayları sesli oku",
 stopAudio: "⏹️ Durdur",
           detailsHide: "📋 Detayları gizle",
+        shortTitle: "Explicație scurtă",
+        detailTitle: "Mai multe detalii",
+        questionTitle: "Pune o întrebare despre această scrisoare",
+        answerTitle: "Răspuns",
+        readShort: "🔊 Citește pe scurt",
+        readDetails: "🔊 Citește detaliile",
+        stopAudio: "⏹️ Stop",
         comingSoon: "Bu bölüm daha sonra gelecek. Önce yazıyı anlamayı güçlü yapıyoruz."
       },
       bg: {
@@ -671,6 +685,13 @@ stopAudio: "⏹️ Durdur",
         questionError: "Въпросът не можа да бъде отговорен.",
         detailsShow: "📋 Покажи повече подробности",
         detailsHide: "📋 Скрий подробностите",
+        shortTitle: "Short explanation",
+        detailTitle: "More details",
+        questionTitle: "Ask a question about this letter",
+        answerTitle: "Answer",
+        readShort: "🔊 Read short version",
+        readDetails: "🔊 Read details",
+        stopAudio: "⏹️ Stop",
         comingSoon: "Този раздел ще бъде добавен по-късно. Първо правим разбирането на писма силно."
       },
       ro: {
@@ -688,6 +709,13 @@ stopAudio: "⏹️ Durdur",
         questionError: "Întrebarea nu a putut fi răspunsă.",
         detailsShow: "📋 Arată mai multe detalii",
         detailsHide: "📋 Ascunde detaliile",
+        shortTitle: "شرح قصير",
+        detailTitle: "المزيد من التفاصيل",
+        questionTitle: "اسأل سؤالًا عن هذه الرسالة",
+        answerTitle: "الإجابة",
+        readShort: "🔊 قراءة مختصرة",
+        readDetails: "🔊 قراءة التفاصيل",
+        stopAudio: "⏹️ إيقاف",
         comingSoon: "Această zonă va veni mai târziu. Mai întâi facem înțelegerea scrisorilor foarte bună."
       },
       en: {
@@ -918,6 +946,7 @@ stopAudio: "⏹️ Durdur",
     function updateBriefLanguage() {
       const lang = langEl ? langEl.value : "de";
       const t = briefTexts[lang] || briefTexts.de;
+      const u = uiTexts[lang] || uiTexts.de;
 
       const briefSubTitle = document.getElementById("briefSubTitle");
       const briefTextLabel = document.getElementById("briefTextLabel");
@@ -931,21 +960,23 @@ stopAudio: "⏹️ Durdur",
       if (briefTextEl) briefTextEl.placeholder = t.placeholder;
       if (analyzeBtn) analyzeBtn.textContent = t.analyze;
       if (resetBtn) resetBtn.textContent = t.back;
-const shortTitleEl = document.getElementById("shortTitle");
-const detailTitleEl = document.getElementById("detailTitle");
-const questionTitleEl = document.getElementById("frageTitle");
-const answerTitleEl = document.getElementById("answerTitle");
-const readShortBtn = document.getElementById("readShortBtn");
-const readAllBtn = document.getElementById("readAllBtn");
-const stopBtn = document.getElementById("stopBtn");
 
-if (shortTitleEl) shortTitleEl.textContent = t.shortTitle || "Kurz erklärt";
-if (detailTitleEl) detailTitleEl.textContent = t.detailTitle || "Mehr Details";
-if (questionTitleEl) questionTitleEl.textContent = t.questionTitle || "Frage zu diesem Brief stellen";
-if (answerTitleEl) answerTitleEl.textContent = t.answerTitle || "Antwort";
-if (readShortBtn) readShortBtn.textContent = t.readShort || "🔊 Kurz vorlesen";
-if (readAllBtn) readAllBtn.textContent = t.readDetails || "🔊 Details vorlesen";
-if (stopBtn) stopBtn.textContent = t.stopAudio || "⏹️ Stopp";
+      const shortTitleEl = document.getElementById("shortTitle");
+      const detailTitleEl = document.getElementById("detailTitle");
+      const questionTitleEl = document.getElementById("frageTitle");
+      const answerTitleEl = document.getElementById("frageAntwortTitle");
+      const readShortBtnEl = document.getElementById("readShortBtn");
+      const readAllBtnEl = document.getElementById("readAllBtn");
+      const stopBtnEl = document.getElementById("stopBtn");
+
+      if (shortTitleEl) shortTitleEl.textContent = u.shortTitle || "Kurz erklärt";
+      if (detailTitleEl) detailTitleEl.textContent = u.detailTitle || "Mehr Details";
+      if (questionTitleEl) questionTitleEl.textContent = u.questionTitle || "Frage zu diesem Brief stellen";
+      if (answerTitleEl) answerTitleEl.textContent = u.answerTitle || "Antwort";
+      if (readShortBtnEl) readShortBtnEl.textContent = u.readShort || "🔊 Kurz vorlesen";
+      if (readAllBtnEl) readAllBtnEl.textContent = u.readDetails || "🔊 Details vorlesen";
+      if (stopBtnEl) stopBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
+
       currentLang = lang;
       updateQuestionLanguage();
     }
@@ -1458,13 +1489,6 @@ if (stopBtn) stopBtn.textContent = t.stopAudio || "⏹️ Stopp";
 
     function setupEvents() {
       if (homeLangEl) homeLangEl.addEventListener("change", updateHomeLanguage);
-      if (openBriefBtn) openBriefBtn.addEventListener("click", openBriefArea);
-
-      if (soonAntraegeBtn) soonAntraegeBtn.addEventListener("click", showComingSoon);
-      if (soonAntwortBtn) soonAntwortBtn.addEventListener("click", showComingSoon);
-      if (soonFotoBtn) soonFotoBtn.addEventListener("click", showComingSoon);
-      if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
-
       if (bilderEl) {
         bilderEl.addEventListener("change", () => {
           activeRequestId++;
@@ -1553,6 +1577,8 @@ if (stopBtn) stopBtn.textContent = t.stopAudio || "⏹️ Stopp";
 
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
+    window.openBriefArea = openBriefArea;
+    window.showComingSoon = showComingSoon;
   </script>
 
  <script>
@@ -1615,30 +1641,5 @@ if (stopBtn) stopBtn.textContent = t.stopAudio || "⏹️ Stopp";
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
     }
   </script>
-// NOTFALL-FIX: Startseiten-Kacheln sicher klickbar machen
-window.h24OpenBrief = function () {
-  var homeCard = document.getElementById("homeCard");
-  var briefInputCard = document.getElementById("briefInputCard");
-
-  if (homeCard) {
-    homeCard.classList.add("hidden");
-    homeCard.style.display = "none";
-  }
-
-  if (briefInputCard) {
-    briefInputCard.classList.remove("hidden");
-    briefInputCard.style.display = "block";
-    briefInputCard.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
-
-  alert("Brief-Bereich wurde nicht gefunden.");
-};
-
-window.openBriefArea = window.h24OpenBrief;
-
-window.showComingSoon = function () {
-  alert("Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark.");
-};
 </body>
 </html>
