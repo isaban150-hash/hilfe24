@@ -435,6 +435,9 @@
 <button id="quickReplyBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('reply')">
   Schreib mir eine Antwort
 </button>
+<button id="ownQuestionBtn" class="btn-secondary" type="button" onclick="h24OwnQuestion()">
+  ✍️ Eigene Frage stellen
+</button>
       </div>
 
       <label id="frageTextLabel" for="frageText">Deine Frage</label>
@@ -1867,6 +1870,22 @@ window.frageMode = "free";
       }
     };
   });
+window.h24OwnQuestion = function () {
+  const frageText = document.getElementById("frageText");
+
+  if (frageText) {
+    frageText.value = "";
+    frageText.focus();
+    frageText.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  window.frageMode = "free";
+
+  if (typeof frageMode !== "undefined") {
+    frageMode = "free";
+  }
+};
+
 </script>
 
 </body>
