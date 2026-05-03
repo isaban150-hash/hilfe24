@@ -1436,11 +1436,70 @@ window.frageMode = "free";
     }
   }
 }
-    async function askQuestionAboutLetter() {
+ async function askQuestionAboutLetter() {
   const frage = frageTextEl ? frageTextEl.value.trim() : "";
   const lang = getSelectedLang();
 
   currentLang = lang;
+
+  function detectQuestionMode(text) {
+    const clean = String(text || "").trim().toLowerCase();
+
+    const nextStepsTexts = [
+      "was muss ich tun?",
+      "was soll ich tun?",
+      "was muss ich jetzt tun?",
+      "ne yapmam gerekiyor?",
+      "şimdi ne yapmalıyım?",
+      "ne yapmalıyım?",
+      "какво трябва да направя?",
+      "ce trebuie să fac?",
+      "what do i have to do?",
+      "ماذا يجب أن أفعل؟"
+    ];
+
+    const deadlineTexts = [
+      "bis wann?",
+      "wann ist die frist?",
+      "son tarih ne zaman?",
+      "ne zamana kadar?",
+      "до кога?",
+      "până când?",
+      "by when?",
+      "إلى متى؟"
+    ];
+
+    const consequenceTexts = [
+      "was passiert, wenn ich nichts mache?",
+      "was passiert wenn ich nichts mache?",
+      "hiçbir şey yapmazsam ne olur?",
+      "bir şey yapmazsam ne olur?",
+      "какво ще стане, ако не направя нищо?",
+      "ce se întâmplă dacă nu fac nimic?",
+      "what happens if i do nothing?",
+      "ماذا يحدث إذا لم أفعل شيئًا؟"
+    ];
+
+    const replyTexts = [
+      "schreib mir eine antwort",
+      "schreibe mir eine antwort",
+      "benim için cevap yaz",
+      "bana bir cevap yaz",
+      "напиши ми отговор",
+      "scrie-mi un răspuns",
+      "write me a reply",
+      "اكتب لي ردًا"
+    ];
+
+    if (nextStepsTexts.includes(clean)) return "next_steps";
+    if (deadlineTexts.includes(clean)) return "deadline";
+    if (consequenceTexts.includes(clean)) return "consequence";
+    if (replyTexts.includes(clean)) return "reply";
+
+    return window.frageMode || "free";
+  }
+
+  const detectedMode = detectQuestionMode(frage);
 
   if (!frage) {
     if (frageErrorEl) {
@@ -1480,7 +1539,7 @@ window.frageMode = "free";
       body: JSON.stringify({
         lang,
         frage,
-        frageMode: window.frageMode || "free",
+        frageMode: detectedMode,
         briefText: currentBriefText,
         kurz: currentKurzText,
         details: currentDetailText,
@@ -1510,98 +1569,6 @@ window.frageMode = "free";
     if (frageBtn) frageBtn.disabled = false;
   }
 }
-    function showComingSoon() {
-      alert(getUiText().comingSoon);
-    }
-
-    function setupEvents() {
-      if (homeLangEl) homeLangEl.addEventListener("change", updateHomeLanguage);
-      if (openBriefBtn) openBriefBtn.addEventListener("click", openBriefArea);
-      if (soonAntraegeBtn) soonAntraegeBtn.addEventListener("click", showComingSoon);
-      if (soonAntwortBtn) soonAntwortBtn.addEventListener("click", showComingSoon);
-      if (soonFotoBtn) soonFotoBtn.addEventListener("click", showComingSoon);
-      if (soonHilfeBtn) soonHilfeBtn.addEventListener("click", showComingSoon);
-      if (bilderEl) {
-        bilderEl.addEventListener("change", () => {
-          activeRequestId++;
-          clearOutputState();
-          renderPreviews();
-        });
-      }
-
-      if (langEl) {
-        langEl.addEventListener("change", () => {
-          currentLang = langEl.value;
-          activeRequestId++;
-          clearOutputState();
-          updateBriefLanguage();
-        });
-      }
-
-      if (briefTextEl) {
-        briefTextEl.addEventListener("input", () => {
-          activeRequestId++;
-          clearOutputState();
-        });
-      }
-
-      if (analyzeBtn) analyzeBtn.addEventListener("click", explainLetter);
-      if (resetBtn) resetBtn.addEventListener("click", goBackHome);
-
-      if (toggleDetailsBtn) {
-        toggleDetailsBtn.addEventListener("click", () => {
-          if (!detailCardEl) return;
-
-          if (detailCardEl.classList.contains("hidden")) {
-            show(detailCardEl);
-            toggleDetailsBtn.textContent = getUiText().detailsHide;
-          } else {
-            hide(detailCardEl);
-            toggleDetailsBtn.textContent = getUiText().detailsShow;
-          }
-        });
-      }
-
-      if (frageBtn) frageBtn.addEventListener("click", askQuestionAboutLetter);
-
-      if (readShortBtn) {
-        readShortBtn.addEventListener("click", async () => {
-          try {
-            await playServerAudio(currentKurzText);
-          } catch (error) {
-            setError(error.message || getUiText().audioError);
-          }
-        });
-      }
-
-      if (readAllBtn) {
-        readAllBtn.addEventListener("click", async () => {
-          try {
-            await playServerAudio(currentDetailText || currentKurzText);
-          } catch (error) {
-            setError(error.message || getUiText().audioError);
-          }
-        });
-      }
-
-      if (readFrageAntwortBtn) {
-        readFrageAntwortBtn.addEventListener("click", async () => {
-          try {
-            await playServerAudio(frageAntwortEl ? frageAntwortEl.textContent : "");
-          } catch (error) {
-            setError(error.message || getUiText().audioError);
-          }
-        });
-      }
-
-      if (stopBtn) stopBtn.addEventListener("click", stopAudio);
-
-      if (audioPlayerEl) {
-        audioPlayerEl.addEventListener("ended", () => {
-          clearAudioStatus();
-        });
-      }
-    }
 
     updateHomeLanguage();
     updateBriefLanguage();
