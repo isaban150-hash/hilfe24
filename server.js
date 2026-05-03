@@ -154,6 +154,65 @@ function cleanText(text) {
     .trim();
 }
 
+function shortenNextStepsAnswer(text, lang) {
+  const clean = cleanText(text)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!clean) return "";
+
+  const maxCharsByLang = {
+    de: 650,
+    tr: 650,
+    bg: 700,
+    ro: 700,
+    en: 650,
+    ar: 750
+  };
+
+  const maxChars = maxCharsByLang[lang] || 650;
+
+  if (clean.length <= maxChars) {
+    return clean;
+  }
+
+  const lines = clean
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const keep = [];
+  let total = 0;
+
+  for (const line of lines) {
+    const nextTotal = total + line.length + 1;
+
+    if (nextTotal > maxChars) break;
+
+    keep.push(line);
+    total = nextTotal;
+
+    if (keep.length >= 10) break;
+  }
+
+  let result = keep.join("\n").trim();
+
+  if (!result) {
+    result = clean.slice(0, maxChars).trim();
+  }
+
+  result = result.replace(/[,\s]+$/, "");
+
+  const endings = [".", "!", "?", ":", "۔", "؟"];
+  if (!endings.some((ending) => result.endsWith(ending))) {
+    result += ".";
+  }
+
+  return result;
+}
+
+function extractJson(text) {
+
 function extractJson(text) {
   const raw = String(text || "").trim();
 
@@ -1611,14 +1670,18 @@ Nicht wie ein langer KI-Aufsatz.
       }
     ]);
 
-    const antwort = cleanText(raw)
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+ let antwort = cleanText(raw)
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
 
-    return res.json({
-      ok: true,
-      antwort
-    });
+if (frageMode === "next_steps") {
+  antwort = shortenNextStepsAnswer(antwort, lang);
+}
+
+return res.json({
+  ok: true,
+  antwort
+});
 
 
   } catch (error) {
