@@ -163,15 +163,15 @@ function shortenNextStepsAnswer(text, lang) {
   if (!clean) return "";
 
   const maxCharsByLang = {
-    de: 650,
-    tr: 650,
-    bg: 700,
-    ro: 700,
-    en: 650,
-    ar: 750
+    de: 430,
+    tr: 430,
+    bg: 500,
+    ro: 500,
+    en: 430,
+    ar: 550
   };
 
-  const maxChars = maxCharsByLang[lang] || 650;
+  const maxChars = maxCharsByLang[lang] || 430;
 
   if (clean.length <= maxChars) {
     return clean;
@@ -186,26 +186,52 @@ function shortenNextStepsAnswer(text, lang) {
   let total = 0;
 
   for (const line of lines) {
+    const isHeading = line.endsWith(":");
+    const isNumberedStep = /^\d+\./.test(line);
+
+    if (isHeading) {
+      keep.push(line);
+      total += line.length + 1;
+      continue;
+    }
+
+    if (isNumberedStep && keep.filter((x) => /^\d+\./.test(x)).length >= 3) {
+      continue;
+    }
+
     const nextTotal = total + line.length + 1;
 
-    if (nextTotal > maxChars) break;
+    if (nextTotal > maxChars) {
+      break;
+    }
 
     keep.push(line);
     total = nextTotal;
 
-    if (keep.length >= 10) break;
+    if (keep.length >= 8) break;
   }
 
   let result = keep.join("\n").trim();
 
-  if (!result) {
+  if (!result || result.length < 80) {
     result = clean.slice(0, maxChars).trim();
+  }
+
+  const sentenceEndings = [".", "!", "?", "؟"];
+  const lastDot = Math.max(
+    result.lastIndexOf("."),
+    result.lastIndexOf("!"),
+    result.lastIndexOf("?"),
+    result.lastIndexOf("؟")
+  );
+
+  if (lastDot > 120) {
+    result = result.slice(0, lastDot + 1).trim();
   }
 
   result = result.replace(/[,\s]+$/, "");
 
-  const endings = [".", "!", "?", ":", "۔", "؟"];
-  if (!endings.some((ending) => result.endsWith(ending))) {
+  if (!sentenceEndings.some((ending) => result.endsWith(ending))) {
     result += ".";
   }
 
