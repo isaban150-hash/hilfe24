@@ -1715,7 +1715,100 @@ window.frageMode = "free";
     });
   });
 </script>
+<script>
+  // Hilfe24 Fix: Detail- und Fragebuttons sicher verbinden
+  document.addEventListener("DOMContentLoaded", function () {
+    const detailBtn = document.getElementById("toggleDetailsBtn");
 
+    if (detailBtn) {
+      detailBtn.onclick = function () {
+        if (typeof toggleDetails === "function") {
+          toggleDetails();
+          return;
+        }
+
+        const detailCard = document.getElementById("detailCard");
+        if (detailCard) {
+          detailCard.classList.toggle("hidden");
+        }
+      };
+    }
+
+    const frageBtn = document.getElementById("frageBtn");
+
+    if (frageBtn) {
+      frageBtn.onclick = function () {
+        if (typeof askQuestionAboutLetter === "function") {
+          askQuestionAboutLetter();
+        } else {
+          alert("Fehler: Die Frage-Funktion wurde nicht gefunden.");
+        }
+      };
+    }
+
+    const quickButtons = document.querySelectorAll("[data-question-key]");
+
+    quickButtons.forEach(function (btn) {
+      btn.onclick = function () {
+        const key = btn.getAttribute("data-question-key");
+        const frageText = document.getElementById("frageText");
+        const langSelect = document.getElementById("lang");
+        const lang = langSelect ? langSelect.value : "de";
+
+        const texts = {
+          de: {
+            next_steps: "Was muss ich tun?",
+            deadline: "Bis wann?",
+            consequence: "Was passiert, wenn ich nichts mache?",
+            reply: "Schreib mir eine Antwort"
+          },
+          tr: {
+            next_steps: "Ne yapmam gerekiyor?",
+            deadline: "Son tarih ne zaman?",
+            consequence: "Hiçbir şey yapmazsam ne olur?",
+            reply: "Benim için cevap yaz"
+          },
+          bg: {
+            next_steps: "Какво трябва да направя?",
+            deadline: "До кога?",
+            consequence: "Какво ще стане, ако не направя нищо?",
+            reply: "Напиши ми отговор"
+          },
+          ar: {
+            next_steps: "ماذا يجب أن أفعل؟",
+            deadline: "إلى متى؟",
+            consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+            reply: "اكتب لي ردًا"
+          },
+          ro: {
+            next_steps: "Ce trebuie să fac?",
+            deadline: "Până când?",
+            consequence: "Ce se întâmplă dacă nu fac nimic?",
+            reply: "Scrie-mi un răspuns"
+          },
+          en: {
+            next_steps: "What do I have to do?",
+            deadline: "By when?",
+            consequence: "What happens if I do nothing?",
+            reply: "Write me a reply"
+          }
+        };
+
+        if (frageText) {
+          frageText.value = (texts[lang] || texts.de)[key] || btn.textContent.trim();
+          frageText.focus();
+        }
+
+        window.frageMode =
+          key === "next_steps" ? "next_steps" :
+          key === "deadline" ? "deadline" :
+          key === "consequence" ? "consequence" :
+          key === "reply" ? "reply" :
+          "free";
+      };
+    });
+  });
+</script>
 </body>
 </html>
 
