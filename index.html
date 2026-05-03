@@ -1641,174 +1641,229 @@ window.frageMode = "free";
     }
   </script>
 <script>
-  // Hilfe24 Fix: Startseite-Sprache sicher synchronisieren
+  // Hilfe24 sauberer Abschluss: Buttons und Sprache stabil verbinden
   document.addEventListener("DOMContentLoaded", function () {
+    function safeShow(el) {
+      if (el) el.classList.remove("hidden");
+    }
+
+    function safeHide(el) {
+      if (el) el.classList.add("hidden");
+    }
+
+    window.toggleDetails = function () {
+      const detailCard = document.getElementById("detailCard");
+      const toggleBtn = document.getElementById("toggleDetailsBtn");
+
+      if (!detailCard || !toggleBtn) return;
+
+      const hidden = detailCard.classList.contains("hidden");
+
+      if (hidden) {
+        safeShow(detailCard);
+        toggleBtn.textContent =
+          typeof getUiText === "function"
+            ? getUiText().detailsHide
+            : "📋 Details ausblenden";
+      } else {
+        safeHide(detailCard);
+        toggleBtn.textContent =
+          typeof getUiText === "function"
+            ? getUiText().detailsShow
+            : "📋 Mehr Details anzeigen";
+      }
+    };
+
+    window.showComingSoon = function () {
+      alert(
+        typeof getUiText === "function"
+          ? getUiText().comingSoon
+          : "Dieser Bereich kommt später."
+      );
+    };
+
     const homeSelect = document.getElementById("homeLang");
     const briefSelect = document.getElementById("lang");
-
-    if (!homeSelect) return;
-
-    homeSelect.addEventListener("change", function () {
-      const selectedLang = homeSelect.value || "de";
-
-      if (briefSelect) {
-        briefSelect.value = selectedLang;
-      }
-
-      if (typeof currentLang !== "undefined") {
-        currentLang = selectedLang;
-      }
-
-      if (typeof updateHomeLanguage === "function") {
-        updateHomeLanguage();
-      }
-
-      if (typeof updateBriefLanguage === "function") {
-        updateBriefLanguage();
-      }
-
-      if (typeof updateQuestionLanguage === "function") {
-        updateQuestionLanguage();
-      }
-    });
-  });
-</script>
-
-<script>
-  // Hilfe24 Fix: Brief-erklären-Button stabil verbinden
-  document.addEventListener("DOMContentLoaded", function () {
-    function startExplain() {
-      if (typeof explainLetter === "function") {
-        explainLetter();
-        return;
-      }
-
-      if (typeof window.explainLetter === "function") {
-        window.explainLetter();
-        return;
-      }
-
-      alert("Fehler: Die Analyse-Funktion wurde nicht gefunden.");
-    }
-
+    const openBriefButton = document.getElementById("openBriefBtn");
     const analyzeButton = document.getElementById("analyzeBtn");
+    const backButton = document.getElementById("resetBtn");
+    const detailButton = document.getElementById("toggleDetailsBtn");
+    const frageButton = document.getElementById("frageBtn");
+    const bilderInput = document.getElementById("bilder");
+    const readShortButton = document.getElementById("readShortBtn");
+    const readAllButton = document.getElementById("readAllBtn");
+    const readAnswerButton = document.getElementById("readFrageAntwortBtn");
+    const stopButton = document.getElementById("stopBtn");
 
-    if (analyzeButton) {
-      analyzeButton.onclick = startExplain;
-    }
+    if (homeSelect) {
+      homeSelect.onchange = function () {
+        const selectedLang = homeSelect.value || "de";
 
-    const allButtons = document.querySelectorAll("button");
-
-    allButtons.forEach(function (btn) {
-      const text = (btn.textContent || "").toLowerCase();
-
-      if (
-        text.includes("brief erklären") ||
-        text.includes("mektubu açıkla") ||
-        text.includes("mektup açıkla") ||
-        text.includes("обясни") ||
-        text.includes("explică") ||
-        text.includes("explain")
-      ) {
-        btn.onclick = startExplain;
-      }
-    });
-  });
-</script>
-<script>
-  // Hilfe24 Fix: Detail- und Fragebuttons sicher verbinden
-  document.addEventListener("DOMContentLoaded", function () {
-    const detailBtn = document.getElementById("toggleDetailsBtn");
-
-    if (detailBtn) {
-      detailBtn.onclick = function () {
-        if (typeof toggleDetails === "function") {
-          toggleDetails();
-          return;
+        if (briefSelect) {
+          briefSelect.value = selectedLang;
         }
 
-        const detailCard = document.getElementById("detailCard");
-        if (detailCard) {
-          detailCard.classList.toggle("hidden");
+        if (typeof currentLang !== "undefined") {
+          currentLang = selectedLang;
+        }
+
+        if (typeof updateHomeLanguage === "function") updateHomeLanguage();
+        if (typeof updateBriefLanguage === "function") updateBriefLanguage();
+        if (typeof updateQuestionLanguage === "function") updateQuestionLanguage();
+      };
+    }
+
+    if (briefSelect) {
+      briefSelect.onchange = function () {
+        if (typeof currentLang !== "undefined") {
+          currentLang = briefSelect.value || "de";
+        }
+
+        if (typeof updateBriefLanguage === "function") updateBriefLanguage();
+        if (typeof updateQuestionLanguage === "function") updateQuestionLanguage();
+      };
+    }
+
+    if (openBriefButton) {
+      openBriefButton.onclick = function () {
+        if (typeof openBriefArea === "function") {
+          openBriefArea();
         }
       };
     }
 
-    const frageBtn = document.getElementById("frageBtn");
+    if (backButton) {
+      backButton.onclick = function () {
+        if (typeof goBackHome === "function") {
+          goBackHome();
+        }
+      };
+    }
 
-    if (frageBtn) {
-      frageBtn.onclick = function () {
+    if (bilderInput) {
+      bilderInput.onchange = function () {
+        if (typeof renderPreviews === "function") {
+          renderPreviews();
+        }
+      };
+    }
+
+    if (analyzeButton) {
+      analyzeButton.onclick = function () {
+        if (typeof explainLetter === "function") {
+          explainLetter();
+        } else {
+          alert("Fehler: Analyse-Funktion wurde nicht gefunden.");
+        }
+      };
+    }
+
+    if (detailButton) {
+      detailButton.onclick = window.toggleDetails;
+    }
+
+    if (frageButton) {
+      frageButton.onclick = function () {
         if (typeof askQuestionAboutLetter === "function") {
           askQuestionAboutLetter();
         } else {
-          alert("Fehler: Die Frage-Funktion wurde nicht gefunden.");
+          alert("Fehler: Frage-Funktion wurde nicht gefunden.");
         }
       };
     }
 
-    const quickButtons = document.querySelectorAll("[data-question-key]");
-
-    quickButtons.forEach(function (btn) {
-      btn.onclick = function () {
-        const key = btn.getAttribute("data-question-key");
-        const frageText = document.getElementById("frageText");
-        const langSelect = document.getElementById("lang");
-        const lang = langSelect ? langSelect.value : "de";
-
-        const texts = {
-          de: {
-            next_steps: "Was muss ich tun?",
-            deadline: "Bis wann?",
-            consequence: "Was passiert, wenn ich nichts mache?",
-            reply: "Schreib mir eine Antwort"
-          },
-          tr: {
-            next_steps: "Ne yapmam gerekiyor?",
-            deadline: "Son tarih ne zaman?",
-            consequence: "Hiçbir şey yapmazsam ne olur?",
-            reply: "Benim için cevap yaz"
-          },
-          bg: {
-            next_steps: "Какво трябва да направя?",
-            deadline: "До кога?",
-            consequence: "Какво ще стане, ако не направя нищо?",
-            reply: "Напиши ми отговор"
-          },
-          ar: {
-            next_steps: "ماذا يجب أن أفعل؟",
-            deadline: "إلى متى؟",
-            consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
-            reply: "اكتب لي ردًا"
-          },
-          ro: {
-            next_steps: "Ce trebuie să fac?",
-            deadline: "Până când?",
-            consequence: "Ce se întâmplă dacă nu fac nimic?",
-            reply: "Scrie-mi un răspuns"
-          },
-          en: {
-            next_steps: "What do I have to do?",
-            deadline: "By when?",
-            consequence: "What happens if I do nothing?",
-            reply: "Write me a reply"
-          }
-        };
-
-        if (frageText) {
-          frageText.value = (texts[lang] || texts.de)[key] || btn.textContent.trim();
-          frageText.focus();
+    if (readShortButton) {
+      readShortButton.onclick = function () {
+        if (typeof playServerAudio === "function" && typeof currentKurzText !== "undefined") {
+          playServerAudio(currentKurzText);
         }
-
-        window.frageMode =
-          key === "next_steps" ? "next_steps" :
-          key === "deadline" ? "deadline" :
-          key === "consequence" ? "consequence" :
-          key === "reply" ? "reply" :
-          "free";
       };
-    });
+    }
+
+    if (readAllButton) {
+      readAllButton.onclick = function () {
+        if (typeof playServerAudio === "function" && typeof currentDetailText !== "undefined") {
+          playServerAudio(currentDetailText);
+        }
+      };
+    }
+
+    if (readAnswerButton) {
+      readAnswerButton.onclick = function () {
+        const answerEl = document.getElementById("frageAntwort");
+        const text = answerEl ? answerEl.textContent : "";
+
+        if (typeof playServerAudio === "function") {
+          playServerAudio(text);
+        }
+      };
+    }
+
+    if (stopButton) {
+      stopButton.onclick = function () {
+        if (typeof stopAudio === "function") {
+          stopAudio();
+        }
+      };
+    }
+
+    window.h24SetQuestionMode = function (mode) {
+      const langSelect = document.getElementById("lang");
+      const frageText = document.getElementById("frageText");
+      const lang = langSelect ? langSelect.value : "de";
+
+      const texts = {
+        de: {
+          next_steps: "Was muss ich tun?",
+          deadline: "Bis wann?",
+          consequence: "Was passiert, wenn ich nichts mache?",
+          reply: "Schreib mir eine Antwort"
+        },
+        tr: {
+          next_steps: "Ne yapmam gerekiyor?",
+          deadline: "Son tarih ne zaman?",
+          consequence: "Hiçbir şey yapmazsam ne olur?",
+          reply: "Benim için cevap yaz"
+        },
+        bg: {
+          next_steps: "Какво трябва да направя?",
+          deadline: "До кога?",
+          consequence: "Какво ще стане, ако не направя нищо?",
+          reply: "Напиши ми отговор"
+        },
+        ar: {
+          next_steps: "ماذا يجب أن أفعل؟",
+          deadline: "إلى متى؟",
+          consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+          reply: "اكتب لي ردًا"
+        },
+        ro: {
+          next_steps: "Ce trebuie să fac?",
+          deadline: "Până când?",
+          consequence: "Ce se întâmplă dacă nu fac nimic?",
+          reply: "Scrie-mi un răspuns"
+        },
+        en: {
+          next_steps: "What do I have to do?",
+          deadline: "By when?",
+          consequence: "What happens if I do nothing?",
+          reply: "Write me a reply"
+        }
+      };
+
+      if (frageText) {
+        frageText.value = (texts[lang] || texts.de)[mode] || "";
+        frageText.focus();
+      }
+
+      window.frageMode = mode || "free";
+      if (typeof frageMode !== "undefined") {
+        frageMode = mode || "free";
+      }
+    };
   });
 </script>
+
 </body>
 </html>
 
