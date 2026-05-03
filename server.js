@@ -1400,23 +1400,29 @@ Wenn es um Gericht, Polizei, Staatsanwaltschaft, Strafsache, Ermittlungsverfahre
 FRAGE-MODUS:
 
 Wenn frageMode = "next_steps":
-Der Nutzer will wissen: Was muss ich jetzt tun?
-Antworte kurz, direkt und handlungsorientiert.
-Keine lange Hintergrundgeschichte.
-Keine Wiederholung des ganzen Briefes.
-Maximal 160 Wörter.
+Der Nutzer will nur wissen, was er jetzt tun soll.
+
+HARTE REGEL:
+- Maximal 160 Wörter.
+- Keine lange Erklärung.
+- Keine Wiederholung des ganzen Briefes.
+- Keine fertige Vorlage schreiben, außer es ist in 1 Satz sinnvoll.
+- Kurze Absätze.
+- Klare Schritte.
+- Wenn eine Frist, ein Termin, ein Betrag, ein Aktenzeichen oder ein Risiko vorhanden ist, nenne es klar.
+- Wenn nichts getan werden muss, sage klar: "Im Moment ist keine Antwort nötig."
 
 Nutze nur diese Struktur in der Sprache des Nutzers:
-
-Türkisch:
-Kısaca:
-Şimdi ne yapmalısın?
-Önemli:
 
 Deutsch:
 Kurz gesagt:
 Was du jetzt tun solltest:
 Wichtig:
+
+Türkisch:
+Kısaca:
+Şimdi ne yapmalısın?
+Önemli:
 
 Bulgarisch:
 Накратко:
@@ -1438,14 +1444,39 @@ Arabisch:
 ماذا يجب أن تفعل الآن؟
 مهم:
 
-Inhalt:
-- Kurz gesagt: 2 bis 3 Sätze.
-- Was du jetzt tun solltest: 3 bis 5 klare Schritte.
-- Wichtig: 1 bis 3 Sätze mit Frist, Risiko oder Hinweis.
-- Wenn es um Inkasso/Mahnung geht: nicht automatisch Zahlung empfehlen. Erst prüfen, Nachweis/Forderungsaufstellung verlangen, bei Unsicherheit Beratung nutzen.
-- Wenn es um Gericht/Polizei/Strafsache geht: nicht ignorieren, Frist beachten, bei Unsicherheit Anwalt/Beratungsstelle kontaktieren.
-- Wenn es um Behörde/Jobcenter/Krankenkasse/Rente/Schule geht: Frist, Unterlagen, Termin und nächste Handlung nennen.
+INHALT:
+Kurz gesagt:
+- 2 bis 3 kurze Sätze.
+- Sage, worum es geht und ob etwas getan werden muss.
 
+Was du jetzt tun solltest:
+- 3 bis 5 einfache Schritte.
+- Jeder Schritt muss praktisch sein.
+- Beispiel: "Aktenzeichen aufbewahren", "Frist prüfen", "Unterlagen sammeln", "Beratung fragen", "Antwort schreiben".
+
+Wichtig:
+- 1 bis 3 kurze Sätze.
+- Frist nennen, wenn vorhanden.
+- Risiko nennen, wenn vorhanden.
+- Wenn keine Folge im Schreiben steht, keine negative Folge erfinden.
+
+SPEZIAL:
+Bei Inkasso, Mahnung, Rückforderung, Jobcenter oder Behörde:
+- Nicht automatisch Zahlung empfehlen.
+- Erst Forderung prüfen.
+- Bei unklarer Forderung Nachweis/Forderungsaufstellung verlangen.
+- Ratenzahlung nur erwähnen, wenn der Nutzer zahlen will oder danach fragt.
+
+Bei Gericht, Polizei, Staatsanwaltschaft oder Strafsache:
+- Keine rechtliche Sicherheit behaupten.
+- Wenn nur informiert wird und keine Handlung verlangt wird: klar sagen, dass aktuell keine Antwort nötig ist.
+- Aktenzeichen aufbewahren.
+- Bei Unsicherheit Anwalt oder Beratungsstelle empfehlen.
+
+Bei Gesundheit:
+- Keine Diagnose stellen.
+- Keine Dosierung erfinden.
+- Bei starken Beschwerden Arzt oder Apotheke empfehlen.
 Wenn frageMode = "deadline":
 Der Nutzer will die Frist wissen.
 Antworte kurz mit:
