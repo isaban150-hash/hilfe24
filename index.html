@@ -1640,5 +1640,38 @@ window.frageMode = "free";
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
     }
   </script>
+<script>
+  // Hilfe24 Fix: Startseite-Sprache sicher synchronisieren
+  document.addEventListener("DOMContentLoaded", function () {
+    const homeSelect = document.getElementById("homeLang");
+    const briefSelect = document.getElementById("lang");
+
+    if (!homeSelect) return;
+
+    homeSelect.addEventListener("change", function () {
+      const selectedLang = homeSelect.value || "de";
+
+      if (briefSelect) {
+        briefSelect.value = selectedLang;
+      }
+
+      if (typeof currentLang !== "undefined") {
+        currentLang = selectedLang;
+      }
+
+      if (typeof updateHomeLanguage === "function") {
+        updateHomeLanguage();
+      }
+
+      if (typeof updateBriefLanguage === "function") {
+        updateBriefLanguage();
+      }
+
+      if (typeof updateQuestionLanguage === "function") {
+        updateQuestionLanguage();
+      }
+    });
+  });
+</script>
 </body>
 </html>
