@@ -1673,5 +1673,49 @@ window.frageMode = "free";
     });
   });
 </script>
+
+<script>
+  // Hilfe24 Fix: Brief-erklären-Button stabil verbinden
+  document.addEventListener("DOMContentLoaded", function () {
+    function startExplain() {
+      if (typeof explainLetter === "function") {
+        explainLetter();
+        return;
+      }
+
+      if (typeof window.explainLetter === "function") {
+        window.explainLetter();
+        return;
+      }
+
+      alert("Fehler: Die Analyse-Funktion wurde nicht gefunden.");
+    }
+
+    const analyzeButton = document.getElementById("analyzeBtn");
+
+    if (analyzeButton) {
+      analyzeButton.onclick = startExplain;
+    }
+
+    const allButtons = document.querySelectorAll("button");
+
+    allButtons.forEach(function (btn) {
+      const text = (btn.textContent || "").toLowerCase();
+
+      if (
+        text.includes("brief erklären") ||
+        text.includes("mektubu açıkla") ||
+        text.includes("mektup açıkla") ||
+        text.includes("обясни") ||
+        text.includes("explică") ||
+        text.includes("explain")
+      ) {
+        btn.onclick = startExplain;
+      }
+    });
+  });
+</script>
+
 </body>
 </html>
+
