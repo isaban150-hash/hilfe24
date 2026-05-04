@@ -384,11 +384,10 @@
       <div id="shortTitle" class="section-title">Kurz erklärt</div>
       <div id="kurzText" class="short-box"></div>
 
-      <div class="audio-row">
+ <div class="audio-row">
   <button id="readShortBtn" class="btn-primary" type="button">🔊 Kurz vorlesen</button>
   <button id="stopBtn" class="btn-danger" type="button">⏹️ Stopp</button>
 </div>
-
       <div id="audioStatus" class="audio-status hidden"></div>
       <audio id="audioPlayer" controls class="hidden"></audio>
     </div>
@@ -403,9 +402,9 @@
   <div id="detailTitle" class="section-title">Mehr Details</div>
   <div id="detailText" class="detail-box"></div>
 
-  <div class="audio-row">
-    <button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button>
-  </div>
+<div class="audio-row">
+  <button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button>
+  <button id="stopDetailsBtn" class="btn-danger" type="button">⏹️ Stopp</button>
 </div>
     <div id="frageCard" class="card hidden">
       <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
@@ -453,11 +452,12 @@
         <div id="frageAntwortTitle" class="section-title">Antwort</div>
         <div id="frageAntwort" class="detail-box"></div>
 
-        <div class="audio-row">
-          <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
-            🔊 Antwort vorlesen
-          </button>
-        </div>
+    <div class="audio-row">
+  <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
+    🔊 Antwort vorlesen
+  </button>
+  <button id="stopAnswerBtn" class="btn-danger" type="button">⏹️ Stopp</button>
+</div>
       </div>
     </div>
 
@@ -921,8 +921,9 @@ en: {
 
     const readShortBtn = document.getElementById("readShortBtn");
     const readAllBtn = document.getElementById("readAllBtn");
-    const stopBtn = document.getElementById("stopBtn");
-
+ const stopBtn = document.getElementById("stopBtn");
+    const stopDetailsBtn = document.getElementById("stopDetailsBtn");
+    const stopAnswerBtn = document.getElementById("stopAnswerBtn");
     const audioPlayerEl = document.getElementById("audioPlayer");
     const audioStatusEl = document.getElementById("audioStatus");
 
@@ -1000,7 +1001,8 @@ window.frageMode = "free";
       const readShortBtnEl = document.getElementById("readShortBtn");
       const readAllBtnEl = document.getElementById("readAllBtn");
       const stopBtnEl = document.getElementById("stopBtn");
-
+     const stopDetailsBtnEl = document.getElementById("stopDetailsBtn");
+     const stopAnswerBtnEl = document.getElementById("stopAnswerBtn");
       if (shortTitleEl) shortTitleEl.textContent = u.shortTitle || "Kurz erklärt";
       if (detailTitleEl) detailTitleEl.textContent = u.detailTitle || "Mehr Details";
       if (questionTitleEl) questionTitleEl.textContent = u.questionTitle || "Frage zu diesem Brief stellen";
@@ -1008,7 +1010,8 @@ window.frageMode = "free";
       if (readShortBtnEl) readShortBtnEl.textContent = u.readShort || "🔊 Kurz vorlesen";
       if (readAllBtnEl) readAllBtnEl.textContent = u.readDetails || "🔊 Details vorlesen";
       if (stopBtnEl) stopBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
-
+if (stopDetailsBtnEl) stopDetailsBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
+if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
       currentLang = lang;
       updateQuestionLanguage();
     }
@@ -1747,6 +1750,21 @@ window.frageMode = "free";
     window.h24OwnQuestion = h24OwnQuestion;
     window.explainLetter = explainLetter;
     window.askQuestionAboutLetter = askQuestionAboutLetter;
+  </script>
+window.askQuestionAboutLetter = askQuestionAboutLetter;
+
+    if (typeof stopAudio === "function") {
+      const extraStopDetailsBtn = document.getElementById("stopDetailsBtn");
+      const extraStopAnswerBtn = document.getElementById("stopAnswerBtn");
+
+      if (extraStopDetailsBtn) {
+        extraStopDetailsBtn.onclick = stopAudio;
+      }
+
+      if (extraStopAnswerBtn) {
+        extraStopAnswerBtn.onclick = stopAudio;
+      }
+    }
   </script>
 </body>
 </html>
