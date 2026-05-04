@@ -386,7 +386,7 @@
 
  <div class="audio-row">
   <button id="readShortBtn" class="btn-primary" type="button">🔊 Kurz vorlesen</button>
-  <button id="stopBtn" class="btn-danger" type="button">⏹️ Stopp</button>
+ <button id="stopBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
 </div>
       <div id="audioStatus" class="audio-status hidden"></div>
       <audio id="audioPlayer" controls class="hidden"></audio>
@@ -398,13 +398,16 @@
       </button>
     </div>
 
-  <div id="detailCard" class="card hidden">
+ <div id="detailCard" class="card hidden">
   <div id="detailTitle" class="section-title">Mehr Details</div>
   <div id="detailText" class="detail-box"></div>
 
-<div class="audio-row">
-  <button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button>
-  <button id="stopDetailsBtn" class="btn-danger" type="button">⏹️ Stopp</button>
+  <div class="audio-row">
+  <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
+    🔊 Antwort vorlesen
+  </button>
+  <button id="stopAnswerBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
+</div>
 </div>
     <div id="frageCard" class="card hidden">
       <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
@@ -1750,6 +1753,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     window.h24OwnQuestion = h24OwnQuestion;
     window.explainLetter = explainLetter;
     window.askQuestionAboutLetter = askQuestionAboutLetter;
+    window.stopAudio = stopAudio;
   </script>
 
  </body>
