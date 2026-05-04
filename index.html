@@ -362,8 +362,7 @@
 
       <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
       <input id="bilder" type="file" accept="image/*" multiple />
-      <div id="photoHintText" class="sub">D<div id="photoHintText" class="sub">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>u kannst bis zu 3 Bilder vom selben Brief hochladen.</div>
-
+<div id="photoHintText" class="sub">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>
       <div id="previewGrid" class="preview-grid"></div>
 
       <div class="button-row">
@@ -558,63 +557,62 @@
       }
     };
 
-    const briefTexts = {
-      de: {
-        sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
-        textLabel: "Brief als Text",
-        photoLabel: "Brief-Fotos hochladen",
-        placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-        hint: "Du kannhint: "Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.",st bis zu 3 Bilder vom selben Brief hochladen.",
-        analyze: "Brief erklären",
-        back: "← Zurück zur Startseite"
-      },
-      tr: {
-        sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
-        textLabel: "Mektup metni",
-        photoLabel: "Mektup fotoğrafları yükle",
-        placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yaz veya yapıştır",
-        hinhint: "Aynı mektuptan 1, 2 veya 3 fotoğraf yükleyebilirsin. Birden fazla sayfa varsa önce fotoğrafları çek, sonra galeriden seç.",t: "Aynı mektuptan en fazla 3 fotoğraf yükleyebilirsin.",
-        analyze: "Mektubu açıkla",
-        back: "← Ana sayfaya dön"
-      },
-      bg: {
-        sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
-        textLabel: "Текст на писмото",
-        photoLabel: "Качи снимки на писмото",
-        placeholder: "Постави текста тук, ако не искаш да качваш снимка",
-        hint: "Можеш да качиш до 3 снимки от едно и също писмо.",
-        analyze: "Обясни писмото",
-        back: "← Назад към началната страница"
-      },
-      ro: {
-        sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
-        textLabel: "Textul scrisorii",
-        photoLabel: "Încarcă poze cu scrisoarea",
-        placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
-        hint: "Poți încărca până la 3 poze din aceeași scrisoare.",
-        analyze: "Explică scrisoarea",
-        back: "← Înapoi la pagina principală"
-      },
-      en: {
-        sub: "Understand letters easily. First short and simple. Then with more details.",
-        textLabel: "Letter text",
-        photoLabel: "Upload letter photos",
-        placeholder: "Paste the text here if you do not want to upload a photo",
-        hint: "You can upload up to 3 photos from the same letter.",
-        analyze: "Explain letter",
-        back: "← Back to start page"
-      },
-      ar: {
-        sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
-        textLabel: "نص الرسالة",
-        photoLabel: "ارفع صور الرسالة",
-        placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
-        hint: "يمكنك رفع ما يصل إلى 3 صور من نفس الرسالة.",
-        analyze: "اشرح الرسالة",
-        back: "← الرجوع إلى الصفحة الرئيسية"
-      }
-    };
-
+ const briefTexts = {
+  de: {
+    sub: "Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.",
+    textLabel: "Brief als Text",
+    photoLabel: "Brief-Fotos hochladen",
+    placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+    hint: "Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.",
+    analyze: "Brief erklären",
+    back: "← Zurück zur Startseite"
+  },
+  tr: {
+    sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
+    textLabel: "Mektup metni",
+    photoLabel: "Mektup fotoğrafları yükle",
+    placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yaz veya yapıştır",
+    hint: "Aynı mektuptan 1, 2 veya 3 fotoğraf yükleyebilirsin. Birden fazla sayfa varsa önce fotoğrafları çek, sonra galeriden seç.",
+    analyze: "Mektubu açıkla",
+    back: "← Ana sayfaya dön"
+  },
+  bg: {
+    sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
+    textLabel: "Текст на писмото",
+    photoLabel: "Качи снимки на писмото",
+    placeholder: "Постави текста тук, ако не искаш да качваш снимка",
+    hint: "Можеш да качиш 1, 2 или 3 снимки от едно и също писмо. Ако има няколко страници, първо ги снимай, после ги избери от галерията.",
+    analyze: "Обясни писмото",
+    back: "← Назад към началната страница"
+  },
+  ar: {
+    sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
+    textLabel: "نص الرسالة",
+    photoLabel: "ارفع صور الرسالة",
+    placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
+    hint: "يمكنك رفع 1 أو 2 أو 3 صور من نفس الرسالة. إذا كانت هناك عدة صفحات، صوّرها أولًا ثم اخترها من المعرض.",
+    analyze: "اشرح الرسالة",
+    back: "← الرجوع إلى الصفحة الرئيسية"
+  },
+  ro: {
+    sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
+    textLabel: "Textul scrisorii",
+    photoLabel: "Încarcă poze cu scrisoarea",
+    placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
+    hint: "Poți încărca 1, 2 sau 3 poze din aceeași scrisoare. Dacă sunt mai multe pagini, fă pozele mai întâi, apoi selectează-le din galerie.",
+    analyze: "Explică scrisoarea",
+    back: "← Înapoi la pagina principală"
+  },
+  en: {
+    sub: "Understand letters easily. First short and simple. Then with more details.",
+    textLabel: "Letter text",
+    photoLabel: "Upload letter photos",
+    placeholder: "Paste the text here if you do not want to upload a photo",
+    hint: "You can upload 1, 2 or 3 photos from the same letter. If there are several pages, take the photos first, then select them from your gallery.",
+    analyze: "Explain letter",
+    back: "← Back to start page"
+  }
+};
     const uiTexts = {
   de: {
   waiting: "Bitte warten... Der Brief wird geprüft.",
@@ -781,6 +779,8 @@ en: {
         deadline: "Bis wann?",
         consequence: "Was passiert, wenn ich nichts mache?",
         reply: "Schreib mir eine Antwort",
+      
+        own: "✍️ Eigene Frage stellen",
         label: "Deine Frage",
         placeholder: "Schreibe hier deine Frage zu diesem Brief",
         button: "Frage stellen",
@@ -795,6 +795,7 @@ en: {
         deadline: "Son tarih ne zaman?",
         consequence: "Hiçbir şey yapmazsam ne olur?",
         reply: "Benim için cevap yaz",
+       own: "✍️ Kendi sorumu yazmak istiyorum",
         label: "Sorunuz",
         placeholder: "Örneğin: Şimdi ne yapmalıyım?",
         button: "Soruyu gönder",
@@ -809,6 +810,7 @@ en: {
         deadline: "До кога?",
         consequence: "Какво ще стане, ако не направя нищо?",
         reply: "Напиши ми отговор",
+      own: "✍️ Искам да задам свой въпрос",
         label: "Твоят въпрос",
         placeholder: "Напиши тук въпроса си за това писмо",
         button: "Задай въпрос",
@@ -823,6 +825,7 @@ en: {
         deadline: "إلى متى؟",
         consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
         reply: "اكتب لي ردًا",
+      own: "✍️ أريد كتابة سؤالي بنفسي",
         label: "سؤالك",
         placeholder: "اكتب سؤالك عن هذه الرسالة هنا",
         button: "اطرح السؤال",
@@ -837,6 +840,7 @@ en: {
         deadline: "Până când?",
         consequence: "Ce se întâmplă dacă nu fac nimic?",
         reply: "Scrie-mi un răspuns",
+       own: "✍️ Vreau să scriu propria întrebare",
         label: "Întrebarea ta",
         placeholder: "Scrie aici întrebarea ta despre această scrisoare",
         button: "Pune întrebarea",
@@ -851,6 +855,7 @@ en: {
         deadline: "By when?",
         consequence: "What happens if I do nothing?",
         reply: "Write me a reply",
+      own: "✍️ I want to ask my own question",
         label: "Your question",
         placeholder: "Write your question about this letter here",
         button: "Ask question",
@@ -909,6 +914,8 @@ en: {
     const quickDeadlineBtn = document.getElementById("quickDeadlineBtn");
     const quickConsequenceBtn = document.getElementById("quickConsequenceBtn");
     const quickReplyBtn = document.getElementById("quickReplyBtn");
+ 
+    const ownQuestionBtn = document.getElementById("ownQuestionBtn");
     const frageTextLabelEl = document.getElementById("frageTextLabel");
     const frageAntwortTitleEl = document.getElementById("frageAntwortTitle");
 
@@ -1017,6 +1024,7 @@ window.frageMode = "free";
       if (quickDeadlineBtn) quickDeadlineBtn.textContent = t.deadline;
       if (quickConsequenceBtn) quickConsequenceBtn.textContent = t.consequence;
       if (quickReplyBtn) quickReplyBtn.textContent = t.reply;
+     if (ownQuestionBtn) ownQuestionBtn.textContent = t.own;
       if (frageTextLabelEl) frageTextLabelEl.textContent = t.label;
       if (frageTextEl) frageTextEl.placeholder = t.placeholder;
       if (frageBtn) frageBtn.textContent = t.button;
@@ -1578,316 +1586,167 @@ window.frageMode = "free";
   }
 }
 
+  function toggleDetails() {
+      if (!detailCardEl || !toggleDetailsBtn) return;
+
+      const hidden = detailCardEl.classList.contains("hidden");
+
+      if (hidden) {
+        show(detailCardEl);
+        toggleDetailsBtn.textContent = getUiText().detailsHide;
+      } else {
+        hide(detailCardEl);
+        toggleDetailsBtn.textContent = getUiText().detailsShow;
+      }
+    }
+
+    function showComingSoon() {
+      alert(getUiText().comingSoon || "Dieser Bereich kommt später.");
+    }
+
+    function h24SetQuestionMode(mode) {
+      const lang = getSelectedLang();
+      const t = questionTexts[lang] || questionTexts.de;
+
+      const map = {
+        next_steps: t.what,
+        deadline: t.deadline,
+        consequence: t.consequence,
+        reply: t.reply
+      };
+
+      if (frageTextEl) {
+        frageTextEl.value = map[mode] || "";
+        frageTextEl.focus();
+      }
+
+      window.frageMode = mode || "free";
+      frageMode = mode || "free";
+    }
+
+    function h24OwnQuestion() {
+      if (frageTextEl) {
+        frageTextEl.value = "";
+        frageTextEl.focus();
+        frageTextEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      window.frageMode = "free";
+      frageMode = "free";
+    }
+
+    function setupEvents() {
+      if (homeLangEl) {
+        homeLangEl.onchange = function () {
+          currentLang = homeLangEl.value || "de";
+
+          if (langEl) {
+            langEl.value = currentLang;
+          }
+
+          updateHomeLanguage();
+          updateBriefLanguage();
+          updateQuestionLanguage();
+        };
+      }
+
+      if (langEl) {
+        langEl.onchange = function () {
+          currentLang = langEl.value || "de";
+          updateBriefLanguage();
+          updateQuestionLanguage();
+        };
+      }
+
+      if (openBriefBtn) {
+        openBriefBtn.onclick = openBriefArea;
+      }
+
+      if (resetBtn) {
+        resetBtn.onclick = goBackHome;
+      }
+
+      if (bilderEl) {
+        bilderEl.onchange = renderPreviews;
+      }
+
+      if (analyzeBtn) {
+        analyzeBtn.onclick = explainLetter;
+      }
+
+      if (toggleDetailsBtn) {
+        toggleDetailsBtn.onclick = toggleDetails;
+      }
+
+      if (frageBtn) {
+        frageBtn.onclick = askQuestionAboutLetter;
+      }
+
+      if (readShortBtn) {
+        readShortBtn.onclick = function () {
+          playServerAudio(currentKurzText);
+        };
+      }
+
+      if (readAllBtn) {
+        readAllBtn.onclick = function () {
+          playServerAudio(currentDetailText);
+        };
+      }
+
+      if (readFrageAntwortBtn) {
+        readFrageAntwortBtn.onclick = function () {
+          const text = frageAntwortEl ? frageAntwortEl.textContent : "";
+          playServerAudio(text);
+        };
+      }
+
+      if (stopBtn) {
+        stopBtn.onclick = stopAudio;
+      }
+
+      if (quickWhatBtn) {
+        quickWhatBtn.onclick = function () {
+          h24SetQuestionMode("next_steps");
+        };
+      }
+
+      if (quickDeadlineBtn) {
+        quickDeadlineBtn.onclick = function () {
+          h24SetQuestionMode("deadline");
+        };
+      }
+
+      if (quickConsequenceBtn) {
+        quickConsequenceBtn.onclick = function () {
+          h24SetQuestionMode("consequence");
+        };
+      }
+
+      if (quickReplyBtn) {
+        quickReplyBtn.onclick = function () {
+          h24SetQuestionMode("reply");
+        };
+      }
+
+      if (ownQuestionBtn) {
+        ownQuestionBtn.onclick = h24OwnQuestion;
+      }
+    }
+
     updateHomeLanguage();
     updateBriefLanguage();
+    updateQuestionLanguage();
     setupEvents();
 
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
     window.openBriefArea = openBriefArea;
     window.showComingSoon = showComingSoon;
+    window.h24SetQuestionMode = h24SetQuestionMode;
+    window.h24OwnQuestion = h24OwnQuestion;
+    window.explainLetter = explainLetter;
+    window.askQuestionAboutLetter = askQuestionAboutLetter;
   </script>
-
- <script>
-    function h24SetQuestionMode(mode) {
-      var langEl = document.getElementById("lang");
-      var textarea = document.getElementById("frageText");
-
-      if (!textarea) {
-        alert("Fehler: Fragefeld wurde nicht gefunden.");
-        return;
-      }
-
-      var lang = langEl ? langEl.value : "de";
-
-      var texts = {
-        de: {
-          next_steps: "Was muss ich tun?",
-          deadline: "Bis wann?",
-          consequence: "Was passiert, wenn ich nichts mache?",
-          reply: "Schreib mir eine Antwort"
-        },
-        tr: {
-          next_steps: "Ne yapmam gerekiyor?",
-          deadline: "Son tarih ne zaman?",
-          consequence: "Hiçbir şey yapmazsam ne olur?",
-          reply: "Bana bir cevap yaz"
-        },
-        bg: {
-          next_steps: "Какво трябва да направя?",
-          deadline: "До кога?",
-          consequence: "Какво ще стане, ако не направя нищо?",
-          reply: "Напиши ми отговор"
-        },
-        ro: {
-          next_steps: "Ce trebuie să fac?",
-          deadline: "Până când?",
-          consequence: "Ce se întâmplă dacă nu fac nimic?",
-          reply: "Scrie-mi un răspuns"
-        },
-        en: {
-          next_steps: "What do I have to do?",
-          deadline: "By when?",
-          consequence: "What happens if I do nothing?",
-          reply: "Write me a reply"
-        },
-        ar: {
-          next_steps: "ماذا يجب أن أفعل؟",
-          deadline: "إلى متى؟",
-          consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
-          reply: "اكتب لي ردًا"
-        }
-      };
-
-      var t = texts[lang] || texts.de;
-
-      textarea.value = t[mode] || "";
-      window.frageMode = mode || "free";
-
-      textarea.focus();
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-  </script>
-<script>
-  // Hilfe24 sauberer Abschluss: Buttons und Sprache stabil verbinden
-  document.addEventListener("DOMContentLoaded", function () {
-    function safeShow(el) {
-      if (el) el.classList.remove("hidden");
-    }
-
-    function safeHide(el) {
-      if (el) el.classList.add("hidden");
-    }
-
-    window.toggleDetails = function () {
-      const detailCard = document.getElementById("detailCard");
-      const toggleBtn = document.getElementById("toggleDetailsBtn");
-
-      if (!detailCard || !toggleBtn) return;
-
-      const hidden = detailCard.classList.contains("hidden");
-
-      if (hidden) {
-        safeShow(detailCard);
-        toggleBtn.textContent =
-          typeof getUiText === "function"
-            ? getUiText().detailsHide
-            : "📋 Details ausblenden";
-      } else {
-        safeHide(detailCard);
-        toggleBtn.textContent =
-          typeof getUiText === "function"
-            ? getUiText().detailsShow
-            : "📋 Mehr Details anzeigen";
-      }
-    };
-
-    window.showComingSoon = function () {
-      alert(
-        typeof getUiText === "function"
-          ? getUiText().comingSoon
-          : "Dieser Bereich kommt später."
-      );
-    };
-
-    const homeSelect = document.getElementById("homeLang");
-    const briefSelect = document.getElementById("lang");
-    const openBriefButton = document.getElementById("openBriefBtn");
-    const analyzeButton = document.getElementById("analyzeBtn");
-    const backButton = document.getElementById("resetBtn");
-    const detailButton = document.getElementById("toggleDetailsBtn");
-    const frageButton = document.getElementById("frageBtn");
-    const bilderInput = document.getElementById("bilder");
-    const readShortButton = document.getElementById("readShortBtn");
-    const readAllButton = document.getElementById("readAllBtn");
-    const readAnswerButton = document.getElementById("readFrageAntwortBtn");
-    const stopButton = document.getElementById("stopBtn");
-
-    if (homeSelect) {
-      homeSelect.onchange = function () {
-        const selectedLang = homeSelect.value || "de";
-
-        if (briefSelect) {
-          briefSelect.value = selectedLang;
-        }
-
-        if (typeof currentLang !== "undefined") {
-          currentLang = selectedLang;
-        }
-
-        if (typeof updateHomeLanguage === "function") updateHomeLanguage();
-        if (typeof updateBriefLanguage === "function") updateBriefLanguage();
-        if (typeof updateQuestionLanguage === "function") updateQuestionLanguage();
-      };
-    }
-
-    if (briefSelect) {
-      briefSelect.onchange = function () {
-        if (typeof currentLang !== "undefined") {
-          currentLang = briefSelect.value || "de";
-        }
-
-        if (typeof updateBriefLanguage === "function") updateBriefLanguage();
-        if (typeof updateQuestionLanguage === "function") updateQuestionLanguage();
-      };
-    }
-
-    if (openBriefButton) {
-      openBriefButton.onclick = function () {
-        if (typeof openBriefArea === "function") {
-          openBriefArea();
-        }
-      };
-    }
-
-    if (backButton) {
-      backButton.onclick = function () {
-        if (typeof goBackHome === "function") {
-          goBackHome();
-        }
-      };
-    }
-
-    if (bilderInput) {
-      bilderInput.onchange = function () {
-        if (typeof renderPreviews === "function") {
-          renderPreviews();
-        }
-      };
-    }
-
-    if (analyzeButton) {
-      analyzeButton.onclick = function () {
-        if (typeof explainLetter === "function") {
-          explainLetter();
-        } else {
-          alert("Fehler: Analyse-Funktion wurde nicht gefunden.");
-        }
-      };
-    }
-
-    if (detailButton) {
-      detailButton.onclick = window.toggleDetails;
-    }
-
-    if (frageButton) {
-      frageButton.onclick = function () {
-        if (typeof askQuestionAboutLetter === "function") {
-          askQuestionAboutLetter();
-        } else {
-          alert("Fehler: Frage-Funktion wurde nicht gefunden.");
-        }
-      };
-    }
-
-    if (readShortButton) {
-      readShortButton.onclick = function () {
-        if (typeof playServerAudio === "function" && typeof currentKurzText !== "undefined") {
-          playServerAudio(currentKurzText);
-        }
-      };
-    }
-
-    if (readAllButton) {
-      readAllButton.onclick = function () {
-        if (typeof playServerAudio === "function" && typeof currentDetailText !== "undefined") {
-          playServerAudio(currentDetailText);
-        }
-      };
-    }
-
-    if (readAnswerButton) {
-      readAnswerButton.onclick = function () {
-        const answerEl = document.getElementById("frageAntwort");
-        const text = answerEl ? answerEl.textContent : "";
-
-        if (typeof playServerAudio === "function") {
-          playServerAudio(text);
-        }
-      };
-    }
-
-    if (stopButton) {
-      stopButton.onclick = function () {
-        if (typeof stopAudio === "function") {
-          stopAudio();
-        }
-      };
-    }
-
-    window.h24SetQuestionMode = function (mode) {
-      const langSelect = document.getElementById("lang");
-      const frageText = document.getElementById("frageText");
-      const lang = langSelect ? langSelect.value : "de";
-
-      const texts = {
-        de: {
-          next_steps: "Was muss ich tun?",
-          deadline: "Bis wann?",
-          consequence: "Was passiert, wenn ich nichts mache?",
-          reply: "Schreib mir eine Antwort"
-        },
-        tr: {
-          next_steps: "Ne yapmam gerekiyor?",
-          deadline: "Son tarih ne zaman?",
-          consequence: "Hiçbir şey yapmazsam ne olur?",
-          reply: "Benim için cevap yaz"
-        },
-        bg: {
-          next_steps: "Какво трябва да направя?",
-          deadline: "До кога?",
-          consequence: "Какво ще стане, ако не направя нищо?",
-          reply: "Напиши ми отговор"
-        },
-        ar: {
-          next_steps: "ماذا يجب أن أفعل؟",
-          deadline: "إلى متى؟",
-          consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
-          reply: "اكتب لي ردًا"
-        },
-        ro: {
-          next_steps: "Ce trebuie să fac?",
-          deadline: "Până când?",
-          consequence: "Ce se întâmplă dacă nu fac nimic?",
-          reply: "Scrie-mi un răspuns"
-        },
-        en: {
-          next_steps: "What do I have to do?",
-          deadline: "By when?",
-          consequence: "What happens if I do nothing?",
-          reply: "Write me a reply"
-        }
-      };
-
-      if (frageText) {
-        frageText.value = (texts[lang] || texts.de)[mode] || "";
-        frageText.focus();
-      }
-
-      window.frageMode = mode || "free";
-      if (typeof frageMode !== "undefined") {
-        frageMode = mode || "free";
-      }
-    };
-  });
-window.h24OwnQuestion = function () {
-  const frageText = document.getElementById("frageText");
-
-  if (frageText) {
-    frageText.value = "";
-    frageText.focus();
-    frageText.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  window.frageMode = "free";
-
-  if (typeof frageMode !== "undefined") {
-    frageMode = "free";
-  }
-};
-
-</script>
-
 </body>
 </html>
-
