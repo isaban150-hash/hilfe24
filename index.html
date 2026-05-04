@@ -1752,18 +1752,5 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     window.askQuestionAboutLetter = askQuestionAboutLetter;
   </script>
 
-    if (typeof stopAudio === "function") {
-      const extraStopDetailsBtn = document.getElementById("stopDetailsBtn");
-      const extraStopAnswerBtn = document.getElementById("stopAnswerBtn");
-
-      if (extraStopDetailsBtn) {
-        extraStopDetailsBtn.onclick = stopAudio;
-      }
-
-      if (extraStopAnswerBtn) {
-        extraStopAnswerBtn.onclick = stopAudio;
-      }
-    }
-  </script>
-</body>
+ </body>
 </html>
