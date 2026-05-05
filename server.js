@@ -1621,12 +1621,38 @@ function buildDeterministicNextSteps(info, lang) {
 }
 
 function buildSuggestedActions(info, lang) {
-  const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.betrag, (info.passende_aktionen || []).join(" ")].join(" ").toLowerCase();
+  const text = [
+    info.briefart,
+    info.worum_geht_es,
+    info.frist,
+    info.termin,
+    info.betrag,
+    info.folge_wenn_nichts,
+    info.naechster_schritt,
+    (info.passende_aktionen || []).join(" "),
+    (info.wichtigste_punkte || []).join(" ")
+  ].join(" ").toLowerCase();
+
   const actions = [];
-  if (hasAny(text, ["widerspruch", "rechtsbehelf", "bescheid"])) actions.push("Widerspruch prüfen");
-  if (hasAny(text, ["rechnung", "forderung", "zahlung", "rückforderung", "aufrechnung"])) actions.push("Betrag prüfen");
+
+  if (hasAny(text, ["inkasso", "vollstreckung", "vollstreckungstitel", "gerichtsvollzieher", "pfändung"])) {
+    actions.push("Forderung prüfen");
+    actions.push("Forderungsaufstellung anfordern");
+    actions.push("Ratenzahlung prüfen");
+    actions.push("Beratung suchen");
+  } else if (hasAny(text, ["widerspruch", "rechtsbehelf", "bescheid", "aufrechnung", "rückforderung", "jobcenter", "bürgergeld"])) {
+    actions.push("Widerspruch prüfen");
+    actions.push("Betrag prüfen");
+    actions.push("Beratung suchen");
+  } else if (hasAny(text, ["rechnung", "forderung", "zahlung", "mahnung"])) {
+    actions.push("Rechnung prüfen");
+    actions.push("Zahlung klären");
+    actions.push("Nachricht schreiben");
+  }
+
   if (hasAny(text, ["termin", "ladung", "einladung"])) actions.push("Termin prüfen");
   if (hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) actions.push("Unterlagen vorbereiten");
+
   actions.push("Frage stellen");
   actions.push("Antwort schreiben");
   return dedupe(actions).slice(0,5);
@@ -1682,6 +1708,172 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   };
 }
 
+
+function isHighRiskLetter(info) {
+  const text = [
+    info.briefart,
+    info.worum_geht_es,
+    info.kurz_gesagt,
+    info.frist,
+    info.termin,
+    info.folge_wenn_nichts,
+    info.naechster_schritt,
+    info.betrag,
+    (info.wichtigste_punkte || []).join(" "),
+    (info.was_ist_zu_tun || []).join(" "),
+    (info.passende_aktionen || []).join(" "),
+    (info.referenzen || []).join(" ")
+  ].join(" ").toLowerCase();
+
+  return Boolean(
+    info.dringlichkeit === "hoch" ||
+    hasAny(text, [
+      "inkasso",
+      "vollstreckung",
+      "vollstreckungstitel",
+      "gerichtsvollzieher",
+      "pfändung",
+      "mahnbescheid",
+      "gericht",
+      "polizei",
+      "staatsanwaltschaft",
+      "kündigung",
+      "widerspruch",
+      "rechtsbehelf",
+      "rückforderung",
+      "aufrechnung",
+      "jobcenter",
+      "bürgergeld",
+      "sanktion",
+      "minderung",
+      "krankenkasse",
+      "ablehnung",
+      "frist",
+      "mahnung"
+    ])
+  );
+}
+
+function buildQualityModeType(info) {
+  const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
+  if (hasAny(text, ["inkasso", "vollstreckung", "vollstreckungstitel", "pfändung", "gerichtsvollzieher"])) return "inkasso_vollstreckung";
+  if (hasAny(text, ["jobcenter", "bürgergeld", "rückforderung", "aufrechnung", "sanktion", "minderung"])) return "jobcenter_bescheid";
+  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft", "ladung", "straf"] )) return "gericht_polizei";
+  if (hasAny(text, ["krankenkasse", "aok", "pflege", "ablehnung", "hilfsmittel", "zuzahlung"])) return "krankenkasse";
+  if (hasAny(text, ["rechnung", "mahnung", "forderung", "zahlung"])) return "rechnung_mahnung";
+  return "wichtiger_brief";
+}
+
+async function improveQualityTextsIfNeeded(info, translated, helper, lang, sourceMode = "text") {
+  const langMeta = getLanguageMeta(lang);
+  const langCode = langMeta.code;
+
+  if (!isHighRiskLetter(info)) {
+    return {
+      translated,
+      helper
+    };
+  }
+
+  const mode = buildQualityModeType(info);
+  const safe = getSafeCriticalMeta(info, sourceMode);
+
+  const raw = await callGemini([
+    {
+      text: `
+Du bist Hilfe24 Qualitätsmodus V7.
+
+Ziel:
+Verbessere die Erklärung für einen wichtigen Brief. Schreibe menschlich, einfach, kurz und praktisch.
+
+Ausgabesprache: ${langMeta.label}
+Briefmodus: ${mode}
+
+WICHTIGE REGELN:
+- Keine neuen Daten erfinden.
+- Name nur nennen, wenn person_sicher = true.
+- Wenn person_sicher = false, keinen Namen verwenden und keine persönliche Anrede schreiben.
+- Fristen nicht als abgelaufen behaupten, wenn Zugang/Bekanntgabe nicht sicher bekannt ist.
+- Beträge, Daten, Aktenzeichen nur aus den erkannten Daten übernehmen.
+- Bei Inkasso/Vollstreckung: nicht automatisch Zahlungszusage empfehlen. Erst Forderung/Titel prüfen, dann Ratenzahlung nur als Möglichkeit.
+- Bei Jobcenter/Bescheid: Widerspruchsfrist, Rückforderung, Aufrechnung und Beratung klar nennen.
+- Bei Gericht/Polizei: keine Rechtsberatung, Termin/Frist ernst nehmen, bei Unsicherheit Beratung/Anwalt erwähnen.
+- Keine langen Textwände.
+- Kurztext maximal 4 kurze Zeilen.
+- Details klarer als Liste/Abschnitte, nicht als Roman.
+
+STIL:
+Human + EL5 + DLTR + Listify
+- menschlich
+- sehr einfach
+- keine Romane
+- Listen statt Textwand
+
+ERKANNTE DATEN:
+${JSON.stringify({
+  briefart: info.briefart,
+  absender: info.absender_kurz || info.absender_original,
+  person: safe.personForOfficialText,
+  person_sicher: safe.personSafe,
+  betrag: info.betrag,
+  frist: info.frist,
+  termin: info.termin,
+  referenzen: safe.referencesSafe ? info.referenzen : [],
+  referenzen_sicher: safe.referencesSafe,
+  roh_referenzen: info.referenzen,
+  dringlichkeit: info.dringlichkeit,
+  pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
+  folge_wenn_nichts: info.folge_wenn_nichts,
+  wichtigste_punkte: info.wichtigste_punkte,
+  was_ist_zu_tun: info.was_ist_zu_tun,
+  naechster_schritt: info.naechster_schritt,
+  unsicherheiten: info.unsicherheiten
+}, null, 2)}
+
+AKTUELLER KURZTEXT:
+${translated.kurz}
+
+AKTUELLE DETAILS:
+${translated.details}
+
+Antworte nur mit gültigem JSON:
+{
+  "kurz": "",
+  "details": "",
+  "first_step": "",
+  "next_steps": [],
+  "suggested_actions": [],
+  "whatsapp_summary": ""
+}
+`
+    }
+  ]);
+
+  const parsed = extractJson(raw);
+  const kurz = cleanText(parsed.kurz || translated.kurz);
+  const details = cleanText(parsed.details || translated.details);
+  const nextSteps = normalizeArray(parsed.next_steps).slice(0, 4);
+  const suggestedActions = normalizeArray(parsed.suggested_actions).slice(0, 5);
+  const firstStep = normalizeString(parsed.first_step) || helper.first_step;
+  const whatsappSummary = normalizeString(parsed.whatsapp_summary) || helper.whatsapp_summary;
+
+  return {
+    translated: {
+      kurz,
+      details
+    },
+    helper: {
+      ...helper,
+      quality_mode: true,
+      quality_type: mode,
+      first_step: firstStep,
+      next_steps: nextSteps.length ? nextSteps : helper.next_steps,
+      suggested_actions: suggestedActions.length ? suggestedActions : helper.suggested_actions,
+      whatsapp_summary: whatsappSummary
+    }
+  };
+}
+
 async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
   const langCode = getLanguageMeta(lang).code;
   const safe = getSafeCriticalMeta(info, sourceMode);
@@ -1696,8 +1888,12 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
   const shortDe = cleanText(renderShortByLanguage(safeInfoForShort, "de"));
   const detailTemplateDe = cleanText(renderDetailTemplateGerman(safeInfoForShort));
 
-  const translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
-  const helper = await buildHelperCardsFromInfo(info, langCode, sourceMode);
+  let translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
+  let helper = await buildHelperCardsFromInfo(info, langCode, sourceMode);
+
+  const qualityResult = await improveQualityTextsIfNeeded(info, translated, helper, langCode, sourceMode);
+  translated = qualityResult.translated;
+  helper = qualityResult.helper;
 
   return {
     ok: true,
@@ -1946,6 +2142,17 @@ Frage des Nutzers:
 ${frage}
 Frage-Modus:
 ${frageMode}
+
+QUALITÄTSMODUS V7:
+Bei wichtigen Briefen wie Inkasso, Vollstreckung, Gericht, Polizei, Jobcenter, Rückforderung, Aufrechnung, Krankenkasse, Kündigung, Mahnung oder Bescheid musst du besonders vorsichtig sein.
+- Keine Namen erfinden.
+- Keine lockere Anrede wie "Hallo Krassa" oder "Hallo Ksenia" verwenden.
+- Wenn meta.person fehlt, schreibe keine persönliche Anrede und unterschreibe mit [Name].
+- Keine Frist als abgelaufen behaupten, wenn das tatsächliche Zugangsdatum/Bekanntgabedatum nicht sicher bekannt ist.
+- Bei Inkasso/Vollstreckung: erst Forderung/Titel prüfen; Ratenzahlung nur als Möglichkeit, keine Zahlungszusage erfinden.
+- Bei fertigen Schreiben an Inkasso: fordere eine Forderungsaufstellung an und bitte um Aussetzung weiterer Maßnahmen bis zur Klärung, wenn passend.
+- Bei Bescheid/Widerspruch: Frist nennen, aber nicht rechtlich abschließend bewerten.
+- Schreibe Human + EL5 + DLTR + Listify: menschlich, sehr einfach, kurz, listenartig.
 
 AUFGABE:
 Beantworte die Frage konkret anhand des Schreibens, der Erklärung, der erkannten Daten und der Nutzerfrage.
