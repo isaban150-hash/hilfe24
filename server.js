@@ -1410,10 +1410,55 @@ ${JSON.stringify(info, null, 2)}
 }
 
 async function buildInfoFromImages(bilder) {
-  const rawText = await buildRawTextFromImages(bilder);
-  let info = await buildInfoFromText(rawText);
-  info = await verifyCriticalInfoFromImages(bilder, info, rawText);
+  // V7.6 TURBO: Nur ein Gemini-Bildaufruf für die erste Analyse.
+  // Die frühere Pipeline (OCR -> Textanalyse -> Bildprüfung) war genauer,
+  // aber auf Smartphones oft 2-3 Minuten langsam.
+  // Unsichere Daten werden deshalb lieber als "bitte prüfen" behandelt.
+  const parts = [
+    {
+      text: buildExtractionPromptForImages() + `
 
+V7.6 TURBO-REGELN:
+- Arbeite schnell und direkt aus den Bildern.
+- Die Bilder können ganze Seiten oder Nahaufnahmen sein.
+- Nutze Nahaufnahmen besonders für Name, Datum, Aktenzeichen, Betrag, Frist und Rechtsbehelf.
+- Wenn ein Name oder Aktenzeichen nicht eindeutig lesbar ist: leer lassen oder in unsicherheiten schreiben.
+- Keine zweite Sicherheitsrunde. Deshalb lieber unsicher markieren als raten.
+- Betrag, Datum und Frist nur übernehmen, wenn klar lesbar.
+`
+    }
+  ];
+
+  let pageIndex = 1;
+
+  for (const bild of bilder) {
+    if (!bild.imageData || !bild.mimeType) continue;
+
+    parts.push({
+      text: `
+FOTO ${pageIndex}: Ganzseite oder Nahaufnahme. Bitte sorgfältig lesen.
+`
+    });
+
+    parts.push({
+      inline_data: {
+        mime_type: bild.mimeType,
+        data: bild.imageData
+      }
+    });
+
+    pageIndex++;
+  }
+
+  const rawJson = await callGemini(parts);
+  const info = normalizeInfo(extractJson(rawJson));
+
+  if (!Array.isArray(info.unsicherheiten)) {
+    info.unsicherheiten = [];
+  }
+
+  // Bei Bildanalyse Namen und Referenzen nicht blind als sicher behandeln.
+  // Die Datenbox zeigt sie später bei Unsicherheit als "Bitte prüfen".
   return normalizeInfo(info);
 }
 
@@ -2295,7 +2340,7 @@ async function buildFinalAnswerFromImages(bilder, lang) {
       };
     }
 
-    if (bild.imageData.length > 14000000) {
+    if (bild.imageData.length > 10000000) {
       return {
         ok: false,
         error: "Ein Bild ist zu groß. Bitte fotografiere die Seite klar, aber nicht zu nah, oder lade weniger Fotos hoch."
