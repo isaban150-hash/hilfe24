@@ -62,12 +62,19 @@
     padding:12px; margin-top:8px; box-shadow:0 8px 22px rgba(16,42,67,.05);
   }
   .upload-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .upload-actions { display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%; }
   .upload-btn {
     display:inline-flex; align-items:center; justify-content:center; gap:8px; margin:0;
     border-radius:16px; padding:12px 14px; background:linear-gradient(135deg,#0ea5a4,#2563eb);
     color:white; font-weight:900; cursor:pointer; box-shadow:0 10px 22px rgba(14,165,164,.22);
+    text-align:center; min-height:48px;
   }
-  .upload-info { color:var(--muted); font-size:14px; font-weight:800; }
+  .upload-btn.secondary-upload {
+    background:linear-gradient(135deg,#ecfeff,#eef2ff); color:#0f172a; box-shadow:none; border:1px solid var(--border);
+  }
+  .upload-info { color:var(--muted); font-size:14px; font-weight:800; display:block; width:100%; }
+  .upload-clear { border:0; background:transparent; color:#dc2626; padding:4px 0 0; font-size:13px; font-weight:900; cursor:pointer; display:none; }
+  .upload-clear.visible { display:inline-flex; }
   select:focus, textarea:focus { border-color: var(--primary); box-shadow:0 0 0 4px rgba(14,165,164,.13); }
   .hero {
     background:
@@ -266,12 +273,17 @@
           <div class="input-panel">
             <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
             <div class="upload-box">
+              <input id="cameraInput" class="file-input-hidden" type="file" accept="image/*" capture="environment" />
               <input id="bilder" class="file-input-hidden" type="file" accept="image/*" multiple />
               <div class="upload-row">
-                <label id="uploadChooseBtn" class="upload-btn" for="bilder">📸 Fotos auswählen</label>
+                <div class="upload-actions">
+                  <label id="uploadCameraBtn" class="upload-btn" for="cameraInput">📷 Foto machen</label>
+                  <label id="uploadChooseBtn" class="upload-btn secondary-upload" for="bilder">🖼️ Aus Galerie wählen</label>
+                </div>
                 <span id="uploadFileInfo" class="upload-info">Noch keine Fotos ausgewählt</span>
+                <button id="uploadClearBtn" class="upload-clear" type="button">Auswahl löschen</button>
               </div>
-              <div id="photoHintText" class="hint">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>
+              <div id="photoHintText" class="hint">Du kannst insgesamt bis zu 3 Fotos vom selben Brief hinzufügen. Auf dem Smartphone kannst du mehrmals Foto machen drücken oder Bilder aus der Galerie wählen.</div>
               <div id="previewGrid" class="preview-grid"></div>
             </div>
           </div>
@@ -531,7 +543,7 @@
     textLabel: "Brief als Text",
     photoLabel: "Brief-Fotos hochladen",
     placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-    hint: "Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.",
+    hint: "Du kannst insgesamt bis zu 3 Fotos vom selben Brief hinzufügen. Auf dem Smartphone kannst du mehrmals Foto machen drücken oder Bilder aus der Galerie wählen.",
     analyze: "Brief erklären",
     back: "← Zurück zur Startseite",
     langLabel: "Sprache",
@@ -539,9 +551,12 @@
     answerLabel: "Antwort",
     assistantTitle: "Schick mir dein Schreiben.",
     assistantSub: "Foto hochladen oder Text einfügen.",
-    uploadChoose: "📸 Fotos auswählen",
+    uploadCamera: "📷 Foto machen",
+    uploadChoose: "🖼️ Aus Galerie wählen",
     uploadEmpty: "Noch keine Fotos ausgewählt",
     uploadSelected: "Fotos ausgewählt",
+    uploadClear: "Auswahl löschen",
+    uploadLimit: "Du kannst maximal 3 Fotos hinzufügen.",
     audioDock: "Audio"
   },
   tr: {
@@ -549,7 +564,7 @@
     textLabel: "Mektup metni",
     photoLabel: "Mektup fotoğrafları yükle",
     placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yaz veya yapıştır",
-    hint: "Aynı mektuptan 1, 2 veya 3 fotoğraf yükleyebilirsin. Birden fazla sayfa varsa önce fotoğrafları çek, sonra galeriden seç.",
+    hint: "Aynı mektuptan toplam 3 fotoğrafa kadar ekleyebilirsin. Telefonda birkaç kez fotoğraf çekebilir veya galeriden seçebilirsin.",
     analyze: "Mektubu açıkla",
     back: "← Ana sayfaya dön",
     langLabel: "Dil",
@@ -557,9 +572,12 @@
     answerLabel: "Cevap",
     assistantTitle: "Yazını bana gönder.",
     assistantSub: "Fotoğraf yükle veya metin ekle.",
-    uploadChoose: "📸 Fotoğraf seç",
+    uploadCamera: "📷 Fotoğraf çek",
+    uploadChoose: "🖼️ Galeriden seç",
     uploadEmpty: "Henüz fotoğraf seçilmedi",
     uploadSelected: "fotoğraf seçildi",
+    uploadClear: "Seçimi temizle",
+    uploadLimit: "En fazla 3 fotoğraf ekleyebilirsin.",
     audioDock: "Ses"
   },
   bg: {
@@ -567,7 +585,7 @@
     textLabel: "Текст на писмото",
     photoLabel: "Качи снимки на писмото",
     placeholder: "Постави текста тук, ако не искаш да качваш снимка",
-    hint: "Можеш да качиш 1, 2 или 3 снимки от едно и също писмо. Ако има няколко страници, първо ги снимай, после ги избери от галерията.",
+    hint: "Можеш да добавиш общо до 3 снимки от едно и също писмо. На телефона можеш няколко пъти да направиш снимка или да избереш от галерията.",
     analyze: "Обясни писмото",
     back: "← Назад към началната страница",
     langLabel: "Език",
@@ -575,9 +593,12 @@
     answerLabel: "Отговор",
     assistantTitle: "Изпрати ми писмото.",
     assistantSub: "Качи снимка или постави текст.",
-    uploadChoose: "📸 Избери снимки",
+    uploadCamera: "📷 Направи снимка",
+    uploadChoose: "🖼️ Избери от галерията",
     uploadEmpty: "Още няма избрани снимки",
     uploadSelected: "избрани снимки",
+    uploadClear: "Изчисти избора",
+    uploadLimit: "Можеш да добавиш най-много 3 снимки.",
     audioDock: "Аудио"
   },
   ar: {
@@ -585,7 +606,7 @@
     textLabel: "نص الرسالة",
     photoLabel: "ارفع صور الرسالة",
     placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
-    hint: "يمكنك رفع 1 أو 2 أو 3 صور من نفس الرسالة. إذا كانت هناك عدة صفحات، صوّرها أولًا ثم اخترها من المعرض.",
+    hint: "يمكنك إضافة ما يصل إلى 3 صور من نفس الرسالة. على الهاتف يمكنك التقاط صورة عدة مرات أو الاختيار من المعرض.",
     analyze: "اشرح الرسالة",
     back: "← الرجوع إلى الصفحة الرئيسية",
     langLabel: "اللغة",
@@ -593,9 +614,12 @@
     answerLabel: "الإجابة",
     assistantTitle: "أرسل لي الرسالة.",
     assistantSub: "ارفع صورة أو أدخل النص.",
-    uploadChoose: "📸 اختر الصور",
+    uploadCamera: "📷 التقط صورة",
+    uploadChoose: "🖼️ اختر من المعرض",
     uploadEmpty: "لم يتم اختيار صور بعد",
     uploadSelected: "صور مختارة",
+    uploadClear: "مسح الاختيار",
+    uploadLimit: "يمكنك إضافة 3 صور كحد أقصى.",
     audioDock: "الصوت"
   },
   ro: {
@@ -603,7 +627,7 @@
     textLabel: "Textul scrisorii",
     photoLabel: "Încarcă poze cu scrisoarea",
     placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
-    hint: "Poți încărca 1, 2 sau 3 poze din aceeași scrisoare. Dacă sunt mai multe pagini, fă pozele mai întâi, apoi selectează-le din galerie.",
+    hint: "Poți adăuga până la 3 poze din aceeași scrisoare. Pe telefon poți face poze de mai multe ori sau poți alege din galerie.",
     analyze: "Explică scrisoarea",
     back: "← Înapoi la pagina principală",
     langLabel: "Limbă",
@@ -611,9 +635,12 @@
     answerLabel: "Răspuns",
     assistantTitle: "Trimite-mi documentul.",
     assistantSub: "Încarcă o poză sau introdu textul.",
-    uploadChoose: "📸 Alege poze",
+    uploadCamera: "📷 Fă o poză",
+    uploadChoose: "🖼️ Alege din galerie",
     uploadEmpty: "Nu ai ales poze încă",
     uploadSelected: "poze selectate",
+    uploadClear: "Șterge selecția",
+    uploadLimit: "Poți adăuga maximum 3 poze.",
     audioDock: "Audio"
   },
   en: {
@@ -621,7 +648,7 @@
     textLabel: "Letter text",
     photoLabel: "Upload letter photos",
     placeholder: "Paste the text here if you do not want to upload a photo",
-    hint: "You can upload 1, 2 or 3 photos from the same letter. If there are several pages, take the photos first, then select them from your gallery.",
+    hint: "You can add up to 3 photos from the same letter. On a smartphone, you can take photos more than once or choose them from your gallery.",
     analyze: "Explain letter",
     back: "← Back to start page",
     langLabel: "Language",
@@ -629,9 +656,12 @@
     answerLabel: "Answer",
     assistantTitle: "Send me your document.",
     assistantSub: "Upload a photo or paste text.",
-    uploadChoose: "📸 Choose photos",
+    uploadCamera: "📷 Take photo",
+    uploadChoose: "🖼️ Choose from gallery",
     uploadEmpty: "No photos selected yet",
     uploadSelected: "photos selected",
+    uploadClear: "Clear selection",
+    uploadLimit: "You can add a maximum of 3 photos.",
     audioDock: "Audio"
   }
 };
@@ -907,7 +937,10 @@ en: {
     const langEl = document.getElementById("lang");
     const briefTextEl = document.getElementById("briefText");
     const bilderEl = document.getElementById("bilder");
+    const cameraInputEl = document.getElementById("cameraInput");
+    const uploadCameraBtnEl = document.getElementById("uploadCameraBtn");
     const uploadChooseBtnEl = document.getElementById("uploadChooseBtn");
+    const uploadClearBtnEl = document.getElementById("uploadClearBtn");
     const uploadFileInfoEl = document.getElementById("uploadFileInfo");
     const previewGridEl = document.getElementById("previewGrid");
     const analyzeBtn = document.getElementById("analyzeBtn");
@@ -970,6 +1003,7 @@ let currentBriefText = "";
 let currentMeta = {};
 let activeRequestId = 0;
 let activeAudioUrl = "";
+let selectedImageFiles = [];
 let frageMode = "free";
 window.frageMode = "free";
   
@@ -1119,12 +1153,10 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
     function goBackHome() {
       if (briefTextEl) briefTextEl.value = "";
+      selectedImageFiles = [];
       if (bilderEl) bilderEl.value = "";
-      if (previewGridEl) previewGridEl.innerHTML = "";
-      if (uploadFileInfoEl) {
-        const t = briefTexts[currentLang] || briefTexts.de;
-        uploadFileInfoEl.textContent = t.uploadEmpty || "Noch keine Fotos ausgewählt";
-      }
+      if (cameraInputEl) cameraInputEl.value = "";
+      updateUploadState();
 
       activeRequestId++;
       clearOutputState();
@@ -1247,13 +1279,13 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       clearResults();
     }
 
-    function renderPreviews() {
-      if (!previewGridEl || !bilderEl) return;
+    function updateUploadState() {
+      if (!previewGridEl) return;
 
       previewGridEl.innerHTML = "";
-      const files = Array.from(bilderEl.files || []);
       const lang = getSelectedLang();
       const t = briefTexts[lang] || briefTexts.de;
+      const files = selectedImageFiles.slice(0, 3);
 
       if (uploadFileInfoEl) {
         uploadFileInfoEl.textContent = files.length
@@ -1261,12 +1293,48 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
           : (t.uploadEmpty || "Noch keine Fotos ausgewählt");
       }
 
-      for (const file of files.slice(0, 3)) {
+      if (uploadClearBtnEl) {
+        if (files.length) {
+          uploadClearBtnEl.classList.add("visible");
+        } else {
+          uploadClearBtnEl.classList.remove("visible");
+        }
+      }
+
+      for (const file of files) {
         const img = document.createElement("img");
         img.src = URL.createObjectURL(file);
         img.onload = () => URL.revokeObjectURL(img.src);
         previewGridEl.appendChild(img);
       }
+    }
+
+    function addSelectedImages(files) {
+      const lang = getSelectedLang();
+      const t = briefTexts[lang] || briefTexts.de;
+      const incoming = Array.from(files || []).filter(file => file && file.type && file.type.startsWith("image/"));
+
+      for (const file of incoming) {
+        if (selectedImageFiles.length >= 3) break;
+        selectedImageFiles.push(file);
+      }
+
+      if (incoming.length && selectedImageFiles.length >= 3 && incoming.length > 3) {
+        alert(t.uploadLimit || "Du kannst maximal 3 Fotos hinzufügen.");
+      }
+
+      updateUploadState();
+    }
+
+    function clearSelectedImages() {
+      selectedImageFiles = [];
+      if (bilderEl) bilderEl.value = "";
+      if (cameraInputEl) cameraInputEl.value = "";
+      updateUploadState();
+    }
+
+    function renderPreviews() {
+      updateUploadState();
     }
 
     async function fileToBase64(file) {
@@ -1418,7 +1486,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
   const requestId = ++activeRequestId;
 
   const text = briefTextEl ? briefTextEl.value.trim() : "";
-  const files = bilderEl ? Array.from(bilderEl.files || []) : [];
+  const files = selectedImageFiles.slice(0, 3);
   const lang = getSelectedLang();
 
   currentLang = lang;
@@ -1737,8 +1805,22 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         resetBtn.onclick = goBackHome;
       }
 
+      if (cameraInputEl) {
+        cameraInputEl.onchange = function () {
+          addSelectedImages(cameraInputEl.files || []);
+          cameraInputEl.value = "";
+        };
+      }
+
       if (bilderEl) {
-        bilderEl.onchange = renderPreviews;
+        bilderEl.onchange = function () {
+          addSelectedImages(bilderEl.files || []);
+          bilderEl.value = "";
+        };
+      }
+
+      if (uploadClearBtnEl) {
+        uploadClearBtnEl.onclick = clearSelectedImages;
       }
 
       if (analyzeBtn) {
