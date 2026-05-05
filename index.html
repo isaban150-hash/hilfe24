@@ -1324,7 +1324,28 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
           <ol class="step-list">${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
         </div>` : "";
 
-      const actions = Array.isArray(helper.suggested_actions) ? helper.suggested_actions.filter(Boolean).slice(0, 5) : [];
+      function normalizeActionLabel(action) {
+        if (!action) return "";
+
+        if (typeof action === "string") {
+          return action.trim();
+        }
+
+        if (typeof action === "object") {
+          const possible = action.label || action.title || action.name || action.text || action.action || action.value || action.code || "";
+          return String(possible || "").trim();
+        }
+
+        return String(action || "").trim();
+      }
+
+      const actions = Array.isArray(helper.suggested_actions)
+        ? helper.suggested_actions
+            .map(normalizeActionLabel)
+            .filter((item) => item && item !== "[object Object]")
+            .slice(0, 5)
+        : [];
+
       const actionHtml = actions.length ? `
         <div class="helper-section">
           <div class="helper-section-title">${escapeHtml(HL.actions)}</div>
