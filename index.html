@@ -6,6 +6,7 @@
   <title>Hilfe24</title>
 
 <style>
+
   html {
     color-scheme: light;
   }
@@ -286,17 +287,149 @@
         font-size: 18px;
       }
     }
-  </style>
+  
+
+/* Hilfe24 V2 Layout */
+.wrap {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: 92px;
+}
+
+.hero-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid var(--border);
+}
+
+.hero-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.input-choice-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.choice-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: #ffffff;
+  font-weight: 700;
+}
+
+.choice-card span {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.result-card-main {
+  border-left: 6px solid #22c55e;
+}
+
+.next-card {
+  border-left: 6px solid #2563eb;
+}
+
+.question-card {
+  border-left: 6px solid #a855f7;
+}
+
+.audio-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 999;
+  max-width: 920px;
+  margin: 0 auto;
+  background: #111827;
+  color: #ffffff;
+  border-radius: 18px;
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+}
+
+.audio-bar-title {
+  flex: 1;
+  font-size: 13px;
+  color: #d1d5db;
+  line-height: 1.35;
+}
+
+.audio-bar button {
+  flex: 0 0 auto;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.audio-bar .audio-stop-fixed {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.audio-bar .audio-short-fixed {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+@media (max-width: 600px) {
+  .wrap {
+    padding: 12px;
+    padding-bottom: 96px;
+  }
+
+  .hero-title-row {
+    flex-direction: column;
+  }
+
+  .audio-bar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+}
+
+</style>
 </head>
 
 <body>
   <div class="wrap">
 
-    <div id="homeCard" class="card">
-      <h1>Hilfe24</h1>
-
-      <div id="homeSubTitle" class="sub">
-        Verstehen. Antworten. Erledigen.
+    <div id="homeCard" class="card hero-card">
+      <div class="hero-title-row">
+        <div>
+          <h1>Hilfe24</h1>
+          <div id="homeSubTitle" class="sub">Verstehen. Antworten. Erledigen.</div>
+        </div>
+        <div class="brand-badge">Beta · Hilfe im Alltag</div>
       </div>
 
       <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
@@ -309,32 +442,30 @@
         <option value="en">🇬🇧 English</option>
       </select>
 
-      <div id="homeQuestionTitle" class="section-title">
-        Wobei brauchst du Hilfe?
-      </div>
+      <div id="homeQuestionTitle" class="section-title">Wobei brauchst du Hilfe?</div>
 
       <div class="home-grid">
-        <button id="openBriefBtn" class="home-btn" type="button" onclick="window.h24OpenBrief ? window.h24OpenBrief() : openBriefArea()">
+        <button id="openBriefBtn" class="home-btn" type="button">
           📄 Schreiben verstehen
           <span>Briefe, E-Mails, SMS, WhatsApp, Behördenpost</span>
         </button>
 
-        <button id="soonAntraegeBtn" class="home-btn" type="button" onclick="showComingSoon()">
+        <button id="soonAntraegeBtn" class="home-btn" type="button">
           📝 Anträge & Vorteile
           <span>Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge</span>
         </button>
 
-        <button id="soonAntwortBtn" class="home-btn" type="button" onclick="showComingSoon()">
+        <button id="soonAntwortBtn" class="home-btn" type="button">
           ✍️ Antwort erstellen
           <span>E-Mail, Brief, PDF, Kündigung, Reklamation</span>
         </button>
 
-        <button id="soonFotoBtn" class="home-btn" type="button" onclick="showComingSoon()">
+        <button id="soonFotoBtn" class="home-btn" type="button">
           📸 Foto fragen
           <span>Produkt, Medikament, Screenshot, Anleitung, Technik</span>
         </button>
 
-        <button id="soonHilfeBtn" class="home-btn" type="button" onclick="showComingSoon()">
+        <button id="soonHilfeBtn" class="home-btn" type="button">
           ❓ Alltag & Beruf
           <span>Fragen zu Arbeit, Familie, Pflege, Schule, Verträgen und Alltag</span>
         </button>
@@ -343,11 +474,9 @@
 
     <div id="briefInputCard" class="card hidden">
       <h1>Hilfe24</h1>
+      <div id="briefSubTitle" class="sub">Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.</div>
 
-      <div id="briefSubTitle" class="sub">
-        Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.
-      </div>
-
+      <label for="lang">Sprache</label>
       <select id="lang">
         <option value="de">🇩🇪 Deutsch</option>
         <option value="tr">🇹🇷 Türkçe</option>
@@ -357,17 +486,18 @@
         <option value="en">🇬🇧 English</option>
       </select>
 
-      <label id="briefTextLabel" for="briefText">Brief als Text</label>
-      <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
+      <div class="input-choice-row">
+        <div class="choice-card">📸 Foto hochladen<span>Brief, Rechnung oder Schreiben fotografieren.</span></div>
+        <div class="choice-card">✍️ Text einfügen<span>Text kopieren oder Frage direkt schreiben.</span></div>
+      </div>
 
       <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
       <input id="bilder" type="file" accept="image/*" multiple />
-
-      <div id="photoHintText" class="sub">
-        Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.
-      </div>
-
+      <div id="photoHintText" class="sub">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>
       <div id="previewGrid" class="preview-grid"></div>
+
+      <label id="briefTextLabel" for="briefText">Brief als Text</label>
+      <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
 
       <div class="button-row">
         <button id="analyzeBtn" class="btn-primary" type="button">Brief erklären</button>
@@ -384,66 +514,41 @@
       <div id="warningText" class="warning"></div>
     </div>
 
-    <div id="resultCard" class="card hidden">
+    <div id="resultCard" class="card result-card-main hidden">
       <div id="shortTitle" class="section-title">Kurz erklärt</div>
       <div id="kurzText" class="short-box"></div>
-
       <div class="audio-row">
         <button id="readShortBtn" class="btn-primary" type="button">🔊 Kurz vorlesen</button>
         <button id="stopBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
       </div>
-
       <div id="audioStatus" class="audio-status hidden"></div>
       <audio id="audioPlayer" controls class="hidden"></audio>
     </div>
 
     <div id="detailToggleCard" class="card hidden">
-      <button id="toggleDetailsBtn" class="btn-secondary" type="button">
-        📋 Mehr Details anzeigen
-      </button>
+      <button id="toggleDetailsBtn" class="btn-secondary" type="button">📋 Mehr Details anzeigen</button>
     </div>
 
-    <div id="detailCard" class="card hidden">
+    <div id="detailCard" class="card next-card hidden">
       <div id="detailTitle" class="section-title">Mehr Details</div>
       <div id="detailText" class="detail-box"></div>
-
       <div class="audio-row">
         <button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button>
         <button id="stopDetailsBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
       </div>
     </div>
 
-    <div id="frageCard" class="card hidden">
+    <div id="frageCard" class="card question-card hidden">
       <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
-
-      <div id="frageHelp" class="sub">
-        Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.
-      </div>
-
-      <div id="quickQuestionTitle" class="sub" style="font-weight:700; color: var(--text);">
-        Schnellfragen:
-      </div>
+      <div id="frageHelp" class="sub">Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.</div>
+      <div id="quickQuestionTitle" class="sub" style="font-weight:700; color: var(--text);">Schnellfragen:</div>
 
       <div class="button-row">
-        <button id="quickWhatBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('next_steps')">
-          Was muss ich tun?
-        </button>
-
-        <button id="quickDeadlineBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('deadline')">
-          Bis wann?
-        </button>
-
-        <button id="quickConsequenceBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('consequence')">
-          Was passiert, wenn ich nichts mache?
-        </button>
-
-        <button id="quickReplyBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('reply')">
-          Schreib mir eine Antwort
-        </button>
-
-        <button id="ownQuestionBtn" class="btn-secondary" type="button" onclick="h24OwnQuestion()">
-          ✍️ Eigene Frage stellen
-        </button>
+        <button id="quickWhatBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('next_steps')">Was muss ich tun?</button>
+        <button id="quickDeadlineBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('deadline')">Bis wann?</button>
+        <button id="quickConsequenceBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('consequence')">Was passiert, wenn ich nichts mache?</button>
+        <button id="quickReplyBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('reply')">Schreib mir eine Antwort</button>
+        <button id="ownQuestionBtn" class="btn-secondary" type="button" onclick="h24OwnQuestion()">✍️ Eigene Frage stellen</button>
       </div>
 
       <label id="frageTextLabel" for="frageText">Deine Frage</label>
@@ -459,18 +564,22 @@
       <div id="frageAntwortBox" class="hidden">
         <div id="frageAntwortTitle" class="section-title">Antwort</div>
         <div id="frageAntwort" class="detail-box"></div>
-
         <div class="audio-row">
-          <button id="readFrageAntwortBtn" class="btn-secondary" type="button">
-            🔊 Antwort vorlesen
-          </button>
+          <button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Antwort vorlesen</button>
           <button id="stopAnswerBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
         </div>
       </div>
     </div>
-
   </div>
+
+  <div class="audio-bar" aria-label="Audio Steuerung">
+    <div class="audio-bar-title">Audio-Steuerung bleibt unten sichtbar.</div>
+    <button class="audio-short-fixed" type="button" onclick="window.h24ReadShort && window.h24ReadShort()">🔊 Kurz</button>
+    <button class="audio-stop-fixed" type="button" onclick="stopAudio()">⏹ Stoppen</button>
+  </div>
+
 <script>
+
   
    const homeTexts = {
   
@@ -1769,7 +1878,14 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     window.explainLetter = explainLetter;
     window.askQuestionAboutLetter = askQuestionAboutLetter;
     window.stopAudio = stopAudio;
-  </script>
+    window.h24ReadShort = function () { playServerAudio(currentKurzText); };
+    window.h24ReadDetails = function () { playServerAudio(currentDetailText); };
+    window.h24ReadAnswer = function () {
+      const text = frageAntwortEl ? frageAntwortEl.textContent : "";
+      playServerAudio(text);
+    };
+  
+</script>
 
- </body>
+</body>
 </html>
