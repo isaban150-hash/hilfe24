@@ -283,7 +283,7 @@
                 <span id="uploadFileInfo" class="upload-info">Noch keine Fotos ausgewählt</span>
                 <button id="uploadClearBtn" class="upload-clear" type="button">Auswahl löschen</button>
               </div>
-              <div id="photoHintText" class="hint">Du kannst insgesamt bis zu 3 Fotos vom selben Brief hinzufügen. Auf dem Smartphone kannst du mehrmals Foto machen drücken oder Bilder aus der Galerie wählen.</div>
+              <div id="photoHintText" class="hint">Du kannst bis zu 3 Fotos hinzufügen. Fotografiere jede Seite einzeln, gerade von oben, scharf und ohne Schatten. Kleine Schrift lieber etwas näher fotografieren.</div>
               <div id="previewGrid" class="preview-grid"></div>
             </div>
           </div>
@@ -543,7 +543,7 @@
     textLabel: "Brief als Text",
     photoLabel: "Brief-Fotos hochladen",
     placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-    hint: "Du kannst insgesamt bis zu 3 Fotos vom selben Brief hinzufügen. Auf dem Smartphone kannst du mehrmals Foto machen drücken oder Bilder aus der Galerie wählen.",
+    hint: "Du kannst bis zu 3 Fotos hinzufügen. Fotografiere jede Seite einzeln, gerade von oben, scharf und ohne Schatten. Kleine Schrift lieber etwas näher fotografieren.",
     analyze: "Brief erklären",
     back: "← Zurück zur Startseite",
     langLabel: "Sprache",
@@ -564,7 +564,7 @@
     textLabel: "Mektup metni",
     photoLabel: "Mektup fotoğrafları yükle",
     placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yaz veya yapıştır",
-    hint: "Aynı mektuptan toplam 3 fotoğrafa kadar ekleyebilirsin. Telefonda birkaç kez fotoğraf çekebilir veya galeriden seçebilirsin.",
+    hint: "Toplam 3 fotoğraf ekleyebilirsin. Her sayfayı ayrı çek: düz, net, gölgesiz. Küçük yazılar varsa biraz daha yakından çek.",
     analyze: "Mektubu açıkla",
     back: "← Ana sayfaya dön",
     langLabel: "Dil",
@@ -585,7 +585,7 @@
     textLabel: "Текст на писмото",
     photoLabel: "Качи снимки на писмото",
     placeholder: "Постави текста тук, ако не искаш да качваш снимка",
-    hint: "Можеш да добавиш общо до 3 снимки от едно и също писмо. На телефона можеш няколко пъти да направиш снимка или да избереш от галерията.",
+    hint: "Можеш да добавиш до 3 снимки. Снимай всяка страница отделно: право отгоре, ясно и без сянка. Малък текст снимай малко по-отблизо.",
     analyze: "Обясни писмото",
     back: "← Назад към началната страница",
     langLabel: "Език",
@@ -606,7 +606,7 @@
     textLabel: "نص الرسالة",
     photoLabel: "ارفع صور الرسالة",
     placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
-    hint: "يمكنك إضافة ما يصل إلى 3 صور من نفس الرسالة. على الهاتف يمكنك التقاط صورة عدة مرات أو الاختيار من المعرض.",
+    hint: "يمكنك إضافة حتى 3 صور. صوّر كل صفحة وحدها بوضوح ومن الأعلى وبدون ظل. إذا كان الخط صغيرًا، اقترب قليلًا.",
     analyze: "اشرح الرسالة",
     back: "← الرجوع إلى الصفحة الرئيسية",
     langLabel: "اللغة",
@@ -1361,8 +1361,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         };
       }
 
-      const maxSize = 1600;
-      const quality = 0.75;
+      const maxSize = 2400;
+      const quality = 0.88;
 
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
