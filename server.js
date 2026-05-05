@@ -360,6 +360,32 @@ Du musst erkennen, was für den Menschen wirklich wichtig ist.
 Input:
 ${inputMode === "image" ? "Du bekommst Bilder eines Briefes / Schreibens." : "Du bekommst den Text eines Briefes / Schreibens."}
 
+GENAUIGKEIT BEI BILDERN / OCR:
+Wenn du Bilder bekommst, arbeite in dieser Reihenfolge:
+1. Lies den Text auf jeder Seite zuerst möglichst wörtlich.
+2. Unterscheide Seite 1, Seite 2 und Seite 3.
+3. Nutze nur Text, der wirklich sichtbar ist.
+4. Erkläre erst danach den Inhalt.
+
+EXTREM WICHTIG BEI NAMEN:
+- Namen niemals erraten.
+- Namen nur übernehmen, wenn Vorname/Nachname im Adressfeld, bei "Patient", "Versicherte Person", "Kunde", "Rechnungsempfänger", "Betroffene Person" oder im klaren Satz erkennbar ist.
+- Absendernamen, Firmen, Arztpraxen, Behörden, Städte, Sachbearbeiter und Zahnarztnamen NICHT als betroffene Person eintragen.
+- Wenn der Name nur teilweise lesbar ist, trage ihn NICHT in "betroffene_person" ein. Schreibe stattdessen in "unsicherheiten": "Name nicht sicher lesbar".
+- Wenn mehrere Namen vorkommen, wähle nur die Person, die wirklich vom Schreiben betroffen ist. Wenn unklar: leer lassen und Unsicherheit eintragen.
+
+EXTREM WICHTIG BEI RECHNUNGEN:
+- Unterscheide Rechnungssteller, Leistungserbringer, Patient/Empfänger und Versicherte Person.
+- Unterscheide Rechnungsdatum, Behandlungsdatum, Leistungsdatum, Fälligkeitsdatum und Zugangs-/Erhalt-Datum.
+- Bei Beträgen immer exakt Zahl, Komma/Punkt und Euro übernehmen.
+- Bei Rechnungsnummern, Kundennummern, RG-Nummern, Mahnnummern und Aktenzeichen exakt übernehmen.
+- Wenn die Zahlungsfrist nur "30 Tage nach Erhalt" oder "30 Tage nach Zugang" lautet, nicht automatisch ein konkretes Datum berechnen, außer das Schreiben nennt es klar.
+- Wenn Erstattung/Krankenkasse/Versicherung möglich wirkt, nur als Prüfung formulieren, niemals als sichere Erstattung.
+
+UNSICHERHEITEN AKTIV NUTZEN:
+Wenn Fotoqualität, Name, Datum, Betrag, Frist, Aktenzeichen oder Absender nicht sicher lesbar sind, trage das in "unsicherheiten" ein.
+Lieber leer lassen als falsch ausfüllen.
+
 ZIEL:
 Erkenne allgemein jede Art von Schreiben:
 - Brief
@@ -1138,8 +1164,16 @@ async function buildInfoFromImages(bilder) {
     }
   ];
 
+  let pageIndex = 1;
+
   for (const bild of bilder) {
     if (!bild.imageData || !bild.mimeType) continue;
+
+    parts.push({
+      text: `
+BILD / SEITE ${pageIndex}: Lies diese Seite genau. Übernimm Namen, Daten, Beträge und Nummern nur, wenn sie sicher lesbar sind. Wenn etwas unklar ist, schreibe es später in unsicherheiten.
+`
+    });
 
     parts.push({
       inline_data: {
@@ -1147,6 +1181,8 @@ async function buildInfoFromImages(bilder) {
         data: bild.imageData
       }
     });
+
+    pageIndex++;
   }
 
   const rawJson = await callGemini(parts);
@@ -1181,7 +1217,8 @@ async function buildFinalPayloadFromInfo(info, lang) {
       pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
       naechster_schritt: info.naechster_schritt,
       antwort_sprache: info.antwort_sprache,
-      passende_aktionen: info.passende_aktionen
+      passende_aktionen: info.passende_aktionen,
+      unsicherheiten: info.unsicherheiten
     }
   };
 }
