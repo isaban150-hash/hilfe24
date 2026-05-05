@@ -1380,12 +1380,173 @@ async function buildInfoFromImages(bilder) {
   return normalizeInfo(info);
 }
 
-async function buildFinalPayloadFromInfo(info, lang) {
+function getSafeCriticalMeta(info, sourceMode = "text") {
+  const uncertainties = dedupe(info.unsicherheiten || []);
+  const uncertaintyText = uncertainties.join(" ").toLowerCase();
+  const fromImage = sourceMode === "image";
+
+  const personRaw = normalizeString(info.betroffene_person);
+  const references = dedupe(info.referenzen || []);
+
+  // Bei Fotos darf ein Name nicht als sicher gelten. Ein Buchstabe Unterschied ist zu riskant.
+  const personSafe = Boolean(personRaw) && !fromImage && !hasAny(uncertaintyText, ["name", "person", "adress", "empfänger"]);
+
+  // Aktenzeichen/Referenzen aus Fotos sind oft durch Punkte/Striche fehleranfällig.
+  const referencesSafe = references.length > 0 && !fromImage && !hasAny(uncertaintyText, ["zeichen", "akten", "referenz", "nummer"]);
+
+  return {
+    personSafe,
+    personForOfficialText: personSafe ? personRaw : "",
+    personDisplay: personSafe ? personRaw : "",
+    referencesSafe,
+    referencesDisplay: referencesSafe ? references : references,
+    criticalUncertainties: uncertainties
+  };
+}
+
+function inferMustReact(info) {
+  const combined = [
+    info.briefart,
+    info.worum_geht_es,
+    info.frist,
+    info.termin,
+    info.folge_wenn_nichts,
+    info.naechster_schritt,
+    (info.was_ist_zu_tun || []).join(" "),
+    (info.passende_aktionen || []).join(" ")
+  ].join(" ").toLowerCase();
+
+  if (info.pflicht_oder_freiwillig === "werbung" || info.pflicht_oder_freiwillig === "freiwillig") return "no";
+  if (info.frist || info.termin || info.betrag) return "yes";
+  if (hasAny(combined, ["widerspruch", "frist", "termin", "zahlen", "zahlung", "forderung", "mahnung", "unterlagen", "nachreichen", "kündigung", "gericht", "polizei", "anhörung", "aufrechnung", "rückforderung"])) return "yes";
+  if (info.pflicht_oder_freiwillig === "information") return "maybe";
+  return "maybe";
+}
+
+function inferMoneyAffected(info) {
+  const combined = [
+    info.briefart,
+    info.worum_geht_es,
+    info.betrag,
+    info.folge_wenn_nichts,
+    info.naechster_schritt,
+    (info.was_ist_zu_tun || []).join(" ")
+  ].join(" ").toLowerCase();
+
+  if (info.betrag) return "yes";
+  if (hasAny(combined, ["rechnung", "forderung", "mahnen", "inkasso", "rückforderung", "aufrechnung", "zahlung", "betrag", "kosten", "gebühr", "miete", "kaution", "erstattung", "geld", "leistung", "abzug"])) return "yes";
+  return "maybe";
+}
+
+async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
+  const langMeta = getLanguageMeta(lang);
+  const safe = getSafeCriticalMeta(info, sourceMode);
+  const mustReact = inferMustReact(info);
+  const moneyAffected = inferMoneyAffected(info);
+
+  const safeFacts = {
+    sourceMode,
+    briefart: info.briefart || "",
+    absender: info.absender_kurz || info.absender_original || "",
+    person: safe.personForOfficialText,
+    person_safe: safe.personSafe,
+    amount: info.betrag || "",
+    deadline: info.frist || "",
+    appointment: info.termin || "",
+    references: safe.referencesDisplay || [],
+    references_safe: safe.referencesSafe,
+    urgency: info.dringlichkeit || "unklar",
+    duty: info.pflicht_oder_freiwillig || "unklar",
+    topic: info.worum_geht_es || "",
+    next_step: info.naechster_schritt || "",
+    consequences: info.folge_wenn_nichts || "",
+    documents: info.unterlagen || [],
+    actions: info.passende_aktionen || [],
+    uncertainties: info.unsicherheiten || [],
+    must_react_guess: mustReact,
+    money_affected_guess: moneyAffected
+  };
+
+  const raw = await callGemini([
+    {
+      text: `
+Du bist Hilfe24 und baust kurze Ergebnis-Karten für eine Hilfe-App.
+
+Sprache: ${langMeta.label}
+
+Nutze NUR diese geprüften Fakten. Erfinde keine Namen, Beträge, Fristen, Termine oder Aktenzeichen.
+Wenn person_safe=false, darfst du keinen Namen nennen. Schreibe dann sinngemäß: Name bitte im Brief prüfen.
+Wenn references_safe=false, sage bei Aktenzeichen/Nummer: bitte im Brief prüfen, auch wenn eine Nummer erkannt wurde.
+Wenn eine Frist "nach Bekanntgabe" oder "nach Erhalt" lautet, niemals behaupten, sie sei abgelaufen. Nur erklären, dass der Zugang/Erhalt geprüft werden muss.
+
+STIL:
+- Human: menschlich und ruhig.
+- EL5: sehr einfach.
+- DLTR: kurz, keine Romane.
+- Listify: kurze Listen.
+
+Fakten:
+${JSON.stringify(safeFacts, null, 2)}
+
+Gib NUR gültiges JSON zurück, keine Markdown-Blöcke.
+Schema:
+{
+  "briefart_label": "",
+  "trust_label": "Gut|Mittel|Niedrig",
+  "trust_note": "",
+  "urgency_label": "Hoch|Mittel|Niedrig|Unklar",
+  "urgency_reason": "",
+  "must_react_label": "Ja|Nein|Prüfen",
+  "money_label": "Ja|Nein|Prüfen",
+  "first_step": "",
+  "next_steps": ["", "", ""],
+  "unsafe_notice": "",
+  "data_rows": [
+    {"key":"person", "label":"", "value":"", "status":"safe|check|missing"},
+    {"key":"sender", "label":"", "value":"", "status":"safe|check|missing"},
+    {"key":"amount", "label":"", "value":"", "status":"safe|check|missing"},
+    {"key":"deadline", "label":"", "value":"", "status":"safe|check|missing"},
+    {"key":"reference", "label":"", "value":"", "status":"safe|check|missing"}
+  ],
+  "suggested_actions": ["", "", ""],
+  "whatsapp_summary": "",
+  "phone_script": ""
+}
+
+Regeln für Werte:
+- Leere Werte nicht erfinden, sondern "Bitte im Brief prüfen" oder passend in der Zielsprache.
+- next_steps maximal 4 Punkte.
+- whatsapp_summary maximal 3 kurze Sätze.
+- phone_script maximal 4 kurze Zeilen.
+`
+    }
+  ]);
+
+  try {
+    const parsed = extractJson(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (err) {
+    console.error("HelperCards JSON Fehler:", err);
+    return null;
+  }
+}
+
+async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
   const langCode = getLanguageMeta(lang).code;
-  const shortDe = cleanText(renderShortByLanguage(info, "de"));
-  const detailTemplateDe = cleanText(renderDetailTemplateGerman(info));
+  const safe = getSafeCriticalMeta(info, sourceMode);
+
+  // Für die grüne Kurz-Erklärung bei Fotos keinen unsicheren Namen verwenden.
+  const safeInfoForShort = {
+    ...info,
+    betroffene_person: safe.personForOfficialText,
+    referenzen: safe.referencesSafe ? info.referenzen : info.referenzen
+  };
+
+  const shortDe = cleanText(renderShortByLanguage(safeInfoForShort, "de"));
+  const detailTemplateDe = cleanText(renderDetailTemplateGerman(safeInfoForShort));
 
   const translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
+  const helper = await buildHelperCardsFromInfo(info, langCode, sourceMode);
 
   return {
     ok: true,
@@ -1393,29 +1554,36 @@ async function buildFinalPayloadFromInfo(info, lang) {
     hinweis: "",
     kurz: translated.kurz,
     details: translated.details,
+    helper,
     meta: {
       briefart: info.briefart,
       absender: info.absender_kurz || info.absender_original,
-     email_adresse: info.email_adresse,
-      person: info.betroffene_person,
+      email_adresse: info.email_adresse,
+      person: safe.personForOfficialText,
+      person_sicher: safe.personSafe,
       termin: info.termin,
       frist: info.frist,
       betrag: info.betrag,
       unterlagen: info.unterlagen,
-      referenzen: info.referenzen,
+      referenzen: safe.referencesSafe ? info.referenzen : [],
+      referenzen_erkannt_roh: info.referenzen,
+      referenzen_sicher: safe.referencesSafe,
       dringlichkeit: info.dringlichkeit,
       pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
       naechster_schritt: info.naechster_schritt,
       antwort_sprache: info.antwort_sprache,
       passende_aktionen: info.passende_aktionen,
-      unsicherheiten: info.unsicherheiten
+      unsicherheiten: info.unsicherheiten,
+      sourceMode,
+      must_react: inferMustReact(info),
+      money_affected: inferMoneyAffected(info)
     }
   };
 }
 
 async function buildFinalAnswerFromText(text, lang) {
   const info = await buildInfoFromText(text);
-  return await buildFinalPayloadFromInfo(info, lang);
+  return await buildFinalPayloadFromInfo(info, lang, "text");
 }
 
 async function buildFinalAnswerFromImages(bilder, lang) {
@@ -1450,7 +1618,7 @@ async function buildFinalAnswerFromImages(bilder, lang) {
   }
 
   const info = await buildInfoFromImages(bilder);
-  return await buildFinalPayloadFromInfo(info, lang);
+  return await buildFinalPayloadFromInfo(info, lang, "image");
 }
 
 async function buildAudioText(text, lang) {
@@ -1643,6 +1811,10 @@ Nutze immer diese 4 Regeln:
 
 DATEN-SICHERHEIT:
 - Namen, Beträge, Fristen, Termine, Aktenzeichen und Rechnungsnummern sind kritische Daten.
+- Wenn meta.person_sicher nicht true ist, nenne KEINEN Namen und beginne fertige Texte neutral mit "Sehr geehrte Damen und Herren," oder passend neutral in der Nutzersprache.
+- Erfinde niemals eine Anrede wie "Hallo [Name]", wenn der Name nicht sicher ist.
+- Wenn meta.referenzen_sicher nicht true ist, übernimm kein Aktenzeichen in fertige Texte; schreibe stattdessen "Aktenzeichen bitte aus dem Brief übernehmen".
+- Wenn eine Frist "nach Bekanntgabe" oder "nach Erhalt" lautet, behaupte nicht, sie sei abgelaufen. Sage: "Bitte prüfe, wann der Brief angekommen ist."
 - Nutze bei Namen nur meta.person. Rate keinen neuen Namen aus dem Text.
 - Wenn meta.person fehlt, schreibe keinen Namen.
 - Wenn ein Name unsicher wirkt oder in unsicherheiten steht, schreibe: "Bitte Namen im Brief prüfen."
