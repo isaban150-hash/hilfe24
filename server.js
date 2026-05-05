@@ -1438,97 +1438,248 @@ function inferMoneyAffected(info) {
   return "maybe";
 }
 
+
+function simpleLabelDict(lang) {
+  const maps = {
+    de: {
+      check: "Bitte prüfen",
+      good: "Gut",
+      medium: "Mittel",
+      low: "Niedrig",
+      unknown: "Unklar",
+      yes: "Ja",
+      no: "Nein",
+      briefart: "Briefart",
+      urgency: "Dringlichkeit",
+      react: "Musst du reagieren?",
+      money: "Geld betroffen?",
+      person: "Name",
+      sender: "Absender",
+      amount: "Betrag",
+      deadline: "Frist/Termin",
+      reference: "Aktenzeichen/Nummer",
+      unsafe: "Einige Daten konnten nicht sicher gelesen werden. Bitte prüfe Name, Datum und Aktenzeichen im Originalbrief.",
+      firstStepDefault: "Prüfe zuerst, ob Betrag, Frist und Absender im Brief stimmen.",
+      whatsappStart: "Kurz: "
+    },
+    tr: {
+      check: "Lütfen kontrol et",
+      good: "İyi",
+      medium: "Orta",
+      low: "Düşük",
+      unknown: "Belirsiz",
+      yes: "Evet",
+      no: "Hayır",
+      briefart: "Yazı türü",
+      urgency: "Aciliyet",
+      react: "Cevap vermen gerekiyor mu?",
+      money: "Para konusu var mı?",
+      person: "İsim",
+      sender: "Gönderen",
+      amount: "Tutar",
+      deadline: "Süre/Randevu",
+      reference: "Dosya/Numara",
+      unsafe: "Bazı bilgiler kesin okunamadı. Lütfen isim, tarih ve numarayı asıl mektupta kontrol et.",
+      firstStepDefault: "Önce tutar, süre ve gönderen bilgisinin doğru olup olmadığını kontrol et.",
+      whatsappStart: "Kısaca: "
+    },
+    bg: {
+      check: "Моля, провери",
+      good: "Добра",
+      medium: "Средна",
+      low: "Ниска",
+      unknown: "Неясно",
+      yes: "Да",
+      no: "Не",
+      briefart: "Вид писмо",
+      urgency: "Спешност",
+      react: "Трябва ли да реагираш?",
+      money: "Има ли пари?",
+      person: "Име",
+      sender: "Изпращач",
+      amount: "Сума",
+      deadline: "Срок/термин",
+      reference: "Номер/знак",
+      unsafe: "Някои данни не се четат сигурно. Провери името, датата и номера в оригиналното писмо.",
+      firstStepDefault: "Първо провери дали сумата, срокът и изпращачът са правилни.",
+      whatsappStart: "Накратко: "
+    },
+    ro: {
+      check: "Te rog verifică",
+      good: "Bună",
+      medium: "Medie",
+      low: "Scăzută",
+      unknown: "Neclar",
+      yes: "Da",
+      no: "Nu",
+      briefart: "Tip document",
+      urgency: "Urgență",
+      react: "Trebuie să reacționezi?",
+      money: "Este vorba de bani?",
+      person: "Nume",
+      sender: "Expeditor",
+      amount: "Sumă",
+      deadline: "Termen/Programare",
+      reference: "Număr/Dosar",
+      unsafe: "Unele date nu au putut fi citite sigur. Verifică numele, data și numărul în scrisoarea originală.",
+      firstStepDefault: "Verifică mai întâi suma, termenul și expeditorul din scrisoare.",
+      whatsappStart: "Pe scurt: "
+    },
+    ar: {
+      check: "يرجى التحقق",
+      good: "جيد",
+      medium: "متوسط",
+      low: "منخفض",
+      unknown: "غير واضح",
+      yes: "نعم",
+      no: "لا",
+      briefart: "نوع الرسالة",
+      urgency: "الأهمية",
+      react: "هل يجب الرد؟",
+      money: "هل يوجد مبلغ مالي؟",
+      person: "الاسم",
+      sender: "المرسل",
+      amount: "المبلغ",
+      deadline: "مهلة/موعد",
+      reference: "رقم/ملف",
+      unsafe: "بعض البيانات لم تُقرأ بشكل مؤكد. يرجى التحقق من الاسم والتاريخ والرقم في الرسالة الأصلية.",
+      firstStepDefault: "تحقق أولًا من المبلغ والمهلة والمرسل في الرسالة.",
+      whatsappStart: "باختصار: "
+    },
+    en: {
+      check: "Please check",
+      good: "Good",
+      medium: "Medium",
+      low: "Low",
+      unknown: "Unclear",
+      yes: "Yes",
+      no: "No",
+      briefart: "Document type",
+      urgency: "Urgency",
+      react: "Do you need to react?",
+      money: "Money involved?",
+      person: "Name",
+      sender: "Sender",
+      amount: "Amount",
+      deadline: "Deadline/Appointment",
+      reference: "Reference number",
+      unsafe: "Some data could not be read safely. Please check name, date and reference number in the original letter.",
+      firstStepDefault: "First check whether the amount, deadline and sender match the letter.",
+      whatsappStart: "Short: "
+    }
+  };
+  return maps[lang] || maps.de;
+}
+
+function simpleBriefartLabel(info) {
+  const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt].join(" ").toLowerCase();
+  if (hasAny(text, ["bescheid", "rechtsbehelf", "widerspruch", "aufrechnung"])) return "Bescheid";
+  if (hasAny(text, ["rechnung"])) return "Rechnung";
+  if (hasAny(text, ["mahnung", "inkasso", "forderung"])) return "Forderung/Mahnung";
+  if (hasAny(text, ["termin", "einladung", "ladung"])) return "Termin";
+  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return "Gericht/Polizei";
+  if (hasAny(text, ["krankenkasse", "aok", "medizin", "arzt"])) return "Krankenkasse/Gesundheit";
+  if (hasAny(text, ["werbung", "angebot"])) return "Angebot/Werbung";
+  return info.briefart || "Schreiben";
+}
+
+function simpleUrgencyLabel(info, lang) {
+  const L = simpleLabelDict(lang);
+  const u = String(info.dringlichkeit || "unklar").toLowerCase();
+  if (u === "hoch") return "Hoch";
+  if (u === "mittel") return "Mittel";
+  if (u === "niedrig") return "Niedrig";
+  const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.folge_wenn_nichts, (info.was_ist_zu_tun||[]).join(" ")].join(" ").toLowerCase();
+  if (hasAny(text, ["widerspruch", "frist", "rechtsbehelf", "kündigung", "gericht", "polizei", "pfändung", "vollstreckung"])) return "Hoch";
+  if (hasAny(text, ["betrag", "forderung", "rechnung", "aufrechnung", "rückforderung", "termin", "unterlagen"])) return "Mittel";
+  return L.unknown;
+}
+
+function buildDeterministicNextSteps(info, lang) {
+  const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.betrag, info.folge_wenn_nichts, info.naechster_schritt, (info.was_ist_zu_tun||[]).join(" ")].join(" ").toLowerCase();
+  const steps = [];
+
+  if (info.betrag || hasAny(text, ["forderung", "rechnung", "rückforderung", "aufrechnung", "zahlung"])) {
+    steps.push("Prüfe, ob Betrag und Forderung stimmen.");
+  }
+  if (info.frist || hasAny(text, ["frist", "widerspruch", "rechtsbehelf"])) {
+    steps.push("Achte auf die Frist und notiere dir das Datum.");
+  }
+  if (info.termin) {
+    steps.push("Prüfe den Termin und sage rechtzeitig ab, wenn du nicht kannst.");
+  }
+  if ((info.unterlagen || []).length || hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) {
+    steps.push("Sammle die genannten Unterlagen oder Nachweise.");
+  }
+  if (hasAny(text, ["jobcenter", "behörde", "bescheid", "widerspruch", "inkasso", "gericht", "polizei"])) {
+    steps.push("Wenn du unsicher bist, hole Beratung oder frage die Stelle schriftlich.");
+  }
+  if (!steps.length) {
+    steps.push(simpleLabelDict(lang).firstStepDefault);
+  }
+  return dedupe(steps).slice(0,4);
+}
+
+function buildSuggestedActions(info, lang) {
+  const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.betrag, (info.passende_aktionen || []).join(" ")].join(" ").toLowerCase();
+  const actions = [];
+  if (hasAny(text, ["widerspruch", "rechtsbehelf", "bescheid"])) actions.push("Widerspruch prüfen");
+  if (hasAny(text, ["rechnung", "forderung", "zahlung", "rückforderung", "aufrechnung"])) actions.push("Betrag prüfen");
+  if (hasAny(text, ["termin", "ladung", "einladung"])) actions.push("Termin prüfen");
+  if (hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) actions.push("Unterlagen vorbereiten");
+  actions.push("Frage stellen");
+  actions.push("Antwort schreiben");
+  return dedupe(actions).slice(0,5);
+}
+
 async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
-  const langMeta = getLanguageMeta(lang);
+  const langCode = getLanguageMeta(lang).code;
+  const L = simpleLabelDict(langCode);
   const safe = getSafeCriticalMeta(info, sourceMode);
   const mustReact = inferMustReact(info);
   const moneyAffected = inferMoneyAffected(info);
+  const personValue = safe.personSafe && safe.personForOfficialText ? safe.personForOfficialText : L.check;
+  const senderValue = info.absender_kurz || info.absender_original || L.check;
+  const amountValue = info.betrag || L.check;
+  const deadlineValue = info.frist || info.termin || L.check;
+  const referenceValue = safe.referencesSafe && (info.referenzen || []).length ? (info.referenzen || []).join(", ") : L.check;
+  const nextSteps = buildDeterministicNextSteps(info, langCode);
+  const firstStep = nextSteps[0] || L.firstStepDefault;
+  const briefartLabel = simpleBriefartLabel(info);
+  const urgencyLabel = simpleUrgencyLabel(info, langCode);
+  const unsafeParts = [];
+  if (!safe.personSafe) unsafeParts.push(L.person);
+  if (!safe.referencesSafe) unsafeParts.push(L.reference);
+  if ((info.unsicherheiten || []).length) unsafeParts.push(L.check);
+  const unsafeNotice = unsafeParts.length ? L.unsafe : "";
+  const whatsappParts = [];
+  if (info.absender_kurz || info.absender_original) whatsappParts.push(`von ${info.absender_kurz || info.absender_original}`);
+  if (info.betrag) whatsappParts.push(`Betrag: ${info.betrag}`);
+  if (info.frist) whatsappParts.push(`Frist: ${info.frist}`);
+  if (info.termin) whatsappParts.push(`Termin: ${info.termin}`);
 
-  const safeFacts = {
-    sourceMode,
-    briefart: info.briefart || "",
-    absender: info.absender_kurz || info.absender_original || "",
-    person: safe.personForOfficialText,
-    person_safe: safe.personSafe,
-    amount: info.betrag || "",
-    deadline: info.frist || "",
-    appointment: info.termin || "",
-    references: safe.referencesDisplay || [],
-    references_safe: safe.referencesSafe,
-    urgency: info.dringlichkeit || "unklar",
-    duty: info.pflicht_oder_freiwillig || "unklar",
-    topic: info.worum_geht_es || "",
-    next_step: info.naechster_schritt || "",
-    consequences: info.folge_wenn_nichts || "",
-    documents: info.unterlagen || [],
-    actions: info.passende_aktionen || [],
-    uncertainties: info.unsicherheiten || [],
-    must_react_guess: mustReact,
-    money_affected_guess: moneyAffected
+  return {
+    briefart_label: briefartLabel,
+    trust_label: unsafeNotice ? L.medium : L.good,
+    trust_note: unsafeNotice || "",
+    urgency_label: urgencyLabel,
+    urgency_reason: info.frist || info.termin || info.folge_wenn_nichts || "",
+    must_react_label: mustReact === "yes" ? L.yes : (mustReact === "no" ? L.no : L.check),
+    money_label: moneyAffected === "yes" ? L.yes : (moneyAffected === "no" ? L.no : L.check),
+    first_step: firstStep,
+    next_steps: nextSteps,
+    unsafe_notice: unsafeNotice,
+    data_rows: [
+      { key: "person", label: L.person, value: personValue, status: safe.personSafe ? "safe" : "check" },
+      { key: "sender", label: L.sender, value: senderValue, status: senderValue === L.check ? "check" : "safe" },
+      { key: "amount", label: L.amount, value: amountValue, status: amountValue === L.check ? "check" : "safe" },
+      { key: "deadline", label: L.deadline, value: deadlineValue, status: deadlineValue === L.check ? "check" : "safe" },
+      { key: "reference", label: L.reference, value: referenceValue, status: safe.referencesSafe ? "safe" : "check" }
+    ],
+    suggested_actions: buildSuggestedActions(info, langCode),
+    whatsapp_summary: `${L.whatsappStart}${briefartLabel}${whatsappParts.length ? " – " + whatsappParts.join("; ") : ""}. ${firstStep}`,
+    phone_script: ""
   };
-
-  const raw = await callGemini([
-    {
-      text: `
-Du bist Hilfe24 und baust kurze Ergebnis-Karten für eine Hilfe-App.
-
-Sprache: ${langMeta.label}
-
-Nutze NUR diese geprüften Fakten. Erfinde keine Namen, Beträge, Fristen, Termine oder Aktenzeichen.
-Wenn person_safe=false, darfst du keinen Namen nennen. Schreibe dann sinngemäß: Name bitte im Brief prüfen.
-Wenn references_safe=false, sage bei Aktenzeichen/Nummer: bitte im Brief prüfen, auch wenn eine Nummer erkannt wurde.
-Wenn eine Frist "nach Bekanntgabe" oder "nach Erhalt" lautet, niemals behaupten, sie sei abgelaufen. Nur erklären, dass der Zugang/Erhalt geprüft werden muss.
-
-STIL:
-- Human: menschlich und ruhig.
-- EL5: sehr einfach.
-- DLTR: kurz, keine Romane.
-- Listify: kurze Listen.
-
-Fakten:
-${JSON.stringify(safeFacts, null, 2)}
-
-Gib NUR gültiges JSON zurück, keine Markdown-Blöcke.
-Schema:
-{
-  "briefart_label": "",
-  "trust_label": "Gut|Mittel|Niedrig",
-  "trust_note": "",
-  "urgency_label": "Hoch|Mittel|Niedrig|Unklar",
-  "urgency_reason": "",
-  "must_react_label": "Ja|Nein|Prüfen",
-  "money_label": "Ja|Nein|Prüfen",
-  "first_step": "",
-  "next_steps": ["", "", ""],
-  "unsafe_notice": "",
-  "data_rows": [
-    {"key":"person", "label":"", "value":"", "status":"safe|check|missing"},
-    {"key":"sender", "label":"", "value":"", "status":"safe|check|missing"},
-    {"key":"amount", "label":"", "value":"", "status":"safe|check|missing"},
-    {"key":"deadline", "label":"", "value":"", "status":"safe|check|missing"},
-    {"key":"reference", "label":"", "value":"", "status":"safe|check|missing"}
-  ],
-  "suggested_actions": ["", "", ""],
-  "whatsapp_summary": "",
-  "phone_script": ""
-}
-
-Regeln für Werte:
-- Leere Werte nicht erfinden, sondern "Bitte im Brief prüfen" oder passend in der Zielsprache.
-- next_steps maximal 4 Punkte.
-- whatsapp_summary maximal 3 kurze Sätze.
-- phone_script maximal 4 kurze Zeilen.
-`
-    }
-  ]);
-
-  try {
-    const parsed = extractJson(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch (err) {
-    console.error("HelperCards JSON Fehler:", err);
-    return null;
-  }
 }
 
 async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
@@ -1960,6 +2111,8 @@ Keine Panik machen, aber Risiko klar nennen.
 
 Wenn frageMode = "reply":
 Der Nutzer will eine Antwort schreiben.
+WICHTIG: Beginne nie mit Hallo + Name. Nutze bei offiziellen Schreiben immer "Sehr geehrte Damen und Herren,". Wenn keine E-Mail/Brief nötig ist, sage kurz warum.
+
 Erkläre maximal mit einem kurzen Satz.
 Dann direkt einen fertigen Text zum Kopieren schreiben.
 Bei deutschen Stellen immer Deutsch schreiben.
