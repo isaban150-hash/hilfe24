@@ -34,7 +34,7 @@ function getTodayGerman() {
   });
 }
 
-app.use(express.json({ limit: "25mb" }));
+app.use(express.json({ limit: "45mb" }));
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
@@ -358,7 +358,15 @@ Nicht nur zusammenfassen.
 Du musst erkennen, was für den Menschen wirklich wichtig ist.
 
 Input:
-${inputMode === "image" ? "Du bekommst Bilder eines Briefes / Schreibens. Die Bilder können Handyfotos sein. Lies sie sehr genau, Seite für Seite." : "Du bekommst den Text eines Briefes / Schreibens."}
+${inputMode === "image" ? [
+"Du bekommst Bilder eines Briefes / Schreibens. Die Bilder können Handyfotos sein. Lies sie sehr genau, Seite für Seite.",
+"WICHTIG ZU DEN FOTOS:",
+"- Es können ganze Seiten und Nahaufnahmen gemischt sein.",
+"- Wenn ein Foto eine Nahaufnahme von Name, Datum, Aktenzeichen, Betrag, Frist oder Rechtsbehelf zeigt, nutze diese Nahaufnahme für die kritischen Daten stärker als ein weit entferntes Ganzseitenfoto.",
+"- Vergleiche kritische Daten zwischen allen Fotos.",
+"- Wenn Name, Betrag, Datum, Frist oder Aktenzeichen nicht eindeutig lesbar sind, nicht raten, sondern unsicherheiten eintragen.",
+"- Bei Namen ist ein einzelner Buchstabe wichtig. Wenn Kalina/Karina/Ksenia oder ähnliche Varianten möglich sind, betroffene_person leer lassen und bei unsicherheiten Name bitte prüfen schreiben."
+].join("\n") : "Du bekommst den Text eines Briefes / Schreibens."}
 
 GENAUIGKEIT BEI BILDERN / OCR:
 Wenn du Bilder bekommst, arbeite in dieser Reihenfolge:
@@ -1956,10 +1964,10 @@ async function buildFinalAnswerFromImages(bilder, lang) {
       };
     }
 
-    if (bild.imageData.length > 8000000) {
+    if (bild.imageData.length > 14000000) {
       return {
         ok: false,
-        error: "Ein Bild ist zu groß. Bitte mach ein kleineres oder klareres Foto."
+        error: "Ein Bild ist zu groß. Bitte fotografiere die Seite klar, aber nicht zu nah, oder lade weniger Fotos hoch."
       };
     }
   }
