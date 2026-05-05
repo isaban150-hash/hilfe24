@@ -1580,15 +1580,21 @@ function simpleLabelDict(lang) {
 }
 
 function simpleBriefartLabel(info) {
-  const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt].join(" ").toLowerCase();
-  if (hasAny(text, ["bescheid", "rechtsbehelf", "widerspruch", "aufrechnung"])) return "Bescheid";
+  const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
+
+  if (hasAny(text, ["inkasso", "vollstreckungstitel", "vollstreckung", "gerichtsvollzieher", "pfändung"])) return "Inkasso / Forderung";
+  if (hasAny(text, ["jobcenter", "bürgergeld", "aufrechnung", "rückforderung", "bescheid", "rechtsbehelf", "widerspruch"])) return "Bescheid";
   if (hasAny(text, ["rechnung"])) return "Rechnung";
-  if (hasAny(text, ["mahnung", "inkasso", "forderung"])) return "Forderung/Mahnung";
+  if (hasAny(text, ["mahnung", "forderung"])) return "Forderung / Mahnung";
   if (hasAny(text, ["termin", "einladung", "ladung"])) return "Termin";
-  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return "Gericht/Polizei";
-  if (hasAny(text, ["krankenkasse", "aok", "medizin", "arzt"])) return "Krankenkasse/Gesundheit";
-  if (hasAny(text, ["werbung", "angebot"])) return "Angebot/Werbung";
-  return info.briefart || "Schreiben";
+  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return "Gericht / Polizei";
+  if (hasAny(text, ["krankenkasse", "aok", "medizin", "arzt"])) return "Krankenkasse / Gesundheit";
+  if (hasAny(text, ["werbung", "angebot"])) return "Angebot / Werbung";
+
+  const raw = normalizeString(info.briefart);
+  if (!raw) return "Schreiben";
+  if (/^(forderung|mahnung)$/i.test(raw)) return "Forderung / Mahnung";
+  return raw;
 }
 
 function simpleUrgencyLabel(info, lang) {
@@ -1772,6 +1778,37 @@ function buildQualityModeType(info) {
   return "wichtiger_brief";
 }
 
+function clampShortExplanation(text, lang) {
+  const clean = cleanText(text).replace(/\n{3,}/g, "\n\n").trim();
+  if (!clean) return "";
+
+  const lines = clean
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length > 1) {
+    return lines.slice(0, 5).join("\n").trim();
+  }
+
+  const parts = clean
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?؟])\s+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  let result = parts.slice(0, 4).join(" ").trim();
+
+  const maxChars = lang === "ar" ? 620 : 520;
+  if (result.length > maxChars) {
+    result = result.slice(0, maxChars).trim();
+    const lastEnd = Math.max(result.lastIndexOf("."), result.lastIndexOf("!"), result.lastIndexOf("?"), result.lastIndexOf("؟"));
+    if (lastEnd > 180) result = result.slice(0, lastEnd + 1).trim();
+  }
+
+  return result || clean.slice(0, maxChars).trim();
+}
+
 async function improveQualityTextsIfNeeded(info, translated, helper, lang, sourceMode = "text") {
   const langMeta = getLanguageMeta(lang);
   const langCode = langMeta.code;
@@ -1803,11 +1840,12 @@ WICHTIGE REGELN:
 - Wenn person_sicher = false, keinen Namen verwenden und keine persönliche Anrede schreiben.
 - Fristen nicht als abgelaufen behaupten, wenn Zugang/Bekanntgabe nicht sicher bekannt ist.
 - Beträge, Daten, Aktenzeichen nur aus den erkannten Daten übernehmen.
-- Bei Inkasso/Vollstreckung: nicht automatisch Zahlungszusage empfehlen. Erst Forderung/Titel prüfen, dann Ratenzahlung nur als Möglichkeit.
+- Bei Inkasso/Vollstreckung: nicht automatisch Zahlungszusage empfehlen. Erst Forderung, Titel, Betrag und Gläubiger prüfen, dann Ratenzahlung nur als Möglichkeit.
+- Bei Inkasso/Vollstreckung nicht sicher schreiben: "Ein Gericht hat die Forderung bestätigt". Besser: "Im Schreiben wird ein Vollstreckungstitel erwähnt. Bitte prüfen, ob Titel, Forderung und Betrag wirklich stimmen."
 - Bei Jobcenter/Bescheid: Widerspruchsfrist, Rückforderung, Aufrechnung und Beratung klar nennen.
 - Bei Gericht/Polizei: keine Rechtsberatung, Termin/Frist ernst nehmen, bei Unsicherheit Beratung/Anwalt erwähnen.
 - Keine langen Textwände.
-- Kurztext maximal 4 kurze Zeilen.
+- Kurztext maximal 4 kurze Zeilen und höchstens 4 kurze Sätze. Keine Details wie Gebühren, Gültigkeit oder lange Folgen in den Kurztext packen.
 - Details klarer als Liste/Abschnitte, nicht als Roman.
 
 STIL:
@@ -1858,7 +1896,7 @@ Antworte nur mit gültigem JSON:
   ]);
 
   const parsed = extractJson(raw);
-  const kurz = cleanText(parsed.kurz || translated.kurz);
+  const kurz = clampShortExplanation(parsed.kurz || translated.kurz, langCode);
   const details = cleanText(parsed.details || translated.details);
   const nextSteps = normalizeArray(parsed.next_steps).slice(0, 4);
   const suggestedActions = normalizeArray(parsed.suggested_actions).slice(0, 5);
