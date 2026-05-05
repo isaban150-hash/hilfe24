@@ -464,6 +464,11 @@ WICHTIG:
 - Keine Pflicht erfinden.
 - Keine wichtigen Daten weglassen.
 - Namen, Daten, Uhrzeiten, Beträge, Aktenzeichen, Behörden und Folgen exakt übernehmen.
+- Daten-Sicherheit ist wichtiger als eine schöne Antwort.
+- Namen nur übernehmen, wenn sie im Adressfeld oder in der direkten Anrede klar lesbar sind.
+- Wenn ein Name nur unsicher gelesen wurde, betroffene_person leer lassen und bei "unsicherheiten" eintragen.
+- Beträge, Fristen, Daten, Aktenzeichen und Rechnungsnummern nur übernehmen, wenn sie klar lesbar sind.
+- Wenn mehrere ähnliche Namen möglich sind, keinen Namen sicher behaupten.
 - Wenn etwas nicht lesbar oder unklar ist, bei "unsicherheiten" eintragen.
 
 PFLICHT / FREIWILLIG / INFORMATION:
@@ -712,7 +717,20 @@ function renderShortByLanguage(info, lang) {
   const summary = String(info.kurz_gesagt || "").trim();
   const actions = dedupe(info.was_ist_zu_tun || []);
   const topic = String(info.worum_geht_es || "").trim();
-  const briefTextAll = [briefart, topic, summary, nextStep, actions.join(" "), consequence].join(" ").toLowerCase();
+  const references = dedupe(info.referenzen || []);
+  const uncertainties = dedupe(info.unsicherheiten || []);
+
+  const fullContext = [
+    sender,
+    briefart,
+    topic,
+    summary,
+    nextStep,
+    consequence,
+    actions.join(" "),
+    references.join(" "),
+    uncertainties.join(" ")
+  ].join(" ").toLowerCase();
 
   const lines = [];
 
@@ -723,7 +741,7 @@ function renderShortByLanguage(info, lang) {
       .replace(/[.;,\s]+$/g, "");
   }
 
-  function shorten(text, max = 115) {
+  function shorten(text, max = 105) {
     const clean = cleanSentence(text);
     if (!clean) return "";
     if (clean.length <= max) return clean;
@@ -733,7 +751,7 @@ function renderShortByLanguage(info, lang) {
     return (lastSpace > 60 ? cut.slice(0, lastSpace) : clean.slice(0, max)).trim();
   }
 
-  function pushLine(text, max = 115) {
+  function pushLine(text, max = 105) {
     const clean = shorten(text, max);
     if (!clean) return;
     const sentence = clean + ".";
@@ -741,6 +759,10 @@ function renderShortByLanguage(info, lang) {
     if (!lines.some((line) => line.toLowerCase() === sentence.toLowerCase())) {
       lines.push(sentence);
     }
+  }
+
+  function hasContext(words) {
+    return hasAny(fullContext, words);
   }
 
   function typeLine() {
@@ -751,6 +773,24 @@ function renderShortByLanguage(info, lang) {
   }
 
   function topicLine() {
+    if (hasContext(["rückforderung", "erstattung", "aufrechnung", "jobcenter", "bürgergeld"])) {
+      if (amount) return `Es geht um eine Rückforderung oder Aufrechnung von ${amount}`;
+      return "Es geht um eine Rückforderung oder Aufrechnung";
+    }
+
+    if (hasContext(["rechnung", "forderung", "mahnung", "inkasso"])) {
+      if (amount) return `Es geht um eine Rechnung oder Forderung von ${amount}`;
+      return "Es geht um eine Rechnung oder Forderung";
+    }
+
+    if (hasContext(["termin", "ladung", "einladung", "randevu"])) {
+      return "Es geht um einen Termin";
+    }
+
+    if (hasContext(["unterlagen", "nachweise", "nachreichen", "einreichen"])) {
+      return "Es geht um Unterlagen oder Nachweise";
+    }
+
     if (summary) return summary;
     if (topic) return `Es geht um ${topic}`;
     return "";
@@ -773,18 +813,18 @@ function renderShortByLanguage(info, lang) {
     }
 
     if (appointment) {
-      return "Du sollst den Termin wahrnehmen oder rechtzeitig absagen, wenn du nicht kannst";
+      return "Nimm den Termin wahr oder sage rechtzeitig ab, wenn du nicht kannst";
     }
 
-    if (documents.length > 0 && hasAny(briefTextAll, ["unterlagen", "nachweise", "einreichen", "nachreichen", "schicken", "senden"])) {
+    if (documents.length > 0 && hasContext(["unterlagen", "nachweise", "einreichen", "nachreichen", "schicken", "senden"])) {
       return "Reiche die genannten Unterlagen rechtzeitig ein";
     }
 
-    if (amount && hasAny(briefTextAll, ["rechnung", "forderung", "mahnu", "inkasso", "rückforderung", "aufrechnung", "zahlen", "zahlung", "betrag"])) {
+    if (amount && hasContext(["rechnung", "forderung", "mahnu", "inkasso", "rückforderung", "aufrechnung", "zahlen", "zahlung", "betrag"])) {
       return "Prüfe zuerst, ob die Forderung stimmt";
     }
 
-    if (deadline && hasAny(briefTextAll, ["widerspruch", "rechtsbehelf", "frist", "antwort", "rückmeldung"])) {
+    if (deadline && hasContext(["widerspruch", "rechtsbehelf", "frist", "antwort", "rückmeldung"])) {
       return "Wenn du nicht einverstanden bist, reagiere innerhalb der Frist";
     }
 
@@ -797,24 +837,30 @@ function renderShortByLanguage(info, lang) {
     return "Prüfe den Brief und bewahre ihn auf";
   }
 
-  function keyFactLine() {
+  function deadlineOrDateLine() {
     if (appointment) return `Termin: ${appointment}`;
 
-    if (deadline && amount) {
-      if (hasAny(briefTextAll, ["widerspruch", "rechtsbehelf"])) {
-        return `Frist: ${deadline}`;
-      }
-      return `Betrag: ${amount}`;
-    }
-
-    if (deadline) return `Frist: ${deadline}`;
-    if (amount) return `Betrag: ${amount}`;
-
-    if (documents.length > 0) {
-      return `Wichtige Unterlagen: ${documents.slice(0, 3).join(", ")}`;
+    if (deadline) {
+      if (hasContext(["widerspruch", "rechtsbehelf"])) return `Widerspruchsfrist: ${deadline}`;
+      return `Frist: ${deadline}`;
     }
 
     return "";
+  }
+
+  function moneyLine() {
+    if (!amount) return "";
+
+    const monthlyMatch = fullContext.match(/\b\d+[,.]\d{2}\s*euro\b|\b\d+[,.]\d{2}\s*€\b/i);
+
+    if (hasContext(["aufrechnung", "monatlich", "einbehalten", "abgezogen"])) {
+      const monthly = String(nextStep + " " + topic + " " + summary + " " + actions.join(" ")).match(/\b\d+[,.]\d{2}\s*(?:€|euro)\b/i);
+      if (monthly && monthly[0] && monthly[0] !== amount) {
+        return `Betrag: ${amount}; monatlicher Abzug: ${monthly[0]}`;
+      }
+    }
+
+    return `Betrag: ${amount}`;
   }
 
   function consequenceLine() {
@@ -833,7 +879,7 @@ function renderShortByLanguage(info, lang) {
       return "Wenn du nichts machst, können weitere Kosten oder Vollstreckung folgen";
     }
 
-    if (hasAny(text, ["kürzung", "minderung", "leistung", "bürgergeld", "jobcenter"])) {
+    if (hasAny(text, ["kürzung", "minderung", "leistung", "bürgergeld", "jobcenter", "einbehalten"])) {
       return "Wenn du nichts machst, können Leistungen gekürzt oder einbehalten werden";
     }
 
@@ -842,11 +888,19 @@ function renderShortByLanguage(info, lang) {
     return "Wenn du nichts machst, können Nachteile entstehen";
   }
 
-  pushLine(typeLine(), 105);
-  pushLine(topicLine(), 125);
-  pushLine(actionLine(), 120);
-  pushLine(keyFactLine(), 100);
-  pushLine(consequenceLine(), 120);
+  // Human + EL5 + DLTR + Listify:
+  // Menschlich, einfach wie für Anfänger, keine langen Texte, kurze Liste.
+  pushLine(typeLine(), 95);
+  pushLine(topicLine(), 105);
+  pushLine(actionLine(), 105);
+  pushLine(deadlineOrDateLine(), 95);
+
+  // Betrag nur zusätzlich zeigen, wenn noch Platz ist oder es zentral um Geld geht.
+  if (lines.length < 4 || hasContext(["rechnung", "forderung", "rückforderung", "aufrechnung", "inkasso", "zahlung"])) {
+    pushLine(moneyLine(), 115);
+  }
+
+  pushLine(consequenceLine(), 105);
 
   return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
 }
@@ -1449,6 +1503,21 @@ Beantworte die Frage konkret anhand des Schreibens, der Erklärung, der erkannte
 OBERSTE REGEL:
 Der Nutzer braucht eine klare Alltagshilfe. Nicht labern. Nicht dramatisieren. Nicht wie ein langer KI-Aufsatz schreiben.
 
+ANTWORT-STIL FÜR HILFE24:
+Nutze immer diese 4 Regeln:
+- Human: menschlich, ruhig, direkt, nicht wie Amtssprache.
+- EL5: so einfach erklären, dass auch jemand ohne Behördenwissen es versteht.
+- DLTR: keine langen Textblöcke, keine Romane, keine unnötigen Details.
+- Listify: wenn mehrere Schritte nötig sind, als kurze Liste schreiben.
+
+DATEN-SICHERHEIT:
+- Namen, Beträge, Fristen, Termine, Aktenzeichen und Rechnungsnummern sind kritische Daten.
+- Nutze bei Namen nur meta.person. Rate keinen neuen Namen aus dem Text.
+- Wenn meta.person fehlt, schreibe keinen Namen.
+- Wenn ein Name unsicher wirkt oder in unsicherheiten steht, schreibe: "Bitte Namen im Brief prüfen."
+- Beträge, Fristen und Aktenzeichen nur nennen, wenn sie in den erkannten Daten oder im Kontext klar stehen.
+- Keine Daten erfinden, auch nicht zur besseren Formulierung.
+
 SPRACHE:
 - Erklärung an den Nutzer immer in ${langMeta.label}.
 - Fertige offizielle Antworttexte an deutsche Behörden, Gerichte, Jobcenter, Krankenkassen, Inkasso, Schulen oder Ämter immer auf Deutsch.
@@ -1467,16 +1536,10 @@ Wenn vorhanden, nutze diese Daten:
 - antwort_sprache
 
 WICHTIG ZUR PERSON:
-Wenn in den erkannten Daten "person" vorhanden ist, nenne die betroffene Person am Anfang der Antwort.
-Beispiele:
-Deutsch: "Dieses Schreiben betrifft [person]."
-Türkisch: "Bu yazı [person] ile ilgilidir."
-Bulgarisch: "Това писмо се отнася за [person]."
-Rumänisch: "Această scrisoare se referă la [person]."
-Englisch: "This letter concerns [person]."
-Arabisch: "هذه الرسالة تخص [person]."
-
+Nenne die betroffene Person nur, wenn "person" in den erkannten Daten vorhanden ist und nicht in den Unsicherheiten steht.
+Nutze ausschließlich diesen erkannten Wert. Rate keinen anderen Namen aus dem Originaltext.
 Wenn kein sicherer Name erkannt wurde, keinen Namen erfinden.
+Wenn du unsicher bist, schreibe nur: "Bitte Namen im Brief prüfen."
 
 GRUNDREGELN:
 SPEZIALREGEL FÜR GERICHT / POLIZEI / STAATSANWALTSCHAFT / STRAFSACHE:
