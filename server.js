@@ -358,7 +358,7 @@ Nicht nur zusammenfassen.
 Du musst erkennen, was für den Menschen wirklich wichtig ist.
 
 Input:
-${inputMode === "image" ? "Du bekommst Bilder eines Briefes / Schreibens." : "Du bekommst den Text eines Briefes / Schreibens."}
+${inputMode === "image" ? "Du bekommst Bilder eines Briefes / Schreibens. Die Bilder können Handyfotos sein. Lies sie sehr genau, Seite für Seite." : "Du bekommst den Text eines Briefes / Schreibens."}
 
 GENAUIGKEIT BEI BILDERN / OCR:
 Wenn du Bilder bekommst, arbeite in dieser Reihenfolge:
@@ -1430,6 +1430,32 @@ app.post("/api/brief-bild", async (req, res) => {
   }
 });
 
+
+function postProcessQuestionAnswer(answer, meta = {}) {
+  let out = cleanText(answer);
+
+  const safePerson = normalizeString(meta.person || "");
+  const uncertainties = Array.isArray(meta.unsicherheiten)
+    ? meta.unsicherheiten.join(" ").toLowerCase()
+    : "";
+  const personIsUnsafe = !safePerson || uncertainties.includes("name");
+
+  // Keine frei erfundene lockere Namens-Anrede wie "Hallo Krassa,".
+  // Offizielle Anreden wie "Sehr geehrte Damen und Herren" bleiben erhalten.
+  if (personIsUnsafe) {
+    out = out.replace(/^\s*(Hallo|Hi|Hey|Merhaba|Selam|Здравейте|Здравей|Bună|Salut|Hello|Hi|مرحبا|أهلاً)\s+[^,\n]{2,60},?\s*\n+/i, "");
+    out = out.replace(/^\s*(Hallo|Hi|Hey)\s+[^,\n]{2,60},?\s*/i, "");
+  }
+
+  // Frist nicht als sicher abgelaufen behaupten, wenn kein Zugang/Bekanntgabe-Datum sicher bekannt ist.
+  out = out.replace(/Die Widerspruchsfrist ist leider schon abgelaufen\.?/gi, "Die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
+  out = out.replace(/Die Widerspruchsfrist ist schon abgelaufen\.?/gi, "Die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
+  out = out.replace(/Die Frist ist leider schon abgelaufen\.?/gi, "Bitte prüfe die Frist im Brief und wann der Brief angekommen ist.");
+  out = out.replace(/Die Frist ist schon abgelaufen\.?/gi, "Bitte prüfe die Frist im Brief und wann der Brief angekommen ist.");
+
+  return cleanText(out);
+}
+
 app.post("/api/frage", async (req, res) => {
   try {
     const briefText = cleanText(req.body.briefText || "");
@@ -1517,6 +1543,8 @@ DATEN-SICHERHEIT:
 - Wenn ein Name unsicher wirkt oder in unsicherheiten steht, schreibe: "Bitte Namen im Brief prüfen."
 - Beträge, Fristen und Aktenzeichen nur nennen, wenn sie in den erkannten Daten oder im Kontext klar stehen.
 - Keine Daten erfinden, auch nicht zur besseren Formulierung.
+- Behaupte NICHT, dass eine Frist abgelaufen ist, wenn das Zugangsdatum/Bekanntgabedatum nicht sicher bekannt ist. Schreibe stattdessen: "Frist laut Schreiben: ... Bitte prüfen, wann der Brief angekommen ist."
+- Keine lockere Namensanrede wie "Hallo [Name]", außer der Name steht sicher in meta.person. Wenn kein sicherer Name vorhanden ist, beginne direkt mit der Antwort.
 
 SPRACHE:
 - Erklärung an den Nutzer immer in ${langMeta.label}.
@@ -1773,8 +1801,11 @@ Nicht wie ein langer KI-Aufsatz.
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
+    antwort = postProcessQuestionAnswer(antwort, meta);
+
     if (frageMode === "next_steps") {
       antwort = shortenNextStepsAnswer(antwort, lang);
+      antwort = postProcessQuestionAnswer(antwort, meta);
     }
 
     return res.json({
