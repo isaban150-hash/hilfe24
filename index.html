@@ -417,6 +417,349 @@
   }
 }
 
+
+
+/* Hilfe24 V2.1 Design-Feinschliff: nur Optik, keine Server-Änderung */
+:root {
+  --bg: #eef3f9;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #64748b;
+  --primary: #1d4ed8;
+  --primary-dark: #1e40af;
+  --danger: #dc2626;
+  --success: #15803d;
+  --border: #dbe3ef;
+  --soft-blue: #eff6ff;
+  --soft-green: #ecfdf3;
+  --soft-purple: #faf5ff;
+  --shadow-soft: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(37,99,235,0.10), transparent 34%),
+    linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+  color: var(--text);
+}
+
+.wrap {
+  max-width: 760px;
+  padding: 18px;
+  padding-bottom: 98px;
+}
+
+.card {
+  border-radius: 24px;
+  padding: 20px;
+  border: 1px solid rgba(219, 227, 239, 0.95);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 14px;
+}
+
+.hero-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f4f8ff 100%);
+  border: 1px solid #dbeafe;
+}
+
+h1 {
+  font-size: 32px;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.section-title {
+  font-size: 21px;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+label {
+  font-size: 15px;
+  margin-top: 16px;
+  color: #1f2937;
+}
+
+select,
+textarea,
+input[type="file"] {
+  border-radius: 18px;
+  border: 1px solid #d7deea;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+textarea {
+  min-height: 132px;
+  line-height: 1.5;
+}
+
+button {
+  border-radius: 16px;
+  font-weight: 800;
+  min-height: 48px;
+  transition: transform 0.08s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+button:active {
+  transform: scale(0.985);
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.22);
+}
+
+.btn-secondary {
+  background: #f1f5ff;
+  color: #1e293b;
+  border: 1px solid #dde7ff;
+}
+
+.btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.home-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-btn {
+  min-height: 148px;
+  border-radius: 22px;
+  padding: 18px;
+  font-size: 18px;
+  line-height: 1.18;
+  border: 1px solid #dbe3ef;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.home-btn span {
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.brand-badge {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.input-choice-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.choice-card {
+  border-radius: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  min-height: 84px;
+}
+
+.preview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.preview-grid img {
+  height: 116px;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.ok {
+  display: inline-block;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  margin-top: 12px;
+}
+
+.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.result-card-main {
+  border-left: 0;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 78%);
+  border: 1px solid #bbf7d0;
+}
+
+.result-card-main .section-title::before {
+  content: "✅ ";
+}
+
+.short-box {
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  padding: 16px;
+  font-size: 18px;
+  line-height: 1.72;
+  font-weight: 700;
+}
+
+.next-card {
+  border-left: 0;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 78%);
+  border: 1px solid #bfdbfe;
+}
+
+.next-card .section-title::before {
+  content: "📋 ";
+}
+
+.detail-box {
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  border-radius: 20px;
+  padding: 16px;
+  font-size: 16.5px;
+  line-height: 1.72;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.question-card {
+  border-left: 0;
+  background: linear-gradient(180deg, #faf5ff 0%, #ffffff 78%);
+  border: 1px solid #e9d5ff;
+}
+
+.question-card .section-title::before {
+  content: "💬 ";
+}
+
+.button-row {
+  gap: 9px;
+}
+
+#frageCard .button-row:first-of-type {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#frageCard .button-row:first-of-type button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 15px;
+  border-radius: 14px;
+}
+
+#ownQuestionBtn {
+  grid-column: 1 / -1;
+}
+
+.audio-row {
+  margin-top: 12px;
+  gap: 8px;
+}
+
+.audio-row button {
+  min-height: 44px;
+  font-size: 15px;
+}
+
+/* Stoppen nicht dreimal in der Seite zeigen. Globaler Stop bleibt unten sichtbar. */
+.audio-row .btn-danger {
+  display: none;
+}
+
+.audio-bar {
+  left: 50%;
+  right: auto;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 760px;
+  border-radius: 22px;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(14px);
+  padding: 10px;
+}
+
+.audio-bar-title {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.audio-bar button {
+  min-height: 42px;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .wrap {
+    padding: 10px;
+    padding-bottom: 88px;
+  }
+
+  .card {
+    border-radius: 22px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .home-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .home-btn {
+    min-height: 138px;
+    padding: 15px;
+    font-size: 17px;
+  }
+
+  .home-btn span {
+    font-size: 13.5px;
+  }
+
+  .input-choice-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .preview-grid img {
+    height: 108px;
+  }
+
+  .short-box,
+  .detail-box {
+    font-size: 16.5px;
+  }
+
+  #frageCard .button-row:first-of-type {
+    grid-template-columns: 1fr;
+  }
+
+  .audio-bar {
+    width: calc(100% - 16px);
+    bottom: 8px;
+  }
+}
+
 </style>
 </head>
 
