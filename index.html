@@ -1295,12 +1295,12 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
       const lang = getSelectedLang();
       const helperLabels = {
-        de: { data: "Erkannte Daten", steps: "Was du jetzt tun solltest", actions: "Passende Aktionen", whatsapp: "Kurz für WhatsApp", first: "Erster Schritt", type: "Briefart", urgency: "Dringlichkeit", react: "Musst du reagieren?", money: "Geld betroffen?" },
-        tr: { data: "Algılanan bilgiler", steps: "Şimdi yapman gerekenler", actions: "Uygun adımlar", whatsapp: "WhatsApp için kısa", first: "İlk adım", type: "Yazı türü", urgency: "Aciliyet", react: "Cevap vermen gerekiyor mu?", money: "Para konusu var mı?" },
-        bg: { data: "Разпознати данни", steps: "Какво трябва да направиш сега", actions: "Подходящи действия", whatsapp: "Кратко за WhatsApp", first: "Първа стъпка", type: "Вид писмо", urgency: "Спешност", react: "Трябва ли да реагираш?", money: "Има ли пари?" },
-        ro: { data: "Date recunoscute", steps: "Ce trebuie să faci acum", actions: "Acțiuni potrivite", whatsapp: "Pe scurt pentru WhatsApp", first: "Primul pas", type: "Tip document", urgency: "Urgență", react: "Trebuie să reacționezi?", money: "Este vorba de bani?" },
-        ar: { data: "البيانات التي تم التعرف عليها", steps: "ماذا تفعل الآن", actions: "خطوات مناسبة", whatsapp: "مختصر للواتساب", first: "الخطوة الأولى", type: "نوع الرسالة", urgency: "الأهمية", react: "هل يجب الرد؟", money: "هل يوجد مبلغ مالي؟" },
-        en: { data: "Detected data", steps: "What to do now", actions: "Suggested actions", whatsapp: "Short for WhatsApp", first: "First step", type: "Document type", urgency: "Urgency", react: "Do you need to react?", money: "Money involved?" }
+        de: { data: "Erkannte Daten", steps: "Was du jetzt tun solltest", actions: "Passende Aktionen", whatsapp: "Kurz für WhatsApp", first: "Erster Schritt", type: "Briefart", urgency: "Dringlichkeit", react: "Musst du reagieren?", money: "Geld betroffen?", unknown: "Unklar", check: "Bitte prüfen" },
+        tr: { data: "Algılanan bilgiler", steps: "Şimdi yapman gerekenler", actions: "Uygun adımlar", whatsapp: "WhatsApp için kısa", first: "İlk adım", type: "Yazı türü", urgency: "Aciliyet", react: "Cevap vermen gerekiyor mu?", money: "Para konusu var mı?", unknown: "Belirsiz", check: "Lütfen kontrol et" },
+        bg: { data: "Разпознати данни", steps: "Какво трябва да направиш сега", actions: "Подходящи действия", whatsapp: "Кратко за WhatsApp", first: "Първа стъпка", type: "Вид писмо", urgency: "Спешност", react: "Трябва ли да реагираш?", money: "Има ли пари?", unknown: "Неясно", check: "Моля, провери" },
+        ro: { data: "Date recunoscute", steps: "Ce trebuie să faci acum", actions: "Acțiuni potrivite", whatsapp: "Pe scurt pentru WhatsApp", first: "Primul pas", type: "Tip document", urgency: "Urgență", react: "Trebuie să reacționezi?", money: "Este vorba de bani?", unknown: "Neclar", check: "Te rog verifică" },
+        ar: { data: "البيانات التي تم التعرف عليها", steps: "ماذا تفعل الآن", actions: "خطوات مناسبة", whatsapp: "مختصر للواتساب", first: "الخطوة الأولى", type: "نوع الرسالة", urgency: "الأهمية", react: "هل يجب الرد؟", money: "هل يوجد مبلغ مالي؟", unknown: "غير واضح", check: "يرجى التحقق" },
+        en: { data: "Detected data", steps: "What to do now", actions: "Suggested actions", whatsapp: "Short for WhatsApp", first: "First step", type: "Document type", urgency: "Urgency", react: "Do you need to react?", money: "Money involved?", unknown: "Unclear", check: "Please check" }
       };
       const HL = helperLabels[lang] || helperLabels.de;
 
@@ -1366,9 +1366,9 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       helperContentEl.innerHTML = `
         <div class="helper-grid">
           ${pill(HL.type, helper.briefart_label || "-")}
-          ${pill(HL.urgency, helper.urgency_label || "Unklar", String(helper.urgency_label || "").toLowerCase().includes("hoch"))}
-          ${pill(HL.react, helper.must_react_label || "Prüfen")}
-          ${pill(HL.money, helper.money_label || "Prüfen")}
+          ${pill(HL.urgency, helper.urgency_label || HL.unknown, String(helper.urgency_label || "").toLowerCase().includes("hoch") || String(helper.urgency_label || "").toLowerCase().includes("yüksek") || String(helper.urgency_label || "").toLowerCase().includes("вис") || String(helper.urgency_label || "").toLowerCase().includes("ridic") || String(helper.urgency_label || "").includes("عالية") || String(helper.urgency_label || "").toLowerCase().includes("high"))}
+          ${pill(HL.react, helper.must_react_label || HL.check)}
+          ${pill(HL.money, helper.money_label || HL.check)}
         </div>
         ${helper.first_step ? `<div class="helper-section"><div class="helper-section-title">${escapeHtml(HL.first)}</div><div class="copy-box"><strong>${escapeHtml(helper.first_step)}</strong></div></div>` : ""}
         ${warningHtml}
