@@ -302,7 +302,7 @@
                 <span id="uploadFileInfo" class="upload-info">Noch keine Fotos ausgewählt</span>
                 <button id="uploadClearBtn" class="upload-clear" type="button">Auswahl löschen</button>
               </div>
-              <div id="photoHintText" class="hint">Du kannst bis zu 3 Fotos hinzufügen. Fotografiere jede Seite einzeln, gerade von oben, scharf und ohne Schatten. Kleine Schrift lieber etwas näher fotografieren.</div>
+              <div id="photoHintText" class="hint">Tipp für gute Fotos: 1. Ganze Seite fotografieren. 2. Bei kleiner Schrift zusätzlich näher fotografieren: Name, Datum, Aktenzeichen, Betrag oder Frist. 3. Ohne Schatten, gerade von oben, scharf.</div>
               <div id="previewGrid" class="preview-grid"></div>
             </div>
           </div>
@@ -567,7 +567,7 @@
     textLabel: "Brief als Text",
     photoLabel: "Brief-Fotos hochladen",
     placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-    hint: "Du kannst bis zu 3 Fotos hinzufügen. Fotografiere jede Seite einzeln, gerade von oben, scharf und ohne Schatten. Kleine Schrift lieber etwas näher fotografieren.",
+    hint: "Tipp für gute Fotos: 1. Ganze Seite fotografieren. 2. Bei kleiner Schrift zusätzlich näher fotografieren: Name, Datum, Aktenzeichen, Betrag oder Frist. 3. Ohne Schatten, gerade von oben, scharf.",
     analyze: "Brief erklären",
     back: "← Zurück zur Startseite",
     langLabel: "Sprache",
@@ -1469,8 +1469,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         };
       }
 
-      const maxSize = 2400;
-      const quality = 0.88;
+      const maxSize = 3000;
+      const quality = 0.92;
 
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
