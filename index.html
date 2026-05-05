@@ -6,1209 +6,118 @@
   <title>Hilfe24</title>
 
 <style>
-
-  html {
-    color-scheme: light;
-  }
-
+  html { color-scheme: light; }
   :root {
-    --bg: #f5f7fb;
-    --card: #ffffff;
-    --text: #1f2937;
-    --muted: #6b7280;
+    --bg: #eef3fb;
+    --bg2: #f8fafc;
+    --card: rgba(255,255,255,0.94);
+    --text: #111827;
+    --muted: #667085;
+    --soft: #f3f6fb;
     --primary: #2563eb;
     --primary-dark: #1d4ed8;
+    --accent: #0f766e;
     --danger: #dc2626;
     --success: #15803d;
-    --border: #e5e7eb;
+    --warning: #b45309;
+    --border: #dbe3ef;
+    --shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
+    --shadow-soft: 0 10px 28px rgba(15, 23, 42, 0.07);
   }
-
-  * {
-    box-sizing: border-box;
-  }
-
+  * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: var(--bg);
+    background:
+      radial-gradient(circle at 15% 0%, rgba(37,99,235,0.18), transparent 30%),
+      radial-gradient(circle at 90% 10%, rgba(20,184,166,0.16), transparent 30%),
+      linear-gradient(180deg, var(--bg), var(--bg2));
     color: var(--text);
-  }
-
-  input,
-  textarea,
-  select,
-  button {
-    color-scheme: light;
-  }
-
-    .card {
-      background: var(--card);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-      margin-bottom: 16px;
-      border: 1px solid var(--border);
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
-
-    .sub {
-      color: var(--muted);
-      margin-bottom: 8px;
-      line-height: 1.5;
-      font-size: 16px;
-    }
-
-    label {
-      display: block;
-      font-weight: bold;
-      margin: 12px 0 6px;
-      font-size: 16px;
-    }
-
-    select,
-    textarea,
-    input[type="file"] {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      font-size: 16px;
-      background: #fff;
-    }
-
-    textarea {
-      min-height: 150px;
-      resize: vertical;
-    }
-
-    .hint {
-      font-size: 14px;
-      color: var(--muted);
-      margin-top: 6px;
-      line-height: 1.5;
-    }
-
-    .button-row,
-    .audio-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .button-row button,
-    .audio-row button {
-      flex: 1 1 220px;
-      min-width: 0;
-    }
-
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      opacity: 0.65;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-dark);
-    }
-
-    .btn-secondary {
-      background: #eef2ff;
-      color: var(--text);
-    }
-
-    .btn-danger {
-      background: #fee2e2;
-      color: var(--danger);
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .home-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      margin-top: 16px;
-    }
-
-    .home-btn {
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 18px;
-      text-align: left;
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
-    }
-
-    .home-btn span {
-      display: block;
-      margin-top: 6px;
-      font-size: 14px;
-      font-weight: 400;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-
-    .preview-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .preview-grid img {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: #fff;
-    }
-
-    .warning {
-      background: #fff7ed;
-      border: 1px solid #fdba74;
-      color: #9a3412;
-      padding: 14px;
-      border-radius: 12px;
-      line-height: 1.5;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
- .short-box {
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 12px;
-  padding: 14px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-    .detail-box {
-      background: #f8fafc;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      line-height: 1.8;
-      white-space: pre-wrap;
-      font-size: 18px;
-    }
-
-    .section-title {
-      margin: 0 0 10px;
-      font-size: 22px;
-      font-weight: 700;
-    }
-
-    .loader {
-      margin-top: 12px;
-      color: var(--primary);
-      font-weight: bold;
-    }
-
-    .ok {
-      color: var(--success);
-      font-weight: bold;
-      margin-top: 10px;
-    }
-
-    .error {
-      color: var(--danger);
-      font-weight: bold;
-      margin-top: 10px;
-      line-height: 1.5;
-    }
-
-    .audio-status {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    audio {
-      width: 100%;
-      margin-top: 12px;
-    }
-
-    @media (max-width: 600px) {
-      .button-row,
-      .audio-row {
-        flex-direction: column;
-      }
-
-      .button-row button,
-      .audio-row button {
-        width: 100%;
-        flex: none;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
-
-    .short-box {
-  font-size: 18px;
-  line-height: 1.65;
-}
-
-      .detail-box {
-        font-size: 18px;
-        line-height: 1.9;
-      }
-
-      button,
-      select,
-      textarea,
-      input[type="file"] {
-        font-size: 18px;
-      }
-    }
-  
-
-/* Hilfe24 V2 Layout */
-.wrap {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 16px;
-  padding-bottom: 92px;
-}
-
-.hero-card {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  border: 1px solid var(--border);
-}
-
-.hero-title-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 700;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.input-choice-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.choice-card {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px;
-  background: #ffffff;
-  font-weight: 700;
-}
-
-.choice-card span {
-  display: block;
-  margin-top: 4px;
-  font-weight: 400;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.result-card-main {
-  border-left: 6px solid #22c55e;
-}
-
-.next-card {
-  border-left: 6px solid #2563eb;
-}
-
-.question-card {
-  border-left: 6px solid #a855f7;
-}
-
-.audio-bar {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  z-index: 999;
-  max-width: 920px;
-  margin: 0 auto;
-  background: #111827;
-  color: #ffffff;
-  border-radius: 18px;
-  padding: 10px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.22);
-}
-
-.audio-bar-title {
-  flex: 1;
-  font-size: 13px;
-  color: #d1d5db;
-  line-height: 1.35;
-}
-
-.audio-bar button {
-  flex: 0 0 auto;
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 15px;
-}
-
-.audio-bar .audio-stop-fixed {
-  background: #dc2626;
-  color: #ffffff;
-}
-
-.audio-bar .audio-short-fixed {
-  background: #2563eb;
-  color: #ffffff;
-}
-
-@media (max-width: 600px) {
-  .wrap {
-    padding: 12px;
     padding-bottom: 96px;
   }
-
-  .hero-title-row {
-    flex-direction: column;
+  input, textarea, select, button { color-scheme: light; font-family: inherit; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 18px; }
+  .app-shell { min-height: 100vh; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:900; letter-spacing:-0.03em; font-size:22px; }
+  .brand-mark { width:38px; height:38px; border-radius:14px; background:linear-gradient(135deg,#2563eb,#14b8a6); color:white; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-soft); }
+  .language-pill { min-width: 190px; }
+  select, textarea, input[type="file"] { width:100%; padding:13px 14px; border:1px solid var(--border); border-radius:16px; font-size:16px; background:#fff; outline:none; }
+  select:focus, textarea:focus { border-color: var(--primary); box-shadow:0 0 0 4px rgba(37,99,235,.12); }
+  .hero { background:rgba(255,255,255,.78); backdrop-filter: blur(12px); border:1px solid rgba(219,227,239,.9); border-radius:30px; padding:22px; box-shadow:var(--shadow); overflow:hidden; position:relative; }
+  .hero:before { content:""; position:absolute; right:-80px; top:-90px; width:230px; height:230px; border-radius:50%; background:rgba(37,99,235,.10); }
+  h1 { margin:0 0 8px; font-size:32px; line-height:1.05; letter-spacing:-0.04em; }
+  .sub { color:var(--muted); margin-bottom:8px; line-height:1.5; font-size:16px; }
+  .hero-title { font-size:34px; margin-top:6px; max-width:640px; }
+  .hero-sub { font-size:17px; max-width:680px; }
+  label { display:block; font-weight:800; margin:14px 0 7px; font-size:15px; color:#263244; }
+  .assistant-card { margin-top:18px; background:#fff; border:1px solid var(--border); border-radius:26px; padding:18px; box-shadow:var(--shadow-soft); position:relative; }
+  .assistant-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .assistant-avatar { width:44px; height:44px; border-radius:17px; background:#e0edff; color:#1d4ed8; display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .assistant-head strong { display:block; font-size:18px; }
+  .assistant-head span { color:var(--muted); font-size:14px; }
+  .home-grid { display:grid; grid-template-columns: 1.25fr 1fr; gap:12px; margin-top:16px; }
+  .home-btn { background:#fff; border:1px solid var(--border); border-radius:22px; padding:18px; text-align:left; font-size:18px; font-weight:900; color:var(--text); box-shadow:var(--shadow-soft); cursor:pointer; transition:.15s transform,.15s border-color,.15s box-shadow; min-height:96px; }
+  .home-btn:hover { transform:translateY(-1px); border-color:#b8c7dc; box-shadow:var(--shadow); }
+  .home-btn span { display:block; margin-top:7px; font-size:14px; font-weight:500; color:var(--muted); line-height:1.4; }
+  #openBriefBtn { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:white; border:0; }
+  #openBriefBtn span { color:rgba(255,255,255,.86); }
+  .topic-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .chip { background:#eef4ff; color:#1e3a8a; border:1px solid #d8e6ff; padding:8px 11px; border-radius:999px; font-size:13px; font-weight:700; }
+  .card { background:var(--card); border-radius:26px; padding:18px; box-shadow:var(--shadow-soft); margin-bottom:14px; border:1px solid var(--border); }
+  .hidden { display:none !important; }
+  .input-grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  .input-panel { background:#fff; border:1px solid var(--border); border-radius:22px; padding:15px; }
+  textarea { min-height:180px; resize:vertical; }
+  .hint { font-size:14px; color:var(--muted); margin-top:8px; line-height:1.45; }
+  .button-row, .audio-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .button-row button, .audio-row button { flex:1 1 210px; min-width:0; }
+  button { border:none; border-radius:16px; padding:13px 16px; font-size:16px; font-weight:800; cursor:pointer; }
+  button:disabled { opacity:.62; cursor:not-allowed; }
+  .btn-primary { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:white; box-shadow:0 10px 22px rgba(37,99,235,.25); }
+  .btn-secondary { background:#eef3ff; color:#172554; border:1px solid #dce7ff; }
+  .btn-danger { background:#fee2e2; color:var(--danger); border:1px solid #fecaca; }
+  .preview-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(96px,1fr)); gap:10px; margin-top:12px; }
+  .preview-grid img { width:100%; height:132px; object-fit:cover; border-radius:16px; border:1px solid var(--border); background:#fff; }
+  .section-title { margin:0 0 10px; font-size:21px; font-weight:900; letter-spacing:-.02em; }
+  .result-stack { display:grid; gap:12px; }
+  .short-box { background:linear-gradient(180deg,#ecfdf3,#f7fff9); border:1px solid #a7f3d0; border-radius:20px; padding:16px; line-height:1.65; white-space:pre-wrap; font-size:18px; font-weight:700; color:#064e3b; }
+  .detail-box { background:#f8fafc; border:1px solid var(--border); border-radius:20px; padding:16px; line-height:1.75; white-space:pre-wrap; font-size:17px; max-height:360px; overflow:auto; }
+  .warning { background:#fff7ed; border:1px solid #fdba74; color:#9a3412; padding:14px; border-radius:18px; line-height:1.5; font-size:17px; font-weight:700; }
+  .loader { margin-top:12px; color:var(--primary); font-weight:900; }
+  .ok { color:var(--success); font-weight:900; margin-top:10px; }
+  .error { color:var(--danger); font-weight:900; margin-top:10px; line-height:1.5; }
+  .audio-status { color:var(--muted); font-size:13px; margin:0; }
+  audio { width:100%; margin-top:6px; }
+  .audio-dock { position:fixed; left:12px; right:12px; bottom:12px; z-index:20; max-width:980px; margin:0 auto; background:rgba(17,24,39,.94); color:white; border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.25); border-radius:22px; padding:10px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; backdrop-filter: blur(14px); }
+  .audio-dock .audio-status { color:#d1d5db; padding-left:8px; }
+  .audio-dock audio { margin:0; height:34px; }
+  .audio-dock .btn-danger { white-space:nowrap; padding:11px 14px; }
+  .backline { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+  .mini-label { color:var(--muted); font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+  @media (max-width: 760px) {
+    .wrap { padding:14px; }
+    .topbar { align-items:stretch; flex-direction:column; }
+    .language-pill { min-width:0; }
+    .hero { border-radius:24px; padding:18px; }
+    .hero-title { font-size:28px; }
+    .home-grid, .input-grid { grid-template-columns:1fr; }
+    .button-row, .audio-row { flex-direction:column; }
+    .button-row button, .audio-row button { width:100%; flex:none; }
+    h1 { font-size:26px; }
+    .short-box { font-size:17px; }
+    button, select, textarea, input[type="file"] { font-size:16px; }
+    .audio-dock { grid-template-columns:1fr; }
   }
-
-  .audio-bar {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
-  }
-}
-
-
-
-/* Hilfe24 V2.1 Design-Feinschliff: nur Optik, keine Server-Änderung */
-:root {
-  --bg: #eef3f9;
-  --card: #ffffff;
-  --text: #111827;
-  --muted: #64748b;
-  --primary: #1d4ed8;
-  --primary-dark: #1e40af;
-  --danger: #dc2626;
-  --success: #15803d;
-  --border: #dbe3ef;
-  --soft-blue: #eff6ff;
-  --soft-green: #ecfdf3;
-  --soft-purple: #faf5ff;
-  --shadow-soft: 0 14px 34px rgba(15, 23, 42, 0.08);
-}
-
-body {
-  background:
-    radial-gradient(circle at top left, rgba(37,99,235,0.10), transparent 34%),
-    linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
-  color: var(--text);
-}
-
-.wrap {
-  max-width: 760px;
-  padding: 18px;
-  padding-bottom: 98px;
-}
-
-.card {
-  border-radius: 24px;
-  padding: 20px;
-  border: 1px solid rgba(219, 227, 239, 0.95);
-  box-shadow: var(--shadow-soft);
-  margin-bottom: 14px;
-}
-
-.hero-card {
-  background: linear-gradient(145deg, #ffffff 0%, #f4f8ff 100%);
-  border: 1px solid #dbeafe;
-}
-
-h1 {
-  font-size: 32px;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
-}
-
-.section-title {
-  font-size: 21px;
-  letter-spacing: -0.02em;
-  margin-bottom: 12px;
-}
-
-.sub {
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.55;
-}
-
-label {
-  font-size: 15px;
-  margin-top: 16px;
-  color: #1f2937;
-}
-
-select,
-textarea,
-input[type="file"] {
-  border-radius: 18px;
-  border: 1px solid #d7deea;
-  background: #ffffff;
-  padding: 14px;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
-}
-
-textarea {
-  min-height: 132px;
-  line-height: 1.5;
-}
-
-button {
-  border-radius: 16px;
-  font-weight: 800;
-  min-height: 48px;
-  transition: transform 0.08s ease, filter 0.12s ease, box-shadow 0.12s ease;
-}
-
-button:active {
-  transform: scale(0.985);
-}
-
-.btn-primary {
-  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
-  color: #ffffff;
-  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.22);
-}
-
-.btn-secondary {
-  background: #f1f5ff;
-  color: #1e293b;
-  border: 1px solid #dde7ff;
-}
-
-.btn-danger {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-}
-
-.home-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.home-btn {
-  min-height: 148px;
-  border-radius: 22px;
-  padding: 18px;
-  font-size: 18px;
-  line-height: 1.18;
-  border: 1px solid #dbe3ef;
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
-}
-
-.home-btn span {
-  font-size: 14px;
-  margin-top: 10px;
-}
-
-.brand-badge {
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.input-choice-row {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.choice-card {
-  border-radius: 20px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  min-height: 84px;
-}
-
-.preview-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
-}
-
-.preview-grid img {
-  height: 116px;
-  border-radius: 18px;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-}
-
-.ok {
-  display: inline-block;
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-  border-radius: 999px;
-  padding: 8px 12px;
-  margin-top: 12px;
-}
-
-.error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 16px;
-  padding: 12px;
-}
-
-.result-card-main {
-  border-left: 0;
-  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 78%);
-  border: 1px solid #bbf7d0;
-}
-
-.result-card-main .section-title::before {
-  content: "✅ ";
-}
-
-.short-box {
-  background: #ffffff;
-  border: 1px solid #bbf7d0;
-  border-radius: 20px;
-  padding: 16px;
-  font-size: 18px;
-  line-height: 1.72;
-  font-weight: 700;
-}
-
-.next-card {
-  border-left: 0;
-  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 78%);
-  border: 1px solid #bfdbfe;
-}
-
-.next-card .section-title::before {
-  content: "📋 ";
-}
-
-.detail-box {
-  background: #ffffff;
-  border: 1px solid #dbe3ef;
-  border-radius: 20px;
-  padding: 16px;
-  font-size: 16.5px;
-  line-height: 1.72;
-  max-height: 460px;
-  overflow-y: auto;
-}
-
-.question-card {
-  border-left: 0;
-  background: linear-gradient(180deg, #faf5ff 0%, #ffffff 78%);
-  border: 1px solid #e9d5ff;
-}
-
-.question-card .section-title::before {
-  content: "💬 ";
-}
-
-.button-row {
-  gap: 9px;
-}
-
-#frageCard .button-row:first-of-type {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-#frageCard .button-row:first-of-type button {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  font-size: 15px;
-  border-radius: 14px;
-}
-
-#ownQuestionBtn {
-  grid-column: 1 / -1;
-}
-
-.audio-row {
-  margin-top: 12px;
-  gap: 8px;
-}
-
-.audio-row button {
-  min-height: 44px;
-  font-size: 15px;
-}
-
-/* Stoppen nicht dreimal in der Seite zeigen. Globaler Stop bleibt unten sichtbar. */
-.audio-row .btn-danger {
-  display: none;
-}
-
-.audio-bar {
-  left: 50%;
-  right: auto;
-  bottom: 12px;
-  transform: translateX(-50%);
-  width: calc(100% - 24px);
-  max-width: 760px;
-  border-radius: 22px;
-  background: rgba(15, 23, 42, 0.96);
-  backdrop-filter: blur(14px);
-  padding: 10px;
-}
-
-.audio-bar-title {
-  font-size: 12px;
-  color: #cbd5e1;
-}
-
-.audio-bar button {
-  min-height: 42px;
-  padding: 9px 12px;
-  font-size: 14px;
-}
-
-@media (max-width: 600px) {
-  .wrap {
-    padding: 10px;
-    padding-bottom: 88px;
-  }
-
-  .card {
-    border-radius: 22px;
-    padding: 16px;
-    margin-bottom: 12px;
-  }
-
-  h1 {
-    font-size: 30px;
-  }
-
-  .home-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .home-btn {
-    min-height: 138px;
-    padding: 15px;
-    font-size: 17px;
-  }
-
-  .home-btn span {
-    font-size: 13.5px;
-  }
-
-  .input-choice-row {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .preview-grid img {
-    height: 108px;
-  }
-
-  .short-box,
-  .detail-box {
-    font-size: 16.5px;
-  }
-
-  #frageCard .button-row:first-of-type {
-    grid-template-columns: 1fr;
-  }
-
-  .audio-bar {
-    width: calc(100% - 16px);
-    bottom: 8px;
-  }
-}
-
-
-
-/* ================================
-   Hilfe24 V3 Layout - Design only
-   ================================ */
-:root {
-  --page: #eef4ff;
-  --ink: #111827;
-  --soft: #64748b;
-  --line: rgba(15, 23, 42, 0.10);
-  --blue: #2563eb;
-  --blue2: #1d4ed8;
-  --green-soft: #ecfdf5;
-  --green-line: #bbf7d0;
-  --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.10);
-  --shadow-card: 0 10px 24px rgba(15, 23, 42, 0.07);
-}
-
-body {
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.15), transparent 32%),
-    linear-gradient(180deg, #f8fbff 0%, var(--page) 100%);
-  padding-bottom: 88px;
-}
-
-.wrap {
-  width: min(920px, 100%);
-  margin: 0 auto;
-  padding: 14px;
-}
-
-.card {
-  border-radius: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  box-shadow: var(--shadow-card);
-}
-
-.v3-shell {
-  overflow: hidden;
-  padding: 0;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-}
-
-.v3-top {
-  padding: 22px 18px 16px;
-  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
-  border-bottom: 1px solid var(--line);
-}
-
-.v3-brand {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.v3-brand h1 {
-  font-size: 32px;
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  margin: 0;
-  color: var(--ink);
-}
-
-.v3-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: #dbeafe;
-  color: #1e40af;
-  font-weight: 800;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.v3-sub {
-  margin-top: 10px;
-  color: var(--soft);
-  font-size: 17px;
-  line-height: 1.45;
-}
-
-.v3-language {
-  margin-top: 18px;
-}
-
-.v3-language label,
-.v3-input-zone label {
-  font-size: 14px;
-  color: #334155;
-  margin-bottom: 8px;
-}
-
-.v3-language select,
-#lang {
-  height: 52px;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: #fff;
-  font-weight: 800;
-}
-
-.v3-body {
-  padding: 16px 18px 20px;
-}
-
-.v3-question-title {
-  font-size: 25px;
-  letter-spacing: -0.03em;
-  margin-bottom: 12px;
-}
-
-.v3-main-action {
-  width: 100%;
-  min-height: 112px;
-  border-radius: 24px;
-  padding: 20px;
-  text-align: left;
-  background: linear-gradient(135deg, var(--blue), #4f46e5);
-  color: white;
-  box-shadow: 0 18px 35px rgba(37, 99, 235, 0.28);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.v3-main-action span {
-  color: rgba(255,255,255,0.86) !important;
-  font-size: 15px !important;
-  margin-top: 7px !important;
-  line-height: 1.35 !important;
-}
-
-.v3-main-action::after {
-  content: "→";
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.20);
-  display: grid;
-  place-items: center;
-  font-size: 25px;
-  flex: 0 0 auto;
-}
-
-.v3-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 14px 0 6px;
-}
-
-.v3-chip {
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: #fff;
-  padding: 9px 11px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #334155;
-}
-
-.v3-secondary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.v3-secondary-grid .home-btn {
-  border-radius: 20px;
-  padding: 14px;
-  min-height: 95px;
-  font-size: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: none;
-  background: #f8fafc;
-}
-
-.v3-secondary-grid .home-btn span {
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.v3-workspace {
-  padding: 18px;
-  background: rgba(255,255,255,0.96);
-}
-
-.v3-workspace-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.v3-workspace-head h1 {
-  font-size: 28px;
-  letter-spacing: -0.04em;
-}
-
-.v3-input-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin: 14px 0;
-}
-
-.v3-tab-card {
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 20px;
-  padding: 13px;
-  background: #f8fafc;
-  font-weight: 900;
-  color: var(--ink);
-}
-
-.v3-tab-card span {
-  display: block;
-  color: var(--soft);
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 1.35;
-  margin-top: 4px;
-}
-
-#bilder {
-  min-height: 54px;
-  border-radius: 18px;
-}
-
-#briefText,
-#frageText {
-  border-radius: 20px;
-  min-height: 132px;
-}
-
-.preview-grid img {
-  height: 120px;
-  border-radius: 18px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--blue), #1d4ed8);
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
-  font-weight: 900;
-}
-
-.btn-secondary {
-  background: #f1f5f9;
-  color: #0f172a;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  font-weight: 800;
-}
-
-.btn-danger {
-  font-weight: 900;
-}
-
-#okBox {
-  display: inline-block;
-  background: #dcfce7;
-  color: #166534;
-  border-radius: 999px;
-  padding: 8px 12px;
-  margin-top: 14px;
-}
-
-.v3-result {
-  padding: 18px;
-  border-left: 6px solid #22c55e;
-}
-
-.v3-result .section-title::before {
-  content: "✅ ";
-}
-
-.short-box {
-  background: var(--green-soft);
-  border: 1px solid var(--green-line);
-  border-radius: 22px;
-  padding: 16px;
-  line-height: 1.7;
-}
-
-.v3-detail-toggle {
-  padding: 10px;
-  background: transparent;
-  box-shadow: none;
-  border: none;
-  margin-bottom: 8px;
-}
-
-.v3-detail-card,
-.v3-question-card {
-  padding: 18px;
-}
-
-.detail-box {
-  border-radius: 22px;
-  max-height: 390px;
-  overflow-y: auto;
-  background: #ffffff;
-}
-
-.v3-question-card .button-row {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.v3-question-card .btn-secondary {
-  border-radius: 16px;
-  min-height: 48px;
-}
-
-#frageAntwortBox {
-  margin-top: 14px;
-}
-
-.audio-row .btn-danger {
-  display: none;
-}
-
-.audio-row audio,
-audio#audioPlayer {
-  border-radius: 16px;
-}
-
-.audio-bar {
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  width: auto;
-  max-width: 920px;
-  margin: 0 auto;
-  border-radius: 22px;
-  background: rgba(15, 23, 42, 0.92);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.30);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.10);
-}
-
-.audio-bar-title {
-  color: rgba(255,255,255,0.82);
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.audio-short-fixed,
-.audio-stop-fixed {
-  border-radius: 14px;
-  font-weight: 900;
-}
-
-.audio-short-fixed {
-  background: #2563eb;
-  color: white;
-}
-
-.audio-stop-fixed {
-  background: #ef4444;
-  color: white;
-}
-
-@media (min-width: 760px) {
-  .wrap {
-    padding: 24px;
-  }
-
-  .v3-input-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    align-items: start;
-  }
-
-  .v3-result-layout {
-    display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: 16px;
-    align-items: start;
-  }
-
-  .v3-question-card {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 600px) {
-  body {
-    background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%);
-  }
-
-  .wrap {
-    padding: 8px;
-  }
-
-  .card {
-    border-radius: 22px;
-    margin-bottom: 12px;
-  }
-
-  .v3-brand h1 {
-    font-size: 28px;
-  }
-
-  .v3-sub {
-    font-size: 15px;
-  }
-
-  .v3-secondary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .v3-secondary-grid .home-btn {
-    min-height: auto;
-  }
-
-  .v3-input-tabs {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .detail-box {
-    max-height: 340px;
-  }
-}
-
 </style>
 </head>
 
 <body>
-  <div class="wrap">
-
-    <div id="homeCard" class="card v3-shell">
-      <div class="v3-top">
-        <div class="v3-brand">
-          <div>
-            <h1>Hilfe24</h1>
-            <div id="homeSubTitle" class="v3-sub">Fotografieren, fragen oder Text einfügen. Hilfe24 erklärt es einfach und zeigt den nächsten Schritt.</div>
-          </div>
-          <div class="v3-tag">Beta</div>
-        </div>
-
-        <div class="v3-language">
+  <div class="wrap app-shell">
+    <div id="homeCard" class="hero">
+      <div class="topbar">
+        <div class="brand"><div class="brand-mark">H</div><div>Hilfe24</div></div>
+        <div class="language-pill">
           <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
           <select id="homeLang">
             <option value="de">🇩🇪 Deutsch</option>
@@ -1220,57 +129,28 @@ audio#audioPlayer {
           </select>
         </div>
       </div>
-
-      <div class="v3-body">
-        <div id="homeQuestionTitle" class="section-title v3-question-title">Was brauchst du gerade?</div>
-
-        <button id="openBriefBtn" class="home-btn v3-main-action" type="button">
-          📸 Foto oder Text erklären
-          <span>Brief, Rechnung, Nachricht, Antrag oder Frage eingeben.</span>
-        </button>
-
-        <div class="v3-chip-row" aria-label="Beispiele">
-          <span class="v3-chip">📄 Brief</span>
-          <span class="v3-chip">🧾 Rechnung</span>
-          <span class="v3-chip">📝 Antrag</span>
-          <span class="v3-chip">🚗 Auto</span>
-          <span class="v3-chip">₿ Krypto</span>
-          <span class="v3-chip">🍲 Rezept</span>
-          <span class="v3-chip">💬 Nachricht</span>
-        </div>
-
-        <div class="v3-secondary-grid home-grid">
-          <button id="soonAntraegeBtn" class="home-btn" type="button">
-            📝 Ansprüche & Anträge
-            <span>Hilfe, Erstattung, Zuschüsse und Unterlagen finden.</span>
-          </button>
-
-          <button id="soonAntwortBtn" class="home-btn" type="button">
-            ✍️ Text erstellen
-            <span>E-Mail, Brief, Kündigung, Reklamation oder WhatsApp.</span>
-          </button>
-
-          <button id="soonFotoBtn" class="home-btn" type="button">
-            📸 Foto fragen
-            <span>Produkt, Medikament, Screenshot, Anleitung, Technik.</span>
-          </button>
-
-          <button id="soonHilfeBtn" class="home-btn" type="button">
-            ❓ Allgemeine Frage
-            <span>Alltag, Arbeit, Familie, Sport, Filme und mehr.</span>
-          </button>
-        </div>
+      <div class="mini-label">Dein Alltagshelfer</div>
+      <h1 class="hero-title">Was brauchst du gerade?</h1>
+      <div id="homeSubTitle" class="sub hero-sub">Fotografieren, fragen oder Text einfügen. Hilfe24 erklärt es einfach und zeigt dir den nächsten Schritt.</div>
+      <div id="homeQuestionTitle" class="section-title" style="margin-top:18px;">Wobei brauchst du Hilfe?</div>
+      <div class="home-grid">
+        <button id="openBriefBtn" class="home-btn" type="button">📄 Schreiben verstehen<span>Briefe, Rechnungen, E-Mails, SMS, WhatsApp, Behördenpost</span></button>
+        <button id="soonAntraegeBtn" class="home-btn" type="button">📝 Anträge & Vorteile<span>Ansprüche, Erstattungen, Krankenkasse, Wohngeld, Pflege, Familie</span></button>
+        <button id="soonAntwortBtn" class="home-btn" type="button">✍️ Antwort erstellen<span>E-Mail, Brief, PDF, Kündigung, Reklamation, Nachricht</span></button>
+        <button id="soonFotoBtn" class="home-btn" type="button">📸 Foto fragen<span>Produkt, Medikament, Screenshot, Anleitung, Technik</span></button>
+        <button id="soonHilfeBtn" class="home-btn" type="button">❓ Alltag & Wissen<span>Auto, Krypto, Rezepte, Sport, Filme, Religion, Horoskop</span></button>
+      </div>
+      <div class="topic-chips">
+        <span class="chip">Brief</span><span class="chip">Rechnung</span><span class="chip">Antrag</span><span class="chip">Auto</span><span class="chip">Krypto</span><span class="chip">Rezept</span><span class="chip">Nachricht</span><span class="chip">Horoskop</span>
       </div>
     </div>
 
-    <div id="briefInputCard" class="card v3-workspace hidden">
-      <div class="v3-workspace-head">
-        <div>
-          <h1>Hilfe24</h1>
-          <div id="briefSubTitle" class="sub">Fotografiere einen Brief oder schreibe deine Frage. Hilfe24 erklärt es einfach.</div>
-        </div>
+    <div id="briefInputCard" class="card hidden">
+      <div class="backline">
+        <div><div class="mini-label">Analyse</div><h1>Hilfe24</h1></div>
+        <button id="resetBtn" class="btn-secondary" type="button">← Zurück zur Startseite</button>
       </div>
-
+      <div id="briefSubTitle" class="sub">Briefe einfach verstehen. Erst kurz und einfach. Danach mit mehr Details.</div>
       <label for="lang">Sprache</label>
       <select id="lang">
         <option value="de">🇩🇪 Deutsch</option>
@@ -1280,105 +160,80 @@ audio#audioPlayer {
         <option value="ro">🇷🇴 Română</option>
         <option value="en">🇬🇧 English</option>
       </select>
-
-      <div class="v3-input-tabs">
-        <div class="v3-tab-card">📸 Foto hochladen<span>Brief, Rechnung, Screenshot oder Schreiben.</span></div>
-        <div class="v3-tab-card">✍️ Text eingeben<span>Text kopieren oder Frage direkt schreiben.</span></div>
-      </div>
-
-      <div class="v3-input-layout">
-        <div>
-          <label id="briefPhotoLabel" for="bilder">Foto hochladen</label>
-          <input id="bilder" type="file" accept="image/*" multiple />
-          <div id="photoHintText" class="sub">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>
-          <div id="previewGrid" class="preview-grid"></div>
+      <div class="assistant-card">
+        <div class="assistant-head"><div class="assistant-avatar">🤝</div><div><strong>Schick mir dein Schreiben.</strong><span>Foto hochladen oder Text einfügen.</span></div></div>
+        <div class="input-grid">
+          <div class="input-panel">
+            <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
+            <input id="bilder" type="file" accept="image/*" multiple />
+            <div id="photoHintText" class="hint">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>
+            <div id="previewGrid" class="preview-grid"></div>
+          </div>
+          <div class="input-panel">
+            <label id="briefTextLabel" for="briefText">Brief als Text</label>
+            <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
+          </div>
         </div>
-
-        <div>
-          <label id="briefTextLabel" for="briefText">Text oder Frage</label>
-          <textarea id="briefText" placeholder="Text hier einfügen oder deine Frage schreiben"></textarea>
+        <div class="button-row">
+          <button id="analyzeBtn" class="btn-primary" type="button">Brief erklären</button>
         </div>
+        <div id="status" class="loader hidden">Bitte warten...</div>
+        <div id="errorBox" class="error hidden"></div>
+        <div id="okBox" class="ok hidden"></div>
       </div>
-
-      <div class="button-row">
-        <button id="analyzeBtn" class="btn-primary" type="button">Hilfe starten</button>
-        <button id="resetBtn" class="btn-secondary" type="button">← Zurück</button>
-      </div>
-
-      <div id="status" class="loader hidden">Bitte warten...</div>
-      <div id="errorBox" class="error hidden"></div>
-      <div id="okBox" class="ok hidden"></div>
     </div>
 
-    <div id="warningCard" class="card hidden">
-      <div class="section-title">Hinweis</div>
-      <div id="warningText" class="warning"></div>
-    </div>
+    <div id="warningCard" class="card hidden"><div class="section-title">Hinweis</div><div id="warningText" class="warning"></div></div>
 
-    <div class="v3-result-layout">
-      <div id="resultCard" class="card v3-result hidden">
-        <div id="shortTitle" class="section-title">Kurz gesagt</div>
+    <div class="result-stack">
+      <div id="resultCard" class="card hidden">
+        <div class="mini-label">Antwort</div>
+        <div id="shortTitle" class="section-title">Kurz erklärt</div>
         <div id="kurzText" class="short-box"></div>
-        <div class="audio-row">
-          <button id="readShortBtn" class="btn-primary" type="button">🔊 Kurz vorlesen</button>
-          <button id="stopBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
-        </div>
-        <div id="audioStatus" class="audio-status hidden"></div>
-        <audio id="audioPlayer" controls class="hidden"></audio>
+        <div class="audio-row"><button id="readShortBtn" class="btn-primary" type="button">🔊 Kurz vorlesen</button></div>
       </div>
 
-      <div id="detailToggleCard" class="card v3-detail-toggle hidden">
+      <div id="detailToggleCard" class="card hidden">
         <button id="toggleDetailsBtn" class="btn-secondary" type="button">📋 Mehr Details anzeigen</button>
       </div>
 
-      <div id="detailCard" class="card v3-detail-card hidden">
+      <div id="detailCard" class="card hidden">
         <div id="detailTitle" class="section-title">Mehr Details</div>
         <div id="detailText" class="detail-box"></div>
-        <div class="audio-row">
-          <button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button>
-          <button id="stopDetailsBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
-        </div>
+        <div class="audio-row"><button id="readAllBtn" class="btn-secondary" type="button">🔊 Details vorlesen</button></div>
       </div>
 
-      <div id="frageCard" class="card v3-question-card hidden">
-        <div id="frageTitle" class="section-title">Frage stellen</div>
-        <div id="frageHelp" class="sub">Frag kurz, was du nicht verstehst. Du kannst eine schnelle Frage wählen oder selbst schreiben.</div>
-        <div id="quickQuestionTitle" class="sub" style="font-weight:800; color: var(--text);">Schnellfragen:</div>
-
+      <div id="frageCard" class="card hidden">
+        <div id="frageTitle" class="section-title">Frage zu diesem Brief stellen</div>
+        <div id="frageHelp" class="sub">Du kannst alles fragen, was du an diesem Brief nicht verstehst. Du kannst deine eigene Frage schreiben oder eine Schnellfrage auswählen.</div>
+        <div id="quickQuestionTitle" class="sub" style="font-weight:800;color:var(--text);">Schnellfragen:</div>
         <div class="button-row">
-          <button id="quickWhatBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('next_steps')">Was muss ich tun?</button>
-          <button id="quickDeadlineBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('deadline')">Bis wann?</button>
-          <button id="quickConsequenceBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('consequence')">Was passiert, wenn ich nichts mache?</button>
-          <button id="quickReplyBtn" class="btn-secondary" type="button" onclick="h24SetQuestionMode('reply')">Schreib mir eine Antwort</button>
-          <button id="ownQuestionBtn" class="btn-secondary" type="button" onclick="h24OwnQuestion()">✍️ Eigene Frage stellen</button>
+          <button id="quickWhatBtn" class="btn-secondary" type="button">Was muss ich tun?</button>
+          <button id="quickDeadlineBtn" class="btn-secondary" type="button">Bis wann?</button>
+          <button id="quickConsequenceBtn" class="btn-secondary" type="button">Was passiert, wenn ich nichts mache?</button>
+          <button id="quickReplyBtn" class="btn-secondary" type="button">Schreib mir eine Antwort</button>
+          <button id="ownQuestionBtn" class="btn-secondary" type="button">✍️ Eigene Frage stellen</button>
         </div>
-
         <label id="frageTextLabel" for="frageText">Deine Frage</label>
-        <textarea id="frageText" placeholder="Schreibe hier deine Frage"></textarea>
-
-        <div class="button-row">
-          <button id="frageBtn" class="btn-primary" type="button">Frage senden</button>
-        </div>
-
+        <textarea id="frageText" placeholder="Schreibe hier deine Frage zu diesem Brief"></textarea>
+        <div class="button-row"><button id="frageBtn" class="btn-primary" type="button">Frage stellen</button></div>
         <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
         <div id="frageError" class="error hidden"></div>
-
         <div id="frageAntwortBox" class="hidden">
           <div id="frageAntwortTitle" class="section-title">Antwort</div>
           <div id="frageAntwort" class="detail-box"></div>
-          <div class="audio-row">
-            <button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Antwort vorlesen</button>
-            <button id="stopAnswerBtn" class="btn-danger" type="button" onclick="stopAudio()">⏹️ Stopp</button>
-          </div>
+          <div class="audio-row"><button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Antwort vorlesen</button></div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="audio-bar" aria-label="Audio Steuerung">
-    <div class="audio-bar-title">Audio bleibt unten sichtbar.</div>
-    <button class="audio-short-fixed" type="button" onclick="window.h24ReadShort && window.h24ReadShort()">🔊 Kurz</button>
-    <button class="audio-stop-fixed" type="button" onclick="stopAudio()">⏹ Stoppen</button>
+  <div class="audio-dock">
+    <div>
+      <div id="audioStatus" class="audio-status hidden"></div>
+      <audio id="audioPlayer" controls class="hidden"></audio>
+    </div>
+    <button id="stopBtn" class="btn-danger" type="button">⏹️ Stopp</button>
   </div>
 
 <script>
@@ -2638,14 +1493,6 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         stopAnswerBtn.onclick = stopAudio;
       }
 
-      if (stopDetailsBtn) {
-        stopDetailsBtn.onclick = stopAudio;
-      }
-
-      if (stopAnswerBtn) {
-        stopAnswerBtn.onclick = stopAudio;
-      }
-
       if (quickWhatBtn) {
         quickWhatBtn.onclick = function () {
           h24SetQuestionMode("next_steps");
@@ -2689,14 +1536,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     window.explainLetter = explainLetter;
     window.askQuestionAboutLetter = askQuestionAboutLetter;
     window.stopAudio = stopAudio;
-    window.h24ReadShort = function () { playServerAudio(currentKurzText); };
-    window.h24ReadDetails = function () { playServerAudio(currentDetailText); };
-    window.h24ReadAnswer = function () {
-      const text = frageAntwortEl ? frageAntwortEl.textContent : "";
-      playServerAudio(text);
-    };
   
 </script>
-
 </body>
 </html>
