@@ -267,6 +267,35 @@ function normalizeArray(value) {
     .filter(Boolean);
 }
 
+function normalizeActionArray(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (!item) return "";
+
+      if (typeof item === "string") {
+        return normalizeString(item);
+      }
+
+      if (typeof item === "object") {
+        return normalizeString(
+          item.label ||
+          item.title ||
+          item.name ||
+          item.text ||
+          item.action ||
+          item.value ||
+          item.code ||
+          ""
+        );
+      }
+
+      return normalizeString(item);
+    })
+    .filter((item) => item && item !== "[object Object]");
+}
+
 function normalizeInfo(info) {
   function normalizePerson(value) {
     const v = normalizeString(value);
@@ -344,7 +373,7 @@ function normalizeInfo(info) {
       "unklar"
     ),
 
-    passende_aktionen: normalizeArray(info.passende_aktionen)
+    passende_aktionen: normalizeActionArray(info.passende_aktionen)
   };
 }
 
@@ -1888,7 +1917,7 @@ Antworte nur mit gültigem JSON:
   "details": "",
   "first_step": "",
   "next_steps": [],
-  "suggested_actions": [],
+  "suggested_actions": ["kurze Aktion als Text", "zweite Aktion als Text"],
   "whatsapp_summary": ""
 }
 `
@@ -1899,7 +1928,7 @@ Antworte nur mit gültigem JSON:
   const kurz = clampShortExplanation(parsed.kurz || translated.kurz, langCode);
   const details = cleanText(parsed.details || translated.details);
   const nextSteps = normalizeArray(parsed.next_steps).slice(0, 4);
-  const suggestedActions = normalizeArray(parsed.suggested_actions).slice(0, 5);
+  const suggestedActions = normalizeActionArray(parsed.suggested_actions).slice(0, 5);
   const firstStep = normalizeString(parsed.first_step) || helper.first_step;
   const whatsappSummary = normalizeString(parsed.whatsapp_summary) || helper.whatsapp_summary;
 
