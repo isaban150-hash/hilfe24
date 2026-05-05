@@ -615,7 +615,9 @@ Keine Romane.
 
 FÜR "kurz_gesagt":
 Genau 1 kurzer sachlicher Satz in einfachem Deutsch.
-Der Satz soll den Kern treffen.
+Der Satz soll nur den Kern treffen: Was ist das Schreiben und worum geht es?
+Keine Details, keine Berechnung, keine langen Behördenformulierungen.
+Beträge, Fristen oder Termine nur nennen, wenn sie der zentrale Punkt des Schreibens sind.
 Betroffene Person:
 - Wenn im Adressfeld oder im Schreiben ein echter Vor- und Nachname der betroffenen Person steht, schreibe ihn in "betroffene_person".
 - Keine Behörde, keine Firma, keine Stadt und keinen Absender als betroffene Person eintragen.
@@ -710,7 +712,7 @@ function renderShortByLanguage(info, lang) {
   const summary = String(info.kurz_gesagt || "").trim();
   const actions = dedupe(info.was_ist_zu_tun || []);
   const topic = String(info.worum_geht_es || "").trim();
-  const person = String(info.betroffene_person || "").trim();
+  const briefTextAll = [briefart, topic, summary, nextStep, actions.join(" "), consequence].join(" ").toLowerCase();
 
   const lines = [];
 
@@ -718,111 +720,135 @@ function renderShortByLanguage(info, lang) {
     return String(text || "")
       .trim()
       .replace(/\s+/g, " ")
-      .replace(/\.$/, "");
+      .replace(/[.;,\s]+$/g, "");
   }
 
-  function pushLine(text) {
+  function shorten(text, max = 115) {
     const clean = cleanSentence(text);
-    if (!clean) return;
+    if (!clean) return "";
+    if (clean.length <= max) return clean;
 
-    lines.push(clean + ".");
+    const cut = clean.slice(0, max + 1);
+    const lastSpace = cut.lastIndexOf(" ");
+    return (lastSpace > 60 ? cut.slice(0, lastSpace) : clean.slice(0, max)).trim();
+  }
+
+  function pushLine(text, max = 115) {
+    const clean = shorten(text, max);
+    if (!clean) return;
+    const sentence = clean + ".";
+
+    if (!lines.some((line) => line.toLowerCase() === sentence.toLowerCase())) {
+      lines.push(sentence);
+    }
   }
 
   function typeLine() {
     if (briefart && sender) return `Das ist ein ${briefart} von ${sender}`;
     if (sender) return `Das ist ein Schreiben von ${sender}`;
     if (briefart) return `Das ist ein ${briefart}`;
-
     return "Das ist ein Schreiben";
   }
 
-  function shortNextStep() {
-    const text = cleanSentence(nextStep || actions[0] || summary || topic);
-
-    if (!text) return "";
-
-    if (appointment && hasAny(text, ["termin", "erscheinen", "kommen", "randevu", "melde"])) {
-      return "Gehen Sie zum Termin oder melden Sie sich rechtzeitig ab, wenn Sie nicht können";
-    }
-
-    if (hasAny(text, ["zahlen", "zahlung", "betrag", "überweisen", "forderung", "inkasso", "mahnung"])) {
-      return amount ? `Prüfen Sie die Forderung von ${amount}` : "Prüfen Sie die Forderung";
-    }
-
-    if (hasAny(text, ["unterlagen", "nachweise", "einreichen", "schicken", "senden"])) {
-      return "Schicken Sie die genannten Unterlagen";
-    }
-
-    if (hasAny(text, ["freiwillig", "angebot", "teilnehmen", "untersuchung"])) {
-      return "Sie entscheiden selbst, ob Sie das Angebot nutzen möchten";
-    }
-
-    if (text.length <= 95) return text;
-
-    return "Prüfen Sie den Brief und den nächsten Schritt";
+  function topicLine() {
+    if (summary) return summary;
+    if (topic) return `Es geht um ${topic}`;
+    return "";
   }
 
-  function shortConsequence() {
-    const text = cleanSentence(consequence);
+  function actionLine() {
+    const firstAction = cleanSentence(actions[0]);
+    const step = cleanSentence(nextStep);
 
-    if (!text) return "";
-
-    if (hasAny(text, ["10", "prozent", "%", "bürgergeld", "gekürzt", "minderung"])) {
-      return "Sonst kann Bürgergeld gekürzt werden";
+    if (duty === "werbung") {
+      return "Das wirkt wie Werbung oder ein Angebot; du musst wahrscheinlich nichts tun";
     }
 
-    if (hasAny(text, ["zwangsvollstreckung", "pfändung", "vollstreckung"])) {
-      return "Sonst können weitere Kosten oder Vollstreckung folgen";
+    if (duty === "freiwillig") {
+      return "Das ist wahrscheinlich freiwillig; du kannst selbst entscheiden";
+    }
+
+    if (duty === "information" && !deadline && !appointment && !amount) {
+      return "Du musst wahrscheinlich nichts tun, solltest den Brief aber aufbewahren";
+    }
+
+    if (appointment) {
+      return "Du sollst den Termin wahrnehmen oder rechtzeitig absagen, wenn du nicht kannst";
+    }
+
+    if (documents.length > 0 && hasAny(briefTextAll, ["unterlagen", "nachweise", "einreichen", "nachreichen", "schicken", "senden"])) {
+      return "Reiche die genannten Unterlagen rechtzeitig ein";
+    }
+
+    if (amount && hasAny(briefTextAll, ["rechnung", "forderung", "mahnu", "inkasso", "rückforderung", "aufrechnung", "zahlen", "zahlung", "betrag"])) {
+      return "Prüfe zuerst, ob die Forderung stimmt";
+    }
+
+    if (deadline && hasAny(briefTextAll, ["widerspruch", "rechtsbehelf", "frist", "antwort", "rückmeldung"])) {
+      return "Wenn du nicht einverstanden bist, reagiere innerhalb der Frist";
+    }
+
+    if (step) return step;
+    if (firstAction) return firstAction;
+
+    if (deadline) return "Prüfe die Frist und reagiere rechtzeitig";
+    if (amount) return "Prüfe den Betrag und kläre, ob du zahlen musst";
+
+    return "Prüfe den Brief und bewahre ihn auf";
+  }
+
+  function keyFactLine() {
+    if (appointment) return `Termin: ${appointment}`;
+
+    if (deadline && amount) {
+      if (hasAny(briefTextAll, ["widerspruch", "rechtsbehelf"])) {
+        return `Frist: ${deadline}`;
+      }
+      return `Betrag: ${amount}`;
+    }
+
+    if (deadline) return `Frist: ${deadline}`;
+    if (amount) return `Betrag: ${amount}`;
+
+    if (documents.length > 0) {
+      return `Wichtige Unterlagen: ${documents.slice(0, 3).join(", ")}`;
+    }
+
+    return "";
+  }
+
+  function consequenceLine() {
+    const text = cleanSentence(consequence);
+
+    if (!text) {
+      if (urgency === "hoch") return "Ignoriere den Brief nicht";
+      return "";
     }
 
     if (hasAny(text, ["keine nachteile", "keinerlei nachteile", "keinen nachteil"])) {
-      return "Wenn Sie nicht teilnehmen, entstehen keine Nachteile";
+      return "Wenn du nichts machst, entstehen laut Brief wahrscheinlich keine Nachteile";
     }
 
-    if (text.length <= 100) return "Sonst: " + text;
+    if (hasAny(text, ["vollstreckung", "pfändung", "gerichtsvollzieher"])) {
+      return "Wenn du nichts machst, können weitere Kosten oder Vollstreckung folgen";
+    }
 
-    return "Sonst können Nachteile entstehen";
+    if (hasAny(text, ["kürzung", "minderung", "leistung", "bürgergeld", "jobcenter"])) {
+      return "Wenn du nichts machst, können Leistungen gekürzt oder einbehalten werden";
+    }
+
+    if (text.length <= 95) return `Wenn du nichts machst: ${text}`;
+
+    return "Wenn du nichts machst, können Nachteile entstehen";
   }
 
-  if (person) {
-    pushLine(`Der Brief ist für ${person}`);
-  }
+  pushLine(typeLine(), 105);
+  pushLine(topicLine(), 125);
+  pushLine(actionLine(), 120);
+  pushLine(keyFactLine(), 100);
+  pushLine(consequenceLine(), 120);
 
-  pushLine(typeLine());
-
-  const step = shortNextStep();
-
-  if (step) {
-    pushLine(step);
-  }
-
-  if (appointment) {
-    pushLine(`Termin: ${cleanSentence(appointment)}`);
-  } else if (deadline) {
-    pushLine(`Frist: ${cleanSentence(deadline)}`);
-  }
-
-  if (amount) {
-    pushLine(`Betrag: ${cleanSentence(amount)}`);
-  }
-
-  if (documents.length > 0) {
-    pushLine(`Mitbringen/Schicken: ${documents.slice(0, 3).join(", ")}`);
-  }
-
-  if (deadline && appointment) {
-    pushLine(`Frist: ${cleanSentence(deadline)}`);
-  }
-
-  const consequenceLine = shortConsequence();
-
-  if (consequenceLine) {
-    pushLine(consequenceLine);
-  } else if (urgency === "hoch") {
-    pushLine("Bitte nicht ignorieren");
-  }
-
-  return dedupe(lines.filter(Boolean)).slice(0, 6).join("\n");
+  return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
 }
 
 function renderDetailTemplateGerman(info) {
