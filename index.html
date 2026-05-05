@@ -180,6 +180,29 @@
 
   .warning { background:#fff7ed; border:1px solid #fdba74; color:#9a3412; padding:14px; border-radius:18px; line-height:1.5; font-size:17px; font-weight:700; }
   .loader { margin-top:12px; color:var(--primary); font-weight:900; }
+  .analysis-progress {
+    margin-top:12px;
+    border:1px solid #c7eee6;
+    background:linear-gradient(180deg,#ffffff,#f5fffc);
+    border-radius:18px;
+    padding:12px;
+    box-shadow:0 8px 24px rgba(16,42,67,.06);
+  }
+  .analysis-progress-title { font-weight:950; color:#0f766e; margin-bottom:8px; }
+  .analysis-progress-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; }
+  .analysis-progress-list li {
+    display:flex; align-items:center; gap:8px; color:#667085; font-size:14px; font-weight:800;
+  }
+  .analysis-progress-list li.done { color:#0f766e; }
+  .analysis-progress-list li.active { color:#101828; }
+  .analysis-dot {
+    width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+    background:#e2e8f0; color:#64748b; font-size:12px; flex:0 0 auto;
+  }
+  li.done .analysis-dot { background:#ccfbf1; color:#0f766e; }
+  li.active .analysis-dot { background:linear-gradient(135deg,#0ea5a4,#2563eb); color:white; }
+  .analysis-progress-note { margin-top:9px; color:#667085; font-size:12px; font-weight:700; line-height:1.4; }
+
   .ok { color:var(--success); font-weight:900; margin-top:10px; }
   .error { color:var(--danger); font-weight:900; margin-top:10px; line-height:1.5; }
   .audio-status { color:var(--muted); font-size:13px; margin:0; }
@@ -847,6 +870,40 @@ en: {
 }
     };
 
+
+    const analysisStepTexts = {
+      de: {
+        title: "Analyse läuft",
+        note: "Große oder wichtige Briefe können etwas dauern. Bitte nicht neu laden.",
+        steps: ["Fotos werden vorbereitet", "Text wird gelesen", "Wichtige Daten werden geprüft", "Erklärung wird erstellt", "Fast fertig"]
+      },
+      tr: {
+        title: "Analiz yapılıyor",
+        note: "Büyük veya önemli mektuplar biraz sürebilir. Lütfen sayfayı yenileme.",
+        steps: ["Fotoğraflar hazırlanıyor", "Metin okunuyor", "Önemli bilgiler kontrol ediliyor", "Açıklama hazırlanıyor", "Neredeyse bitti"]
+      },
+      bg: {
+        title: "Анализът се изпълнява",
+        note: "Големи или важни писма може да отнемат малко повече време. Моля, не презареждай страницата.",
+        steps: ["Снимките се подготвят", "Текстът се прочита", "Важните данни се проверяват", "Обяснението се подготвя", "Почти готово"]
+      },
+      ar: {
+        title: "يتم التحليل",
+        note: "الرسائل الكبيرة أو المهمة قد تستغرق وقتًا أطول قليلًا. من فضلك لا تقم بتحديث الصفحة.",
+        steps: ["يتم تجهيز الصور", "تتم قراءة النص", "يتم فحص البيانات المهمة", "يتم إعداد الشرح", "أوشكنا على الانتهاء"]
+      },
+      ro: {
+        title: "Analiza rulează",
+        note: "Scrisorile mari sau importante pot dura puțin mai mult. Te rog nu reîncărca pagina.",
+        steps: ["Pozele sunt pregătite", "Textul este citit", "Datele importante sunt verificate", "Explicația este creată", "Aproape gata"]
+      },
+      en: {
+        title: "Analysis running",
+        note: "Large or important letters can take a little longer. Please do not reload the page.",
+        steps: ["Preparing photos", "Reading text", "Checking important data", "Creating explanation", "Almost done"]
+      }
+    };
+
     const questionTexts = {
       de: {
         title: "Frage zu diesem Brief stellen",
@@ -1031,12 +1088,74 @@ let currentMeta = {};
 let activeRequestId = 0;
 let activeAudioUrl = "";
 let selectedImageFiles = [];
+let analysisStatusTimer = null;
+let analysisProgressIndex = 0;
 let frageMode = "free";
 window.frageMode = "free";
   
   
     function getUiText() {
       return uiTexts[currentLang] || uiTexts.de;
+    }
+
+    function getAnalysisText() {
+      const lang = getSelectedLang ? getSelectedLang() : currentLang || "de";
+      return analysisStepTexts[lang] || analysisStepTexts.de;
+    }
+
+    function renderAnalysisProgress(index) {
+      if (!statusEl) return;
+      const t = getAnalysisText();
+      const steps = t.steps || [];
+      const items = steps.map((step, i) => {
+        const cls = i < index ? "done" : (i === index ? "active" : "");
+        const symbol = i < index ? "✓" : (i === index ? "…" : "");
+        return `<li class="${cls}"><span class="analysis-dot">${symbol}</span><span>${escapeHtml(step)}</span></li>`;
+      }).join("");
+
+      statusEl.innerHTML = `
+        <div class="analysis-progress">
+          <div class="analysis-progress-title">${escapeHtml(t.title)}</div>
+          <ul class="analysis-progress-list">${items}</ul>
+          <div class="analysis-progress-note">${escapeHtml(t.note)}</div>
+        </div>
+      `;
+      show(statusEl);
+    }
+
+    function setAnalysisProgressStep(index) {
+      analysisProgressIndex = Math.max(0, Math.min(index, 4));
+      renderAnalysisProgress(analysisProgressIndex);
+    }
+
+    function startAnalysisProgress() {
+      stopAnalysisProgress();
+      analysisProgressIndex = 0;
+      renderAnalysisProgress(0);
+
+      const plan = [
+        { after: 4500, step: 1 },
+        { after: 12000, step: 2 },
+        { after: 26000, step: 3 },
+        { after: 45000, step: 4 }
+      ];
+
+      const started = Date.now();
+      analysisStatusTimer = setInterval(() => {
+        const elapsed = Date.now() - started;
+        for (const item of plan) {
+          if (elapsed >= item.after && analysisProgressIndex < item.step) {
+            setAnalysisProgressStep(item.step);
+          }
+        }
+      }, 1000);
+    }
+
+    function stopAnalysisProgress() {
+      if (analysisStatusTimer) {
+        clearInterval(analysisStatusTimer);
+        analysisStatusTimer = null;
+      }
     }
 
     function show(el) {
@@ -1201,6 +1320,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
     function clearStatus() {
+      stopAnalysisProgress();
       if (!statusEl) return;
       statusEl.textContent = "";
       hide(statusEl);
@@ -1422,7 +1542,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     function clearOutputState() {
       clearError();
       clearOk();
-      clearStatus();
+      setAnalysisProgressStep(4);
+    clearStatus();
       clearWarning();
       clearResults();
     }
@@ -1704,7 +1825,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
   if (analyzeBtn) analyzeBtn.disabled = true;
   if (resetBtn) resetBtn.disabled = true;
 
-  setStatus(getUiText().waiting);
+  startAnalysisProgress();
 
   try {
     let response;
@@ -1721,6 +1842,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         });
       }
 
+      setAnalysisProgressStep(1);
+
       response = await fetch("/api/brief-bild", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1730,6 +1853,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         })
       });
     } else {
+      setAnalysisProgressStep(1);
       response = await fetch("/api/brief", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1740,6 +1864,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       });
     }
 
+    setAnalysisProgressStep(3);
     data = await response.json();
 
     if (requestId !== activeRequestId) return;
