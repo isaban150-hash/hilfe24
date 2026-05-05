@@ -386,6 +386,15 @@ UNSICHERHEITEN AKTIV NUTZEN:
 Wenn Fotoqualität, Name, Datum, Betrag, Frist, Aktenzeichen oder Absender nicht sicher lesbar sind, trage das in "unsicherheiten" ein.
 Lieber leer lassen als falsch ausfüllen.
 
+ZAHLEN- UND DATUMSPRÜFUNG:
+- Prüfe jede Ziffer langsam und zweimal.
+- Aus 1.393,37 Euro darf niemals 139,37 Euro werden.
+- Aus 01.05.2026 darf niemals 01.05.2023 werden.
+- Aus 31.05.2028 darf niemals 31.03.2026 werden.
+- Übernimm Tausenderpunkte, Komma, Euro-Beträge und Jahreszahlen exakt aus dem Schreiben.
+- Wenn eine Zahl wegen Falte/Schatten nicht sicher lesbar ist: leer lassen oder in unsicherheiten eintragen.
+- Bei Jobcenter-Aufrechnung unterscheide: Gesamtforderung, monatlicher Aufrechnungsbetrag, Beginn, Ende, Widerspruchsfrist.
+
 ZIEL:
 Erkenne allgemein jede Art von Schreiben:
 - Brief
@@ -1237,10 +1246,33 @@ async function buildInfoFromText(text) {
   return normalizeInfo(extractJson(rawJson));
 }
 
-async function buildInfoFromImages(bilder) {
+function buildOcrPromptForImages() {
+  return `
+Du bist die OCR-Stufe von Hilfe24.
+
+Aufgabe:
+Lies die hochgeladenen Briefbilder so exakt wie möglich ab.
+Du erklärst nichts. Du fasst nichts zusammen.
+Du gibst nur den sichtbaren Text seitenweise wieder.
+
+REGELN:
+- Jede Seite einzeln mit SEITE 1, SEITE 2, SEITE 3 kennzeichnen.
+- Namen, Beträge, Daten, Aktenzeichen, Rechnungsnummern und Paragrafen exakt übernehmen.
+- Prüfe alle Ziffern langsam: 1.393,37 ist nicht 139,37.
+- Prüfe Jahreszahlen langsam: 2026 ist nicht 2023.
+- Wenn etwas wegen Falte/Schatten nicht sicher lesbar ist, schreibe [UNSICHER: ...].
+- Keine fehlenden Wörter erfinden.
+- Keine Adresse oder Zahl korrigieren, wenn du sie nicht sicher siehst.
+- Keine Markdown-Codeblöcke.
+
+Gib nur den abgelesenen Text zurück.
+`;
+}
+
+async function buildRawTextFromImages(bilder) {
   const parts = [
     {
-      text: buildExtractionPromptForImages()
+      text: buildOcrPromptForImages()
     }
   ];
 
@@ -1250,9 +1282,80 @@ async function buildInfoFromImages(bilder) {
     if (!bild.imageData || !bild.mimeType) continue;
 
     parts.push({
+      text: `\nSEITE ${pageIndex}: Bitte diese Seite exakt ablesen.\n`
+    });
+
+    parts.push({
+      inline_data: {
+        mime_type: bild.mimeType,
+        data: bild.imageData
+      }
+    });
+
+    pageIndex++;
+  }
+
+  const raw = await callGemini(parts);
+  return cleanText(raw).slice(0, 18000);
+}
+
+async function verifyCriticalInfoFromImages(bilder, info, rawText) {
+  const parts = [
+    {
       text: `
-BILD / SEITE ${pageIndex}: Lies diese Seite genau. Übernimm Namen, Daten, Beträge und Nummern nur, wenn sie sicher lesbar sind. Wenn etwas unklar ist, schreibe es später in unsicherheiten.
+Du bist die Sicherheitsprüfung von Hilfe24.
+
+Du bekommst:
+1. die Originalbilder
+2. den OCR-Text
+3. bereits erkannte JSON-Daten
+
+Aufgabe:
+Prüfe nur kritische Daten und korrigiere sie, wenn sie auf den Bildern oder im OCR-Text klar erkennbar sind.
+
+KRITISCHE DATEN:
+- betroffene_person
+- absender_original / absender_kurz
+- briefart
+- frist
+- termin
+- folge_wenn_nichts
+- betrag
+- referenzen
+- naechster_schritt
+- wichtigste_punkte
+- was_ist_zu_tun
+- unsicherheiten
+
+HARTE REGELN:
+- Namen niemals raten.
+- Wenn ein Name nicht sicher ist: betroffene_person leer lassen und "Name nicht sicher lesbar" in unsicherheiten eintragen.
+- Wenn im Adressfeld ein klarer Name steht, genau diesen übernehmen.
+- Beträge exakt übernehmen. Aus 1.393,37 darf niemals 139,37 werden.
+- Jahreszahlen exakt übernehmen. Aus 2026 darf niemals 2023 werden.
+- Aktenzeichen/Mein Zeichen exakt übernehmen.
+- Bei Widerspruchsfrist "1 Monat nach Bekanntgabe" nicht als abgelaufen bewerten.
+- Wenn etwas unklar ist, nicht schöner machen, sondern als unsicher markieren.
+
+Antworte nur mit gültigem JSON im gleichen Schema.
+Keine Markdown-Codeblöcke.
+
+OCR-TEXT:
+${String(rawText || "").slice(0, 18000)}
+
+AKTUELLE JSON-DATEN:
+${JSON.stringify(info, null, 2)}
 `
+    }
+  ];
+
+  let pageIndex = 1;
+
+  for (const bild of bilder) {
+    if (!bild.imageData || !bild.mimeType) continue;
+
+    parts.push({
+      text: `\nORIGINALBILD SEITE ${pageIndex}: Prüfe kritische Daten gegen dieses Bild.\n`
     });
 
     parts.push({
@@ -1266,8 +1369,15 @@ BILD / SEITE ${pageIndex}: Lies diese Seite genau. Übernimm Namen, Daten, Betr�
   }
 
   const rawJson = await callGemini(parts);
-
   return normalizeInfo(extractJson(rawJson));
+}
+
+async function buildInfoFromImages(bilder) {
+  const rawText = await buildRawTextFromImages(bilder);
+  let info = await buildInfoFromText(rawText);
+  info = await verifyCriticalInfoFromImages(bilder, info, rawText);
+
+  return normalizeInfo(info);
 }
 
 async function buildFinalPayloadFromInfo(info, lang) {
@@ -1434,24 +1544,19 @@ app.post("/api/brief-bild", async (req, res) => {
 function postProcessQuestionAnswer(answer, meta = {}) {
   let out = cleanText(answer);
 
-  const safePerson = normalizeString(meta.person || "");
-  const uncertainties = Array.isArray(meta.unsicherheiten)
-    ? meta.unsicherheiten.join(" ").toLowerCase()
-    : "";
-  const personIsUnsafe = !safePerson || uncertainties.includes("name");
-
-  // Keine frei erfundene lockere Namens-Anrede wie "Hallo Krassa,".
-  // Offizielle Anreden wie "Sehr geehrte Damen und Herren" bleiben erhalten.
-  if (personIsUnsafe) {
-    out = out.replace(/^\s*(Hallo|Hi|Hey|Merhaba|Selam|Здравейте|Здравей|Bună|Salut|Hello|Hi|مرحبا|أهلاً)\s+[^,\n]{2,60},?\s*\n+/i, "");
-    out = out.replace(/^\s*(Hallo|Hi|Hey)\s+[^,\n]{2,60},?\s*/i, "");
-  }
+  // In normalen Hilfe-Antworten keine lockere Namens-Anrede verwenden.
+  // Das verhindert falsche Begrüßungen wie "Hallo Krassa," oder "Hallo Ksenia,".
+  // Offizielle Antwortvorlagen mit "Sehr geehrte Damen und Herren" bleiben erhalten.
+  out = out.replace(/^\s*(Hallo|Hi|Hey|Merhaba|Selam|Здравейте|Здравей|Bună|Salut|Hello|مرحبا|أهلاً)\s+[^,\n]{0,80},?\s*\n+/i, "");
+  out = out.replace(/^\s*(Hallo|Hi|Hey|Merhaba|Selam|Здравейте|Здравей|Bună|Salut|Hello|مرحبا|أهلاً)\s+[^,\n]{0,80},?\s*/i, "");
 
   // Frist nicht als sicher abgelaufen behaupten, wenn kein Zugang/Bekanntgabe-Datum sicher bekannt ist.
   out = out.replace(/Die Widerspruchsfrist ist leider schon abgelaufen\.?/gi, "Die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
   out = out.replace(/Die Widerspruchsfrist ist schon abgelaufen\.?/gi, "Die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
   out = out.replace(/Die Frist ist leider schon abgelaufen\.?/gi, "Bitte prüfe die Frist im Brief und wann der Brief angekommen ist.");
   out = out.replace(/Die Frist ist schon abgelaufen\.?/gi, "Bitte prüfe die Frist im Brief und wann der Brief angekommen ist.");
+  out = out.replace(/die Widerspruchsfrist[^.\n]{0,80}abgelaufen\.?/gi, "die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
+  out = out.replace(/die Frist[^.\n]{0,80}abgelaufen\.?/gi, "die Frist muss anhand des Briefes und des Zugangsdatums geprüft werden.");
 
   return cleanText(out);
 }
