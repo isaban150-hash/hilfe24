@@ -1608,54 +1608,316 @@ function simpleLabelDict(lang) {
   return maps[lang] || maps.de;
 }
 
-function simpleBriefartLabel(info) {
+
+function helperTextDict(lang) {
+  const maps = {
+    de: {
+      from: "von",
+      amount: "Betrag",
+      deadline: "Frist",
+      appointment: "Termin",
+      urgencyHigh: "Hoch",
+      urgencyMedium: "Mittel",
+      urgencyLow: "Niedrig",
+      documentDefault: "Schreiben",
+      types: {
+        inkasso: "Inkasso / Forderung",
+        jobcenter: "Bescheid",
+        invoice: "Rechnung",
+        claim: "Forderung / Mahnung",
+        appointment: "Termin",
+        policeCourt: "Gericht / Polizei",
+        health: "Krankenkasse / Gesundheit",
+        ad: "Angebot / Werbung"
+      },
+      steps: {
+        checkMoney: "Prüfe, ob Betrag und Forderung stimmen.",
+        checkDeadline: "Achte auf die Frist und notiere dir das Datum.",
+        checkAppointment: "Prüfe den Termin und sage rechtzeitig ab, wenn du nicht kannst.",
+        collectDocs: "Sammle die genannten Unterlagen oder Nachweise.",
+        getHelp: "Wenn du unsicher bist, hole Beratung oder frage die Stelle schriftlich."
+      },
+      actions: {
+        checkClaim: "Forderung prüfen",
+        requestStatement: "Forderungsaufstellung anfordern",
+        checkInstallments: "Ratenzahlung prüfen",
+        seekAdvice: "Beratung suchen",
+        checkObjection: "Widerspruch prüfen",
+        checkAmount: "Betrag prüfen",
+        checkInvoice: "Rechnung prüfen",
+        clarifyPayment: "Zahlung klären",
+        writeMessage: "Nachricht schreiben",
+        checkAppointment: "Termin prüfen",
+        prepareDocs: "Unterlagen vorbereiten",
+        askQuestion: "Frage stellen",
+        writeReply: "Antwort schreiben"
+      }
+    },
+    tr: {
+      from: "gönderen",
+      amount: "Tutar",
+      deadline: "Süre",
+      appointment: "Randevu",
+      urgencyHigh: "Yüksek",
+      urgencyMedium: "Orta",
+      urgencyLow: "Düşük",
+      documentDefault: "Yazı",
+      types: {
+        inkasso: "Tahsilat / Alacak",
+        jobcenter: "Karar yazısı",
+        invoice: "Fatura",
+        claim: "Alacak / İhtar",
+        appointment: "Randevu",
+        policeCourt: "Mahkeme / Polis",
+        health: "Sağlık sigortası / Sağlık",
+        ad: "Teklif / Reklam"
+      },
+      steps: {
+        checkMoney: "Önce tutarın ve alacağın doğru olup olmadığını kontrol et.",
+        checkDeadline: "Süreyi kontrol et ve tarihi not al.",
+        checkAppointment: "Randevuyu kontrol et; gidemeyeceksen zamanında haber ver.",
+        collectDocs: "İstenen belgeleri veya kanıtları hazırla.",
+        getHelp: "Emin değilsen danışmanlık al veya kuruma yazılı olarak sor."
+      },
+      actions: {
+        checkClaim: "Alacağı kontrol et",
+        requestStatement: "Borç dökümü iste",
+        checkInstallments: "Taksit seçeneğini kontrol et",
+        seekAdvice: "Danışmanlık al",
+        checkObjection: "İtirazı kontrol et",
+        checkAmount: "Tutarı kontrol et",
+        checkInvoice: "Faturayı kontrol et",
+        clarifyPayment: "Ödemeyi netleştir",
+        writeMessage: "Mesaj yaz",
+        checkAppointment: "Randevuyu kontrol et",
+        prepareDocs: "Belgeleri hazırla",
+        askQuestion: "Soru sor",
+        writeReply: "Cevap yaz"
+      }
+    },
+    bg: {
+      from: "от",
+      amount: "Сума",
+      deadline: "Срок",
+      appointment: "Термин",
+      urgencyHigh: "Висока",
+      urgencyMedium: "Средна",
+      urgencyLow: "Ниска",
+      documentDefault: "Писмо",
+      types: {
+        inkasso: "Инкасо / Задължение",
+        jobcenter: "Решение",
+        invoice: "Фактура",
+        claim: "Задължение / Напомняне",
+        appointment: "Термин",
+        policeCourt: "Съд / Полиция",
+        health: "Здравна каса / Здраве",
+        ad: "Оферта / Реклама"
+      },
+      steps: {
+        checkMoney: "Първо провери дали сумата и задължението са правилни.",
+        checkDeadline: "Провери срока и си запиши датата.",
+        checkAppointment: "Провери термина; ако не можеш да отидеш, съобщи навреме.",
+        collectDocs: "Подготви посочените документи или доказателства.",
+        getHelp: "Ако не си сигурен, потърси консултация или попитай писмено съответната служба."
+      },
+      actions: {
+        checkClaim: "Провери задължението",
+        requestStatement: "Поискай разбивка на сумата",
+        checkInstallments: "Провери плащане на вноски",
+        seekAdvice: "Потърси консултация",
+        checkObjection: "Провери възражение",
+        checkAmount: "Провери сумата",
+        checkInvoice: "Провери фактурата",
+        clarifyPayment: "Изясни плащането",
+        writeMessage: "Напиши съобщение",
+        checkAppointment: "Провери термина",
+        prepareDocs: "Подготви документи",
+        askQuestion: "Задай въпрос",
+        writeReply: "Напиши отговор"
+      }
+    },
+    ro: {
+      from: "de la",
+      amount: "Sumă",
+      deadline: "Termen",
+      appointment: "Programare",
+      urgencyHigh: "Ridicată",
+      urgencyMedium: "Medie",
+      urgencyLow: "Scăzută",
+      documentDefault: "Document",
+      types: {
+        inkasso: "Recuperare creanță / Datorie",
+        jobcenter: "Decizie",
+        invoice: "Factură",
+        claim: "Creanță / Somație",
+        appointment: "Programare",
+        policeCourt: "Instanță / Poliție",
+        health: "Asigurare medicală / Sănătate",
+        ad: "Ofertă / Publicitate"
+      },
+      steps: {
+        checkMoney: "Verifică mai întâi dacă suma și creanța sunt corecte.",
+        checkDeadline: "Verifică termenul și notează data.",
+        checkAppointment: "Verifică programarea și anunță din timp dacă nu poți merge.",
+        collectDocs: "Pregătește documentele sau dovezile menționate.",
+        getHelp: "Dacă nu ești sigur, cere consiliere sau întreabă instituția în scris."
+      },
+      actions: {
+        checkClaim: "Verifică creanța",
+        requestStatement: "Cere detalierea datoriei",
+        checkInstallments: "Verifică plata în rate",
+        seekAdvice: "Caută consiliere",
+        checkObjection: "Verifică contestația",
+        checkAmount: "Verifică suma",
+        checkInvoice: "Verifică factura",
+        clarifyPayment: "Clarifică plata",
+        writeMessage: "Scrie mesaj",
+        checkAppointment: "Verifică programarea",
+        prepareDocs: "Pregătește documente",
+        askQuestion: "Pune o întrebare",
+        writeReply: "Scrie răspuns"
+      }
+    },
+    ar: {
+      from: "من",
+      amount: "المبلغ",
+      deadline: "المهلة",
+      appointment: "الموعد",
+      urgencyHigh: "عالية",
+      urgencyMedium: "متوسطة",
+      urgencyLow: "منخفضة",
+      documentDefault: "رسالة",
+      types: {
+        inkasso: "تحصيل / مطالبة مالية",
+        jobcenter: "قرار رسمي",
+        invoice: "فاتورة",
+        claim: "مطالبة / إنذار",
+        appointment: "موعد",
+        policeCourt: "محكمة / شرطة",
+        health: "تأمين صحي / صحة",
+        ad: "عرض / إعلان"
+      },
+      steps: {
+        checkMoney: "تحقق أولًا من صحة المبلغ والمطالبة.",
+        checkDeadline: "تحقق من المهلة وسجل التاريخ.",
+        checkAppointment: "تحقق من الموعد وأبلغ الجهة مبكرًا إذا لم تستطع الحضور.",
+        collectDocs: "جهز المستندات أو الإثباتات المذكورة.",
+        getHelp: "إذا لم تكن متأكدًا، اطلب استشارة أو اسأل الجهة كتابيًا."
+      },
+      actions: {
+        checkClaim: "تحقق من المطالبة",
+        requestStatement: "اطلب كشفًا بالمبلغ",
+        checkInstallments: "تحقق من الدفع بالتقسيط",
+        seekAdvice: "اطلب استشارة",
+        checkObjection: "تحقق من الاعتراض",
+        checkAmount: "تحقق من المبلغ",
+        checkInvoice: "تحقق من الفاتورة",
+        clarifyPayment: "وضح الدفع",
+        writeMessage: "اكتب رسالة",
+        checkAppointment: "تحقق من الموعد",
+        prepareDocs: "جهز المستندات",
+        askQuestion: "اطرح سؤالًا",
+        writeReply: "اكتب ردًا"
+      }
+    },
+    en: {
+      from: "from",
+      amount: "Amount",
+      deadline: "Deadline",
+      appointment: "Appointment",
+      urgencyHigh: "High",
+      urgencyMedium: "Medium",
+      urgencyLow: "Low",
+      documentDefault: "Document",
+      types: {
+        inkasso: "Debt collection / Claim",
+        jobcenter: "Official decision",
+        invoice: "Invoice",
+        claim: "Claim / Reminder",
+        appointment: "Appointment",
+        policeCourt: "Court / Police",
+        health: "Health insurance / Health",
+        ad: "Offer / Advertising"
+      },
+      steps: {
+        checkMoney: "First check whether the amount and claim are correct.",
+        checkDeadline: "Check the deadline and write down the date.",
+        checkAppointment: "Check the appointment and cancel in time if you cannot attend.",
+        collectDocs: "Prepare the mentioned documents or proof.",
+        getHelp: "If you are unsure, get advice or ask the office in writing."
+      },
+      actions: {
+        checkClaim: "Check claim",
+        requestStatement: "Request statement of claim",
+        checkInstallments: "Check installment option",
+        seekAdvice: "Get advice",
+        checkObjection: "Check objection",
+        checkAmount: "Check amount",
+        checkInvoice: "Check invoice",
+        clarifyPayment: "Clarify payment",
+        writeMessage: "Write message",
+        checkAppointment: "Check appointment",
+        prepareDocs: "Prepare documents",
+        askQuestion: "Ask question",
+        writeReply: "Write reply"
+      }
+    }
+  };
+  return maps[lang] || maps.de;
+}
+
+function simpleBriefartLabel(info, lang = "de") {
+  const H = helperTextDict(lang);
   const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
 
-  if (hasAny(text, ["inkasso", "vollstreckungstitel", "vollstreckung", "gerichtsvollzieher", "pfändung"])) return "Inkasso / Forderung";
-  if (hasAny(text, ["jobcenter", "bürgergeld", "aufrechnung", "rückforderung", "bescheid", "rechtsbehelf", "widerspruch"])) return "Bescheid";
-  if (hasAny(text, ["rechnung"])) return "Rechnung";
-  if (hasAny(text, ["mahnung", "forderung"])) return "Forderung / Mahnung";
-  if (hasAny(text, ["termin", "einladung", "ladung"])) return "Termin";
-  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return "Gericht / Polizei";
-  if (hasAny(text, ["krankenkasse", "aok", "medizin", "arzt"])) return "Krankenkasse / Gesundheit";
-  if (hasAny(text, ["werbung", "angebot"])) return "Angebot / Werbung";
+  if (hasAny(text, ["inkasso", "vollstreckungstitel", "vollstreckung", "gerichtsvollzieher", "pfändung"])) return H.types.inkasso;
+  if (hasAny(text, ["jobcenter", "bürgergeld", "aufrechnung", "rückforderung", "bescheid", "rechtsbehelf", "widerspruch"])) return H.types.jobcenter;
+  if (hasAny(text, ["rechnung"])) return H.types.invoice;
+  if (hasAny(text, ["mahnung", "forderung"])) return H.types.claim;
+  if (hasAny(text, ["termin", "einladung", "ladung"])) return H.types.appointment;
+  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return H.types.policeCourt;
+  if (hasAny(text, ["krankenkasse", "aok", "medizin", "arzt"])) return H.types.health;
+  if (hasAny(text, ["werbung", "angebot"])) return H.types.ad;
 
   const raw = normalizeString(info.briefart);
-  if (!raw) return "Schreiben";
-  if (/^(forderung|mahnung)$/i.test(raw)) return "Forderung / Mahnung";
+  if (!raw) return H.documentDefault;
+  if (/^(forderung|mahnung)$/i.test(raw)) return H.types.claim;
   return raw;
 }
 
 function simpleUrgencyLabel(info, lang) {
   const L = simpleLabelDict(lang);
+  const H = helperTextDict(lang);
   const u = String(info.dringlichkeit || "unklar").toLowerCase();
-  if (u === "hoch") return "Hoch";
-  if (u === "mittel") return "Mittel";
-  if (u === "niedrig") return "Niedrig";
+  if (u === "hoch") return H.urgencyHigh;
+  if (u === "mittel") return H.urgencyMedium;
+  if (u === "niedrig") return H.urgencyLow;
   const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.folge_wenn_nichts, (info.was_ist_zu_tun||[]).join(" ")].join(" ").toLowerCase();
-  if (hasAny(text, ["widerspruch", "frist", "rechtsbehelf", "kündigung", "gericht", "polizei", "pfändung", "vollstreckung"])) return "Hoch";
-  if (hasAny(text, ["betrag", "forderung", "rechnung", "aufrechnung", "rückforderung", "termin", "unterlagen"])) return "Mittel";
+  if (hasAny(text, ["widerspruch", "frist", "rechtsbehelf", "kündigung", "gericht", "polizei", "pfändung", "vollstreckung"])) return H.urgencyHigh;
+  if (hasAny(text, ["betrag", "forderung", "rechnung", "aufrechnung", "rückforderung", "termin", "unterlagen"])) return H.urgencyMedium;
   return L.unknown;
 }
 
 function buildDeterministicNextSteps(info, lang) {
+  const H = helperTextDict(lang);
   const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.betrag, info.folge_wenn_nichts, info.naechster_schritt, (info.was_ist_zu_tun||[]).join(" ")].join(" ").toLowerCase();
   const steps = [];
 
   if (info.betrag || hasAny(text, ["forderung", "rechnung", "rückforderung", "aufrechnung", "zahlung"])) {
-    steps.push("Prüfe, ob Betrag und Forderung stimmen.");
+    steps.push(H.steps.checkMoney);
   }
   if (info.frist || hasAny(text, ["frist", "widerspruch", "rechtsbehelf"])) {
-    steps.push("Achte auf die Frist und notiere dir das Datum.");
+    steps.push(H.steps.checkDeadline);
   }
   if (info.termin) {
-    steps.push("Prüfe den Termin und sage rechtzeitig ab, wenn du nicht kannst.");
+    steps.push(H.steps.checkAppointment);
   }
   if ((info.unterlagen || []).length || hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) {
-    steps.push("Sammle die genannten Unterlagen oder Nachweise.");
+    steps.push(H.steps.collectDocs);
   }
   if (hasAny(text, ["jobcenter", "behörde", "bescheid", "widerspruch", "inkasso", "gericht", "polizei"])) {
-    steps.push("Wenn du unsicher bist, hole Beratung oder frage die Stelle schriftlich.");
+    steps.push(H.steps.getHelp);
   }
   if (!steps.length) {
     steps.push(simpleLabelDict(lang).firstStepDefault);
@@ -1664,6 +1926,7 @@ function buildDeterministicNextSteps(info, lang) {
 }
 
 function buildSuggestedActions(info, lang) {
+  const H = helperTextDict(lang);
   const text = [
     info.briefart,
     info.worum_geht_es,
@@ -1679,25 +1942,25 @@ function buildSuggestedActions(info, lang) {
   const actions = [];
 
   if (hasAny(text, ["inkasso", "vollstreckung", "vollstreckungstitel", "gerichtsvollzieher", "pfändung"])) {
-    actions.push("Forderung prüfen");
-    actions.push("Forderungsaufstellung anfordern");
-    actions.push("Ratenzahlung prüfen");
-    actions.push("Beratung suchen");
+    actions.push(H.actions.checkClaim);
+    actions.push(H.actions.requestStatement);
+    actions.push(H.actions.checkInstallments);
+    actions.push(H.actions.seekAdvice);
   } else if (hasAny(text, ["widerspruch", "rechtsbehelf", "bescheid", "aufrechnung", "rückforderung", "jobcenter", "bürgergeld"])) {
-    actions.push("Widerspruch prüfen");
-    actions.push("Betrag prüfen");
-    actions.push("Beratung suchen");
+    actions.push(H.actions.checkObjection);
+    actions.push(H.actions.checkAmount);
+    actions.push(H.actions.seekAdvice);
   } else if (hasAny(text, ["rechnung", "forderung", "zahlung", "mahnung"])) {
-    actions.push("Rechnung prüfen");
-    actions.push("Zahlung klären");
-    actions.push("Nachricht schreiben");
+    actions.push(H.actions.checkInvoice);
+    actions.push(H.actions.clarifyPayment);
+    actions.push(H.actions.writeMessage);
   }
 
-  if (hasAny(text, ["termin", "ladung", "einladung"])) actions.push("Termin prüfen");
-  if (hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) actions.push("Unterlagen vorbereiten");
+  if (hasAny(text, ["termin", "ladung", "einladung"])) actions.push(H.actions.checkAppointment);
+  if (hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) actions.push(H.actions.prepareDocs);
 
-  actions.push("Frage stellen");
-  actions.push("Antwort schreiben");
+  actions.push(H.actions.askQuestion);
+  actions.push(H.actions.writeReply);
   return dedupe(actions).slice(0,5);
 }
 
@@ -1714,7 +1977,7 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   const referenceValue = safe.referencesSafe && (info.referenzen || []).length ? (info.referenzen || []).join(", ") : L.check;
   const nextSteps = buildDeterministicNextSteps(info, langCode);
   const firstStep = nextSteps[0] || L.firstStepDefault;
-  const briefartLabel = simpleBriefartLabel(info);
+  const briefartLabel = simpleBriefartLabel(info, langCode);
   const urgencyLabel = simpleUrgencyLabel(info, langCode);
   const unsafeParts = [];
   if (!safe.personSafe) unsafeParts.push(L.person);
@@ -1722,10 +1985,11 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   if ((info.unsicherheiten || []).length) unsafeParts.push(L.check);
   const unsafeNotice = unsafeParts.length ? L.unsafe : "";
   const whatsappParts = [];
-  if (info.absender_kurz || info.absender_original) whatsappParts.push(`von ${info.absender_kurz || info.absender_original}`);
-  if (info.betrag) whatsappParts.push(`Betrag: ${info.betrag}`);
-  if (info.frist) whatsappParts.push(`Frist: ${info.frist}`);
-  if (info.termin) whatsappParts.push(`Termin: ${info.termin}`);
+  const H = helperTextDict(langCode);
+  if (info.absender_kurz || info.absender_original) whatsappParts.push(`${H.from} ${info.absender_kurz || info.absender_original}`);
+  if (info.betrag) whatsappParts.push(`${H.amount}: ${info.betrag}`);
+  if (info.frist) whatsappParts.push(`${H.deadline}: ${info.frist}`);
+  if (info.termin) whatsappParts.push(`${H.appointment}: ${info.termin}`);
 
   return {
     briefart_label: briefartLabel,
@@ -2043,8 +2307,58 @@ async function buildFinalAnswerFromImages(bilder, lang) {
   return await buildFinalPayloadFromInfo(info, lang, "image");
 }
 
+function looksGermanHeavyForAudio(text, lang) {
+  const langCode = getLanguageMeta(lang).code;
+  if (langCode === "de") return false;
+
+  const clean = String(text || "").toLowerCase();
+  if (!clean) return false;
+
+  const germanMarkers = [
+    "der brief", "die frist", "betrag", "forderung", "widerspruch",
+    "jobcenter", "inkasso", "rechnung", "mah nung", "mahnung",
+    "was du", "wenn du", "prüfe", "muss", "müssen", "unterlagen",
+    "erkannt", "daten", "dringlichkeit", "geld betroffen", "antwort schreiben"
+  ];
+
+  let hits = 0;
+  for (const marker of germanMarkers) {
+    if (clean.includes(marker)) hits++;
+  }
+
+  return hits >= 2;
+}
+
+async function translateAudioTextIfNeeded(text, lang) {
+  const langMeta = getLanguageMeta(lang);
+  const clean = cleanText(text);
+
+  if (!clean || langMeta.code === "de") return clean;
+  if (!looksGermanHeavyForAudio(clean, langMeta.code)) return clean;
+
+  const raw = await callGemini([
+    {
+      text: `
+Übersetze diesen Vorlesetext vollständig in ${langMeta.label}.
+
+Regeln:
+- Keine deutschen Sätze behalten, außer offizielle Eigennamen wie Jobcenter, AOK, HFG Inkasso.
+- Beträge, Daten, Aktenzeichen und Namen exakt erhalten.
+- Kurz, natürlich und einfach schreiben.
+- Keine zusätzlichen Informationen hinzufügen.
+- Gib nur den übersetzten Text zurück, kein JSON, kein Markdown.
+
+TEXT:
+${clean.slice(0, 2500)}
+`
+    }
+  ]);
+
+  return cleanText(raw);
+}
+
 async function buildAudioText(text, lang) {
-  return cleanText(text);
+  return await translateAudioTextIfNeeded(text, lang);
 }
 
 async function synthesizeMp3(text, lang) {
@@ -2257,7 +2571,9 @@ DATEN-SICHERHEIT:
 - Keine lockere Namensanrede wie "Hallo [Name]", außer der Name steht sicher in meta.person. Wenn kein sicherer Name vorhanden ist, beginne direkt mit der Antwort.
 
 SPRACHE:
-- Erklärung an den Nutzer immer in ${langMeta.label}.
+- Erklärung an den Nutzer immer vollständig in ${langMeta.label}.
+- Keine deutschen Erklärsätze mischen, wenn die Nutzersprache nicht Deutsch ist.
+- Nur offizielle Namen wie Jobcenter, AOK, HFG Inkasso, Bürgergeld, Aktenzeichen dürfen unverändert bleiben.
 - Fertige offizielle Antworttexte an deutsche Behörden, Gerichte, Jobcenter, Krankenkassen, Inkasso, Schulen oder Ämter immer auf Deutsch.
 - Wenn unklar ist, welche Sprache die offizielle Stelle nutzt, nimm die Sprache des Schreibens.
 
