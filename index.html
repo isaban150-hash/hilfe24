@@ -152,30 +152,31 @@
   .btn-primary { background:linear-gradient(135deg,var(--primary),var(--blue)); color:white; box-shadow:0 10px 22px rgba(14,165,164,.23); }
   .btn-secondary { background:#eef8f6; color:#0f3f3d; border:1px solid #d7eee9; }
   .btn-danger { background:#fee2e2; color:var(--danger); border:1px solid #fecaca; }
-  .preview-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(96px,1fr)); gap:10px; margin-top:12px; }
-  .preview-grid img { width:100%; height:132px; object-fit:cover; border-radius:16px; border:1px solid var(--border); background:#fff; }
+  .preview-grid { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:9px; margin-top:12px; }
+  .preview-grid img { width:100%; height:118px; object-fit:cover; border-radius:16px; border:1px solid var(--border); background:#fff; }
   .section-title { margin:0 0 10px; font-size:21px; font-weight:900; letter-spacing:-.02em; }
   .result-stack { display:grid; gap:12px; }
   .short-box { background:linear-gradient(180deg,#ecfdf3,#f7fff9); border:1px solid #a7f3d0; border-radius:20px; padding:16px; line-height:1.65; white-space:pre-wrap; font-size:18px; font-weight:700; color:#064e3b; }
   .detail-box { background:#f8fafc; border:1px solid var(--border); border-radius:20px; padding:16px; line-height:1.75; white-space:pre-wrap; font-size:17px; max-height:360px; overflow:auto; }
-  .helper-card { border:1px solid rgba(20,184,166,.22); background:linear-gradient(180deg,#ffffff,#f8fffd); }
-  .helper-section { margin-top:12px; }
-  .helper-section-title { font-size:14px; font-weight:900; color:#0f766e; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+  .helper-card { border:1px solid rgba(20,184,166,.28); background:linear-gradient(180deg,#ffffff,#f6fffc); padding:20px; }
+  .helper-section { margin-top:16px; }
+  .helper-section-title { font-size:15px; font-weight:950; color:#0f766e; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
   .helper-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-  .helper-pill { border:1px solid var(--border); border-radius:16px; padding:12px; background:#fff; }
-  .helper-pill small { display:block; color:var(--muted); font-weight:800; margin-bottom:4px; }
-  .helper-pill strong { display:block; color:var(--text); line-height:1.35; }
+  .helper-pill { border:1px solid #d7eee9; border-radius:18px; padding:13px; background:linear-gradient(180deg,#ffffff,#f8fffd); box-shadow:0 8px 20px rgba(16,42,67,.04); }
+  .helper-pill small { display:block; color:#64748b; font-weight:900; margin-bottom:5px; font-size:12px; }
+  .helper-pill strong { display:block; color:#0f172a; line-height:1.35; font-size:15px; }
+  .helper-pill.warn { background:#fff7ed; border-color:#fed7aa; }
   .helper-pill.warn strong { color:#9a3412; }
   .data-list { display:grid; gap:8px; }
-  .data-row { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; border:1px solid var(--border); background:#fff; border-radius:14px; padding:10px 12px; }
-  .data-row .data-label { color:var(--muted); font-weight:800; }
-  .data-row .data-value { text-align:right; font-weight:900; color:var(--text); overflow-wrap:anywhere; }
+  .data-row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border:1px solid #e2e8f0; background:#fff; border-radius:16px; padding:12px 13px; }
+  .data-row .data-label { color:#64748b; font-weight:900; font-size:13px; }
+  .data-row .data-value { text-align:right; font-weight:950; color:var(--text); overflow-wrap:anywhere; font-size:14px; }
   .data-row.check .data-value { color:#9a3412; }
-  .step-list { margin:0; padding-left:20px; line-height:1.6; font-weight:700; }
-  .safe-notice { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:14px; padding:12px; font-weight:800; line-height:1.45; }
+  .step-list { margin:0; padding-left:20px; line-height:1.7; font-weight:800; }
+  .safe-notice { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:16px; padding:13px; font-weight:900; line-height:1.5; }
   .copy-box { background:#f8fafc; border:1px solid var(--border); border-radius:16px; padding:12px; line-height:1.55; white-space:pre-wrap; }
   .action-chips { display:flex; flex-wrap:wrap; gap:8px; }
-  .action-chip { background:#ecfeff; color:#0f766e; border:1px solid #99f6e4; border-radius:999px; padding:8px 10px; font-weight:900; font-size:13px; }
+  .action-chip { background:#ecfeff; color:#0f766e; border:1px solid #99f6e4; border-radius:999px; padding:9px 11px; font-weight:950; font-size:13px; }
 
   .warning { background:#fff7ed; border:1px solid #fdba74; color:#9a3412; padding:14px; border-radius:18px; line-height:1.5; font-size:17px; font-weight:700; }
   .loader { margin-top:12px; color:var(--primary); font-weight:900; }
@@ -1291,10 +1292,22 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
           <strong>${escapeHtml(value || "-")}</strong>
         </div>`;
 
+
+      const lang = getSelectedLang();
+      const helperLabels = {
+        de: { data: "Erkannte Daten", steps: "Was du jetzt tun solltest", actions: "Passende Aktionen", whatsapp: "Kurz für WhatsApp", first: "Erster Schritt", type: "Briefart", urgency: "Dringlichkeit", react: "Musst du reagieren?", money: "Geld betroffen?" },
+        tr: { data: "Algılanan bilgiler", steps: "Şimdi yapman gerekenler", actions: "Uygun adımlar", whatsapp: "WhatsApp için kısa", first: "İlk adım", type: "Yazı türü", urgency: "Aciliyet", react: "Cevap vermen gerekiyor mu?", money: "Para konusu var mı?" },
+        bg: { data: "Разпознати данни", steps: "Какво трябва да направиш сега", actions: "Подходящи действия", whatsapp: "Кратко за WhatsApp", first: "Първа стъпка", type: "Вид писмо", urgency: "Спешност", react: "Трябва ли да реагираш?", money: "Има ли пари?" },
+        ro: { data: "Date recunoscute", steps: "Ce trebuie să faci acum", actions: "Acțiuni potrivite", whatsapp: "Pe scurt pentru WhatsApp", first: "Primul pas", type: "Tip document", urgency: "Urgență", react: "Trebuie să reacționezi?", money: "Este vorba de bani?" },
+        ar: { data: "البيانات التي تم التعرف عليها", steps: "ماذا تفعل الآن", actions: "خطوات مناسبة", whatsapp: "مختصر للواتساب", first: "الخطوة الأولى", type: "نوع الرسالة", urgency: "الأهمية", react: "هل يجب الرد؟", money: "هل يوجد مبلغ مالي؟" },
+        en: { data: "Detected data", steps: "What to do now", actions: "Suggested actions", whatsapp: "Short for WhatsApp", first: "First step", type: "Document type", urgency: "Urgency", react: "Do you need to react?", money: "Money involved?" }
+      };
+      const HL = helperLabels[lang] || helperLabels.de;
+
       const rows = Array.isArray(helper.data_rows) ? helper.data_rows : [];
       const dataHtml = rows.length ? `
         <div class="helper-section">
-          <div class="helper-section-title">Erkannte Daten</div>
+          <div class="helper-section-title">${escapeHtml(HL.data)}</div>
           <div class="data-list">
             ${rows.map((row) => `
               <div class="data-row ${row.status === "check" ? "check" : ""}">
@@ -1307,14 +1320,14 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       const steps = Array.isArray(helper.next_steps) ? helper.next_steps.filter(Boolean).slice(0, 4) : [];
       const stepsHtml = steps.length ? `
         <div class="helper-section">
-          <div class="helper-section-title">Was du jetzt tun solltest</div>
+          <div class="helper-section-title">${escapeHtml(HL.steps)}</div>
           <ol class="step-list">${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
         </div>` : "";
 
       const actions = Array.isArray(helper.suggested_actions) ? helper.suggested_actions.filter(Boolean).slice(0, 5) : [];
       const actionHtml = actions.length ? `
         <div class="helper-section">
-          <div class="helper-section-title">Passende Aktionen</div>
+          <div class="helper-section-title">${escapeHtml(HL.actions)}</div>
           <div class="action-chips">${actions.map((a) => `<span class="action-chip">${escapeHtml(a)}</span>`).join("")}</div>
         </div>` : "";
 
@@ -1325,18 +1338,18 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
       const whatsappHtml = helper.whatsapp_summary ? `
         <div class="helper-section">
-          <div class="helper-section-title">Kurz für WhatsApp</div>
+          <div class="helper-section-title">${escapeHtml(HL.whatsapp)}</div>
           <div class="copy-box">${escapeHtml(helper.whatsapp_summary)}</div>
         </div>` : "";
 
       helperContentEl.innerHTML = `
         <div class="helper-grid">
-          ${pill("Briefart", helper.briefart_label || "-")}
-          ${pill("Dringlichkeit", helper.urgency_label || "Unklar", String(helper.urgency_label || "").toLowerCase().includes("hoch"))}
-          ${pill("Musst du reagieren?", helper.must_react_label || "Prüfen")}
-          ${pill("Geld betroffen?", helper.money_label || "Prüfen")}
+          ${pill(HL.type, helper.briefart_label || "-")}
+          ${pill(HL.urgency, helper.urgency_label || "Unklar", String(helper.urgency_label || "").toLowerCase().includes("hoch"))}
+          ${pill(HL.react, helper.must_react_label || "Prüfen")}
+          ${pill(HL.money, helper.money_label || "Prüfen")}
         </div>
-        ${helper.first_step ? `<div class="helper-section"><div class="helper-section-title">Erster Schritt</div><div class="copy-box"><strong>${escapeHtml(helper.first_step)}</strong></div></div>` : ""}
+        ${helper.first_step ? `<div class="helper-section"><div class="helper-section-title">${escapeHtml(HL.first)}</div><div class="copy-box"><strong>${escapeHtml(helper.first_step)}</strong></div></div>` : ""}
         ${warningHtml}
         ${dataHtml}
         ${stepsHtml}
