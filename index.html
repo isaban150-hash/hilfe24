@@ -36,7 +36,7 @@
       radial-gradient(circle at 95% 4%, rgba(245,158,11,0.15), transparent 28%),
       linear-gradient(180deg, #f7fffb 0%, #eef8f6 48%, #f7f7fb 100%);
     color: var(--text);
-    padding-bottom: 92px;
+    padding-bottom: 72px;
   }
   input, textarea, select, button { color-scheme: light; font-family: inherit; }
   .wrap { max-width: 980px; margin: 0 auto; padding: 18px; }
@@ -50,10 +50,24 @@
     font-size:26px; box-shadow:0 14px 30px rgba(14,165,164,.28);
   }
   .language-pill { min-width: 220px; }
-  select, textarea, input[type="file"] {
+  select, textarea {
     width:100%; padding:13px 14px; border:1px solid var(--border);
     border-radius:18px; font-size:16px; background:#fff; outline:none;
   }
+  .file-input-hidden {
+    position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none;
+  }
+  .upload-box {
+    border:1px solid var(--border); border-radius:20px; background:linear-gradient(180deg,#ffffff,#f8fdfb);
+    padding:12px; margin-top:8px; box-shadow:0 8px 22px rgba(16,42,67,.05);
+  }
+  .upload-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .upload-btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; margin:0;
+    border-radius:16px; padding:12px 14px; background:linear-gradient(135deg,#0ea5a4,#2563eb);
+    color:white; font-weight:900; cursor:pointer; box-shadow:0 10px 22px rgba(14,165,164,.22);
+  }
+  .upload-info { color:var(--muted); font-size:14px; font-weight:800; }
   select:focus, textarea:focus { border-color: var(--primary); box-shadow:0 0 0 4px rgba(14,165,164,.13); }
   .hero {
     background:
@@ -143,10 +157,20 @@
   .error { color:var(--danger); font-weight:900; margin-top:10px; line-height:1.5; }
   .audio-status { color:var(--muted); font-size:13px; margin:0; }
   audio { width:100%; margin-top:6px; }
-  .audio-dock { position:fixed; left:12px; right:12px; bottom:12px; z-index:20; max-width:980px; margin:0 auto; background:rgba(16,42,67,.94); color:white; border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.25); border-radius:22px; padding:10px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; backdrop-filter: blur(14px); }
-  .audio-dock .audio-status { color:#d1d5db; padding-left:8px; }
-  .audio-dock audio { margin:0; height:34px; }
-  .audio-dock .btn-danger { white-space:nowrap; padding:11px 14px; }
+  .audio-dock {
+    position:fixed; left:14px; right:14px; bottom:12px; z-index:20; max-width:720px; margin:0 auto;
+    background:rgba(255,255,255,.92); color:var(--text); border:1px solid rgba(221,232,228,.95);
+    box-shadow:0 16px 46px rgba(16,42,67,.18); border-radius:999px; padding:8px;
+    display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; backdrop-filter: blur(16px);
+  }
+  .audio-dock-inner { display:flex; align-items:center; gap:8px; min-width:0; }
+  .audio-mini-label { font-size:12px; font-weight:900; color:#0f766e; white-space:nowrap; padding-left:8px; }
+  .audio-dock .audio-status { color:var(--muted); font-size:12px; padding-left:0; }
+  .audio-dock audio { margin:0; height:30px; min-width:0; }
+  .audio-dock .btn-danger {
+    white-space:nowrap; padding:10px 15px; border-radius:999px; background:#fff1f2; color:#be123c; border:1px solid #fecdd3;
+    box-shadow:none; font-size:14px;
+  }
   .backline { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
   @media (max-width: 760px) {
     .wrap { padding:14px; }
@@ -161,8 +185,10 @@
     .button-row button, .audio-row button { width:100%; flex:none; }
     h1 { font-size:26px; }
     .short-box { font-size:17px; }
-    button, select, textarea, input[type="file"] { font-size:16px; }
-    .audio-dock { grid-template-columns:1fr; }
+    button, select, textarea { font-size:16px; }
+    .audio-dock { grid-template-columns:1fr auto; left:10px; right:10px; border-radius:24px; }
+    .audio-mini-label { display:none; }
+    .audio-dock audio { max-width:100%; }
   }
 </style>
 </head>
@@ -239,9 +265,15 @@
         <div class="input-grid">
           <div class="input-panel">
             <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
-            <input id="bilder" type="file" accept="image/*" multiple />
-            <div id="photoHintText" class="hint">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>
-            <div id="previewGrid" class="preview-grid"></div>
+            <div class="upload-box">
+              <input id="bilder" class="file-input-hidden" type="file" accept="image/*" multiple />
+              <div class="upload-row">
+                <label id="uploadChooseBtn" class="upload-btn" for="bilder">📸 Fotos auswählen</label>
+                <span id="uploadFileInfo" class="upload-info">Noch keine Fotos ausgewählt</span>
+              </div>
+              <div id="photoHintText" class="hint">Du kannst 1 bis 3 Fotos vom selben Brief hochladen. Bei mehreren Seiten: erst alle Fotos machen, dann aus der Galerie auswählen.</div>
+              <div id="previewGrid" class="preview-grid"></div>
+            </div>
           </div>
           <div class="input-panel">
             <label id="briefTextLabel" for="briefText">Brief als Text</label>
@@ -303,7 +335,8 @@
   </div>
 
   <div class="audio-dock">
-    <div>
+    <div class="audio-dock-inner">
+      <span id="audioDockLabel" class="audio-mini-label">Audio</span>
       <div id="audioStatus" class="audio-status hidden"></div>
       <audio id="audioPlayer" controls class="hidden"></audio>
     </div>
@@ -505,7 +538,11 @@
     analysisLabel: "Analyse",
     answerLabel: "Antwort",
     assistantTitle: "Schick mir dein Schreiben.",
-    assistantSub: "Foto hochladen oder Text einfügen."
+    assistantSub: "Foto hochladen oder Text einfügen.",
+    uploadChoose: "📸 Fotos auswählen",
+    uploadEmpty: "Noch keine Fotos ausgewählt",
+    uploadSelected: "Fotos ausgewählt",
+    audioDock: "Audio"
   },
   tr: {
     sub: "Mektupları kolayca anla. Önce kısa ve basit. Sonra daha fazla detay.",
@@ -519,7 +556,11 @@
     analysisLabel: "Analiz",
     answerLabel: "Cevap",
     assistantTitle: "Yazını bana gönder.",
-    assistantSub: "Fotoğraf yükle veya metin ekle."
+    assistantSub: "Fotoğraf yükle veya metin ekle.",
+    uploadChoose: "📸 Fotoğraf seç",
+    uploadEmpty: "Henüz fotoğraf seçilmedi",
+    uploadSelected: "fotoğraf seçildi",
+    audioDock: "Ses"
   },
   bg: {
     sub: "Разбери писмата лесно. Първо кратко и просто. После с повече подробности.",
@@ -533,7 +574,11 @@
     analysisLabel: "Анализ",
     answerLabel: "Отговор",
     assistantTitle: "Изпрати ми писмото.",
-    assistantSub: "Качи снимка или постави текст."
+    assistantSub: "Качи снимка или постави текст.",
+    uploadChoose: "📸 Избери снимки",
+    uploadEmpty: "Още няма избрани снимки",
+    uploadSelected: "избрани снимки",
+    audioDock: "Аудио"
   },
   ar: {
     sub: "افهم الرسائل بسهولة. أولًا بشكل قصير وبسيط. ثم بتفاصيل أكثر.",
@@ -547,7 +592,11 @@
     analysisLabel: "تحليل",
     answerLabel: "الإجابة",
     assistantTitle: "أرسل لي الرسالة.",
-    assistantSub: "ارفع صورة أو أدخل النص."
+    assistantSub: "ارفع صورة أو أدخل النص.",
+    uploadChoose: "📸 اختر الصور",
+    uploadEmpty: "لم يتم اختيار صور بعد",
+    uploadSelected: "صور مختارة",
+    audioDock: "الصوت"
   },
   ro: {
     sub: "Înțelege scrisorile ușor. Mai întâi scurt și simplu. Apoi cu mai multe detalii.",
@@ -561,7 +610,11 @@
     analysisLabel: "Analiză",
     answerLabel: "Răspuns",
     assistantTitle: "Trimite-mi documentul.",
-    assistantSub: "Încarcă o poză sau introdu textul."
+    assistantSub: "Încarcă o poză sau introdu textul.",
+    uploadChoose: "📸 Alege poze",
+    uploadEmpty: "Nu ai ales poze încă",
+    uploadSelected: "poze selectate",
+    audioDock: "Audio"
   },
   en: {
     sub: "Understand letters easily. First short and simple. Then with more details.",
@@ -575,7 +628,11 @@
     analysisLabel: "Analysis",
     answerLabel: "Answer",
     assistantTitle: "Send me your document.",
-    assistantSub: "Upload a photo or paste text."
+    assistantSub: "Upload a photo or paste text.",
+    uploadChoose: "📸 Choose photos",
+    uploadEmpty: "No photos selected yet",
+    uploadSelected: "photos selected",
+    audioDock: "Audio"
   }
 };
     const uiTexts = {
@@ -850,6 +907,8 @@ en: {
     const langEl = document.getElementById("lang");
     const briefTextEl = document.getElementById("briefText");
     const bilderEl = document.getElementById("bilder");
+    const uploadChooseBtnEl = document.getElementById("uploadChooseBtn");
+    const uploadFileInfoEl = document.getElementById("uploadFileInfo");
     const previewGridEl = document.getElementById("previewGrid");
     const analyzeBtn = document.getElementById("analyzeBtn");
     const resetBtn = document.getElementById("resetBtn");
@@ -896,6 +955,7 @@ en: {
     const stopAnswerBtn = document.getElementById("stopAnswerBtn");
     const audioPlayerEl = document.getElementById("audioPlayer");
     const audioStatusEl = document.getElementById("audioStatus");
+    const audioDockLabelEl = document.getElementById("audioDockLabel");
 
     let currentLang = "de";
 
@@ -1061,6 +1121,10 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       if (briefTextEl) briefTextEl.value = "";
       if (bilderEl) bilderEl.value = "";
       if (previewGridEl) previewGridEl.innerHTML = "";
+      if (uploadFileInfoEl) {
+        const t = briefTexts[currentLang] || briefTexts.de;
+        uploadFileInfoEl.textContent = t.uploadEmpty || "Noch keine Fotos ausgewählt";
+      }
 
       activeRequestId++;
       clearOutputState();
@@ -1188,6 +1252,14 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
       previewGridEl.innerHTML = "";
       const files = Array.from(bilderEl.files || []);
+      const lang = getSelectedLang();
+      const t = briefTexts[lang] || briefTexts.de;
+
+      if (uploadFileInfoEl) {
+        uploadFileInfoEl.textContent = files.length
+          ? files.length + " " + (t.uploadSelected || "Fotos ausgewählt")
+          : (t.uploadEmpty || "Noch keine Fotos ausgewählt");
+      }
 
       for (const file of files.slice(0, 3)) {
         const img = document.createElement("img");
