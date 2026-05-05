@@ -1256,16 +1256,22 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
     function stopAudio() {
-      if (!audioPlayerEl) return;
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
 
-      audioPlayerEl.pause();
-      audioPlayerEl.currentTime = 0;
-      audioPlayerEl.removeAttribute("src");
-      audioPlayerEl.load();
+      activeUtterance = null;
+
+      if (audioPlayerEl) {
+        audioPlayerEl.pause();
+        audioPlayerEl.currentTime = 0;
+        audioPlayerEl.removeAttribute("src");
+        audioPlayerEl.load();
+        hide(audioPlayerEl);
+      }
 
       revokeAudioUrl();
       clearAudioStatus();
-      hide(audioPlayerEl);
     }
 
     function escapeHtml(value) {
@@ -1574,29 +1580,58 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       return new Blob([byteArray], { type: mimeType });
     }
 
- async function fetchTtsAudio(text, lang) {
-  const selectedLang = getSelectedLang();
+    function getSpeechLanguageCode(lang) {
+      const code = String(lang || getSelectedLang() || "de").toLowerCase();
 
-  const response = await fetch("/api/tts", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      text,
-      lang: selectedLang
-    })
-  });
+      const map = {
+        de: "de-DE",
+        tr: "tr-TR",
+        bg: "bg-BG",
+        ar: "ar-SA",
+        ro: "ro-RO",
+        en: "en-US"
+      };
 
-  const data = await response.json();
+      return map[code] || "de-DE";
+    }
 
-  if (!response.ok || !data.ok) {
-    throw new Error(data.error || "TTS-Fehler");
-  }
+    function prepareAudioText(text) {
+      let clean = String(text || "")
+        .replace(/\*\*/g, "")
+        .replace(/\[[^\]]*\]/g, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
 
-  const blob = base64ToBlob(data.audioBase64, data.mimeType || "audio/mpeg");
-  return URL.createObjectURL(blob);
-}
+      const lines = clean
+        .split("\n")
+        .map(line => line.trim())
+        .filter(Boolean);
+
+      // Beim Vorlesen nicht den ganzen Roman lesen. Die ersten klaren Zeilen reichen.
+      clean = lines.slice(0, 8).join(". ");
+
+      const maxChars = 950;
+      if (clean.length > maxChars) {
+        clean = clean.slice(0, maxChars);
+        const lastEnd = Math.max(clean.lastIndexOf("."), clean.lastIndexOf("!"), clean.lastIndexOf("?"), clean.lastIndexOf("؟"));
+        if (lastEnd > 180) clean = clean.slice(0, lastEnd + 1);
+      }
+
+      return clean.trim();
+    }
+
+    function chooseSpeechVoice(langCode) {
+      if (!window.speechSynthesis) return null;
+
+      const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+      if (!voices || !voices.length) return null;
+
+      const exact = voices.find(v => String(v.lang || "").toLowerCase() === langCode.toLowerCase());
+      if (exact) return exact;
+
+      const prefix = langCode.split("-")[0].toLowerCase();
+      return voices.find(v => String(v.lang || "").toLowerCase().startsWith(prefix)) || null;
+    }
 
     async function playServerAudio(text) {
       if (!text || !text.trim()) {
@@ -1604,24 +1639,46 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         return;
       }
 
-      const lang = langEl ? langEl.value : currentLang || "de";
+      if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
+        setError(getUiText().audioError || "Audio ist auf diesem Gerät nicht verfügbar.");
+        return;
+      }
+
+      const lang = getSelectedLang();
+      const speechLang = getSpeechLanguageCode(lang);
+      const audioText = prepareAudioText(text);
+
+      if (!audioText) {
+        alert(getUiText().noAudioText);
+        return;
+      }
 
       stopAudio();
-      setAudioStatus(getUiText().audioLoading);
+      hide(audioPlayerEl);
+      setAudioStatus("🔊");
 
-      try {
-        const audioUrl = await fetchTtsAudio(text, lang);
-        activeAudioUrl = audioUrl;
+      const utterance = new SpeechSynthesisUtterance(audioText);
+      utterance.lang = speechLang;
+      utterance.rate = 0.92;
+      utterance.pitch = 1;
+      utterance.volume = 1;
 
-        audioPlayerEl.src = audioUrl;
-        show(audioPlayerEl);
+      const voice = chooseSpeechVoice(speechLang);
+      if (voice) utterance.voice = voice;
+
+      utterance.onend = function () {
+        activeUtterance = null;
         clearAudioStatus();
+      };
 
-        await audioPlayerEl.play();
-      } catch (err) {
+      utterance.onerror = function () {
+        activeUtterance = null;
         clearAudioStatus();
-        setError(err.message || getUiText().audioError);
-      }
+        setError(getUiText().audioError || "Audio konnte nicht gestartet werden.");
+      };
+
+      activeUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
     }
 
   async function explainLetter() {
