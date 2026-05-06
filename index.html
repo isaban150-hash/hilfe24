@@ -167,6 +167,21 @@
   .helper-pill strong { display:block; color:#0f172a; line-height:1.35; font-size:15px; }
   .helper-pill.warn { background:#fff7ed; border-color:#fed7aa; }
   .helper-pill.warn strong { color:#9a3412; }
+
+  .chat-box { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+  .chat-messages { display:flex; flex-direction:column; gap:10px; max-height:420px; overflow:auto; padding:4px 2px; }
+  .chat-empty { color:#64748b; font-size:15px; line-height:1.55; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:18px; padding:14px; }
+  .chat-bubble { max-width:88%; border-radius:20px; padding:13px 15px; line-height:1.55; white-space:pre-wrap; font-size:16px; box-shadow:0 8px 18px rgba(15,23,42,.05); }
+  .chat-bubble.user { align-self:flex-end; background:linear-gradient(135deg,#0f766e,#2563eb); color:#fff; border-bottom-right-radius:8px; }
+  .chat-bubble.assistant { align-self:flex-start; background:#ffffff; border:1px solid #dbeafe; color:#0f172a; border-bottom-left-radius:8px; }
+  .chat-meta { display:block; font-size:12px; font-weight:900; opacity:.72; margin-bottom:4px; }
+  .chat-input-row { display:flex; gap:10px; align-items:flex-end; margin-top:10px; }
+  .chat-input-row textarea { min-height:72px; flex:1; }
+  .chat-input-row button { flex:0 0 auto; min-width:112px; }
+  .data-check-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+  .btn-soft-warning { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+  @media (max-width:600px){ .chat-input-row{flex-direction:column;} .chat-input-row button{width:100%;} .chat-bubble{max-width:96%;} }
+
   .data-list { display:grid; gap:8px; }
   .data-row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border:1px solid #e2e8f0; background:#fff; border-radius:16px; padding:12px 13px; }
   .data-row .data-label { color:#64748b; font-weight:900; font-size:13px; }
@@ -370,17 +385,29 @@
       </div>
 
       <div id="frageCard" class="card hidden">
-        <div id="frageTitle" class="section-title">Eigene Frage senden</div>
-        <div id="frageHelp" class="sub">Schreibe deine eigene Frage zu diesem Brief. Hilfe24 antwortet passend zu deinem Anliegen.</div>
-        <label id="frageTextLabel" for="frageText">Deine Frage</label>
-        <textarea id="frageText" placeholder="Zum Beispiel: Was soll ich jetzt tun? Oder: Schreib mir eine Antwort."></textarea>
-        <div class="button-row"><button id="frageBtn" class="btn-primary" type="button">Frage senden</button></div>
+        <div id="frageTitle" class="section-title">Chat zum Brief</div>
+        <div id="frageHelp" class="sub">Stell deine eigene Frage. Die Antwort bleibt hier im Verlauf, damit du weiterfragen kannst.</div>
+
+        <div class="data-check-row">
+          <button id="dataCheckBtn" class="btn-soft-warning" type="button">🔎 Daten genauer prüfen</button>
+        </div>
+
+        <div class="chat-box">
+          <div id="chatMessages" class="chat-messages"></div>
+          <div id="chatEmptyHint" class="chat-empty">Noch keine Frage gestellt. Frag zum Beispiel: „Was soll ich jetzt tun?“ oder „Schreib mir eine Antwort.“</div>
+          <label id="frageTextLabel" for="frageText">Deine Frage</label>
+          <div class="chat-input-row">
+            <textarea id="frageText" placeholder="Zum Beispiel: Was soll ich jetzt tun? Oder: Schreib mir eine Antwort."></textarea>
+            <button id="frageBtn" class="btn-primary" type="button">Senden</button>
+          </div>
+        </div>
+
         <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
         <div id="frageError" class="error hidden"></div>
         <div id="frageAntwortBox" class="hidden">
-          <div id="frageAntwortTitle" class="section-title">Antwort</div>
+          <div id="frageAntwortTitle" class="section-title">Letzte Antwort</div>
           <div id="frageAntwort" class="detail-box"></div>
-          <div class="audio-row"><button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Antwort vorlesen</button></div>
+          <div class="audio-row"><button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Letzte Antwort vorlesen</button></div>
         </div>
       </div>
     </div>
@@ -1068,6 +1095,9 @@ en: {
     const ownQuestionBtn = document.getElementById("ownQuestionBtn");
     const frageTextLabelEl = document.getElementById("frageTextLabel");
     const frageAntwortTitleEl = document.getElementById("frageAntwortTitle");
+    const chatMessagesEl = document.getElementById("chatMessages");
+    const chatEmptyHintEl = document.getElementById("chatEmptyHint");
+    const dataCheckBtn = document.getElementById("dataCheckBtn");
 
     const readShortBtn = document.getElementById("readShortBtn");
     const readAllBtn = document.getElementById("readAllBtn");
@@ -1407,6 +1437,81 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         .replace(/'/g, "&#039;");
     }
 
+
+    function appendChatMessage(role, text) {
+      if (!chatMessagesEl) return;
+      const clean = String(text || "").trim();
+      if (!clean) return;
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble " + (role === "user" ? "user" : "assistant");
+      const meta = document.createElement("span");
+      meta.className = "chat-meta";
+      meta.textContent = role === "user" ? "Du" : "Hilfe24";
+      const body = document.createElement("div");
+      body.textContent = clean;
+      bubble.appendChild(meta);
+      bubble.appendChild(body);
+      chatMessagesEl.appendChild(bubble);
+      if (chatEmptyHintEl) hide(chatEmptyHintEl);
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+
+    function resetChatMessages() {
+      if (chatMessagesEl) chatMessagesEl.innerHTML = "";
+      if (chatEmptyHintEl) show(chatEmptyHintEl);
+    }
+
+    async function prepareImagesForDataCheck() {
+      const files = selectedImageFiles.slice(0, 3);
+      const bilder = [];
+      for (const file of files) {
+        const compressed = await compressImageForUpload(file);
+        bilder.push({ mimeType: compressed.mimeType, imageData: compressed.imageData });
+      }
+      return bilder;
+    }
+
+    async function runDataCheck() {
+      const lang = getSelectedLang();
+      if (!selectedImageFiles || selectedImageFiles.length === 0) {
+        appendChatMessage("assistant", "Bitte lade zuerst Fotos vom Brief hoch. Dann kann ich Name, Aktenzeichen, Betrag, Frist und Datum genauer prüfen.");
+        return;
+      }
+
+      if (dataCheckBtn) dataCheckBtn.disabled = true;
+      if (frageStatusEl) {
+        frageStatusEl.textContent = "Daten werden genauer geprüft...";
+        show(frageStatusEl);
+      }
+      if (frageErrorEl) hide(frageErrorEl);
+
+      try {
+        appendChatMessage("user", "Daten genauer prüfen");
+        const bilder = await prepareImagesForDataCheck();
+        const response = await fetch("/api/daten-pruefen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lang, bilder, meta: currentMeta || {} })
+        });
+        const rawText = await response.text();
+        let data = null;
+        try { data = rawText ? JSON.parse(rawText) : null; } catch (e) { throw new Error("Die Datenprüfung konnte nicht sauber gelesen werden."); }
+        if (!response.ok || !data || !data.ok) throw new Error((data && data.error) || "Datenprüfung fehlgeschlagen.");
+        const answer = data.text || "Die Datenprüfung ist fertig. Bitte prüfe unsichere Daten im Originalbrief.";
+        appendChatMessage("assistant", answer);
+        if (frageAntwortEl) frageAntwortEl.textContent = answer;
+        hide(frageAntwortBoxEl);
+      } catch (err) {
+        const msg = String(err && err.message ? err.message : "Datenprüfung fehlgeschlagen.");
+        if (frageErrorEl) { frageErrorEl.textContent = msg; show(frageErrorEl); }
+        appendChatMessage("assistant", "Die genauere Datenprüfung hat gerade nicht geklappt. Bitte prüfe Name, Aktenzeichen, Betrag und Frist im Originalbrief.");
+      } finally {
+        if (frageStatusEl) hide(frageStatusEl);
+        if (dataCheckBtn) dataCheckBtn.disabled = false;
+      }
+    }
+
     function renderHelperCards(helper) {
       if (!helperCardEl || !helperContentEl) return;
 
@@ -1518,6 +1623,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       if (frageAntwortEl) frageAntwortEl.textContent = "";
       if (frageErrorEl) frageErrorEl.textContent = "";
       if (frageStatusEl) frageStatusEl.textContent = "";
+      resetChatMessages();
 
       currentKurzText = "";
       currentDetailText = "";
@@ -1940,123 +2046,51 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
   function isPoliteSmallTalk(text) {
     const clean = normalizeForIntent(text);
-
     const politeTexts = [
       "danke", "dankeschön", "danke schön", "vielen dank", "ok", "okay", "alles klar", "super", "top", "ja", "passt", "gut", "perfekt",
       "teşekkürler", "teşekkür ederim", "sağ ol", "sagol", "tamam", "okey", "oldu", "evet", "iyi", "süper",
       "благодаря", "мерси", "добре", "ок", "да", "супер",
       "mulțumesc", "mersi", "bine", "da", "ok",
-      "thanks", "thank you", "ok", "okay", "yes", "great", "perfect",
+      "thanks", "thank you", "yes", "great", "perfect",
       "شكرا", "شكرًا", "تمام", "حسنا", "نعم"
     ];
-
     return politeTexts.includes(clean);
   }
 
   function detectQuestionMode(text) {
     const clean = normalizeForIntent(text);
-
-    const nextStepsTexts = [
-      "was muss ich tun",
-      "was soll ich tun",
-      "was muss ich jetzt tun",
-      "ne yapmam gerekiyor",
-      "şimdi ne yapmalıyım",
-      "ne yapmalıyım",
-      "какво трябва да направя",
-      "ce trebuie să fac",
-      "what do i have to do",
-      "ماذا يجب أن أفعل"
-    ];
-
-    const deadlineTexts = [
-      "bis wann",
-      "wann ist die frist",
-      "son tarih ne zaman",
-      "ne zamana kadar",
-      "до кога",
-      "până când",
-      "by when",
-      "إلى متى"
-    ];
-
-    const consequenceTexts = [
-      "was passiert wenn ich nichts mache",
-      "was passiert, wenn ich nichts mache",
-      "hiçbir şey yapmazsam ne olur",
-      "bir şey yapmazsam ne olur",
-      "какво ще стане ако не направя нищо",
-      "какво ще стане, ако не направя нищо",
-      "ce se întâmplă dacă nu fac nimic",
-      "what happens if i do nothing",
-      "ماذا يحدث إذا لم أفعل شيئًا"
-    ];
-
-    const replyTexts = [
-      "schreib mir eine antwort",
-      "schreibe mir eine antwort",
-      "antwort schreiben",
-      "benim için cevap yaz",
-      "bana bir cevap yaz",
-      "напиши ми отговор",
-      "scrie-mi un răspuns",
-      "write me a reply",
-      "اكتب لي ردًا"
-    ];
-
-    if (nextStepsTexts.includes(clean)) return "next_steps";
-    if (deadlineTexts.includes(clean)) return "deadline";
-    if (consequenceTexts.includes(clean)) return "consequence";
-    if (replyTexts.includes(clean)) return "reply";
-
+    if (["was muss ich tun", "was soll ich tun", "was muss ich jetzt tun", "ne yapmam gerekiyor", "şimdi ne yapmalıyım", "ne yapmalıyım", "какво трябва да направя", "ce trebuie să fac", "what do i have to do", "ماذا يجب أن أفعل"].includes(clean)) return "next_steps";
+    if (["bis wann", "wann ist die frist", "son tarih ne zaman", "ne zamana kadar", "до кога", "până când", "by when", "إلى متى"].includes(clean)) return "deadline";
+    if (["was passiert wenn ich nichts mache", "was passiert, wenn ich nichts mache", "hiçbir şey yapmazsam ne olur", "bir şey yapmazsam ne olur", "какво ще стане ако не направя нищо", "какво ще стане, ако не направя нищо", "ce se întâmplă dacă nu fac nimic", "what happens if i do nothing", "ماذا يحدث إذا لم أفعل شيئًا"].includes(clean)) return "consequence";
+    if (["schreib mir eine antwort", "schreibe mir eine antwort", "antwort schreiben", "benim için cevap yaz", "bana bir cevap yaz", "напиши ми отговор", "scrie-mi un răspuns", "write me a reply", "اكتب لي ردًا"].includes(clean)) return "reply";
     return window.frageMode || "free";
   }
 
-  const detectedMode = detectQuestionMode(frage);
-
   if (!frage) {
-    if (frageErrorEl) {
-      frageErrorEl.textContent = getUiText().questionMissing;
-      show(frageErrorEl);
-    }
-    return;
-  }
-
-  if (isPoliteSmallTalk(frage)) {
-    if (frageErrorEl) {
-      frageErrorEl.textContent = "";
-      hide(frageErrorEl);
-    }
-    if (frageStatusEl) {
-      frageStatusEl.textContent = "";
-      hide(frageStatusEl);
-    }
-    if (frageAntwortEl) frageAntwortEl.textContent = getUiText().politeReply || "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.";
-    show(frageAntwortBoxEl);
+    if (frageErrorEl) { frageErrorEl.textContent = getUiText().questionMissing; show(frageErrorEl); }
     return;
   }
 
   if (!currentKurzText && !currentDetailText) {
-    if (frageErrorEl) {
-      frageErrorEl.textContent = getUiText().explainFirst;
-      show(frageErrorEl);
-    }
+    if (frageErrorEl) { frageErrorEl.textContent = getUiText().explainFirst; show(frageErrorEl); }
     return;
   }
 
+  appendChatMessage("user", frage);
+  if (frageTextEl) frageTextEl.value = "";
+
+  if (isPoliteSmallTalk(frage)) {
+    const reply = getUiText().politeReply || "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.";
+    appendChatMessage("assistant", reply);
+    if (frageAntwortEl) frageAntwortEl.textContent = reply;
+    hide(frageAntwortBoxEl);
+    return;
+  }
+
+  const detectedMode = detectQuestionMode(frage);
   if (frageBtn) frageBtn.disabled = true;
-
-  if (frageStatusEl) {
-    frageStatusEl.textContent = getUiText().questionLoading;
-    show(frageStatusEl);
-  }
-
-  if (frageErrorEl) {
-    frageErrorEl.textContent = "";
-    hide(frageErrorEl);
-  }
-
-  if (frageAntwortEl) frageAntwortEl.textContent = "";
+  if (frageStatusEl) { frageStatusEl.textContent = getUiText().questionLoading; show(frageStatusEl); }
+  if (frageErrorEl) { frageErrorEl.textContent = ""; hide(frageErrorEl); }
   hide(frageAntwortBoxEl);
 
   try {
@@ -2076,36 +2110,24 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
     const rawText = await response.text();
     let data = null;
+    try { data = rawText ? JSON.parse(rawText) : null; } catch (parseError) { throw new Error(getUiText().questionNetworkError || getUiText().questionError); }
+    if (!response.ok || !data || !data.ok) throw new Error((data && data.error) || getUiText().questionError);
 
-    try {
-      data = rawText ? JSON.parse(rawText) : null;
-    } catch (parseError) {
-      throw new Error(getUiText().questionNetworkError || getUiText().questionError);
-    }
-
-    if (!response.ok || !data || !data.ok) {
-      throw new Error((data && data.error) || getUiText().questionError);
-    }
-
-    if (frageAntwortEl) frageAntwortEl.textContent = data.antwort || "";
-    show(frageAntwortBoxEl);
+    const answer = data.antwort || "";
+    appendChatMessage("assistant", answer);
+    if (frageAntwortEl) frageAntwortEl.textContent = answer;
+    hide(frageAntwortBoxEl);
   } catch (err) {
-    if (frageErrorEl) {
-      const msg = String(err && err.message ? err.message : "");
-      frageErrorEl.textContent = msg && msg !== "Load failed"
-        ? msg
-        : (getUiText().questionNetworkError || getUiText().questionError);
-      show(frageErrorEl);
-    }
+    const msg = String(err && err.message ? err.message : "");
+    const safeMsg = msg && msg !== "Load failed" ? msg : (getUiText().questionNetworkError || getUiText().questionError);
+    if (frageErrorEl) { frageErrorEl.textContent = safeMsg; show(frageErrorEl); }
+    appendChatMessage("assistant", safeMsg);
   } finally {
-    if (frageStatusEl) {
-      frageStatusEl.textContent = "";
-      hide(frageStatusEl);
-    }
-
+    if (frageStatusEl) { frageStatusEl.textContent = ""; hide(frageStatusEl); }
     if (frageBtn) frageBtn.disabled = false;
   }
 }
+
 
   function toggleDetails() {
       if (!detailCardEl || !toggleDetailsBtn) return;
@@ -2215,6 +2237,10 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
       if (frageBtn) {
         frageBtn.onclick = askQuestionAboutLetter;
+      }
+
+      if (dataCheckBtn) {
+        dataCheckBtn.onclick = runDataCheck;
       }
 
       if (readShortBtn) {
