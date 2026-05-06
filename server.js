@@ -1354,7 +1354,17 @@ ${protectedDetails.text}
     }
   ]);
 
-  const parsed = extractJson(raw);
+  let parsed;
+
+  try {
+    parsed = extractJson(raw);
+  } catch (error) {
+    console.error("Übersetzung konnte nicht als JSON gelesen werden:", error.message || error);
+    return {
+      kurz: protectedKurz.text,
+      details: localizeDetailHeadings(protectedDetails.text, langMeta.code)
+    };
+  }
 
   const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.tokens)
     .replace(/\n{3,}/g, "\n\n")
@@ -1368,8 +1378,8 @@ ${protectedDetails.text}
     .trim();
 
   return {
-    kurz,
-    details: localizeDetailHeadings(detailsRaw, langMeta.code)
+    kurz: kurz || protectedKurz.text,
+    details: localizeDetailHeadings(detailsRaw || protectedDetails.text, langMeta.code)
   };
 }
 
@@ -2366,7 +2376,15 @@ Antworte nur mit gültigem JSON:
     }
   ]);
 
-  const parsed = extractJson(raw);
+  let parsed;
+
+  try {
+    parsed = extractJson(raw);
+  } catch (error) {
+    console.error("Qualitätsmodus konnte nicht als JSON gelesen werden:", error.message || error);
+    parsed = {};
+  }
+
   const kurz = clampShortExplanation(parsed.kurz || translated.kurz, langCode);
   const details = limitDetailText(cleanText(parsed.details || translated.details), langCode, mode);
   const nextSteps = normalizeArray(parsed.next_steps).slice(0, 4);
@@ -2473,7 +2491,7 @@ async function buildFinalAnswerFromImages(bilder, lang) {
       };
     }
 
-    if (bild.imageData.length > 10000000) {
+    if (bild.imageData.length > 14000000) {
       return {
         ok: false,
         error: "Ein Bild ist zu groß. Bitte fotografiere die Seite klar, aber nicht zu nah, oder lade weniger Fotos hoch."
