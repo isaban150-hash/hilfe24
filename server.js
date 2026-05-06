@@ -334,12 +334,26 @@ function normalizeInfo(info) {
     return allowed.includes(v) ? v : fallback;
   }
 
+  function normalizePersonArray(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+      .map((item) => normalizePerson(item))
+      .filter(Boolean);
+  }
+
   return {
     absender_original: normalizeString(info.absender_original),
     absender_kurz: normalizeString(info.absender_kurz),
     email_adresse: normalizeString(info.email_adresse),
     briefart: normalizeString(info.briefart),
     betroffene_person: normalizePerson(info.betroffene_person),
+    empfaenger: normalizePerson(info.empfaenger),
+    betroffene_personen: normalizePersonArray(info.betroffene_personen),
+    zeugen: normalizePersonArray(info.zeugen),
+    angeklagte_beschuldigte: normalizePersonArray(info.angeklagte_beschuldigte),
+    weitere_genannte_personen: normalizePersonArray(info.weitere_genannte_personen),
+    aktenzeichen_gericht: normalizeString(info.aktenzeichen_gericht),
+    aktenzeichen_staatsanwaltschaft: normalizeString(info.aktenzeichen_staatsanwaltschaft),
     worum_geht_es: normalizeString(info.worum_geht_es),
     wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
     was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
@@ -514,6 +528,19 @@ EXTREM WICHTIG BEI NAMEN:
 - Wenn der Name nur teilweise lesbar ist, trage ihn NICHT in "betroffene_person" ein. Schreibe stattdessen in "unsicherheiten": "Name nicht sicher lesbar".
 - Wenn mehrere Namen vorkommen, wähle nur die Person, die wirklich vom Schreiben betroffen ist. Wenn unklar: leer lassen und Unsicherheit eintragen.
 
+ROLLEN-ERKENNUNG BEI MEHREREN PERSONEN:
+Viele Briefe nennen mehrere Menschen. Dann darfst du nicht einfach irgendeinen Namen als betroffene Person nehmen.
+Erkenne Rollen getrennt:
+- empfaenger: Person im Adressfeld / Empfänger des Briefes
+- betroffene_personen: Personen, gegen die sich der Beschluss/Forderung/Bescheid wirklich richtet
+- zeugen: Personen, die im Brief ausdrücklich als Zeugen genannt werden
+- angeklagte_beschuldigte: Angeklagte, Beschuldigte oder Betroffene im Straf-/Gerichtsverfahren
+- weitere_genannte_personen: andere erkennbare Personen, z. B. Anwalt, Sachbearbeiter nur wenn als Person relevant
+Bei Gericht/Polizei/Staatsanwaltschaft unbedingt unterscheiden:
+Empfänger ≠ Angeklagter ≠ Zeuge ≠ Sachbearbeiter.
+Wenn mehrere Personen genannt sind, schreibe in unsicherheiten: "Mehrere Personen genannt – Rolle bitte prüfen".
+Für die Kurz-Erklärung keine falsche einzelne Person behaupten, wenn mehrere Personen betroffen sind.
+
 EXTREM WICHTIG BEI RECHNUNGEN:
 - Unterscheide Rechnungssteller, Leistungserbringer, Patient/Empfänger und Versicherte Person.
 - Unterscheide Rechnungsdatum, Behandlungsdatum, Leistungsdatum, Fälligkeitsdatum und Zugangs-/Erhalt-Datum.
@@ -590,6 +617,10 @@ Beispiele:
 Wenn so etwas sicher im Schreiben steht, exakt übernehmen.
 Wenn nichts sicher erkennbar ist, referenzen leer lassen.
 Nichts erfinden.
+Bei Justiz/Gericht/Staatsanwaltschaft:
+- aktenzeichen_staatsanwaltschaft: z. B. "42 Js 1643/25"
+- aktenzeichen_gericht: z. B. "22 Ds-42 Js 1643/25-293/25"
+Wenn beide vorkommen, beide getrennt übernehmen.
 E-MAIL-ADRESSE:
 Suche im Schreiben nach einer klar erkennbaren E-Mail-Adresse des Absenders oder der zuständigen Stelle.
 Trage sie bei "email_adresse" ein.
@@ -719,6 +750,14 @@ Bei Vollstreckungstitel:
 - sofort prüfen lassen / Hilfe holen
 - bei richtiger Forderung zahlen oder Ratenzahlung
 
+GERICHT / POLIZEI / STAATSANWALTSCHAFT:
+- Immer vorsichtig und sachlich erklären.
+- Keine Schuld behaupten.
+- Rollen sauber trennen: Empfänger, Angeklagter/Beschuldigter, Zeuge, Anwalt, Gericht/Staatsanwaltschaft.
+- Bei Ordnungsgeld/Ordnungshaft klar sagen: ernst nehmen, Grund/Nachweise prüfen, rechtliche Hilfe erwägen.
+- Wenn mehrere Personen genannt werden, in der Erklärung sagen: "Der Brief nennt mehrere Personen. Bitte prüfen, wer genau handeln muss."
+- Aktenzeichen von Gericht und Staatsanwaltschaft getrennt erfassen, wenn beide sichtbar sind.
+
 MEDIZIN:
 Wenn Arztbrief, Krankenhausbericht, Befund, Notaufnahme, Entlassungsbericht:
 - keine Behördenlogik
@@ -782,6 +821,13 @@ Gib genau dieses JSON zurück:
 "absender_kurz": "",
 "email_adresse": "",
 "betroffene_person": "",
+"empfaenger": "",
+"betroffene_personen": [],
+"zeugen": [],
+"angeklagte_beschuldigte": [],
+"weitere_genannte_personen": [],
+"aktenzeichen_gericht": "",
+"aktenzeichen_staatsanwaltschaft": "",
 "briefart": "",
   "worum_geht_es": "",
   "wichtigste_punkte": [],
@@ -1650,6 +1696,12 @@ function simpleLabelDict(lang) {
       amount: "Betrag",
       deadline: "Frist/Termin",
       reference: "Aktenzeichen/Nummer",
+      recipient: "Empfänger",
+      affectedPeople: "Betroffene Personen",
+      witnesses: "Zeugen",
+      defendant: "Angeklagte/Beschuldigte",
+      courtReference: "Aktenzeichen Gericht",
+      prosecutorReference: "Aktenzeichen Staatsanwaltschaft",
       unsafe: "Einige Daten konnten nicht sicher gelesen werden. Bitte prüfe Name, Datum und Aktenzeichen im Originalbrief.",
       firstStepDefault: "Prüfe zuerst, ob Betrag, Frist und Absender im Brief stimmen.",
       whatsappStart: "Kurz: "
@@ -1671,6 +1723,12 @@ function simpleLabelDict(lang) {
       amount: "Tutar",
       deadline: "Süre/Randevu",
       reference: "Dosya/Numara",
+      recipient: "Alıcı",
+      affectedPeople: "İlgili kişiler",
+      witnesses: "Tanıklar",
+      defendant: "Sanık/Şüpheli",
+      courtReference: "Mahkeme dosya numarası",
+      prosecutorReference: "Savcılık dosya numarası",
       unsafe: "Bazı bilgiler kesin okunamadı. Lütfen isim, tarih ve numarayı asıl mektupta kontrol et.",
       firstStepDefault: "Önce tutar, süre ve gönderen bilgisinin doğru olup olmadığını kontrol et.",
       whatsappStart: "Kısaca: "
@@ -1692,6 +1750,12 @@ function simpleLabelDict(lang) {
       amount: "Сума",
       deadline: "Срок/термин",
       reference: "Номер/знак",
+      recipient: "Получател",
+      affectedPeople: "Засегнати лица",
+      witnesses: "Свидетели",
+      defendant: "Обвиняем/подсъдим",
+      courtReference: "Номер на съда",
+      prosecutorReference: "Номер на прокуратурата",
       unsafe: "Някои данни не се четат сигурно. Провери името, датата и номера в оригиналното писмо.",
       firstStepDefault: "Първо провери дали сумата, срокът и изпращачът са правилни.",
       whatsappStart: "Накратко: "
@@ -1713,6 +1777,12 @@ function simpleLabelDict(lang) {
       amount: "Sumă",
       deadline: "Termen/Programare",
       reference: "Număr/Dosar",
+      recipient: "Destinatar",
+      affectedPeople: "Persoane vizate",
+      witnesses: "Martori",
+      defendant: "Inculpat/suspect",
+      courtReference: "Număr instanță",
+      prosecutorReference: "Număr parchet",
       unsafe: "Unele date nu au putut fi citite sigur. Verifică numele, data și numărul în scrisoarea originală.",
       firstStepDefault: "Verifică mai întâi suma, termenul și expeditorul din scrisoare.",
       whatsappStart: "Pe scurt: "
@@ -1734,6 +1804,12 @@ function simpleLabelDict(lang) {
       amount: "المبلغ",
       deadline: "مهلة/موعد",
       reference: "رقم/ملف",
+      recipient: "المستلم",
+      affectedPeople: "الأشخاص المعنيون",
+      witnesses: "الشهود",
+      defendant: "المتهم",
+      courtReference: "رقم المحكمة",
+      prosecutorReference: "رقم النيابة",
       unsafe: "بعض البيانات لم تُقرأ بشكل مؤكد. يرجى التحقق من الاسم والتاريخ والرقم في الرسالة الأصلية.",
       firstStepDefault: "تحقق أولًا من المبلغ والمهلة والمرسل في الرسالة.",
       whatsappStart: "باختصار: "
@@ -1755,6 +1831,12 @@ function simpleLabelDict(lang) {
       amount: "Amount",
       deadline: "Deadline/Appointment",
       reference: "Reference number",
+      recipient: "Recipient",
+      affectedPeople: "Affected people",
+      witnesses: "Witnesses",
+      defendant: "Defendant/suspect",
+      courtReference: "Court file number",
+      prosecutorReference: "Prosecution file number",
       unsafe: "Some data could not be read safely. Please check name, date and reference number in the original letter.",
       firstStepDefault: "First check whether the amount, deadline and sender match the letter.",
       whatsappStart: "Short: "
@@ -2119,6 +2201,38 @@ function buildSuggestedActions(info, lang) {
   return dedupe(actions).slice(0,5);
 }
 
+function listValue(items) {
+  const arr = dedupe(Array.isArray(items) ? items : []).filter(Boolean);
+  return arr.join(", ");
+}
+
+function buildRoleAwareDataRows(info, L, safe, values) {
+  const rows = [];
+
+  const recipient = normalizeString(info.empfaenger);
+  const affected = listValue(info.betroffene_personen);
+  const witnesses = listValue(info.zeugen);
+  const defendants = listValue(info.angeklagte_beschuldigte);
+  const courtRef = normalizeString(info.aktenzeichen_gericht);
+  const prosecutorRef = normalizeString(info.aktenzeichen_staatsanwaltschaft);
+
+  if (recipient) rows.push({ key: "recipient", label: L.recipient || "Empfänger", value: recipient, status: "check" });
+  if (affected) rows.push({ key: "affected_people", label: L.affectedPeople || "Betroffene Personen", value: affected, status: "check" });
+  if (witnesses) rows.push({ key: "witnesses", label: L.witnesses || "Zeugen", value: witnesses, status: "check" });
+  if (defendants) rows.push({ key: "defendant", label: L.defendant || "Angeklagte/Beschuldigte", value: defendants, status: "check" });
+
+  rows.push({ key: "person", label: L.person, value: values.personValue, status: safe.personSafe ? "safe" : "check" });
+  rows.push({ key: "sender", label: L.sender, value: values.senderValue, status: values.senderValue === L.check ? "check" : "safe" });
+  rows.push({ key: "amount", label: L.amount, value: values.amountValue, status: values.amountValue === L.check ? "check" : "safe" });
+  rows.push({ key: "deadline", label: L.deadline, value: values.deadlineValue, status: values.deadlineValue === L.check ? "check" : "safe" });
+
+  if (prosecutorRef) rows.push({ key: "prosecutor_reference", label: L.prosecutorReference || "Aktenzeichen Staatsanwaltschaft", value: prosecutorRef, status: "check" });
+  if (courtRef) rows.push({ key: "court_reference", label: L.courtReference || "Aktenzeichen Gericht", value: courtRef, status: "check" });
+  rows.push({ key: "reference", label: L.reference, value: values.referenceValue, status: safe.referencesSafe ? "safe" : "check" });
+
+  return rows.filter((row) => row.value && row.value !== "");
+}
+
 async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   const langCode = getLanguageMeta(lang).code;
   const L = simpleLabelDict(langCode);
@@ -2157,13 +2271,13 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
     first_step: firstStep,
     next_steps: nextSteps,
     unsafe_notice: unsafeNotice,
-    data_rows: [
-      { key: "person", label: L.person, value: personValue, status: safe.personSafe ? "safe" : "check" },
-      { key: "sender", label: L.sender, value: senderValue, status: senderValue === L.check ? "check" : "safe" },
-      { key: "amount", label: L.amount, value: amountValue, status: amountValue === L.check ? "check" : "safe" },
-      { key: "deadline", label: L.deadline, value: deadlineValue, status: deadlineValue === L.check ? "check" : "safe" },
-      { key: "reference", label: L.reference, value: referenceValue, status: safe.referencesSafe ? "safe" : "check" }
-    ],
+    data_rows: buildRoleAwareDataRows(info, L, safe, {
+      personValue,
+      senderValue,
+      amountValue,
+      deadlineValue,
+      referenceValue
+    }),
     suggested_actions: buildSuggestedActions(info, langCode),
     whatsapp_summary: `${L.whatsappStart}${briefartLabel}${whatsappParts.length ? " – " + whatsappParts.join("; ") : ""}. ${firstStep}`,
     phone_script: ""
