@@ -1122,6 +1122,7 @@ let currentMeta = {};
 let activeRequestId = 0;
 let activeAudioUrl = "";
 let selectedImageFiles = [];
+let chatHistory = [];
 let analysisStatusTimer = null;
 let analysisProgressIndex = 0;
 let frageMode = "free";
@@ -1438,7 +1439,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
 
-    function appendChatMessage(role, text) {
+    function appendChatMessage(role, text, options = {}) {
       if (!chatMessagesEl) return;
       const clean = String(text || "").trim();
       if (!clean) return;
@@ -1453,11 +1454,23 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       bubble.appendChild(meta);
       bubble.appendChild(body);
       chatMessagesEl.appendChild(bubble);
+
+      if (!options.skipHistory) {
+        chatHistory.push({
+          role: role === "user" ? "user" : "assistant",
+          text: clean
+        });
+        if (chatHistory.length > 12) {
+          chatHistory = chatHistory.slice(chatHistory.length - 12);
+        }
+      }
+
       if (chatEmptyHintEl) hide(chatEmptyHintEl);
       chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
     }
 
     function resetChatMessages() {
+      chatHistory = [];
       if (chatMessagesEl) chatMessagesEl.innerHTML = "";
       if (chatEmptyHintEl) show(chatEmptyHintEl);
     }
@@ -1539,6 +1552,21 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       };
       const HL = helperLabels[lang] || helperLabels.de;
 
+      const helpTip = String(helper.help_tip || "").trim();
+      const helpTipLabels = {
+        de: "Hilfe-Tipp",
+        tr: "Yardım ipucu",
+        bg: "Съвет за помощ",
+        ro: "Sfat util",
+        ar: "نصيحة مساعدة",
+        en: "Helpful tip"
+      };
+      const helpTipHtml = helpTip ? `
+        <div class="helper-section help-tip-section">
+          <div class="helper-section-title">💡 ${escapeHtml(helpTipLabels[lang] || helpTipLabels.de)}</div>
+          <div class="help-tip-text">${escapeHtml(helpTip)}</div>
+        </div>` : "";
+
       const rows = Array.isArray(helper.data_rows) ? helper.data_rows : [];
       const dataHtml = rows.length ? `
         <div class="helper-section">
@@ -1603,6 +1631,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
           ${pill(HL.react, helper.must_react_label || HL.check)}
           ${pill(HL.money, helper.money_label || HL.check)}
         </div>
+        ${helpTipHtml}
         ${helper.first_step ? `<div class="helper-section"><div class="helper-section-title">${escapeHtml(HL.first)}</div><div class="copy-box"><strong>${escapeHtml(helper.first_step)}</strong></div></div>` : ""}
         ${warningHtml}
         ${dataHtml}
@@ -1730,16 +1759,40 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
     async function compressImageForUpload(file) {
-      if (!file || !file.type || !file.type.startsWith("image/")) {
+      if (!file) {
+        return { mimeType: "image/jpeg", imageData: "" };
+      }
+
+      const mimeType = file.type || "image/jpeg";
+      const supportedOriginalTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      const originalLimitBytes = 14 * 1024 * 1024;
+
+      // V8.5: Für Briefanalyse möglichst das Originalfoto senden.
+      // Canvas-Komprimierung wird nur genutzt, wenn das Bild zu groß ist
+      // oder das Format für die KI wahrscheinlich ungeeignet ist.
+      if (
+        mimeType &&
+        supportedOriginalTypes.includes(mimeType.toLowerCase()) &&
+        file.size > 0 &&
+        file.size <= originalLimitBytes
+      ) {
         const imageData = await fileToBase64(file);
         return {
-          mimeType: file.type || "image/jpeg",
+          mimeType: mimeType.toLowerCase() === "image/jpg" ? "image/jpeg" : mimeType,
           imageData
         };
       }
 
-      const maxSize = 2400;
-      const quality = 0.86;
+      if (!mimeType.startsWith("image/")) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: mimeType || "image/jpeg",
+          imageData
+        };
+      }
+
+      const maxSize = 3000;
+      const quality = 0.92;
 
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1761,7 +1814,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       if (!originalWidth || !originalHeight) {
         const imageData = await fileToBase64(file);
         return {
-          mimeType: file.type || "image/jpeg",
+          mimeType: mimeType || "image/jpeg",
           imageData
         };
       }
@@ -1775,6 +1828,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       canvas.height = height;
 
       const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, width, height);
 
       const blob = await new Promise((resolve) => {
@@ -1784,7 +1839,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       if (!blob) {
         const imageData = await fileToBase64(file);
         return {
-          mimeType: file.type || "image/jpeg",
+          mimeType: mimeType || "image/jpeg",
           imageData
         };
       }
@@ -2104,7 +2159,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         briefText: currentBriefText,
         kurz: currentKurzText,
         details: currentDetailText,
-        meta: currentMeta
+        meta: currentMeta,
+        chatHistory: chatHistory.slice(-10)
       })
     });
 
