@@ -377,9 +377,112 @@ function normalizeInfo(info) {
   };
 }
 
+
+function buildHilfe24TextSystemRules() {
+  return `
+HILFE24-TEXTSYSTEM:
+Schreibe nach diesen festen Regeln:
+
+Human:
+- Natürlich, ruhig und menschlich schreiben.
+- Nicht wie Behörde, nicht wie Werbung, nicht wie ein langer KI-Aufsatz.
+
+EL5:
+- So einfach erklären, dass auch Menschen mit wenig Deutsch oder wenig Behördenwissen es verstehen.
+- Kurze Sätze. Einfache Wörter. Eine Aussage pro Satz.
+- Fachbegriffe direkt einfach erklären, wenn sie wichtig sind.
+
+DLTR:
+- Keine Romane. Keine Textwände. Keine unnötigen Details.
+- Nur das schreiben, was der Nutzer jetzt wirklich braucht.
+
+Listify:
+- Wenn mehrere Punkte wichtig sind, kurze Listen nutzen.
+- Maximal 3 bis 5 Punkte, außer der Nutzer fragt ausdrücklich nach mehr.
+
+DataSafe:
+- Namen, Beträge, Fristen, Termine, Aktenzeichen, Kundennummern und Rechnungsnummern nie raten.
+- Wenn ein Wert nicht sicher lesbar ist: "Bitte prüfen" oder in unsicherheiten eintragen.
+- Wenn mehrere Varianten möglich sind, keine Variante behaupten.
+
+ActionFirst:
+- Immer den nächsten praktischen Schritt nennen.
+- Nicht nur erklären, sondern führen.
+
+NoGuess:
+- Keine Fristen, Folgen, Diagnosen, Ansprüche oder Zahlungen erfinden.
+- Keine rechtliche Sicherheit behaupten.
+
+AskOnlyWhenNeeded:
+- Keine langen Antwortvorlagen automatisch erstellen.
+- Antwort, Widerspruch, Ratenzahlung, Terminabsage oder E-Mail nur erstellen, wenn der Nutzer danach fragt oder eine Aktion auswählt.
+
+Kurz erklärt:
+- 3 bis maximal 5 kurze Sätze.
+- Der Nutzer muss sofort verstehen: Was ist das? Worum geht es? Was ist wichtig? Muss ich etwas tun? Gibt es Frist, Termin, Geld oder Risiko?
+- Keine langen Berechnungen, keine Paragraphen-Erklärung, keine Datenbox wiederholen.
+
+Mehr Details:
+- Die Detailtiefe richtet sich nach dem Brief:
+  leicht = kaum Details
+  mittel = kurze Details
+  ernst = mehr Erklärung, aber gegliedert
+- Auch bei ernsten Briefen keine Textwand.
+- Höchstens 5 kleine Abschnitte.
+- Jeder Abschnitt 1 bis 2 kurze Sätze.
+`;
+}
+
+function detectDetailDepth(info) {
+  const joined = [
+    info.briefart,
+    info.worum_geht_es,
+    info.kurz_gesagt,
+    info.folge_wenn_nichts,
+    info.pflicht_oder_freiwillig,
+    info.dringlichkeit,
+    ...(info.wichtigste_punkte || []),
+    ...(info.was_ist_zu_tun || [])
+  ].join(" ").toLowerCase();
+
+  if (hasAny(joined, [
+    "gericht", "polizei", "staatsanwaltschaft", "ladung", "straf", "mahnbescheid",
+    "vollstreckung", "vollstreckungstitel", "pfändung", "gerichtsvollzieher",
+    "inkasso", "kündigung", "räumung", "rückforderung", "aufrechnung",
+    "widerspruch", "rechtsbehelf", "sanktion", "minderung", "jobcenter",
+    "ablehnung", "krankenkasse", "bescheid"
+  ])) {
+    return "ernst";
+  }
+
+  if (hasAny(joined, [
+    "rechnung", "mahnung", "forderung", "zahlung", "frist", "termin",
+    "unterlagen", "nachweise", "vermieter", "versicherung", "schule", "arbeit",
+    "vertrag", "krank", "pflege", "rente"
+  ])) {
+    return "mittel";
+  }
+
+  return "leicht";
+}
+
+function shortenForDetail(text, max = 170) {
+  const clean = String(text || "").trim().replace(/\s+/g, " ").replace(/\.$/, "");
+  if (!clean) return "";
+  if (clean.length <= max) return clean + ".";
+
+  let cut = clean.slice(0, max).trim();
+  const last = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"));
+  if (last > 70) cut = cut.slice(0, last).trim();
+  cut = cut.replace(/[,:;\s]+$/, "");
+  return cut + ".";
+}
+
 function buildExtractionPromptBase(inputMode) {
   return `
 Du bist Hilfe24.
+
+${buildHilfe24TextSystemRules()}
 
 Aufgabe:
 Du sollst ein Schreiben so verstehen wie ein erfahrener Alltagshelfer.
@@ -955,7 +1058,6 @@ function renderDetailTemplateGerman(info) {
   const blocks = [];
   const sender = String(info.absender_kurz || info.absender_original || "").trim();
   const topic = String(info.worum_geht_es || "").trim();
-  const summary = String(info.kurz_gesagt || "").trim();
   const consequence = String(info.folge_wenn_nichts || "").trim();
   const hiddenInfo = String(info.versteckte_wichtige_info || "").trim();
   const importantPoints = dedupe(info.wichtigste_punkte || []);
@@ -963,47 +1065,47 @@ function renderDetailTemplateGerman(info) {
   const documents = dedupe(info.unterlagen || []);
   const references = dedupe(info.referenzen || []);
   const person = String(info.betroffene_person || "").trim();
-
-  function safeSentence(text) {
-    return toSentence(String(text || "").trim());
-  }
+  const depth = detectDetailDepth(info);
 
   if (sender) {
     blocks.push(`[[HEAD_FROM]]\nDer Brief ist von ${sender}.`);
   }
 
-  if (person) {
+  if (person && depth !== "leicht") {
     blocks.push(`[[HEAD_PERSON]]\nDer Brief betrifft ${person}.`);
   }
 
   if (topic) {
-    blocks.push(`[[HEAD_TOPIC]]\n${safeSentence(topic)}`);
+    blocks.push(`[[HEAD_TOPIC]]\n${shortenForDetail(topic, depth === "ernst" ? 220 : 170)}`);
   }
 
   const importantLines = [];
+  const maxPoints = depth === "ernst" ? 4 : depth === "mittel" ? 3 : 2;
 
-  for (const p of importantPoints.slice(0, 3)) {
-    importantLines.push(safeSentence(p));
+  for (const p of importantPoints.slice(0, maxPoints)) {
+    const s = shortenForDetail(p, 150);
+    if (s) importantLines.push(s);
   }
 
-  for (const a of actions.slice(0, 3)) {
-    importantLines.push(safeSentence(a));
+  for (const a of actions.slice(0, depth === "ernst" ? 3 : 2)) {
+    const s = shortenForDetail(a, 150);
+    if (s) importantLines.push(s);
   }
 
-  if (documents.length > 0) {
-    importantLines.push(`Wichtige Unterlagen: ${documents.slice(0, 5).join(", ")}.`);
+  if (documents.length > 0 && depth !== "leicht") {
+    importantLines.push(`Unterlagen prüfen: ${documents.slice(0, 3).join(", ")}.`);
   }
 
-  if (references.length > 0) {
-    importantLines.push(`Wichtige Nummern/Zeichen: ${references.slice(0, 5).join(", ")}.`);
+  if (references.length > 0 && depth === "ernst") {
+    importantLines.push(`Nummern/Zeichen prüfen: ${references.slice(0, 3).join(", ")}.`);
   }
 
-  if (hiddenInfo) {
-    importantLines.push(safeSentence(hiddenInfo));
+  if (hiddenInfo && depth === "ernst") {
+    importantLines.push(shortenForDetail(hiddenInfo, 160));
   }
 
   if (importantLines.length > 0) {
-    blocks.push(`[[HEAD_IMPORTANT]]\n${dedupe(importantLines).join(" ")}`);
+    blocks.push(`[[HEAD_IMPORTANT]]\n${dedupe(importantLines).slice(0, depth === "ernst" ? 5 : 3).join("\n")}`);
   }
 
   const whenParts = [];
@@ -1020,15 +1122,13 @@ function renderDetailTemplateGerman(info) {
     blocks.push(`[[HEAD_WHEN]]\n${whenParts.join(" ")}`);
   }
 
-  if (consequence) {
-    blocks.push(`[[HEAD_ELSE]]\n${safeSentence(consequence)}`);
+  if (consequence && depth !== "leicht") {
+    blocks.push(`[[HEAD_ELSE]]\n${shortenForDetail(consequence, depth === "ernst" ? 190 : 150)}`);
   }
 
-  if (summary) {
-    blocks.push(`[[HEAD_SUMMARY]]\n${safeSentence(summary)}`);
-  }
-
-  return blocks.join("\n\n");
+  // Bei leichten Schreiben reichen 2-3 Blöcke. Bei ernsten Schreiben sind mehr Blöcke erlaubt, aber keine Textwand.
+  const maxBlocks = depth === "ernst" ? 6 : depth === "mittel" ? 5 : 3;
+  return blocks.slice(0, maxBlocks).join("\n\n");
 }
 
 function localizeDetailHeadings(text, lang) {
@@ -2147,6 +2247,37 @@ function clampShortExplanation(text, lang) {
   return result || clean.slice(0, maxChars).trim();
 }
 
+
+function limitDetailText(text, lang, mode = "wichtiger_brief") {
+  const clean = cleanText(text).replace(/\n{3,}/g, "\n\n").trim();
+  if (!clean) return "";
+
+  const blocks = clean
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  const maxBlocks = mode === "wichtiger_brief" ? 4 : 5;
+  const maxCharsPerBlock = lang === "ar" ? 360 : 300;
+
+  const out = [];
+  for (const block of blocks) {
+    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+    const title = lines.length > 1 && lines[0].length < 60 ? lines[0] : "";
+    const body = (title ? lines.slice(1).join(" ") : lines.join(" ")).replace(/\s+/g, " ").trim();
+    let shortBody = body;
+    if (shortBody.length > maxCharsPerBlock) {
+      shortBody = shortBody.slice(0, maxCharsPerBlock).trim();
+      const last = Math.max(shortBody.lastIndexOf("."), shortBody.lastIndexOf("!"), shortBody.lastIndexOf("?"), shortBody.lastIndexOf("؟"));
+      if (last > 90) shortBody = shortBody.slice(0, last + 1).trim();
+    }
+    out.push(title ? `${title}\n${shortBody}`.trim() : shortBody);
+    if (out.length >= maxBlocks) break;
+  }
+
+  return out.join("\n\n").trim();
+}
+
 async function improveQualityTextsIfNeeded(info, translated, helper, lang, sourceMode = "text") {
   const langMeta = getLanguageMeta(lang);
   const langCode = langMeta.code;
@@ -2166,6 +2297,8 @@ async function improveQualityTextsIfNeeded(info, translated, helper, lang, sourc
       text: `
 Du bist Hilfe24 Qualitätsmodus V7.
 
+${buildHilfe24TextSystemRules()}
+
 Ziel:
 Verbessere die Erklärung für einen wichtigen Brief. Schreibe menschlich, einfach, kurz und praktisch.
 
@@ -2184,7 +2317,7 @@ WICHTIGE REGELN:
 - Bei Gericht/Polizei: keine Rechtsberatung, Termin/Frist ernst nehmen, bei Unsicherheit Beratung/Anwalt erwähnen.
 - Keine langen Textwände.
 - Kurztext maximal 4 kurze Zeilen und höchstens 4 kurze Sätze. Keine Details wie Gebühren, Gültigkeit oder lange Folgen in den Kurztext packen.
-- Details klarer als Liste/Abschnitte, nicht als Roman.
+- Details adaptiv: leichte Briefe fast keine Details, mittlere Briefe kurze Details, ernste Briefe mehr Erklärung, aber maximal 5 kleine Abschnitte. Keine Textwand.
 
 STIL:
 Human + EL5 + DLTR + Listify
@@ -2235,7 +2368,7 @@ Antworte nur mit gültigem JSON:
 
   const parsed = extractJson(raw);
   const kurz = clampShortExplanation(parsed.kurz || translated.kurz, langCode);
-  const details = cleanText(parsed.details || translated.details);
+  const details = limitDetailText(cleanText(parsed.details || translated.details), langCode, mode);
   const nextSteps = normalizeArray(parsed.next_steps).slice(0, 4);
   const suggestedActions = normalizeActionArray(parsed.suggested_actions).slice(0, 5);
   const firstStep = normalizeString(parsed.first_step) || helper.first_step;
@@ -2551,6 +2684,8 @@ const lang = (req.body.lang || "de").toLowerCase();
     text: `
 Du bist Hilfe24. Du bist ein einfacher, praktischer Alltagshelfer.
 
+${buildHilfe24TextSystemRules()}
+
 Du hilfst Menschen, Briefe, Nachrichten, Formulare, Bescheide, Gerichtsschreiben, Inkasso, Krankenkasse, Jobcenter, Schule, Arbeit, Pflege, Verträge, Produkte, Screenshots und Alltagssituationen zu verstehen und den nächsten Schritt zu finden.
 
 Ausgewählte Sprache des Nutzers: ${langMeta.label}
@@ -2592,7 +2727,7 @@ AUFGABE:
 Beantworte die Frage konkret anhand des Schreibens, der Erklärung, der erkannten Daten und der Nutzerfrage.
 
 OBERSTE REGEL:
-Der Nutzer braucht eine klare Alltagshilfe. Nicht labern. Nicht dramatisieren. Nicht wie ein langer KI-Aufsatz schreiben.
+Der Nutzer braucht eine klare Alltagshilfe. Nicht labern. Nicht dramatisieren. Nicht wie ein langer KI-Aufsatz schreiben. Keine Einleitung wie „Okay“ oder „Hier ist deine Hilfe“. Direkt mit der Antwort starten.
 
 ANTWORT-STIL FÜR HILFE24:
 Nutze immer diese 4 Regeln:
