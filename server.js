@@ -383,9 +383,29 @@ function normalizeInfo(info) {
 
     antwort_sprache: normalizeChoice(
       info.antwort_sprache,
-      ["de", "tr", "bg", "ar", "unklar"],
+      ["de", "tr", "bg", "ar", "ro", "en", "unklar"],
       "unklar"
     ),
+
+    brief_schwierigkeit: normalizeChoice(
+      info.brief_schwierigkeit,
+      ["leicht", "mittel", "ernst", "unklar"],
+      "unklar"
+    ),
+    was_will_der_absender: normalizeString(info.was_will_der_absender),
+    muss_handeln: normalizeChoice(
+      info.muss_handeln,
+      ["ja", "nein", "unklar"],
+      "unklar"
+    ),
+    geld_betroffen: normalizeChoice(
+      info.geld_betroffen,
+      ["ja", "nein", "unklar"],
+      "unklar"
+    ),
+    risiko_kurz: normalizeString(info.risiko_kurz),
+    erster_sicherer_schritt: normalizeString(info.erster_sicherer_schritt),
+    daten_unsicher: normalizeArray(info.daten_unsicher),
 
     passende_aktionen: normalizeActionArray(info.passende_aktionen)
   };
@@ -595,6 +615,31 @@ DENKE IMMER SO:
 6. Was passiert, wenn nichts gemacht wird?
 7. Was ist der nächste sinnvolle Schritt?
 8. Welche Aktionen passen dazu?
+
+V8 UNIVERSAL LETTER UNDERSTANDING:
+Zerlege jeden Brief zuerst in feste Bausteine. Denke nicht in einzelnen Spezialfällen, sondern allgemein:
+
+1. Absender: Wer schreibt oder übermittelt den Brief?
+2. Empfänger: An wen ist der Brief adressiert?
+3. Personen & Rollen: Welche Personen stehen im Brief und welche Rolle haben sie?
+   Beispiele: Empfänger, Antragsteller, Versicherte Person, Patient, Kunde, Schuldner, Gläubiger, Zeuge, Angeklagter, Beschuldigter, Kind, Elternteil, Vermieter, Mieter, Sachbearbeiter, Anwalt, Bevollmächtigter.
+4. Briefart: Bescheid, Rechnung, Mahnung, Inkasso, Termin, Einladung, Kündigung, Anhörung, Ablehnung, Bewilligung, Rückforderung, Vertrag, Information, Werbung, Arztbrief, Gericht/Polizei.
+5. Thema: Worum geht es wirklich? Geld, Termin, Unterlagen, Antrag, Leistung, Strafe, Vertrag, Gesundheit, Wohnung, Schule, Arbeit.
+6. Absicht des Absenders: Was will der Absender? Zahlung, Antwort, Unterlagen, Termin, Prüfung, Information, Bestätigung, Kündigung, nichts.
+7. Handlungspflicht: Muss der Nutzer reagieren? ja/nein/unklar.
+8. Frist/Termin/Datum: Gibt es Frist, Termin, Zahlungsziel, Widerspruchsfrist, Abgabedatum oder Rechtsbehelf?
+9. Geld: Geht es um Betrag, Forderung, Rechnung, Erstattung, monatlichen Abzug, Kosten oder Gebühren?
+10. Risiko: Was kann passieren, wenn nichts gemacht wird? Nur nennen, wenn es im Brief steht oder sehr klar aus Briefart folgt.
+11. Unsicherheit: Welche Daten sind unsicher? Name, Aktenzeichen, Betrag, Frist, Datum, Personenzuordnung.
+12. Erster sicherer Schritt: Der einfachste und sicherste erste Schritt für den Nutzer.
+
+SCHWIERIGKEITSSTUFE:
+- leicht: Werbung, reine Information, einfache Terminbestätigung, einfache Rechnung ohne Risiko.
+- mittel: Krankenkasse, Schule, Versicherung, Vermieter, normale Rechnung/Forderung, Unterlagennachforderung.
+- ernst: Gericht, Polizei, Staatsanwaltschaft, Inkasso, Vollstreckung, Jobcenter, Rückforderung, Aufrechnung, Kündigung, Mahnbescheid, Pfändung, Frist/Rechtsbehelf.
+
+AUSGABE-PRINZIP:
+Außen soll Hilfe24 leicht bleiben. Kein langer Roman. Der Server soll innen mehr verstehen, aber außen nur das Wichtigste geben.
 
 REFERENZEN / NUMMERN:
 Suche wichtige Identifikationsdaten im Schreiben und trage sie bei "referenzen" ein.
@@ -806,6 +851,17 @@ FÜR "naechster_schritt":
 Genau 1 klarer nächster Schritt in einfacher Sprache.
 Keine Romane.
 
+FÜR "erster_sicherer_schritt":
+Der erste sichere Schritt, der fast nie schadet. Beispiele:
+- Brief vollständig aufbewahren und Frist prüfen.
+- Betrag und Absender prüfen.
+- Bei Unsicherheit schriftlich nachfragen.
+- Bei Gericht/Inkasso/Behörde Beratung holen.
+- Bei Termin: Termin prüfen und rechtzeitig absagen/verschieben, wenn man nicht kann.
+
+FÜR "daten_unsicher":
+Liste alle kritischen Daten, die nicht sicher gelesen oder nicht sicher zugeordnet wurden. Beispiele: Name, Aktenzeichen, Betrag, Frist, Datum, Personenzuordnung.
+
 FÜR "kurz_gesagt":
 Genau 1 kurzer sachlicher Satz in einfachem Deutsch.
 Der Satz soll nur den Kern treffen: Was ist das Schreiben und worum geht es?
@@ -845,6 +901,13 @@ Gib genau dieses JSON zurück:
   "unterlagen": [],
   "referenzen": [],
   "antwort_sprache": "unklar",
+  "brief_schwierigkeit": "unklar",
+  "was_will_der_absender": "",
+  "muss_handeln": "unklar",
+  "geld_betroffen": "unklar",
+  "risiko_kurz": "",
+  "erster_sicherer_schritt": "",
+  "daten_unsicher": [],
   "passende_aktionen": []
 }
 
@@ -1696,6 +1759,7 @@ function simpleLabelDict(lang) {
       amount: "Betrag",
       deadline: "Frist/Termin",
       reference: "Aktenzeichen/Nummer",
+      risk: "Risiko",
       recipient: "Empfänger",
       affectedPeople: "Betroffene Personen",
       witnesses: "Zeugen",
@@ -1723,6 +1787,7 @@ function simpleLabelDict(lang) {
       amount: "Tutar",
       deadline: "Süre/Randevu",
       reference: "Dosya/Numara",
+      risk: "Risk",
       recipient: "Alıcı",
       affectedPeople: "İlgili kişiler",
       witnesses: "Tanıklar",
@@ -1750,6 +1815,7 @@ function simpleLabelDict(lang) {
       amount: "Сума",
       deadline: "Срок/термин",
       reference: "Номер/знак",
+      risk: "Риск",
       recipient: "Получател",
       affectedPeople: "Засегнати лица",
       witnesses: "Свидетели",
@@ -1777,6 +1843,7 @@ function simpleLabelDict(lang) {
       amount: "Sumă",
       deadline: "Termen/Programare",
       reference: "Număr/Dosar",
+      risk: "Risc",
       recipient: "Destinatar",
       affectedPeople: "Persoane vizate",
       witnesses: "Martori",
@@ -1804,6 +1871,7 @@ function simpleLabelDict(lang) {
       amount: "المبلغ",
       deadline: "مهلة/موعد",
       reference: "رقم/ملف",
+      risk: "الخطر",
       recipient: "المستلم",
       affectedPeople: "الأشخاص المعنيون",
       witnesses: "الشهود",
@@ -2156,6 +2224,9 @@ function buildDeterministicNextSteps(info, lang) {
   if (hasAny(text, ["jobcenter", "behörde", "bescheid", "widerspruch", "inkasso", "gericht", "polizei"])) {
     steps.push(H.steps.getHelp);
   }
+  if (info.erster_sicherer_schritt) {
+    steps.unshift(info.erster_sicherer_schritt);
+  }
   if (!steps.length) {
     steps.push(simpleLabelDict(lang).firstStepDefault);
   }
@@ -2225,6 +2296,7 @@ function buildRoleAwareDataRows(info, L, safe, values) {
   rows.push({ key: "sender", label: L.sender, value: values.senderValue, status: values.senderValue === L.check ? "check" : "safe" });
   rows.push({ key: "amount", label: L.amount, value: values.amountValue, status: values.amountValue === L.check ? "check" : "safe" });
   rows.push({ key: "deadline", label: L.deadline, value: values.deadlineValue, status: values.deadlineValue === L.check ? "check" : "safe" });
+  if (info.risiko_kurz) rows.push({ key: "risk", label: L.risk || "Risiko", value: info.risiko_kurz, status: "check" });
 
   if (prosecutorRef) rows.push({ key: "prosecutor_reference", label: L.prosecutorReference || "Aktenzeichen Staatsanwaltschaft", value: prosecutorRef, status: "check" });
   if (courtRef) rows.push({ key: "court_reference", label: L.courtReference || "Aktenzeichen Gericht", value: courtRef, status: "check" });
@@ -2237,8 +2309,8 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   const langCode = getLanguageMeta(lang).code;
   const L = simpleLabelDict(langCode);
   const safe = getSafeCriticalMeta(info, sourceMode);
-  const mustReact = inferMustReact(info);
-  const moneyAffected = inferMoneyAffected(info);
+  const mustReact = info.muss_handeln === "ja" ? "yes" : (info.muss_handeln === "nein" ? "no" : inferMustReact(info));
+  const moneyAffected = info.geld_betroffen === "ja" ? "yes" : (info.geld_betroffen === "nein" ? "no" : inferMoneyAffected(info));
   const personValue = safe.personSafe && safe.personForOfficialText ? safe.personForOfficialText : L.check;
   const senderValue = info.absender_kurz || info.absender_original || L.check;
   const amountValue = info.betrag || L.check;
@@ -2419,12 +2491,12 @@ async function improveQualityTextsIfNeeded(info, translated, helper, lang, sourc
   const raw = await callGemini([
     {
       text: `
-Du bist Hilfe24 Qualitätsmodus V7.
+Du bist Hilfe24 Qualitätsmodus V8: Universal Letter Understanding.
 
 ${buildHilfe24TextSystemRules()}
 
 Ziel:
-Verbessere die Erklärung für einen wichtigen Brief. Schreibe menschlich, einfach, kurz und praktisch.
+Erkläre den Brief allgemein und zuverlässig. Nutze die feste Brief-Logik: Rollen, Daten, Risiko, erster Schritt. Schreibe menschlich, einfach, kurz und praktisch.
 
 Ausgabesprache: ${langMeta.label}
 Briefmodus: ${mode}
@@ -2464,6 +2536,13 @@ ${JSON.stringify({
   roh_referenzen: info.referenzen,
   dringlichkeit: info.dringlichkeit,
   pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
+  brief_schwierigkeit: info.brief_schwierigkeit,
+  was_will_der_absender: info.was_will_der_absender,
+  muss_handeln: info.muss_handeln,
+  geld_betroffen: info.geld_betroffen,
+  risiko_kurz: info.risiko_kurz,
+  erster_sicherer_schritt: info.erster_sicherer_schritt,
+  daten_unsicher: info.daten_unsicher,
   folge_wenn_nichts: info.folge_wenn_nichts,
   wichtigste_punkte: info.wichtigste_punkte,
   was_ist_zu_tun: info.was_ist_zu_tun,
@@ -2571,8 +2650,13 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
       passende_aktionen: info.passende_aktionen,
       unsicherheiten: info.unsicherheiten,
       sourceMode,
-      must_react: inferMustReact(info),
-      money_affected: inferMoneyAffected(info)
+      must_react: info.muss_handeln === "ja" ? "yes" : (info.muss_handeln === "nein" ? "no" : inferMustReact(info)),
+      money_affected: info.geld_betroffen === "ja" ? "yes" : (info.geld_betroffen === "nein" ? "no" : inferMoneyAffected(info)),
+      brief_schwierigkeit: info.brief_schwierigkeit,
+      was_will_der_absender: info.was_will_der_absender,
+      risiko_kurz: info.risiko_kurz,
+      erster_sicherer_schritt: info.erster_sicherer_schritt,
+      daten_unsicher: info.daten_unsicher
     }
   };
 }
