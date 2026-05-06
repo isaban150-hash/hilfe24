@@ -34,7 +34,7 @@ function getTodayGerman() {
   });
 }
 
-app.use(express.json({ limit: "45mb" }));
+app.use(express.json({ limit: "70mb" }));
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
@@ -2378,6 +2378,89 @@ function buildRoleAwareDataRows(info, L, safe, values) {
   return rows.filter((row) => row.value && row.value !== "");
 }
 
+
+function buildHelpTip(info, lang) {
+  const code = getLanguageMeta(lang).code;
+  const text = [
+    info.briefart,
+    info.worum_geht_es,
+    info.kurz_gesagt,
+    info.folge_wenn_nichts,
+    info.naechster_schritt,
+    (info.wichtigste_punkte || []).join(" "),
+    (info.was_ist_zu_tun || []).join(" "),
+    (info.passende_aktionen || []).join(" ")
+  ].join(" ").toLowerCase();
+
+  const tips = {
+    de: {
+      inkasso: "Prüfe zuerst Forderung, Betrag und Titel. Wenn du möchtest, kann ich dir helfen, eine sachliche Nachricht zur Forderungsprüfung zu schreiben.",
+      jobcenter: "Prüfe Betrag, Frist und Bescheid. Wenn du möchtest, kann ich dir helfen, eine Frage ans Jobcenter oder einen Widerspruch vorzubereiten.",
+      gericht: "Nimm den Brief ernst. Wenn du einen Grund oder Nachweis hast, kann ich dir helfen, eine ruhige Erklärung zu formulieren.",
+      krankenkasse: "Prüfe, ob Unterlagen fehlen oder ob eine Erstattung möglich sein könnte. Ich kann dir helfen, eine kurze Nachricht an die Krankenkasse zu schreiben.",
+      rechnung: "Prüfe zuerst Leistung, Betrag und Zahlungsfrist. Wenn etwas unklar ist, kann ich dir eine Nachfrage oder Reklamation formulieren.",
+      termin: "Wenn du den Termin nicht wahrnehmen kannst, kann ich dir helfen, eine kurze Bitte um Verschiebung zu schreiben.",
+      default: "Wenn du möchtest, helfe ich dir beim nächsten Schritt: Antwort schreiben, Unterlagenliste erstellen oder prüfen, ob ein Antrag sinnvoll sein könnte."
+    },
+    tr: {
+      inkasso: "Önce alacağı, tutarı ve varsa belgeyi kontrol et. İstersen alacağı kontrol ettirmek için sakin bir mesaj yazmana yardım edebilirim.",
+      jobcenter: "Tutarı, süreyi ve kararı kontrol et. İstersen Jobcenter'a soru yazmana veya itirazı hazırlamana yardım edebilirim.",
+      gericht: "Bu yazıyı ciddiye al. Geçerli bir nedenin veya belgen varsa, bunu sakin bir şekilde açıklayan bir yazı hazırlamana yardım edebilirim.",
+      krankenkasse: "Eksik evrak veya geri ödeme ihtimali var mı kontrol et. İstersen sağlık sigortasına kısa bir mesaj yazmana yardım edebilirim.",
+      rechnung: "Önce hizmeti, tutarı ve ödeme süresini kontrol et. Bir şey net değilse soru veya itiraz mesajı yazmana yardım edebilirim.",
+      termin: "Randevuya gidemiyorsan, erteleme için kısa bir mesaj yazmana yardım edebilirim.",
+      default: "İstersen bir sonraki adımda yardım ederim: cevap yazmak, evrak listesi yapmak veya başvuru gerekip gerekmediğini kontrol etmek."
+    },
+    bg: {
+      inkasso: "Първо провери задължението, сумата и документа. Ако искаш, мога да ти помогна да напишеш спокойно съобщение за проверка на вземането.",
+      jobcenter: "Провери сумата, срока и решението. Ако искаш, мога да ти помогна с въпрос до Jobcenter или с подготовка на възражение.",
+      gericht: "Вземи писмото сериозно. Ако имаш причина или доказателство, мога да ти помогна да напишеш спокойно обяснение.",
+      krankenkasse: "Провери дали липсват документи или дали може да има възстановяване на разходи. Мога да ти помогна с кратко съобщение до здравната каса.",
+      rechnung: "Първо провери услугата, сумата и срока за плащане. Ако нещо е неясно, мога да ти помогна с въпрос или рекламация.",
+      termin: "Ако не можеш да отидеш на термина, мога да ти помогна да напишеш кратка молба за преместване.",
+      default: "Ако искаш, мога да ти помогна със следващата стъпка: отговор, списък с документи или проверка дали е нужен Antrag."
+    },
+    ro: {
+      inkasso: "Verifică mai întâi datoria, suma și titlul. Dacă vrei, te pot ajuta să scrii un mesaj pentru verificarea creanței.",
+      jobcenter: "Verifică suma, termenul și decizia. Dacă vrei, te pot ajuta să scrii o întrebare către Jobcenter sau să pregătești o contestație.",
+      gericht: "Ia scrisoarea în serios. Dacă ai un motiv sau dovadă, te pot ajuta să formulezi o explicație calmă.",
+      krankenkasse: "Verifică dacă lipsesc documente sau dacă poate exista rambursare. Te pot ajuta să scrii un mesaj scurt către casa de sănătate.",
+      rechnung: "Verifică mai întâi serviciul, suma și termenul de plată. Dacă ceva este neclar, te pot ajuta cu o întrebare sau reclamație.",
+      termin: "Dacă nu poți merge la programare, te pot ajuta să scrii o cerere scurtă de amânare.",
+      default: "Dacă vrei, te ajut cu următorul pas: răspuns, listă de documente sau verificarea unei posibile cereri."
+    },
+    ar: {
+      inkasso: "تحقق أولًا من المطالبة والمبلغ والوثيقة المذكورة. إذا أردت، أساعدك في كتابة رسالة هادئة لطلب التحقق من المطالبة.",
+      jobcenter: "تحقق من المبلغ والمهلة والقرار. إذا أردت، أساعدك في كتابة سؤال إلى Jobcenter أو تحضير اعتراض.",
+      gericht: "تعامل مع الرسالة بجدية. إذا كان لديك سبب أو دليل، أساعدك في صياغة توضيح هادئ.",
+      krankenkasse: "تحقق هل توجد مستندات ناقصة أو إمكانية استرداد تكاليف. أستطيع مساعدتك في كتابة رسالة قصيرة للتأمين الصحي.",
+      rechnung: "تحقق أولًا من الخدمة والمبلغ وموعد الدفع. إذا كان هناك شيء غير واضح، أساعدك في كتابة سؤال أو اعتراض.",
+      termin: "إذا لم تستطع حضور الموعد، أساعدك في كتابة طلب قصير لتغيير الموعد.",
+      default: "إذا أردت، أساعدك في الخطوة التالية: كتابة رد، إعداد قائمة مستندات أو فحص ما إذا كان طلب ما مناسبًا."
+    },
+    en: {
+      inkasso: "First check the claim, amount and title. I can help you write a calm message asking for verification.",
+      jobcenter: "Check the amount, deadline and decision. I can help you write a question to the Jobcenter or prepare an objection.",
+      gericht: "Take this letter seriously. If you had a reason or proof, I can help you write a calm explanation.",
+      krankenkasse: "Check whether documents are missing or reimbursement could be possible. I can help you write a short message to the health insurance.",
+      rechnung: "First check the service, amount and payment deadline. If something is unclear, I can help you write a question or complaint.",
+      termin: "If you cannot attend the appointment, I can help you write a short request to reschedule.",
+      default: "I can help with the next step: writing a reply, making a document list or checking whether an application could be useful."
+    }
+  };
+
+  const T = tips[code] || tips.de;
+
+  if (hasAny(text, ["inkasso", "mahnbescheid", "vollstreck", "pfändung", "forderung"])) return T.inkasso;
+  if (hasAny(text, ["jobcenter", "bürgergeld", "rückforderung", "aufrechnung", "bescheid", "widerspruch"])) return T.jobcenter;
+  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft", "ordnungsgeld", "ladung", "zeuge", "termin" ])) return T.gericht;
+  if (hasAny(text, ["krankenkasse", "aok", "versicherung", "pflege", "hilfsmittel", "erstattung"])) return T.krankenkasse;
+  if (hasAny(text, ["rechnung", "zahlung", "gebühr", "kosten", "betrag"])) return T.rechnung;
+  if (hasAny(text, ["termin", "einladung", "randevu", "appointment"])) return T.termin;
+
+  return T.default;
+}
+
 async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   const langCode = getLanguageMeta(lang).code;
   const L = simpleLabelDict(langCode);
@@ -2414,6 +2497,7 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
     must_react_label: mustReact === "yes" ? L.yes : (mustReact === "no" ? L.no : L.check),
     money_label: moneyAffected === "yes" ? L.yes : (moneyAffected === "no" ? L.no : L.check),
     first_step: firstStep,
+    help_tip: buildHelpTip(info, langCode),
     next_steps: nextSteps,
     unsafe_notice: unsafeNotice,
     data_rows: buildRoleAwareDataRows(info, L, safe, {
@@ -2785,7 +2869,7 @@ async function buildFinalAnswerFromImages(bilder, lang) {
       };
     }
 
-    if (bild.imageData.length > 14000000) {
+    if (bild.imageData.length > 23000000) {
       return {
         ok: false,
         error: "Ein Bild ist zu groß. Bitte fotografiere die Seite klar, aber nicht zu nah, oder lade weniger Fotos hoch."
@@ -3153,6 +3237,15 @@ const lang = (req.body.lang || "de").toLowerCase();
 
     const meta = req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
     const metaText = JSON.stringify(meta, null, 2);
+    const chatHistory = Array.isArray(req.body.chatHistory) ? req.body.chatHistory.slice(-10) : [];
+    const chatHistoryText = chatHistory
+      .map((entry) => {
+        const role = entry && entry.role === "user" ? "Nutzer" : "Hilfe24";
+        const text = cleanText(entry && entry.text ? entry.text : "").slice(0, 1200);
+        return text ? `${role}: ${text}` : "";
+      })
+      .filter(Boolean)
+      .join("\n");
 
     const heute = getTodayGerman();
 
@@ -3212,6 +3305,9 @@ ${erklaerungDetails}
 Original-Text:
 ${briefText.slice(0, 12000)}
 
+BISHERIGER CHAT ZU DIESEM BRIEF:
+${chatHistoryText || "Noch kein vorheriger Chat."}
+
 Frage des Nutzers:
 ${frage}
 Frage-Modus:
@@ -3233,6 +3329,16 @@ Beantworte die Frage konkret anhand des Schreibens, der Erklärung, der erkannte
 
 OBERSTE REGEL:
 Der Nutzer braucht eine klare Alltagshilfe. Nicht labern. Nicht dramatisieren. Nicht wie ein langer KI-Aufsatz schreiben. Keine Einleitung wie „Okay“ oder „Hier ist deine Hilfe“. Direkt mit der Antwort starten.
+
+CHAT-REGEL:
+Du antwortest wie in einem laufenden Chat zu genau diesem Brief.
+Beziehe dich auf frühere Fragen und Antworten, wenn sie relevant sind.
+Wiederhole nicht jedes Mal die komplette Brief-Erklärung.
+Wenn der Nutzer nach „das“, „dann“, „noch eine Frage“, „und wenn...“ fragt, beziehe es auf den aktuellen Brief und den bisherigen Chat.
+Bleib freundlich und hilfsbereit.
+Wenn passend, biete am Ende kurz Hilfe an, z. B. Antwort schreiben, Unterlagenliste, Antrag/Erstattung prüfen oder Beratung suchen.
+Mache keine falschen Versprechen. Schreibe „kann möglich sein“ oder „prüfen lassen“, wenn etwas unsicher ist.
+Wenn der Nutzer nach Name, Aktenzeichen, Betrag, Datum oder Frist fragt und die Daten unsicher sind, sage, dass er „Daten genauer prüfen“ nutzen oder das Original prüfen soll.
 
 ANTWORT-STIL FÜR HILFE24:
 Nutze immer diese 4 Regeln:
