@@ -719,6 +719,8 @@
   explainFirst: "Bitte erkläre zuerst einen Brief.",
   questionLoading: "Antwort wird erstellt...",
   questionError: "Die Frage konnte nicht beantwortet werden.",
+  questionNetworkError: "Die Verbindung ist abgebrochen. Bitte prüfe kurz dein Internet und sende die Frage nochmal.",
+  politeReply: "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.",
   detailsShow: "📋 Mehr anzeigen",
   detailsHide: "📋 Weniger anzeigen",
   shortTitle: "Erklärung zum Brief",
@@ -744,6 +746,8 @@
   explainFirst: "Lütfen önce bir mektubu açıkla.",
   questionLoading: "Cevap oluşturuluyor...",
   questionError: "Soru cevaplanamadı.",
+  questionNetworkError: "Bağlantı kesildi. Lütfen interneti kontrol edip soruyu tekrar gönder.",
+  politeReply: "Rica ederim. Başka bir şey öğrenmek istersen sorunu yazabilirsin.",
   detailsShow: "📋 Daha fazla göster",
   detailsHide: "📋 Daha az göster",
   shortTitle: "Yazının açıklaması",
@@ -770,6 +774,8 @@ bg: {
   explainFirst: "Моля, първо обясни писмо.",
   questionLoading: "Отговорът се създава...",
   questionError: "Въпросът не можа да бъде отговорен.",
+  questionNetworkError: "Връзката прекъсна. Моля, провери интернета и изпрати въпроса отново.",
+  politeReply: "Моля. Ако искаш да знаеш още нещо, напиши въпроса си.",
   detailsShow: "📋 Покажи повече",
   detailsHide: "📋 Покажи по-малко",
   shortTitle: "Обяснение на писмото",
@@ -796,6 +802,8 @@ ar: {
   explainFirst: "يرجى شرح رسالة أولًا.",
   questionLoading: "يتم إنشاء الإجابة...",
   questionError: "تعذر الإجابة على السؤال.",
+  questionNetworkError: "انقطع الاتصال. يرجى فحص الإنترنت وإرسال السؤال مرة أخرى.",
+  politeReply: "على الرحب والسعة. إذا أردت معرفة شيء آخر، اكتب سؤالك.",
   detailsShow: "📋 عرض المزيد",
   detailsHide: "📋 عرض أقل",
   shortTitle: "شرح الرسالة",
@@ -822,6 +830,8 @@ ro: {
   explainFirst: "Te rog explică mai întâi o scrisoare.",
   questionLoading: "Răspunsul se creează...",
   questionError: "Întrebarea nu a putut fi răspunsă.",
+  questionNetworkError: "Conexiunea s-a întrerupt. Te rog verifică internetul și trimite întrebarea din nou.",
+  politeReply: "Cu plăcere. Dacă mai vrei să știi ceva, scrie întrebarea ta.",
   detailsShow: "📋 Arată mai mult",
   detailsHide: "📋 Arată mai puțin",
   shortTitle: "Explicația documentului",
@@ -848,6 +858,8 @@ en: {
   explainFirst: "Please explain a letter first.",
   questionLoading: "Answer is being created...",
   questionError: "The question could not be answered.",
+  questionNetworkError: "The connection was interrupted. Please check your internet and send the question again.",
+  politeReply: "You are welcome. If you want to know anything else, write your question.",
   detailsShow: "📋 Show more",
   detailsHide: "📋 Show less",
   shortTitle: "Letter explanation",
@@ -1918,47 +1930,72 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
   currentLang = lang;
 
+  function normalizeForIntent(text) {
+    return String(text || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[.!?؟،,;:]+$/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function isPoliteSmallTalk(text) {
+    const clean = normalizeForIntent(text);
+
+    const politeTexts = [
+      "danke", "dankeschön", "danke schön", "vielen dank", "ok", "okay", "alles klar", "super", "top", "ja", "passt", "gut", "perfekt",
+      "teşekkürler", "teşekkür ederim", "sağ ol", "sagol", "tamam", "okey", "oldu", "evet", "iyi", "süper",
+      "благодаря", "мерси", "добре", "ок", "да", "супер",
+      "mulțumesc", "mersi", "bine", "da", "ok",
+      "thanks", "thank you", "ok", "okay", "yes", "great", "perfect",
+      "شكرا", "شكرًا", "تمام", "حسنا", "نعم"
+    ];
+
+    return politeTexts.includes(clean);
+  }
+
   function detectQuestionMode(text) {
-    const clean = String(text || "").trim().toLowerCase();
+    const clean = normalizeForIntent(text);
 
     const nextStepsTexts = [
-      "was muss ich tun?",
-      "was soll ich tun?",
-      "was muss ich jetzt tun?",
-      "ne yapmam gerekiyor?",
-      "şimdi ne yapmalıyım?",
-      "ne yapmalıyım?",
-      "какво трябва да направя?",
-      "ce trebuie să fac?",
-      "what do i have to do?",
-      "ماذا يجب أن أفعل؟"
+      "was muss ich tun",
+      "was soll ich tun",
+      "was muss ich jetzt tun",
+      "ne yapmam gerekiyor",
+      "şimdi ne yapmalıyım",
+      "ne yapmalıyım",
+      "какво трябва да направя",
+      "ce trebuie să fac",
+      "what do i have to do",
+      "ماذا يجب أن أفعل"
     ];
 
     const deadlineTexts = [
-      "bis wann?",
-      "wann ist die frist?",
-      "son tarih ne zaman?",
-      "ne zamana kadar?",
-      "до кога?",
-      "până când?",
-      "by when?",
-      "إلى متى؟"
+      "bis wann",
+      "wann ist die frist",
+      "son tarih ne zaman",
+      "ne zamana kadar",
+      "до кога",
+      "până când",
+      "by when",
+      "إلى متى"
     ];
 
     const consequenceTexts = [
-      "was passiert, wenn ich nichts mache?",
-      "was passiert wenn ich nichts mache?",
-      "hiçbir şey yapmazsam ne olur?",
-      "bir şey yapmazsam ne olur?",
-      "какво ще стане, ако не направя нищо?",
-      "ce se întâmplă dacă nu fac nimic?",
-      "what happens if i do nothing?",
-      "ماذا يحدث إذا لم أفعل شيئًا؟"
+      "was passiert wenn ich nichts mache",
+      "was passiert, wenn ich nichts mache",
+      "hiçbir şey yapmazsam ne olur",
+      "bir şey yapmazsam ne olur",
+      "какво ще стане ако не направя нищо",
+      "какво ще стане, ако не направя нищо",
+      "ce se întâmplă dacă nu fac nimic",
+      "what happens if i do nothing",
+      "ماذا يحدث إذا لم أفعل شيئًا"
     ];
 
     const replyTexts = [
       "schreib mir eine antwort",
       "schreibe mir eine antwort",
+      "antwort schreiben",
       "benim için cevap yaz",
       "bana bir cevap yaz",
       "напиши ми отговор",
@@ -1982,6 +2019,20 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       frageErrorEl.textContent = getUiText().questionMissing;
       show(frageErrorEl);
     }
+    return;
+  }
+
+  if (isPoliteSmallTalk(frage)) {
+    if (frageErrorEl) {
+      frageErrorEl.textContent = "";
+      hide(frageErrorEl);
+    }
+    if (frageStatusEl) {
+      frageStatusEl.textContent = "";
+      hide(frageStatusEl);
+    }
+    if (frageAntwortEl) frageAntwortEl.textContent = getUiText().politeReply || "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.";
+    show(frageAntwortBoxEl);
     return;
   }
 
@@ -2023,17 +2074,27 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       })
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data = null;
 
-    if (!response.ok || !data.ok) {
-      throw new Error(data.error || getUiText().questionError);
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch (parseError) {
+      throw new Error(getUiText().questionNetworkError || getUiText().questionError);
+    }
+
+    if (!response.ok || !data || !data.ok) {
+      throw new Error((data && data.error) || getUiText().questionError);
     }
 
     if (frageAntwortEl) frageAntwortEl.textContent = data.antwort || "";
     show(frageAntwortBoxEl);
   } catch (err) {
     if (frageErrorEl) {
-      frageErrorEl.textContent = err.message || getUiText().questionError;
+      const msg = String(err && err.message ? err.message : "");
+      frageErrorEl.textContent = msg && msg !== "Load failed"
+        ? msg
+        : (getUiText().questionNetworkError || getUiText().questionError);
       show(frageErrorEl);
     }
   } finally {
