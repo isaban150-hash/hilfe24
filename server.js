@@ -451,19 +451,14 @@ AskOnlyWhenNeeded:
 - Keine langen Antwortvorlagen automatisch erstellen.
 - Antwort, Widerspruch, Ratenzahlung, Terminabsage oder E-Mail nur erstellen, wenn der Nutzer danach fragt oder eine Aktion auswählt.
 
-Kurz erklärt:
-- 3 bis maximal 5 kurze Sätze.
-- Der Nutzer muss sofort verstehen: Was ist das? Worum geht es? Was ist wichtig? Muss ich etwas tun? Gibt es Frist, Termin, Geld oder Risiko?
-- Keine langen Berechnungen, keine Paragraphen-Erklärung, keine Datenbox wiederholen.
-
-Mehr Details:
-- Die Detailtiefe richtet sich nach dem Brief:
-  leicht = kaum Details
-  mittel = kurze Details
-  ernst = mehr Erklärung, aber gegliedert
-- Auch bei ernsten Briefen keine Textwand.
-- Höchstens 5 kleine Abschnitte.
-- Jeder Abschnitt 1 bis 2 kurze Sätze.
+Erklärung zum Brief:
+- Es gibt nur einen Haupt-Erklärblock.
+- Die Erklärung muss so lang sein wie nötig und so kurz wie möglich.
+- Leichter Brief: wenige klare Sätze.
+- Mittlerer Brief: etwas mehr Erklärung.
+- Ernster/komplizierter Brief: mehrere kurze Abschnitte oder kurze Liste, aber keine Textwand.
+- Der Nutzer muss verstehen: Was ist das? Worum geht es? Was ist wichtig? Was muss ich tun? Gibt es Frist, Termin, Geld oder Risiko?
+- Keine Datenbox wiederholen. Keine Paragraphen ausbreiten. Keine Romane.
 `;
 }
 
@@ -1161,6 +1156,84 @@ function renderShortByLanguage(info, lang) {
   pushLine(consequenceLine(), 105);
 
   return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
+}
+
+
+function renderBalancedExplanationGerman(info) {
+  const sender = String(info.absender_kurz || info.absender_original || "").trim();
+  const briefart = String(info.briefart || "").trim();
+  const topic = String(info.worum_geht_es || "").trim();
+  const summary = String(info.kurz_gesagt || "").trim();
+  const amount = String(info.betrag || "").trim();
+  const deadline = String(info.frist || "").trim();
+  const appointment = String(info.termin || "").trim();
+  const consequence = String(info.folge_wenn_nichts || "").trim();
+  const firstStep = String(info.erster_sicherer_schritt || info.naechster_schritt || "").trim();
+  const actions = dedupe(info.was_ist_zu_tun || []);
+  const important = dedupe(info.wichtigste_punkte || []);
+  const references = dedupe(info.referenzen || []);
+  const depth = detectDetailDepth(info);
+
+  const joined = [briefart, topic, summary, consequence, firstStep, actions.join(" "), important.join(" ")].join(" ").toLowerCase();
+  const lines = [];
+
+  function clean(text) {
+    return String(text || "").trim().replace(/\s+/g, " ").replace(/[.;,\s]+$/g, "");
+  }
+
+  function add(text, max = 180) {
+    let c = clean(text);
+    if (!c) return;
+    if (c.length > max) {
+      let cut = c.slice(0, max).trim();
+      const last = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"));
+      if (last > 80) cut = cut.slice(0, last).trim();
+      c = cut.replace(/[,:;\s]+$/g, "");
+    }
+    const sentence = c + ".";
+    if (!lines.some((x) => x.toLowerCase() === sentence.toLowerCase())) lines.push(sentence);
+  }
+
+  function actionHint() {
+    if (appointment) return "Wenn du den Termin nicht wahrnehmen kannst, solltest du rechtzeitig absagen oder einen neuen Termin anfragen";
+    if (hasAny(joined, ["inkasso", "vollstreckung", "vollstreckungstitel", "forderung"])) return "Prüfe zuerst, ob Forderung, Titel, Betrag und Aktenzeichen wirklich stimmen";
+    if (hasAny(joined, ["jobcenter", "rückforderung", "aufrechnung", "widerspruch", "bescheid"])) return "Prüfe, ob der Bescheid und der Betrag stimmen, und achte auf die Widerspruchsfrist";
+    if (hasAny(joined, ["gericht", "polizei", "staatsanwaltschaft", "ordnungsgeld", "ladung"])) return "Nimm den Brief ernst und prüfe, ob du schnell schriftlich reagieren oder Nachweise einreichen musst";
+    if (hasAny(joined, ["rechnung", "zahlung", "gebühr"])) return "Prüfe, ob Rechnung, Leistung und Betrag stimmen, bevor du zahlst";
+    if (hasAny(joined, ["unterlagen", "nachweis", "nachreichen"])) return "Sammle die genannten Unterlagen und reiche sie rechtzeitig ein";
+    if (firstStep) return firstStep;
+    if (actions[0]) return actions[0];
+    return "Prüfe den Brief und bewahre ihn auf";
+  }
+
+  if (briefart && sender) add(`Das ist ein ${briefart} von ${sender}`, 130);
+  else if (sender) add(`Der Brief kommt von ${sender}`, 120);
+  else if (briefart) add(`Das ist ein ${briefart}`, 100);
+  else add("Das ist ein Schreiben", 80);
+
+  if (topic) add(`Es geht um ${topic}`, depth === "ernst" ? 230 : 180);
+  else if (summary) add(summary, depth === "ernst" ? 230 : 180);
+
+  if (amount && hasAny(joined, ["rechnung", "forderung", "rückforderung", "aufrechnung", "inkasso", "zahlung", "gebühr", "ordnungsgeld"])) {
+    add(`Es geht um einen Betrag von ${amount}`, 110);
+  }
+
+  if (appointment) add(`Wichtig ist der Termin: ${appointment}`, 130);
+  if (deadline) add(`Wichtig ist die Frist: ${deadline}`, 150);
+
+  add(actionHint(), 210);
+
+  if (consequence && depth !== "leicht") {
+    add(`Wenn du nichts machst, können Nachteile entstehen: ${consequence}`, depth === "ernst" ? 240 : 190);
+  }
+
+  if (depth === "ernst") {
+    if (references.length > 0) add("Prüfe wichtige Nummern oder Aktenzeichen im Originalbrief", 120);
+    add("Wenn du unsicher bist, hole dir Hilfe bei der zuständigen Stelle, einer Beratungsstelle oder einer fachkundigen Person", 170);
+  }
+
+  const maxLines = depth === "leicht" ? 5 : depth === "mittel" ? 7 : 9;
+  return dedupe(lines).slice(0, maxLines).join("\n");
 }
 
 function renderDetailTemplateGerman(info) {
@@ -2444,6 +2517,31 @@ function clampShortExplanation(text, lang) {
 }
 
 
+
+function clampBalancedExplanation(text, lang, mode = "wichtiger_brief") {
+  const clean = cleanText(text).replace(/\n{3,}/g, "\n\n").trim();
+  if (!clean) return "";
+
+  const lines = clean
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/^#{1,6}\s*/.test(line));
+
+  const maxLines = mode === "inkasso_vollstreckung" || mode === "jobcenter_bescheid" || mode === "gericht_polizei" ? 9 : 7;
+  const maxChars = lang === "ar" ? 1250 : 1050;
+
+  let result = lines.length > 1 ? lines.slice(0, maxLines).join("\n") : clean;
+
+  if (result.length > maxChars) {
+    result = result.slice(0, maxChars).trim();
+    const lastEnd = Math.max(result.lastIndexOf("."), result.lastIndexOf("!"), result.lastIndexOf("?"), result.lastIndexOf("؟"));
+    if (lastEnd > 300) result = result.slice(0, lastEnd + 1).trim();
+  }
+
+  return result.trim();
+}
+
 function limitDetailText(text, lang, mode = "wichtiger_brief") {
   const clean = cleanText(text).replace(/\n{3,}/g, "\n\n").trim();
   if (!clean) return "";
@@ -2496,7 +2594,7 @@ Du bist Hilfe24 Qualitätsmodus V8: Universal Letter Understanding.
 ${buildHilfe24TextSystemRules()}
 
 Ziel:
-Erkläre den Brief allgemein und zuverlässig. Nutze die feste Brief-Logik: Rollen, Daten, Risiko, erster Schritt. Schreibe menschlich, einfach, kurz und praktisch.
+Erstelle einen einzigen guten Erklärblock zum Brief. Nicht zu kurz, nicht zu lang. Der Nutzer soll verstehen, was im Brief steht und was jetzt zu tun ist.
 
 Ausgabesprache: ${langMeta.label}
 Briefmodus: ${mode}
@@ -2512,8 +2610,10 @@ WICHTIGE REGELN:
 - Bei Jobcenter/Bescheid: Widerspruchsfrist, Rückforderung, Aufrechnung und Beratung klar nennen.
 - Bei Gericht/Polizei: keine Rechtsberatung, Termin/Frist ernst nehmen, bei Unsicherheit Beratung/Anwalt erwähnen.
 - Keine langen Textwände.
-- Kurztext maximal 4 kurze Zeilen und höchstens 4 kurze Sätze. Keine Details wie Gebühren, Gültigkeit oder lange Folgen in den Kurztext packen.
-- Details adaptiv: leichte Briefe fast keine Details, mittlere Briefe kurze Details, ernste Briefe mehr Erklärung, aber maximal 5 kleine Abschnitte. Keine Textwand.
+- Es gibt nur eine Erklärung, keinen getrennten Kurztext und Langtext.
+- Die Erklärung darf bei wichtigen Briefen länger sein, aber nur mit kurzen Sätzen und klarer Struktur.
+- Erkläre so viel wie nötig und so wenig wie möglich.
+- Bei ernsten Briefen darfst du 6 bis 9 kurze Zeilen nutzen. Bei einfachen Briefen reichen weniger Zeilen.
 
 STIL:
 Human + EL5 + DLTR + Listify
@@ -2550,16 +2650,12 @@ ${JSON.stringify({
   unsicherheiten: info.unsicherheiten
 }, null, 2)}
 
-AKTUELLER KURZTEXT:
+AKTUELLE ERKLÄRUNG:
 ${translated.kurz}
-
-AKTUELLE DETAILS:
-${translated.details}
 
 Antworte nur mit gültigem JSON:
 {
   "kurz": "",
-  "details": "",
   "first_step": "",
   "next_steps": [],
   "suggested_actions": ["kurze Aktion als Text", "zweite Aktion als Text"],
@@ -2578,8 +2674,8 @@ Antworte nur mit gültigem JSON:
     parsed = {};
   }
 
-  const kurz = clampShortExplanation(parsed.kurz || translated.kurz, langCode);
-  const details = limitDetailText(cleanText(parsed.details || translated.details), langCode, mode);
+  const kurz = clampBalancedExplanation(parsed.kurz || translated.kurz, langCode, mode);
+  const details = "";
   const nextSteps = normalizeArray(parsed.next_steps).slice(0, 4);
   const suggestedActions = normalizeActionArray(parsed.suggested_actions).slice(0, 5);
   const firstStep = normalizeString(parsed.first_step) || helper.first_step;
@@ -2613,8 +2709,8 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
     referenzen: safe.referencesSafe ? info.referenzen : info.referenzen
   };
 
-  const shortDe = cleanText(renderShortByLanguage(safeInfoForShort, "de"));
-  const detailTemplateDe = cleanText(renderDetailTemplateGerman(safeInfoForShort));
+  const shortDe = cleanText(renderBalancedExplanationGerman(safeInfoForShort));
+  const detailTemplateDe = "";
 
   let translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
   let helper = await buildHelperCardsFromInfo(info, langCode, sourceMode);
@@ -2628,7 +2724,7 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
     quality_ok: true,
     hinweis: "",
     kurz: translated.kurz,
-    details: translated.details,
+    details: "",
     helper,
     meta: {
       briefart: info.briefart,
