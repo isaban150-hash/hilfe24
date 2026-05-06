@@ -2955,6 +2955,112 @@ function postProcessQuestionAnswer(answer, meta = {}) {
   return cleanText(out);
 }
 
+
+function normalizeQuestionText(text) {
+  return String(text || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.!?؟،,;:]+$/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function isPoliteSmallTalkQuestion(text) {
+  const clean = normalizeQuestionText(text);
+
+  const politeTexts = new Set([
+    "danke", "dankeschön", "danke schön", "vielen dank", "ok", "okay", "alles klar", "super", "top", "ja", "passt", "gut", "perfekt",
+    "teşekkürler", "teşekkür ederim", "sağ ol", "sagol", "tamam", "okey", "oldu", "evet", "iyi", "süper",
+    "благодаря", "мерси", "добре", "ок", "да", "супер",
+    "mulțumesc", "mersi", "bine", "da", "ok",
+    "thanks", "thank you", "ok", "okay", "yes", "great", "perfect",
+    "شكرا", "شكرًا", "تمام", "حسنا", "نعم"
+  ]);
+
+  return politeTexts.has(clean);
+}
+
+function politeSmallTalkReply(lang) {
+  const code = getLanguageMeta(lang).code;
+  const replies = {
+    de: "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.",
+    tr: "Rica ederim. Başka bir şey öğrenmek istersen sorunu yazabilirsin.",
+    bg: "Моля. Ако искаш да знаеш още нещо, напиши въпроса си.",
+    ar: "على الرحب والسعة. إذا أردت معرفة شيء آخر، اكتب سؤالك.",
+    ro: "Cu plăcere. Dacă mai vrei să știi ceva, scrie întrebarea ta.",
+    en: "You are welcome. If you want to know anything else, write your question."
+  };
+  return replies[code] || replies.de;
+}
+
+function buildQuestionFallbackAnswer(frageMode, meta, lang) {
+  const code = getLanguageMeta(lang).code;
+  const sender = normalizeString(meta.absender || meta.absender_kurz || "");
+  const amount = normalizeString(meta.betrag || "");
+  const deadline = normalizeString(meta.frist || meta.termin || "");
+
+  if (code === "tr") {
+    if (frageMode === "reply") {
+      return "Şu anda hazır cevap metni oluşturulamadı. Lütfen tekrar dene.\n\nİpucu: Resmi bir kuruma yazacaksan metin Almanca hazırlanmalıdır.";
+    }
+    return [
+      sender ? `Bu yazı ${sender} tarafından gönderilmiş.` : "Bu yazı önemli olabilir.",
+      amount ? `Tutar: ${amount}.` : "Tutar varsa lütfen mektuptan kontrol et.",
+      deadline ? `Süre/termin: ${deadline}.` : "Süre varsa lütfen mektuptan kontrol et.",
+      "İlk adım: bilgileri mektuptan kontrol et ve emin değilsen ilgili kuruma yaz."
+    ].join("\n");
+  }
+
+  if (code === "bg") {
+    if (frageMode === "reply") {
+      return "В момента готовият текст за отговор не можа да бъде създаден. Моля, опитай отново.\n\nСъвет: Ако пишеш до германска институция, текстът трябва да бъде на немски.";
+    }
+    return [
+      sender ? `Писмото е изпратено от ${sender}.` : "Това писмо може да е важно.",
+      amount ? `Сума: ${amount}.` : "Ако има сума, провери я в писмото.",
+      deadline ? `Срок/термин: ${deadline}.` : "Ако има срок, провери го в писмото.",
+      "Първа стъпка: провери данните в писмото и ако не си сигурен, пиши до съответната институция."
+    ].join("\n");
+  }
+
+  if (code === "ro") {
+    return [
+      sender ? `Scrisoarea este de la ${sender}.` : "Această scrisoare poate fi importantă.",
+      amount ? `Sumă: ${amount}.` : "Dacă există o sumă, verific-o în scrisoare.",
+      deadline ? `Termen/programare: ${deadline}.` : "Dacă există un termen, verifică-l în scrisoare.",
+      "Primul pas: verifică datele din scrisoare și, dacă nu ești sigur, scrie instituției responsabile."
+    ].join("\n");
+  }
+
+  if (code === "ar") {
+    return [
+      sender ? `هذه الرسالة من ${sender}.` : "قد تكون هذه الرسالة مهمة.",
+      amount ? `المبلغ: ${amount}.` : "إذا كان هناك مبلغ، يرجى التحقق منه في الرسالة.",
+      deadline ? `الموعد/المهلة: ${deadline}.` : "إذا كانت هناك مهلة، يرجى التحقق منها في الرسالة.",
+      "الخطوة الأولى: تحقق من البيانات في الرسالة، وإذا كنت غير متأكد فاكتب إلى الجهة المسؤولة."
+    ].join("\n");
+  }
+
+  if (code === "en") {
+    return [
+      sender ? `This letter is from ${sender}.` : "This letter may be important.",
+      amount ? `Amount: ${amount}.` : "If there is an amount, check it in the letter.",
+      deadline ? `Deadline/appointment: ${deadline}.` : "If there is a deadline, check it in the letter.",
+      "First step: check the details in the letter and, if you are unsure, write to the responsible office."
+    ].join("\n");
+  }
+
+  if (frageMode === "reply") {
+    return "Die Antwortvorlage konnte gerade nicht erstellt werden. Bitte versuche es nochmal.\n\nWichtig: Wenn es um eine deutsche Behörde, ein Gericht, Inkasso oder eine Krankenkasse geht, sollte die fertige Antwort auf Deutsch geschrieben werden.";
+  }
+
+  return [
+    sender ? `Der Brief ist von ${sender}.` : "Dieser Brief kann wichtig sein.",
+    amount ? `Betrag: ${amount}.` : "Wenn ein Betrag genannt wird, prüfe ihn im Brief.",
+    deadline ? `Frist/Termin: ${deadline}.` : "Wenn eine Frist genannt wird, prüfe sie im Brief.",
+    "Erster Schritt: Prüfe die Daten im Brief und schreibe bei Unsicherheit an die zuständige Stelle."
+  ].join("\n");
+}
+
 app.post("/api/frage", async (req, res) => {
   try {
     const briefText = cleanText(req.body.briefText || "");
@@ -2988,6 +3094,13 @@ const lang = (req.body.lang || "de").toLowerCase();
       return res.status(400).json({
         ok: false,
         error: "Die Frage ist zu lang. Bitte kürzer formulieren."
+      });
+    }
+
+    if (isPoliteSmallTalkQuestion(frage)) {
+      return res.json({
+        ok: true,
+        antwort: politeSmallTalkReply(lang)
       });
     }
 
@@ -3337,10 +3450,22 @@ Nicht wie ein langer KI-Aufsatz.
   } catch (error) {
     console.error("Fehler /api/frage:", error);
 
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Fehler bei der Frage"
-    });
+    try {
+      const meta = req.body && req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
+      const frageModeFallback = cleanText((req.body && req.body.frageMode) || "free");
+      const langFallback = ((req.body && req.body.lang) || "de").toLowerCase();
+
+      return res.json({
+        ok: true,
+        fallback: true,
+        antwort: buildQuestionFallbackAnswer(frageModeFallback, meta, langFallback)
+      });
+    } catch (fallbackError) {
+      return res.status(500).json({
+        ok: false,
+        error: "Die Frage konnte gerade nicht beantwortet werden. Bitte versuche es nochmal."
+      });
+    }
   }
 });
 
