@@ -3061,6 +3061,86 @@ function buildQuestionFallbackAnswer(frageMode, meta, lang) {
   ].join("\n");
 }
 
+
+app.post("/api/daten-pruefen", async (req, res) => {
+  try {
+    const bilder = req.body.bilder || [];
+    const lang = (req.body.lang || "de").toLowerCase();
+    const langMeta = getLanguageMeta(lang);
+
+    if (!Array.isArray(bilder) || bilder.length === 0) {
+      return res.status(400).json({ ok: false, error: "Keine Bilder gesendet" });
+    }
+
+    if (bilder.length > 3) {
+      return res.status(400).json({ ok: false, error: "Maximal 3 Bilder möglich." });
+    }
+
+    const parts = [
+      {
+        text: `
+Du bist Hilfe24. Prüfe NUR die kritischen Daten aus den hochgeladenen Brief-Fotos.
+
+Sprache für die Antwort: ${langMeta.label}
+
+ZIEL:
+Der Nutzer will Name, Aktenzeichen, Datum, Frist und Betrag genauer prüfen.
+Du sollst nicht den ganzen Brief neu erklären.
+
+WICHTIGE REGELN:
+- Nichts erfinden.
+- Wenn ein Wert klar lesbar ist: anzeigen.
+- Wenn ein Wert wahrscheinlich ist, aber nicht 100% sicher: schreibe "vermutlich ... – bitte prüfen" in der Sprache des Nutzers.
+- Wenn ein Wert nicht sicher lesbar ist: schreibe "nicht sicher erkannt" in der Sprache des Nutzers.
+- Bei mehreren Personen: nach Rollen trennen, z. B. Empfänger, betroffene Person, Zeuge, Angeklagter/Beschuldigter, weitere genannte Personen.
+- Aktenzeichen/Nummern exakt mit Punkten, Schrägstrichen und Bindestrichen übernehmen, wenn sicher lesbar.
+- Wenn mehrere Aktenzeichen da sind, getrennt nennen.
+- Antwort kurz und listenartig.
+
+Prüfe diese Daten:
+- Empfänger / Adressat
+- betroffene Person
+- weitere Personen und Rollen
+- Absender
+- Datum des Schreibens
+- Aktenzeichen / Geschäftszeichen / Kundennummer / Rechnungsnummer
+- Betrag / Forderung / Kosten
+- Frist / Termin
+
+Antworte als kurzer Text in ${langMeta.label}.
+Keine Markdown-Tabelle.
+Keine lange Erklärung.
+`
+      }
+    ];
+
+    let pageIndex = 1;
+    for (const bild of bilder) {
+      if (!bild || !bild.imageData || !bild.mimeType) continue;
+      if (String(bild.imageData).length > 15000000) {
+        return res.status(400).json({ ok: false, error: "Ein Bild ist zu groß." });
+      }
+      parts.push({ text: `\nFOTO ${pageIndex}: Ganzseite oder Nahaufnahme. Nutze Nahaufnahmen besonders für Name, Datum, Aktenzeichen, Betrag und Frist.\n` });
+      parts.push({ inline_data: { mime_type: bild.mimeType, data: bild.imageData } });
+      pageIndex++;
+    }
+
+    const raw = await callGemini(parts);
+    const text = cleanText(raw)
+      .replace(/```[a-z]*\n?/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    return res.json({ ok: true, text });
+  } catch (error) {
+    console.error("Fehler /api/daten-pruefen:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error.message || "Fehler bei der Datenprüfung"
+    });
+  }
+});
+
 app.post("/api/frage", async (req, res) => {
   try {
     const briefText = cleanText(req.body.briefText || "");
