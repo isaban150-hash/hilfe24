@@ -3582,9 +3582,31 @@ function isOfficialReplyMode(frageMode, frage) {
   ]);
 }
 
+function looksLikeHumanName(value) {
+  const v = normalizeString(value).replace(/[^\p{L}\s.'-]/gu, "").trim();
+  if (!v || v.length < 4 || v.length > 70) return false;
+  const parts = v.split(/\s+/).filter(Boolean);
+  if (parts.length < 2 || parts.length > 4) return false;
+  if (hasAny(v.toLowerCase(), ["antwort", "email", "brief", "ratenzahlung", "zahlung", "danke", "ok", "hallo", "bitte"])) return false;
+  return parts.every((part) => part.length >= 2);
+}
+
 function containsUserProvidedName(frage, historyText = "") {
   const text = String(frage + "\n" + historyText).toLowerCase();
-  return /\b(ich heiße|mein name ist|name ist|benim adım|adım|казвам се|името ми е|mă numesc|numele meu este|my name is|اسمي)\b/i.test(text);
+  if (/\b(ich heiße|mein name ist|name ist|benim adım|adım|казвам се|името ми е|mă numesc|numele meu este|my name is|اسمي)\b/i.test(text)) return true;
+
+  // Wenn Hilfe24 direkt nach dem Namen gefragt hat, reicht eine reine Namensantwort.
+  if (hasAny(text, ["vollständiger name", "name für die unterschrift", "welchen namen", "imza için", "пълното име", "numele complet", "full name", "الاسم الكامل"])) {
+    return looksLikeHumanName(frage);
+  }
+
+  return false;
+}
+
+function extractNameFromReplyFlow(frage, meta = {}, historyText = "") {
+  if (meta && meta.person_sicher === true && normalizeString(meta.person)) return normalizeString(meta.person);
+  if (containsUserProvidedName(frage, historyText) && looksLikeHumanName(frage)) return normalizeString(frage).replace(/[^\p{L}\s.'-]/gu, "").trim();
+  return "[Name]";
 }
 
 function shouldAskForMissingOfficialData(meta, frageMode, frage, historyText = "") {
@@ -3715,6 +3737,270 @@ function clampChatAnswerV864(answer, frageMode, frage, lang) {
 
   return cleanText(out);
 }
+
+
+
+function chatContextText(meta = {}, briefText = "", kurz = "", details = "", frage = "", historyText = "") {
+  return [
+    meta.briefart,
+    meta.absender,
+    meta.betrag,
+    meta.frist,
+    meta.termin,
+    Array.isArray(meta.unterlagen) ? meta.unterlagen.join(" ") : "",
+    Array.isArray(meta.referenzen) ? meta.referenzen.join(" ") : "",
+    Array.isArray(meta.referenzen_erkannt_roh) ? meta.referenzen_erkannt_roh.join(" ") : "",
+    Array.isArray(meta.passende_aktionen) ? meta.passende_aktionen.join(" ") : "",
+    meta.risiko_kurz,
+    meta.naechster_schritt,
+    meta.was_will_der_absender,
+    briefText,
+    kurz,
+    details,
+    frage,
+    historyText
+  ].join(" ").toLowerCase();
+}
+
+function getPrimaryReference(meta = {}, fallback = "Nummer/Aktenzeichen bitte aus dem Brief übernehmen") {
+  if (Array.isArray(meta.referenzen) && meta.referenzen.length) return meta.referenzen[0];
+  if (Array.isArray(meta.referenzen_erkannt_roh) && meta.referenzen_erkannt_roh.length) return meta.referenzen_erkannt_roh[0];
+  return fallback;
+}
+
+function detectUniversalDocumentDomain(context = "") {
+  const text = String(context || "").toLowerCase();
+
+  if (hasAny(text, ["gericht", "amtsgericht", "landgericht", "staatsanwaltschaft", "polizei", "straf", "anklage", "ladung", "zeuge", "beschuldig", "angeklagt", "geldauflage", "strafbefehl"])) return "justiz";
+  if (hasAny(text, ["jobcenter", "bürgergeld", "sozialamt", "wohngeld", "familienkasse", "kindergeld", "rente", "rentenversicherung", "jugendamt", "ausländerbehörde", "stadt", "gemeinde", "kreis", "behörde", "amt"])) return "behoerde";
+  if (hasAny(text, ["finanzamt", "steuer", "steuernummer", "säumnis", "einkommensteuer", "umsatzsteuer"])) return "steuer";
+  if (hasAny(text, ["krankenkasse", "pflegekasse", "aok", "barmer", "tk", "dak", "md", "pflegegrad", "krankengeld", "hilfsmittel", "arztbrief", "befund", "krankenhaus", "apotheke"])) return "gesundheit";
+  if (hasAny(text, ["bank", "konto", "p-konto", "pfändungsschutz", "kontopfändung", "freibetrag", "kredit", "dispo", "rücklastschrift"])) return "bank";
+  if (hasAny(text, ["inkasso", "forderung", "mahnung", "rechnung", "zahlungserinnerung", "vollstreckung", "gerichtsvollzieher", "ratenzahlung", "schuld", "gläubiger"])) return "zahlung";
+  if (hasAny(text, ["rundfunk", "beitragsservice", "beitragsnummer", "ard zdf", "deutschlandradio"])) return "beitrag";
+  if (hasAny(text, ["miete", "vermieter", "wohnung", "nebenkosten", "kaution", "räumung", "mieterhöhung", "betriebskosten"])) return "wohnung";
+  if (hasAny(text, ["arbeitgeber", "arbeitsvertrag", "änderungsvereinbarung", "kündigung", "abmahnung", "lohn", "gehalt", "arbeitszeit", "urlaub", "krankmeldung"])) return "arbeit";
+  if (hasAny(text, ["versicherung", "haftpflicht", "kfz", "hausrat", "rechtsschutz", "schaden", "police", "versicherungsnummer"])) return "versicherung";
+  if (hasAny(text, ["schule", "kita", "eltern", "kind", "klassenfahrt", "fehlzeiten", "unterhalt"])) return "familie_schule";
+  if (hasAny(text, ["bußgeld", "blitzer", "anhörungsbogen", "fahrverbot", "punkte", "kennzeichen", "verkehr", "zulassung", "tüv"])) return "verkehr";
+  if (hasAny(text, ["vertrag", "kündigung", "widerruf", "abo", "strom", "gas", "internet", "handyvertrag", "fitness", "anbieter", "preiserhöhung"])) return "vertrag";
+  if (hasAny(text, ["zahnarzt", "zahnärzt", "dzr", "goz", "bema", "labor", "materialkosten", "behandlung", "rechnungsnummer"])) return "rechnung_detail";
+  if (hasAny(text, ["phishing", "fake", "betrug", "gewinnspiel", "paket-sms", "link klicken", "daten eingeben"])) return "betrug";
+
+  return "allgemein";
+}
+
+function detectUniversalChatIntent(frage = "", frageMode = "free") {
+  const mode = String(frageMode || "free").toLowerCase();
+  const q = normalizeQuestionText(frage);
+
+  if (isPoliteSmallTalkQuestion(frage)) return "smalltalk";
+  if (mode === "reply" || hasAny(q, ["schreib", "antwort", "e-mail", "email", "brief", "vorlage", "pdf", "whatsapp", "text schreiben", "cevap", "yaz", "писмо", "отговор", "scrie", "răspuns", "اكتب", "رد"])) return "reply";
+  if (hasAny(q, ["kann nicht zahlen", "nicht bezahlen", "nicht auf einmal", "kein geld", "ratenzahlung", "rate", "stundung", "zahlungsaufschub", "ödeyemem", "taksit", "не мога да платя", "nu pot plăti", "cannot pay", "installment", "تقسيط"])) return "cannot_pay";
+  if (hasAny(q, ["schon geschickt", "bereits geschickt", "nachweis geschickt", "bescheid geschickt", "befreit", "befreiung", "nachweis wurde", "gönderdim", "изпратено", "trimis", "already sent", "exemption", "أرسلت", "إعفاء"])) return "proof_sent";
+  if (mode === "next_steps" || hasAny(q, ["was soll ich tun", "was muss ich tun", "was jetzt", "nächster schritt", "wie weiter", "ne yap", "какво да направя", "ce fac", "what should i do", "ماذا أفعل"])) return "next_steps";
+  if (mode === "deadline" || hasAny(q, ["bis wann", "frist", "termin", "deadline", "son tarih", "срок", "termen", "مهلة"])) return "deadline";
+  if (mode === "consequence" || hasAny(q, ["wenn ich nichts", "passiert wenn", "folge", "ignorieren", "nichts mache", "ne olur", "какво ще стане", "ce se întâmplă", "what happens", "ماذا يحدث"])) return "consequence";
+  if (hasAny(q, ["unterlagen", "anlagen", "anhängen", "mitschicken", "welche dokumente", "was brauche ich", "documents", "belge", "документи", "atașez", "مستندات"])) return "attachments";
+  if (hasAny(q, ["telefon", "anrufen", "am telefon", "was soll ich sagen", "rufen", "call", "phone", "telefon aç", "обадя", "sun", "اتصال"])) return "phone_script";
+  if (hasAny(q, ["noch kürzer", "kürzer", "kurz", "einfacher", "einfach erklären", "verstehe nicht", "shorter", "simpler", "daha kısa", "по-кратко", "mai scurt", "أقصر"])) return "simplify";
+  if (hasAny(q, ["welche behandlung", "was wurde gemacht", "wofür", "positionen", "leistungsposition", "goz", "bema", "rechnungsposition", "was ändert sich", "was wurde geändert", "vorwurf", "wer ist zeuge", "berechnung", "details", "hangi", "какво", "ce", "what exactly"])) return "detail";
+  if (hasAny(q, ["muss ich reagieren", "muss ich was machen", "muss ich überhaupt", "nichts tun", "brauche ich reagieren", "do i have to", "zorunda", "трябва ли", "trebuie", "هل يجب"])) return "must_react";
+  if (hasAny(q, ["widerspruch", "einspruch", "ablehnung", "bescheid falsch", "nicht einverstanden", "objection", "contest", "itiraz", "възражение", "contestație", "اعتراض"])) return "objection";
+  if (hasAny(q, ["erstattung", "zurückbekommen", "krankenkasse zahlt", "übernimmt", "refund", "reimbursement", "geri ödeme", "възстановяване", "rambursare", "استرداد"])) return "reimbursement";
+  if (hasAny(q, ["forderung prüfen", "stimmt die forderung", "ist das richtig", "schon bezahlt", "zahlungsnachweis", "check claim", "borç", "дълг", "creanță"])) return "check_claim";
+  if (hasAny(q, ["verstanden", "hast du verstanden", "ok verstanden", "understood", "anladın", "разбра", "ai înțeles", "فهمت"])) return "understood";
+
+  return "free";
+}
+
+function buildUniversalNextSteps(meta = {}, domain = "allgemein") {
+  const steps = [];
+  const amount = normalizeString(meta.betrag || "");
+  const deadline = normalizeString(meta.frist || meta.termin || "");
+  const ref = getPrimaryReference(meta, "");
+
+  if (amount) steps.push(`Betrag prüfen: ${amount}.`);
+  if (deadline) steps.push(`Frist/Termin prüfen: ${deadline}.`);
+  if (ref) steps.push(`Nummer/Aktenzeichen bereithalten: ${ref}.`);
+
+  if (domain === "justiz") steps.push("Nichts Unüberlegtes schreiben und bei Unsicherheit rechtliche Hilfe holen.");
+  else if (domain === "gesundheit") steps.push("Bei medizinischen Fragen Arzt, Apotheke oder Krankenkasse kontaktieren.");
+  else if (domain === "betrug") steps.push("Nicht klicken, nichts zahlen und keine Daten senden, bis der Absender geprüft ist.");
+  else if (domain === "bank") steps.push("Bank schriftlich kontaktieren und Status/Freigabe klären.");
+  else if (domain === "zahlung" || domain === "steuer" || domain === "beitrag") steps.push("Wenn du nicht zahlen kannst: schriftlich Ratenzahlung, Stundung oder Klärung beantragen.");
+  else steps.push("Wenn etwas unklar ist: schriftlich bei der zuständigen Stelle nachfragen.");
+
+  return dedupe(steps).slice(0, 4);
+}
+
+function buildUniversalCannotPay(meta = {}, domain = "allgemein") {
+  const amount = normalizeString(meta.betrag || "den Betrag");
+  const ref = getPrimaryReference(meta);
+  const extra = hasAny(String(meta.risiko_kurz || meta.briefart || "").toLowerCase(), ["vollstreck", "pfänd", "mahnung"]) || ["steuer", "beitrag", "zahlung", "bank"].includes(domain)
+    ? "4. Um Stopp weiterer Maßnahmen bis zur Antwort bitten."
+    : "4. Um schriftliche Bestätigung bitten.";
+
+  return cleanText(`Dann nicht ignorieren, sondern schriftlich Zahlungsaufschub, Ratenzahlung oder Stundung anfragen.
+
+1. Nummer/Aktenzeichen nennen: ${ref}.
+2. Betrag nennen: ${amount}.
+3. Eine realistische monatliche Rate vorschlagen.
+${extra}
+
+Welche monatliche Rate wäre möglich?`);
+}
+
+function buildUniversalProofSent(meta = {}, domain = "allgemein") {
+  const ref = getPrimaryReference(meta);
+  return cleanText(`Dann den Nachweis nochmal senden und schriftlich Prüfung verlangen.
+
+1. Nummer/Aktenzeichen nennen: ${ref}.
+2. Nachweis erneut anhängen.
+3. Schreiben: „Der Nachweis wurde bereits eingereicht, ich füge ihn vorsorglich erneut bei.“
+4. Um Stopp weiterer Maßnahmen bis zur Prüfung bitten.
+
+Soll ich dir eine kurze Nachricht dafür schreiben?`);
+}
+
+function buildUniversalAttachments(meta = {}, domain = "allgemein") {
+  const common = ["Nummer/Aktenzeichen oder Kundennummer", "das Schreiben selbst", "dein Name und Kontaktdaten"];
+  const domainItems = {
+    steuer: ["Steuernummer", "Mahnung/Bescheid", "kurze Begründung, warum Zahlung nicht sofort möglich ist"],
+    beitrag: ["Beitragsnummer", "Befreiungsnachweis/Bescheid", "Nachweis erneut als Anlage"],
+    behoerde: ["Bescheid oder Nachweis", "Kundennummer/BG-Nummer", "fehlende Unterlagen"],
+    gesundheit: ["Rechnung", "Verordnung/Arztbericht", "Versichertennummer"],
+    zahlung: ["Forderungsschreiben", "Zahlungsnachweise, falls schon bezahlt", "Vertrags-/Rechnungsunterlagen, falls vorhanden"],
+    bank: ["Bank-Schreiben", "Nachweis/Bescheinigung, falls vorhanden", "Kontodaten nur soweit nötig"],
+    justiz: ["Gerichtsschreiben", "Aktenzeichen", "Nachweise/Beweise nur nach Prüfung oder Beratung"],
+    rechnung_detail: ["Rechnung", "Seite mit Leistungspositionen", "Versicherungs-/Krankenkassendaten, falls Erstattung gefragt ist"]
+  };
+  const items = domainItems[domain] || common;
+  return "Wahrscheinlich brauchst du:\n" + dedupe(items).slice(0, 5).map((x) => `- ${x}`).join("\n");
+}
+
+function buildUniversalPhoneScript(meta = {}, domain = "allgemein") {
+  const ref = getPrimaryReference(meta);
+  const amount = normalizeString(meta.betrag || "");
+  return cleanText(`Sag am Telefon kurz:
+
+Guten Tag, mein Name ist [Name].
+Ich rufe wegen Ihres Schreibens an.
+Meine Nummer / mein Aktenzeichen ist: ${ref}.
+${amount ? "Es geht um den Betrag " + amount + "." : ""}
+Ich möchte klären, was ich jetzt tun muss.
+Welche Unterlagen oder nächsten Schritte sind nötig?`);
+}
+
+function buildUniversalDetailRequest(meta = {}, domain = "allgemein") {
+  if (domain === "rechnung_detail" || domain === "gesundheit") {
+    return cleanText(`Ich kann die genaue Leistung auf dem aktuellen Foto nicht sicher erkennen.
+
+Bitte lade die Seite mit den einzelnen Positionen hoch.
+Wichtig sind:
+1. Leistungsbeschreibung
+2. Positionsnummern, z. B. GOZ/BEMA oder Rechnungsposition
+3. Datum / Behandlungstag
+4. Einzelbeträge
+
+Dann erkläre ich dir genau, wofür die Rechnung ist.`);
+  }
+
+  if (domain === "arbeit") {
+    return "Bitte lade die Stelle hoch, wo die Änderung steht. Wichtig sind: Was ändert sich, ab wann gilt es, muss unterschrieben werden und ob es befristet ist.";
+  }
+
+  if (domain === "justiz") {
+    return "Bitte lade die Seite mit Vorwurf, Frist, Termin oder Rechtsbehelf hoch. Dann erkläre ich dir genau, was gemeint ist, ohne etwas zu erfinden.";
+  }
+
+  return "Ich erkenne diese Detailinformation noch nicht sicher. Lade bitte die Seite oder den Ausschnitt hoch, auf dem die Details stehen. Dann lese ich es dir genau heraus.";
+}
+
+function buildUniversalConsequence(meta = {}, domain = "allgemein") {
+  const risk = normalizeString(meta.risiko_kurz || meta.folge_wenn_nichts || "");
+  if (risk) return `Mögliche Folge: ${risk}\n\nNächster sicherer Schritt: schriftlich klären und Frist/Betrag prüfen.`;
+  if (domain === "justiz") return "Wenn du nicht reagierst, können Fristen verloren gehen oder ein Verfahren weiterlaufen. Nicht ignorieren und bei Unsicherheit rechtliche Hilfe holen.";
+  if (["zahlung", "steuer", "beitrag", "bank"].includes(domain)) return "Wenn du nichts machst, können weitere Kosten, Mahnung oder Vollstreckung folgen. Deshalb schriftlich klären oder Zahlung/Ratenzahlung prüfen.";
+  if (domain === "behoerde") return "Wenn du nichts machst, können Leistungen, Fristen oder Ansprüche betroffen sein. Prüfe die Frist und reagiere schriftlich.";
+  return "Wenn du nichts machst, kann je nach Brief ein Nachteil entstehen. Prüfe Frist, Geld, Termin und ob eine Antwort verlangt wird.";
+}
+
+function buildUniversalMustReact(meta = {}, domain = "allgemein") {
+  const must = String(meta.must_react || meta.muss_handeln || "").toLowerCase();
+  const hasCritical = Boolean(meta.frist || meta.termin || meta.betrag || domain === "justiz" || domain === "bank");
+  if (must === "no" || must === "nein") return "Wahrscheinlich musst du nicht direkt reagieren. Bewahre den Brief aber auf und prüfe, ob wirklich keine Frist oder Zahlung genannt ist.";
+  if (hasCritical) return "Ja, wahrscheinlich solltest du reagieren. Prüfe Frist/Termin/Betrag und kläre den nächsten Schritt schriftlich.";
+  return "Unklar. Ich sehe noch nicht sicher, ob du reagieren musst. Lade bei Bedarf die Rückseite oder den Teil mit Frist/Rechtsbehelf hoch.";
+}
+
+function buildUniversalObjection(meta = {}, domain = "allgemein") {
+  if (domain === "justiz") return "Bei Gericht/Strafsache bitte keinen Widerspruchstext ohne Beratung schreiben. Frist prüfen, Unterlagen sammeln und möglichst Anwalt/Beratungsstelle kontaktieren.";
+  return "Wenn du nicht einverstanden bist, prüfe zuerst Frist, Begründung und Aktenzeichen. Danach kann eine kurze fristwahrende Antwort sinnvoll sein. Soll ich dir dafür einen neutralen Text vorbereiten?";
+}
+
+function buildUniversalReimbursement(meta = {}, domain = "allgemein") {
+  return "Erstattung kann möglich sein, aber ich darf sie nicht versprechen. Lade Rechnung/Leistungsübersicht hoch und frage bei Krankenkasse, Versicherung oder zuständiger Stelle schriftlich nach. Ich kann dir dafür eine kurze Anfrage schreiben.";
+}
+
+function buildUniversalCheckClaim(meta = {}, domain = "allgemein") {
+  const amount = normalizeString(meta.betrag || "");
+  return cleanText(`Zahle nicht blind, wenn etwas unklar ist.
+
+Prüfe:
+1. Wer fordert das Geld?
+2. Wofür ist der Betrag${amount ? " " + amount : ""}?
+3. Gibt es Aktenzeichen/Rechnungsnummer?
+4. Wurde vielleicht schon bezahlt?
+
+Wenn du willst, schreibe ich dir eine kurze Anfrage zur Forderungsprüfung.`);
+}
+
+function buildUniversalShorter(meta = {}, domain = "allgemein") {
+  const steps = buildUniversalNextSteps(meta, domain).slice(0, 3);
+  return "Kurz:\n" + steps.map((s) => `- ${s.replace(/\.$/, "")}`).join("\n");
+}
+
+function buildUniversalUnderstood(meta = {}, domain = "allgemein") {
+  const amount = normalizeString(meta.betrag || "");
+  const deadline = normalizeString(meta.frist || meta.termin || "");
+  const parts = [];
+  if (amount) parts.push(`Betrag: ${amount}.`);
+  if (deadline) parts.push(`Frist/Termin: ${deadline}.`);
+  const next = buildUniversalNextSteps(meta, domain)[0] || "Nicht ignorieren und schriftlich klären.";
+  return cleanText(`Ja, verstanden.
+
+${parts.join("\n")}
+Nächster Schritt: ${next}`);
+}
+
+function buildUniversalNextStepsAnswer(meta = {}, domain = "allgemein") {
+  return "Das sind die nächsten Schritte:\n" + buildUniversalNextSteps(meta, domain).slice(0, 4).map((s, i) => `${i + 1}. ${s}`).join("\n");
+}
+
+function buildUniversalDeterministicChat({ frage, frageMode, meta, briefText, kurz, details, historyText, lang }) {
+  const context = chatContextText(meta, briefText, kurz, details, frage, historyText);
+  const domain = detectUniversalDocumentDomain(context);
+  const intent = detectUniversalChatIntent(frage, frageMode);
+
+  if (intent === "smalltalk") return politeSmallTalkReply(lang);
+  if (intent === "understood") return buildUniversalUnderstood(meta, domain);
+  if (intent === "simplify") return buildUniversalShorter(meta, domain);
+  if (intent === "cannot_pay") return buildUniversalCannotPay(meta, domain);
+  if (intent === "proof_sent") return buildUniversalProofSent(meta, domain);
+  if (intent === "next_steps") return buildUniversalNextStepsAnswer(meta, domain);
+  if (intent === "attachments") return buildUniversalAttachments(meta, domain);
+  if (intent === "phone_script") return buildUniversalPhoneScript(meta, domain);
+  if (intent === "detail") return buildUniversalDetailRequest(meta, domain);
+  if (intent === "consequence") return buildUniversalConsequence(meta, domain);
+  if (intent === "must_react") return buildUniversalMustReact(meta, domain);
+  if (intent === "objection") return buildUniversalObjection(meta, domain);
+  if (intent === "reimbursement") return buildUniversalReimbursement(meta, domain);
+  if (intent === "check_claim") return buildUniversalCheckClaim(meta, domain);
+
+  return "";
+}
+
 
 
 app.post("/api/daten-pruefen", async (req, res) => {
@@ -3849,6 +4135,24 @@ const lang = (req.body.lang || "de").toLowerCase();
       });
     }
 
+    const deterministicShortcut = buildUniversalDeterministicChat({
+      frage,
+      frageMode,
+      meta,
+      briefText,
+      kurz: erklaerungKurz,
+      details: erklaerungDetails,
+      historyText: chatHistoryText,
+      lang
+    });
+
+    if (deterministicShortcut) {
+      return res.json({
+        ok: true,
+        antwort: deterministicShortcut
+      });
+    }
+
     const missingOfficialData = shouldAskForMissingOfficialData(meta, frageMode, frage, chatHistoryText);
     if (missingOfficialData.needed) {
       return res.json({
@@ -3923,6 +4227,14 @@ Biete solche Hilfe nur passend und kurz an. Nicht überladen.
 
 OBERSTE REGEL:
 Der Nutzer braucht eine klare Alltagshilfe. Nicht labern. Nicht dramatisieren. Nicht wie ein langer KI-Aufsatz schreiben. Keine Einleitung wie „Okay“ oder „Hier ist deine Hilfe“. Direkt mit der Antwort starten.
+
+
+UNIVERSAL-LOGIK V8.6.9:
+Du darfst dich nicht auf einzelne Testbriefe fixieren.
+Erkenne zuerst die Nutzerabsicht: Zahlungsproblem, Nachweis schon geschickt, Antwort schreiben, Unterlagen, Telefonat, Frist, Termin, Forderung prüfen, Widerspruch prüfen, Erstattung prüfen, einfacher erklären oder Detailfrage.
+Dann nutze die Briefdaten nur als Kontext.
+Wenn der Nutzer eine neue Information gibt, wiederhole nicht die komplette Brief-Erklärung.
+Antworte dann direkt mit dem nächsten sicheren Schritt.
 
 CHAT-REGEL V8.6:
 Du antwortest wie in einem echten laufenden Chat zu genau diesem Brief.
