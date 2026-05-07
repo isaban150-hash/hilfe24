@@ -149,7 +149,12 @@ async function callGemini(parts) {
 function cleanText(text) {
   return String(text || "")
     .replace(/\*\*/g, "")
+    .replace(/^\s*\*\s+/gm, "- ")
+    .replace(/^\s*[-–—]\s{2,}/gm, "- ")
     .replace(/^\s*\d+\.\s*/gm, "")
+    .replace(/Sonst ist Ihr gesamtes Geld weg\.?/gi, "Ohne P-Konto ist dein Guthaben deutlich schlechter geschützt.")
+    .replace(/Sonst ist dein gesamtes Geld weg\.?/gi, "Ohne P-Konto ist dein Guthaben deutlich schlechter geschützt.")
+    .replace(/das gesamte Geld ist weg\.?/gi, "Guthaben über dem geschützten Betrag kann gesperrt oder abgeführt werden.")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -2485,6 +2490,221 @@ function buildHelpTip(info, lang) {
   return T.default;
 }
 
+
+function buildLetterContext(info, extra = "") {
+  return [
+    info.briefart,
+    info.absender_original,
+    info.absender_kurz,
+    info.worum_geht_es,
+    info.kurz_gesagt,
+    info.folge_wenn_nichts,
+    info.naechster_schritt,
+    info.betrag,
+    (info.wichtigste_punkte || []).join(" "),
+    (info.was_ist_zu_tun || []).join(" "),
+    (info.passende_aktionen || []).join(" "),
+    (info.referenzen || []).join(" "),
+    extra
+  ].join(" ").toLowerCase();
+}
+
+function isBankPkontoLetter(info, extra = "") {
+  const text = buildLetterContext(info || {}, extra);
+  return hasAny(text, [
+    "p-konto",
+    "pfändungsschutzkonto",
+    "kontopfändung",
+    "konto gepfändet",
+    "kontosperre",
+    "konto gesperrt",
+    "freibetrag",
+    "postbank",
+    "pfändungsbeschluss",
+    "überweisungsbeschluss",
+    "drittschuldner"
+  ]);
+}
+
+function isLikelyAlreadyPkonto(info, extra = "") {
+  const text = buildLetterContext(info || {}, extra);
+  return hasAny(text, [
+    "bereits ein p-konto",
+    "schon ein p-konto",
+    "ist ein p-konto",
+    "als p-konto geführt",
+    "pfändungsschutzkonto geführt",
+    "konto ist bereits",
+    "bereits als pfändungsschutzkonto"
+  ]);
+}
+
+function isCourtPoliceLetter(info) {
+  const text = buildLetterContext(info || {});
+  return hasAny(text, ["gericht", "polizei", "staatsanwaltschaft", "ladung", "straf", "zeuge", "beschuldig", "angeklagt"]);
+}
+
+function buildCompactDataRows(info, L, safe, values) {
+  const rows = [];
+  const sender = values.senderValue || L.check;
+  const amount = values.amountValue || L.check;
+  const deadline = values.deadlineValue || L.check;
+  const reference = values.referenceValue || L.check;
+
+  rows.push({ key: "sender", label: L.sender, value: sender, status: sender === L.check ? "check" : "safe" });
+  rows.push({ key: "amount", label: L.amount, value: amount, status: amount === L.check ? "check" : "safe" });
+  rows.push({ key: "deadline", label: L.deadline, value: deadline, status: deadline === L.check ? "check" : "safe" });
+  rows.push({ key: "reference", label: L.reference, value: reference, status: safe.referencesSafe ? "safe" : "check" });
+
+  if (safe.personSafe && values.personValue && values.personValue !== L.check) {
+    rows.unshift({ key: "person", label: L.person, value: values.personValue, status: "safe" });
+  }
+
+  return rows.filter((row) => row.value && row.value !== "").slice(0, 5);
+}
+
+function buildBankDataRows(info, L, safe, values) {
+  const rows = [];
+  const sender = values.senderValue || L.check;
+  const amount = values.amountValue || L.check;
+  const reference = values.referenceValue || L.check;
+  const deadline = values.deadlineValue || L.check;
+
+  rows.push({ key: "sender", label: L.sender, value: sender, status: sender === L.check ? "check" : "safe" });
+  rows.push({ key: "amount", label: L.amount, value: amount, status: amount === L.check ? "check" : "safe" });
+  rows.push({ key: "reference", label: L.reference, value: reference, status: safe.referencesSafe ? "safe" : "check" });
+  rows.push({ key: "deadline", label: L.deadline, value: deadline, status: deadline === L.check ? "check" : "safe" });
+
+  return rows.filter((row) => row.value && row.value !== "").slice(0, 4);
+}
+
+function buildBankPkontoActions(lang) {
+  const code = getLanguageMeta(lang).code;
+  const map = {
+    de: ["P-Konto-Status prüfen", "Freibetrag klären", "Bank kontaktieren", "Bescheinigung prüfen", "Schuldnerberatung finden"],
+    tr: ["P-Konto durumunu kontrol et", "Korunan tutarı netleştir", "Bankayla iletişime geç", "Belge gerekip gerekmediğini sor", "Borç danışmanlığı bul"],
+    bg: ["Провери P-Konto статуса", "Изясни защитената сума", "Свържи се с банката", "Провери дали трябва удостоверение", "Намери консултация за дългове"],
+    ro: ["Verifică statutul P-Konto", "Clarifică suma protejată", "Contactează banca", "Verifică adeverința", "Caută consiliere pentru datorii"],
+    ar: ["تحقق من حالة P-Konto", "استفسر عن المبلغ المحمي", "تواصل مع البنك", "تحقق من الشهادة المطلوبة", "ابحث عن استشارة ديون"],
+    en: ["Check P-Konto status", "Clarify protected amount", "Contact the bank", "Check certificate", "Find debt advice"]
+  };
+  return map[code] || map.de;
+}
+
+function renderBankPkontoExplanation(info, lang, sourceMode = "text") {
+  const code = getLanguageMeta(lang).code;
+  const amount = normalizeString(info.betrag);
+  const deadline = normalizeString(info.frist || info.termin);
+  const already = isLikelyAlreadyPkonto(info);
+
+  const maps = {
+    de: {
+      head: "Die Bank informiert dich über eine Kontopfändung.",
+      protect: "Ein P-Konto schützt nicht das ganze Konto, sondern nur den monatlichen Freibetrag.",
+      already: "Prüfe bei der Bank, ob dein Konto wirklich als P-Konto geführt wird und welcher Freibetrag gilt.",
+      notYet: "Wenn dein Konto noch kein P-Konto ist, beantrage die Umwandlung sofort bei der Bank.",
+      check: "Prüfe zusätzlich Gläubiger, Betrag und Aktenzeichen im Brief.",
+      amount: "Betrag: ",
+      deadline: "Frist/Termin: ",
+      risk: "Wenn du nichts machst, kann Guthaben über dem geschützten Betrag gesperrt oder an den Gläubiger überwiesen werden."
+    },
+    tr: {
+      head: "Banka sana hesap haczi hakkında bilgi veriyor.",
+      protect: "P-Konto tüm hesabı değil, sadece aylık korunan tutarı korur.",
+      already: "Bankadan hesabın gerçekten P-Konto olarak kayıtlı olup olmadığını ve korunan tutarı kontrol et.",
+      notYet: "Hesabın henüz P-Konto değilse, bankadan hemen dönüştürme iste.",
+      check: "Ayrıca alacaklıyı, tutarı ve numarayı mektupta kontrol et.",
+      amount: "Tutar: ",
+      deadline: "Süre/Randevu: ",
+      risk: "Hiçbir şey yapmazsan, korunan tutarın üzerindeki para bloke edilebilir veya alacaklıya gönderilebilir."
+    },
+    bg: {
+      head: "Банката те информира за запор на сметката.",
+      protect: "P-Konto не защитава цялата сметка, а само месечната защитена сума.",
+      already: "Провери в банката дали сметката наистина е P-Konto и каква сума е защитена.",
+      notYet: "Ако сметката още не е P-Konto, поискай веднага преобразуване в банката.",
+      check: "Провери също кредитора, сумата и номера в писмото.",
+      amount: "Сума: ",
+      deadline: "Срок/термин: ",
+      risk: "Ако не направиш нищо, пари над защитената сума могат да бъдат блокирани или преведени на кредитора."
+    },
+    ro: {
+      head: "Banca te informează despre o poprire pe cont.",
+      protect: "Un P-Konto nu protejează tot contul, ci doar suma lunară protejată.",
+      already: "Verifică la bancă dacă acest cont este într-adevăr P-Konto și ce sumă este protejată.",
+      notYet: "Dacă acest cont nu este încă P-Konto, cere imediat transformarea la bancă.",
+      check: "Verifică și creditorul, suma și numărul de dosar din scrisoare.",
+      amount: "Sumă: ",
+      deadline: "Termen/programare: ",
+      risk: "Dacă nu faci nimic, banii peste suma protejată pot fi blocați sau virați creditorului."
+    },
+    ar: {
+      head: "البنك يُبلغك بوجود حجز على الحساب.",
+      protect: "حساب P-Konto لا يحمي الحساب كله، بل يحمي فقط المبلغ الشهري المحمي.",
+      already: "تحقق مع البنك هل الحساب مسجل فعلًا كـ P-Konto وما هو المبلغ المحمي.",
+      notYet: "إذا لم يكن الحساب P-Konto بعد، اطلب التحويل فورًا من البنك.",
+      check: "تحقق أيضًا من الدائن والمبلغ ورقم الملف في الرسالة.",
+      amount: "المبلغ: ",
+      deadline: "المهلة/الموعد: ",
+      risk: "إذا لم تفعل شيئًا، قد يتم حجز المال فوق المبلغ المحمي أو تحويله إلى الدائن."
+    },
+    en: {
+      head: "The bank informs you about an account garnishment.",
+      protect: "A P-Konto does not protect the whole account, only the monthly protected amount.",
+      already: "Check with the bank whether this account is really a P-Konto and which amount is protected.",
+      notYet: "If the account is not yet a P-Konto, request the conversion immediately at the bank.",
+      check: "Also check the creditor, amount and reference number in the letter.",
+      amount: "Amount: ",
+      deadline: "Deadline/appointment: ",
+      risk: "If nothing is done, money above the protected amount may be blocked or transferred to the creditor."
+    }
+  };
+
+  const T = maps[code] || maps.de;
+  const lines = [
+    T.head,
+    T.protect,
+    already ? T.already : T.notYet,
+    T.check
+  ];
+
+  if (amount) lines.push(T.amount + amount + ".");
+  if (deadline) lines.push(T.deadline + deadline + ".");
+  lines.push(T.risk);
+
+  return dedupe(lines).slice(0, 7).join("\n");
+}
+
+function postProcessFinalExplanation(text, lang, mode = "wichtiger_brief") {
+  let out = cleanText(text)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  out = out
+    .replace(/Sonst ist Ihr gesamtes Geld weg\.?/gi, "Ohne P-Konto ist dein Guthaben deutlich schlechter geschützt.")
+    .replace(/Sonst ist dein gesamtes Geld weg\.?/gi, "Ohne P-Konto ist dein Guthaben deutlich schlechter geschützt.")
+    .replace(/Sie verlieren es\.?/gi, "Guthaben über dem geschützten Betrag kann abgeführt werden.")
+    .replace(/du verlierst es\.?/gi, "Guthaben über dem geschützten Betrag kann abgeführt werden.")
+    .replace(/P-Konto beantragen:/gi, "P-Konto-Status prüfen:")
+    .replace(/Pfändungsschutzkonto \(P-Konto\) umzuwandeln/gi, "P-Konto-Status und Freibetrag zu klären");
+
+  return clampBalancedExplanation(out, getLanguageMeta(lang).code, mode);
+}
+
+function buildPkontoReplyTemplate(meta = {}, lang = "de", context = "") {
+  const code = getLanguageMeta(lang).code;
+  const already = isLikelyAlreadyPkonto(meta, context);
+  const ref = Array.isArray(meta.referenzen) && meta.referenzen.length ? meta.referenzen[0] : "[Zeichen bitte aus dem Brief übernehmen]";
+  const person = meta.person_sicher && meta.person ? meta.person : "[Name]";
+
+  // Offizielle Antwort an eine deutsche Bank bleibt bewusst auf Deutsch.
+  const middle = already
+    ? `Mein Konto wird nach meinem Kenntnisstand bereits als Pfändungsschutzkonto (P-Konto) geführt.\n\nBitte bestätigen Sie mir schriftlich:\n- ob mein Konto aktuell als P-Konto geführt wird,\n- welcher Freibetrag derzeit geschützt ist,\n- ob eine zusätzliche P-Konto-Bescheinigung benötigt wird,\n- welche Beträge aktuell gesperrt oder freigegeben sind.`
+    : `Ich habe Ihr Schreiben zur Kontopfändung erhalten.\n\nBitte teilen Sie mir mit, wie ich mein Konto schnellstmöglich als Pfändungsschutzkonto (P-Konto) führen lassen kann.\n\nBitte bestätigen Sie mir außerdem, welcher Freibetrag geschützt ist und ob eine zusätzliche P-Konto-Bescheinigung benötigt wird.`;
+
+  return cleanText(`Empfänger: Bitte E-Mail-Adresse oder Anschrift aus dem Brief übernehmen\n\nBetreff: Bitte um Klärung zur Kontopfändung / P-Konto – ${ref}\n\nSehr geehrte Damen und Herren,\n\n${middle}\n\nBitte teilen Sie mir auch mit, welche nächsten Schritte aus Ihrer Sicht erforderlich sind.\n\nMit freundlichen Grüßen\n\n${person}`);
+}
+
 async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   const langCode = getLanguageMeta(lang).code;
   const L = simpleLabelDict(langCode);
@@ -2496,12 +2716,28 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   const amountValue = info.betrag || L.check;
   const deadlineValue = info.frist || info.termin || L.check;
   const referenceValue = safe.referencesSafe && (info.referenzen || []).length ? (info.referenzen || []).join(", ") : L.check;
-  const nextSteps = buildDeterministicNextSteps(info, langCode);
+  const isBank = isBankPkontoLetter(info);
+
+  let nextSteps = buildDeterministicNextSteps(info, langCode);
+  let suggestedActions = buildSuggestedActions(info, langCode);
+
+  if (isBank) {
+    const bankSteps = {
+      de: ["Kläre mit der Bank, ob dein Konto als P-Konto geführt wird.", "Prüfe, welcher Freibetrag geschützt ist.", "Prüfe Gläubiger, Betrag und Aktenzeichen im Brief.", "Hole Hilfe bei Schuldnerberatung oder Verbraucherzentrale, wenn du unsicher bist."],
+      tr: ["Bankadan hesabın P-Konto olup olmadığını netleştir.", "Hangi tutarın korunduğunu kontrol et.", "Alacaklıyı, tutarı ve numarayı mektupta kontrol et.", "Emin değilsen borç danışmanlığından yardım al."],
+      bg: ["Изясни с банката дали сметката е P-Konto.", "Провери каква сума е защитена.", "Провери кредитора, сумата и номера в писмото.", "Ако не си сигурен, потърси консултация за дългове."],
+      ro: ["Clarifică la bancă dacă acest cont este P-Konto.", "Verifică ce sumă este protejată.", "Verifică creditorul, suma și numărul din scrisoare.", "Cere consiliere dacă nu ești sigur."],
+      ar: ["استفسر من البنك هل الحساب P-Konto.", "تحقق من المبلغ المحمي.", "راجع الدائن والمبلغ ورقم الملف في الرسالة.", "اطلب استشارة ديون إذا كنت غير متأكد."],
+      en: ["Clarify with the bank whether this account is a P-Konto.", "Check which amount is protected.", "Check creditor, amount and reference number in the letter.", "Get debt advice if you are unsure."]
+    };
+    nextSteps = bankSteps[langCode] || bankSteps.de;
+    suggestedActions = buildBankPkontoActions(langCode);
+  }
+
   const firstStep = nextSteps[0] || L.firstStepDefault;
   const briefartLabel = simpleBriefartLabel(info, langCode);
   const urgencyLabel = simpleUrgencyLabel(info, langCode);
   const unsafeParts = [];
-  if (!safe.personSafe) unsafeParts.push(L.person);
   if (!safe.referencesSafe) unsafeParts.push(L.reference);
   if ((info.unsicherheiten || []).length) unsafeParts.push(L.check);
   const unsafeNotice = unsafeParts.length ? L.unsafe : "";
@@ -2511,6 +2747,11 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
   if (info.betrag) whatsappParts.push(`${H.amount}: ${info.betrag}`);
   if (info.frist) whatsappParts.push(`${H.deadline}: ${info.frist}`);
   if (info.termin) whatsappParts.push(`${H.appointment}: ${info.termin}`);
+
+  const values = { personValue, senderValue, amountValue, deadlineValue, referenceValue };
+  const dataRows = isBank
+    ? buildBankDataRows(info, L, safe, values)
+    : (isCourtPoliceLetter(info) ? buildRoleAwareDataRows(info, L, safe, values) : buildCompactDataRows(info, L, safe, values));
 
   return {
     briefart_label: briefartLabel,
@@ -2524,19 +2765,12 @@ async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
     help_tip: buildHelpTip(info, langCode),
     next_steps: nextSteps,
     unsafe_notice: unsafeNotice,
-    data_rows: buildRoleAwareDataRows(info, L, safe, {
-      personValue,
-      senderValue,
-      amountValue,
-      deadlineValue,
-      referenceValue
-    }),
-    suggested_actions: buildSuggestedActions(info, langCode),
+    data_rows: dataRows,
+    suggested_actions: suggestedActions,
     whatsapp_summary: `${L.whatsappStart}${briefartLabel}${whatsappParts.length ? " – " + whatsappParts.join("; ") : ""}. ${firstStep}`,
     phone_script: ""
   };
 }
-
 
 function isHighRiskLetter(info) {
   const text = [
@@ -2557,6 +2791,11 @@ function isHighRiskLetter(info) {
   return Boolean(
     info.dringlichkeit === "hoch" ||
     hasAny(text, [
+      "p-konto",
+      "pfändungsschutzkonto",
+      "kontopfändung",
+      "konto gesperrt",
+      "freibetrag",
       "inkasso",
       "vollstreckung",
       "vollstreckungstitel",
@@ -2637,8 +2876,8 @@ function clampBalancedExplanation(text, lang, mode = "wichtiger_brief") {
     .filter(Boolean)
     .filter((line) => !/^#{1,6}\s*/.test(line));
 
-  const maxLines = mode === "inkasso_vollstreckung" || mode === "bank_pfaendung_pkonto" || mode === "jobcenter_bescheid" || mode === "gericht_polizei" ? 9 : 7;
-  const maxChars = lang === "ar" ? 1250 : 1050;
+  const maxLines = mode === "bank_pfaendung_pkonto" ? 7 : (mode === "inkasso_vollstreckung" || mode === "jobcenter_bescheid" || mode === "gericht_polizei" ? 8 : 6);
+  const maxChars = lang === "ar" ? 980 : 780;
 
   let result = lines.length > 1 ? lines.slice(0, maxLines).join("\n") : clean;
 
@@ -2717,13 +2956,16 @@ WICHTIGE REGELN:
 - Bei Inkasso/Vollstreckung: nicht automatisch Zahlungszusage empfehlen. Erst Forderung, Titel, Betrag und Gläubiger prüfen, dann Ratenzahlung nur als Möglichkeit.
 - Bei Inkasso/Vollstreckung nicht sicher schreiben: "Ein Gericht hat die Forderung bestätigt". Besser: "Im Schreiben wird ein Vollstreckungstitel erwähnt. Bitte prüfen, ob Titel, Forderung und Betrag wirklich stimmen."
 - Bei Bank/P-Konto/Kontopfändung: P-Konto nur als Schutz des Freibetrags erklären. Nicht schreiben, dass alles frei ist. Prüfen lassen: Pfändung, Gläubiger, Betrag, Freibetrag, Bescheinigung und Bankkontakt.
+- Bei Bank/P-Konto/Kontopfändung NICHT schreiben: "Sonst ist Ihr gesamtes Geld weg". Besser: "Guthaben über dem geschützten Betrag kann gesperrt oder abgeführt werden."
+- Bei Bank/P-Konto/Kontopfändung NICHT automatisch "P-Konto beantragen" schreiben, wenn der Brief oder Kontext nahelegt, dass bereits ein P-Konto besteht. Dann: Status und Freibetrag bestätigen lassen.
 - Bei Jobcenter/Bescheid: Widerspruchsfrist, Rückforderung, Aufrechnung und Beratung klar nennen.
 - Bei Gericht/Polizei: keine Rechtsberatung, Termin/Frist ernst nehmen, bei Unsicherheit Beratung/Anwalt erwähnen.
 - Keine langen Textwände.
 - Es gibt nur eine Erklärung, keinen getrennten Kurztext und Langtext.
 - Die Erklärung darf bei wichtigen Briefen länger sein, aber nur mit kurzen Sätzen und klarer Struktur.
 - Erkläre so viel wie nötig und so wenig wie möglich.
-- Bei ernsten Briefen darfst du 6 bis 9 kurze Zeilen nutzen. Bei einfachen Briefen reichen weniger Zeilen.
+- Bei ernsten Briefen maximal 6 bis 8 kurze Zeilen nutzen. Bei einfachen Briefen reichen 3 bis 5 Zeilen.
+- Keine Abschnitte mit langen Zwischenüberschriften wie "Das bedeutet es für Sie" oder "Ich kann Ihnen helfen".
 
 STIL:
 Human + EL5 + DLTR + Listify
@@ -2829,6 +3071,20 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
   translated = qualityResult.translated;
   helper = qualityResult.helper;
 
+  const qualityMode = buildQualityModeType(info);
+
+  if (isBankPkontoLetter(info)) {
+    translated.kurz = renderBankPkontoExplanation(info, langCode, sourceMode);
+    helper = {
+      ...helper,
+      quality_mode: true,
+      quality_type: "bank_pfaendung_pkonto",
+      suggested_actions: buildBankPkontoActions(langCode)
+    };
+  }
+
+  translated.kurz = postProcessFinalExplanation(translated.kurz, langCode, qualityMode);
+
   return {
     ok: true,
     quality_ok: true,
@@ -2859,6 +3115,9 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
       must_react: info.muss_handeln === "ja" ? "yes" : (info.muss_handeln === "nein" ? "no" : inferMustReact(info)),
       money_affected: info.geld_betroffen === "ja" ? "yes" : (info.geld_betroffen === "nein" ? "no" : inferMoneyAffected(info)),
       brief_schwierigkeit: info.brief_schwierigkeit,
+      quality_type: buildQualityModeType(info),
+      bank_pkonto: isBankPkontoLetter(info),
+      pkonto_already_possible: isLikelyAlreadyPkonto(info),
       was_will_der_absender: info.was_will_der_absender,
       risiko_kurz: info.risiko_kurz,
       erster_sicherer_schritt: info.erster_sicherer_schritt,
@@ -3061,6 +3320,19 @@ function postProcessQuestionAnswer(answer, meta = {}) {
   out = out.replace(/Die Frist ist schon abgelaufen\.?/gi, "Bitte prüfe die Frist im Brief und wann der Brief angekommen ist.");
   out = out.replace(/die Widerspruchsfrist[^.\n]{0,80}abgelaufen\.?/gi, "die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
   out = out.replace(/die Frist[^.\n]{0,80}abgelaufen\.?/gi, "die Frist muss anhand des Briefes und des Zugangsdatums geprüft werden.");
+
+  out = out
+    .replace(/Sonst ist Ihr gesamtes Geld weg\.?/gi, "Ohne P-Konto ist dein Guthaben deutlich schlechter geschützt.")
+    .replace(/Sonst ist dein gesamtes Geld weg\.?/gi, "Ohne P-Konto ist dein Guthaben deutlich schlechter geschützt.")
+    .replace(/Sie verlieren es\.?/gi, "Guthaben über dem geschützten Betrag kann abgeführt werden.")
+    .replace(/du verlierst es\.?/gi, "Guthaben über dem geschützten Betrag kann abgeführt werden.");
+
+  if (meta && meta.bank_pkonto && meta.pkonto_already_possible) {
+    out = out
+      .replace(/Bitte informieren Sie mich, wie ich mein Konto schnellstmöglich in ein Pfändungsschutzkonto \(P-Konto\) umwandeln kann\./gi, "Bitte bestätigen Sie mir schriftlich, ob mein Konto aktuell als Pfändungsschutzkonto (P-Konto) geführt wird und welcher Freibetrag geschützt ist.")
+      .replace(/wie ich mein Konto schnellstmöglich als Pfändungsschutzkonto \(P-Konto\) führen lassen kann/gi, "ob mein Konto aktuell als Pfändungsschutzkonto (P-Konto) geführt wird und welcher Freibetrag geschützt ist")
+      .replace(/P-Konto beantragen/gi, "P-Konto-Status prüfen");
+  }
 
   return cleanText(out);
 }
@@ -3301,6 +3573,13 @@ const lang = (req.body.lang || "de").toLowerCase();
       return res.json({
         ok: true,
         antwort: politeSmallTalkReply(lang)
+      });
+    }
+
+    if (frageMode === "reply" && (meta.bank_pkonto || isBankPkontoLetter(meta, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`))) {
+      return res.json({
+        ok: true,
+        antwort: buildPkontoReplyTemplate(meta, lang, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`)
       });
     }
 
@@ -3568,9 +3847,12 @@ SPEZIALREGELN:
 BEI BANK / P-KONTO / KONTOPFÄNDUNG:
 - Erkläre: Ein P-Konto schützt grundsätzlich nur den Freibetrag, nicht automatisch die ganze Forderung.
 - Nicht behaupten, dass die Pfändung falsch oder erledigt ist.
+- Nicht schreiben: "Sonst ist Ihr gesamtes Geld weg". Schreibe ruhiger: "Guthaben über dem geschützten Betrag kann gesperrt oder abgeführt werden."
+- Wenn bereits ein P-Konto bestehen könnte: NICHT "P-Konto beantragen" schreiben, sondern "P-Konto-Status und Freibetrag bei der Bank bestätigen lassen".
 - Prüfen: Bankstatus P-Konto, Freibetrag, Gläubiger, Betrag, Aktenzeichen und ob eine Bescheinigung nötig ist.
 - Bei Unsicherheit Schuldnerberatung, Verbraucherzentrale oder Sozialberatung empfehlen.
 - Ratenzahlung nur nennen, wenn der Nutzer danach fragt oder zahlen will.
+- Bei Antwortvorlage an die Bank: Status, Freibetrag, gesperrte/freigegebene Beträge und Bescheinigung erfragen. Keine Zahlungszusage.
 
 BEI INKASSO / MAHNUNG / FORDERUNG:
 - Nicht automatisch Zahlung empfehlen.
