@@ -594,6 +594,7 @@ Erkenne allgemein jede Art von Schreiben:
 - Inkasso
 - Mahnung
 - Rechnung
+- Bank / Kontopfändung / P-Konto
 - Vermieter
 - Vertrag
 - Kündigung
@@ -768,6 +769,14 @@ Wenn ein Termin genannt ist:
 KRANKHEIT:
 Krankheit nicht erfinden.
 Nur wenn sie im Schreiben steht, erwähnen.
+
+BANK / KONTO / P-KONTO / KONTOPFÄNDUNG:
+Wenn es um Bank, Konto, Kontopfändung, Pfändungsschutzkonto, P-Konto, Freibetrag oder gesperrtes Konto geht:
+- Erkläre allgemein: Ein P-Konto schützt nur den gesetzlichen Freibetrag, nicht automatisch das ganze Konto und nicht automatisch die Forderung.
+- Nicht behaupten, dass die Pfändung falsch ist.
+- Prüfen: Wer pfändet? Welcher Gläubiger? Welcher Betrag? Gibt es ein Aktenzeichen? Ist das Konto wirklich als P-Konto geführt? Reicht der Freibetrag? Wird eine P-Konto-Bescheinigung benötigt?
+- Nächster Schritt: Bank kontaktieren und bei Unsicherheit Schuldnerberatung/Verbraucherzentrale/Sozialberatung nutzen.
+- Ratenzahlung nur als Möglichkeit nennen, wenn Forderung und Betrag stimmen und der Nutzer zahlen kann.
 
 INKASSO / MAHNUNG / FORDERUNG:
 Unterscheide:
@@ -2249,6 +2258,10 @@ function simpleBriefartLabel(info, lang = "de") {
   const H = helperTextDict(lang);
   const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
 
+  if (hasAny(text, ["p-konto", "pfändungsschutzkonto", "kontopfändung", "konto gepfändet", "bank", "freibetrag"])) {
+    const bankLabels = { de: "Bank / Pfändung / P-Konto", tr: "Banka / Haciz / P-Konto", bg: "Банка / Запор / P-Konto", ro: "Bancă / poprire / P-Konto", ar: "بنك / حجز / حساب P-Konto", en: "Bank / garnishment / P-Konto" };
+    return bankLabels[lang] || bankLabels.de;
+  }
   if (hasAny(text, ["inkasso", "vollstreckungstitel", "vollstreckung", "gerichtsvollzieher", "pfändung"])) return H.types.inkasso;
   if (hasAny(text, ["jobcenter", "bürgergeld", "aufrechnung", "rückforderung", "bescheid", "rechtsbehelf", "widerspruch"])) return H.types.jobcenter;
   if (hasAny(text, ["rechnung"])) return H.types.invoice;
@@ -2451,6 +2464,17 @@ function buildHelpTip(info, lang) {
 
   const T = tips[code] || tips.de;
 
+  if (hasAny(text, ["p-konto", "pfändungsschutzkonto", "kontopfändung", "konto gepfändet", "freibetrag", "bank"])) {
+    const bankTips = {
+      de: "Prüfe bei der Bank, ob das Konto als P-Konto geführt wird, welcher Freibetrag gilt und ob eine P-Konto-Bescheinigung nötig ist. Die Forderung selbst solltest du getrennt prüfen.",
+      tr: "Bankadan hesabın P-Konto olarak kayıtlı olup olmadığını, hangi tutarın korunduğunu ve belge gerekip gerekmediğini kontrol et. Borcu ayrıca kontrol etmelisin.",
+      bg: "Провери в банката дали сметката е P-Konto, какъв е защитеният минимум и дали е нужна бележка. Самото задължение провери отделно.",
+      ro: "Verifică la bancă dacă contul este P-Konto, ce sumă este protejată și dacă este nevoie de adeverință. Datoria trebuie verificată separat.",
+      ar: "تحقق مع البنك هل الحساب مسجل كـ P-Konto، وما هو المبلغ المحمي، وهل تحتاج إلى شهادة. يجب فحص المطالبة نفسها بشكل منفصل.",
+      en: "Check with the bank whether the account is a P-Konto, which amount is protected and whether a certificate is needed. Check the claim separately."
+    };
+    return bankTips[code] || bankTips.de;
+  }
   if (hasAny(text, ["inkasso", "mahnbescheid", "vollstreck", "pfändung", "forderung"])) return T.inkasso;
   if (hasAny(text, ["jobcenter", "bürgergeld", "rückforderung", "aufrechnung", "bescheid", "widerspruch"])) return T.jobcenter;
   if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft", "ordnungsgeld", "ladung", "zeuge", "termin" ])) return T.gericht;
@@ -2561,6 +2585,7 @@ function isHighRiskLetter(info) {
 
 function buildQualityModeType(info) {
   const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
+  if (hasAny(text, ["p-konto", "pfändungsschutzkonto", "kontopfändung", "konto gepfändet", "freibetrag", "bank"])) return "bank_pfaendung_pkonto";
   if (hasAny(text, ["inkasso", "vollstreckung", "vollstreckungstitel", "pfändung", "gerichtsvollzieher"])) return "inkasso_vollstreckung";
   if (hasAny(text, ["jobcenter", "bürgergeld", "rückforderung", "aufrechnung", "sanktion", "minderung"])) return "jobcenter_bescheid";
   if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft", "ladung", "straf"] )) return "gericht_polizei";
@@ -2612,7 +2637,7 @@ function clampBalancedExplanation(text, lang, mode = "wichtiger_brief") {
     .filter(Boolean)
     .filter((line) => !/^#{1,6}\s*/.test(line));
 
-  const maxLines = mode === "inkasso_vollstreckung" || mode === "jobcenter_bescheid" || mode === "gericht_polizei" ? 9 : 7;
+  const maxLines = mode === "inkasso_vollstreckung" || mode === "bank_pfaendung_pkonto" || mode === "jobcenter_bescheid" || mode === "gericht_polizei" ? 9 : 7;
   const maxChars = lang === "ar" ? 1250 : 1050;
 
   let result = lines.length > 1 ? lines.slice(0, maxLines).join("\n") : clean;
@@ -2691,6 +2716,7 @@ WICHTIGE REGELN:
 - Beträge, Daten, Aktenzeichen nur aus den erkannten Daten übernehmen.
 - Bei Inkasso/Vollstreckung: nicht automatisch Zahlungszusage empfehlen. Erst Forderung, Titel, Betrag und Gläubiger prüfen, dann Ratenzahlung nur als Möglichkeit.
 - Bei Inkasso/Vollstreckung nicht sicher schreiben: "Ein Gericht hat die Forderung bestätigt". Besser: "Im Schreiben wird ein Vollstreckungstitel erwähnt. Bitte prüfen, ob Titel, Forderung und Betrag wirklich stimmen."
+- Bei Bank/P-Konto/Kontopfändung: P-Konto nur als Schutz des Freibetrags erklären. Nicht schreiben, dass alles frei ist. Prüfen lassen: Pfändung, Gläubiger, Betrag, Freibetrag, Bescheinigung und Bankkontakt.
 - Bei Jobcenter/Bescheid: Widerspruchsfrist, Rückforderung, Aufrechnung und Beratung klar nennen.
 - Bei Gericht/Polizei: keine Rechtsberatung, Termin/Frist ernst nehmen, bei Unsicherheit Beratung/Anwalt erwähnen.
 - Keine langen Textwände.
@@ -3538,6 +3564,13 @@ BEREICH STILL ERKENNEN:
 - sonstiger Alltag
 
 SPEZIALREGELN:
+
+BEI BANK / P-KONTO / KONTOPFÄNDUNG:
+- Erkläre: Ein P-Konto schützt grundsätzlich nur den Freibetrag, nicht automatisch die ganze Forderung.
+- Nicht behaupten, dass die Pfändung falsch oder erledigt ist.
+- Prüfen: Bankstatus P-Konto, Freibetrag, Gläubiger, Betrag, Aktenzeichen und ob eine Bescheinigung nötig ist.
+- Bei Unsicherheit Schuldnerberatung, Verbraucherzentrale oder Sozialberatung empfehlen.
+- Ratenzahlung nur nennen, wenn der Nutzer danach fragt oder zahlen will.
 
 BEI INKASSO / MAHNUNG / FORDERUNG:
 - Nicht automatisch Zahlung empfehlen.
