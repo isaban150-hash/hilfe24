@@ -168,19 +168,24 @@
   .helper-pill.warn { background:#fff7ed; border-color:#fed7aa; }
   .helper-pill.warn strong { color:#9a3412; }
 
-  .chat-box { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
-  .chat-messages { display:flex; flex-direction:column; gap:10px; max-height:420px; overflow:auto; padding:4px 2px; }
+  .chat-box { display:flex; flex-direction:column; gap:12px; margin-top:14px; }
+  .chat-messages { display:flex; flex-direction:column; gap:12px; max-height:520px; overflow:auto; padding:6px 2px 10px; scroll-behavior:smooth; }
   .chat-empty { color:#64748b; font-size:15px; line-height:1.55; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:18px; padding:14px; }
-  .chat-bubble { max-width:88%; border-radius:20px; padding:13px 15px; line-height:1.55; white-space:pre-wrap; font-size:16px; box-shadow:0 8px 18px rgba(15,23,42,.05); }
+  .chat-bubble { max-width:88%; border-radius:22px; padding:13px 15px; line-height:1.55; white-space:pre-wrap; font-size:16px; box-shadow:0 8px 18px rgba(15,23,42,.06); }
   .chat-bubble.user { align-self:flex-end; background:linear-gradient(135deg,#0f766e,#2563eb); color:#fff; border-bottom-right-radius:8px; }
   .chat-bubble.assistant { align-self:flex-start; background:#ffffff; border:1px solid #dbeafe; color:#0f172a; border-bottom-left-radius:8px; }
-  .chat-meta { display:block; font-size:12px; font-weight:900; opacity:.72; margin-bottom:4px; }
+  .chat-meta { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:950; opacity:.78; margin-bottom:5px; letter-spacing:.02em; }
+  .chat-meta.user::before { content:"👤"; }
+  .chat-meta.assistant::before { content:"💬"; }
+  .chat-suggestions { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 0; align-self:flex-start; max-width:96%; }
+  .chat-suggestion-btn { border:1px solid #ccfbf1; background:#ecfeff; color:#0f766e; padding:9px 11px; border-radius:999px; font-size:13px; font-weight:900; box-shadow:none; }
+  .chat-suggestion-btn:hover { background:#dffdf8; }
   .chat-input-row { display:flex; gap:10px; align-items:flex-end; margin-top:10px; }
-  .chat-input-row textarea { min-height:72px; flex:1; }
+  .chat-input-row textarea { min-height:78px; flex:1; }
   .chat-input-row button { flex:0 0 auto; min-width:112px; }
   .data-check-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
   .btn-soft-warning { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
-  @media (max-width:600px){ .chat-input-row{flex-direction:column;} .chat-input-row button{width:100%;} .chat-bubble{max-width:96%;} }
+  @media (max-width:600px){ .chat-input-row{flex-direction:column;} .chat-input-row button{width:100%;} .chat-bubble{max-width:96%;} .chat-suggestions{max-width:100%;} .chat-suggestion-btn{font-size:12px;padding:8px 10px;} }
 
   .data-list { display:grid; gap:8px; }
   .data-row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border:1px solid #e2e8f0; background:#fff; border-radius:16px; padding:12px 13px; }
@@ -385,8 +390,8 @@
       </div>
 
       <div id="frageCard" class="card hidden">
-        <div id="frageTitle" class="section-title">Chat zum Brief</div>
-        <div id="frageHelp" class="sub">Stell deine eigene Frage. Die Antwort bleibt hier im Verlauf, damit du weiterfragen kannst.</div>
+        <div id="frageTitle" class="section-title">💬 Hilfe-Chat zum Brief</div>
+        <div id="frageHelp" class="sub">Frag weiter zu diesem Brief. Hilfe24 merkt sich den Verlauf und hilft dir Schritt für Schritt.</div>
 
         <div class="data-check-row">
           <button id="dataCheckBtn" class="btn-soft-warning" type="button">🔎 Daten genauer prüfen</button>
@@ -1438,6 +1443,44 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         .replace(/'/g, "&#039;");
     }
 
+    function getChatSuggestionTexts() {
+      const lang = getSelectedLang();
+      const map = {
+        de: ["Was soll ich jetzt tun?", "Schreib mir eine Antwort", "Welche Unterlagen brauche ich?"],
+        tr: ["Şimdi ne yapmalıyım?", "Benim için cevap yaz", "Hangi belgeler lazım?"],
+        bg: ["Какво да направя сега?", "Напиши ми отговор", "Какви документи ми трябват?"],
+        ro: ["Ce trebuie să fac acum?", "Scrie-mi un răspuns", "Ce documente îmi trebuie?"],
+        ar: ["ماذا أفعل الآن؟", "اكتب لي ردًا", "ما المستندات المطلوبة؟"],
+        en: ["What should I do now?", "Write me a reply", "Which documents do I need?"]
+      };
+      return map[lang] || map.de;
+    }
+
+    function fillChatSuggestion(text) {
+      if (!frageTextEl) return;
+      frageTextEl.value = text || "";
+      frageTextEl.focus();
+      frageTextEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function renderChatSuggestions() {
+      if (!chatMessagesEl) return;
+      const old = chatMessagesEl.querySelectorAll(".chat-suggestions");
+      old.forEach((el) => el.remove());
+      const items = getChatSuggestionTexts();
+      const wrap = document.createElement("div");
+      wrap.className = "chat-suggestions";
+      items.forEach((text) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chat-suggestion-btn";
+        btn.textContent = text;
+        btn.onclick = () => fillChatSuggestion(text);
+        wrap.appendChild(btn);
+      });
+      chatMessagesEl.appendChild(wrap);
+    }
+
 
     function appendChatMessage(role, text, options = {}) {
       if (!chatMessagesEl) return;
@@ -1447,7 +1490,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       const bubble = document.createElement("div");
       bubble.className = "chat-bubble " + (role === "user" ? "user" : "assistant");
       const meta = document.createElement("span");
-      meta.className = "chat-meta";
+      meta.className = "chat-meta " + (role === "user" ? "user" : "assistant");
       meta.textContent = role === "user" ? "Du" : "Hilfe24";
       const body = document.createElement("div");
       body.textContent = clean;
@@ -1463,6 +1506,10 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         if (chatHistory.length > 12) {
           chatHistory = chatHistory.slice(chatHistory.length - 12);
         }
+      }
+
+      if (role !== "user" && !options.noSuggestions) {
+        renderChatSuggestions();
       }
 
       if (chatEmptyHintEl) hide(chatEmptyHintEl);
@@ -2131,7 +2178,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     return;
   }
 
-  appendChatMessage("user", frage);
+  const historyForServer = chatHistory.slice(-10);
+  appendChatMessage("user", frage, { noSuggestions: true });
   if (frageTextEl) frageTextEl.value = "";
 
   if (isPoliteSmallTalk(frage)) {
@@ -2160,7 +2208,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         kurz: currentKurzText,
         details: currentDetailText,
         meta: currentMeta,
-        chatHistory: chatHistory.slice(-10)
+        chatHistory: historyForServer
       })
     });
 
@@ -2373,6 +2421,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     window.explainLetter = explainLetter;
     window.askQuestionAboutLetter = askQuestionAboutLetter;
     window.stopAudio = stopAudio;
+    window.h24FillChatSuggestion = fillChatSuggestion;
   
 </script>
 </body>
