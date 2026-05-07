@@ -642,6 +642,26 @@ SCHWIERIGKEITSSTUFE:
 AUSGABE-PRINZIP:
 Außen soll Hilfe24 leicht bleiben. Kein langer Roman. Der Server soll innen mehr verstehen, aber außen nur das Wichtigste geben.
 
+
+
+V8.6.5 FEINE BRIEFARTEN:
+Sortiere Briefe genauer. Nutze nicht zu schnell "Inkasso/Forderung".
+- Stadt / Kommune / öffentlich-rechtliche Mahnung: wenn Stadt, Stadtkasse, Kassenzeichen, Gebühren, Verwaltungsgebühr oder kommunale Forderung vorkommen.
+- Rundfunkbeitrag / Beitragsservice / Vollstreckungsankündigung: wenn Beitragsservice, Rundfunkbeitrag, Beitragskonto oder ARD ZDF Deutschlandradio vorkommen.
+- Finanzamt / Steuerbescheid / Zahlungsaufforderung: wenn Finanzamt, Einkommensteuer, Steuernummer, Säumniszuschlag, Vollstreckungsstelle oder Steuerforderung vorkommen.
+- Anklageschrift / Strafsache / Amtsgericht: wenn Anklageschrift, Angeschuldigter, Staatsanwaltschaft, Hauptverfahren, Zulassung der Anklage, Beweismittel oder Fahren ohne Fahrerlaubnis vorkommen.
+- Zahnarztrechnung / DZR / zahnärztliche Behandlung: wenn DZR, Zahnarzt, Zahnarztrechnung, GOZ, BEMA, Leistungsposition, Zahnnummer, Faktor, Labor oder Materialkosten vorkommen.
+- Arbeitsvertrag / Änderungsvereinbarung: wenn Arbeitgeber, Arbeitsvertrag, Änderungsvereinbarung, befristet, unbefristet, Arbeitszeit, Gehalt oder Anstellung vorkommen.
+
+DETAILFRAGEN-REGEL:
+Wenn der Nutzer später nach konkreten Details fragt, z. B. "Welche Behandlung war das?", "Wofür ist die Rechnung?", "Was wurde genau gemacht?", sollen die relevanten Details aus dem Schreiben gelesen werden.
+Wenn diese Details nicht sicher erkennbar sind, nicht nur "prüfe selbst" schreiben. Stattdessen genau sagen, welche Seite oder welchen Ausschnitt benötigt wird.
+Beispiele:
+- Zahnarzt/DZR: Seite mit Leistungspositionen, GOZ/BEMA-Nummern, Leistungsbeschreibung, Zahnnummer, Faktor, Labor/Materialkosten.
+- Arbeitsvertrag: Seite/Abschnitt mit Änderung, Datum, Befristung, Unterschrift.
+- Finanzamt: Seite mit Berechnung, Steuerjahr, Fälligkeit, Steuernummer, Rechtsbehelf.
+- Gericht/Anklage: Seite mit Tatvorwurf, Frist, Aktenzeichen, Beweismitteln.
+
 REFERENZEN / NUMMERN:
 Suche wichtige Identifikationsdaten im Schreiben und trage sie bei "referenzen" ein.
 Beispiele:
@@ -2263,16 +2283,29 @@ function simpleBriefartLabel(info, lang = "de") {
   const H = helperTextDict(lang);
   const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
 
-  if (hasAny(text, ["p-konto", "pfändungsschutzkonto", "kontopfändung", "konto gepfändet", "bank", "freibetrag"])) {
-    const bankLabels = { de: "Bank / Pfändung / P-Konto", tr: "Banka / Haciz / P-Konto", bg: "Банка / Запор / P-Konto", ro: "Bancă / poprire / P-Konto", ar: "بنك / حجز / حساب P-Konto", en: "Bank / garnishment / P-Konto" };
-    return bankLabels[lang] || bankLabels.de;
-  }
+  const fineLabels = {
+    indictment: { de: "Anklageschrift / Strafsache / Amtsgericht", tr: "İddianame / Ceza davası / Mahkeme", bg: "Обвинителен акт / наказателно дело / съд", ro: "Rechizitoriu / cauză penală / instanță", ar: "لائحة اتهام / قضية جنائية / محكمة", en: "Indictment / criminal case / court" },
+    broadcast: { de: "Rundfunkbeitrag / Beitragsservice / Vollstreckung", tr: "Rundfunkbeitrag / Beitragsservice / icra", bg: "Радио-телевизионна такса / принудително събиране", ro: "Taxă radio-TV / Beitragsservice / executare", ar: "رسوم البث / خدمة الاشتراك / تنفيذ", en: "Broadcast fee / collection / enforcement" },
+    tax: { de: "Finanzamt / Steuerforderung", tr: "Maliye / vergi borcu", bg: "Данъчна служба / данъчно задължение", ro: "Finanțe / datorie fiscală", ar: "مصلحة الضرائب / مطالبة ضريبية", en: "Tax office / tax claim" },
+    dental: { de: "Zahnarztrechnung / DZR", tr: "Diş hekimi faturası / DZR", bg: "Зъболекарска фактура / DZR", ro: "Factură dentist / DZR", ar: "فاتورة طبيب أسنان / DZR", en: "Dental invoice / DZR" },
+    work: { de: "Arbeitsvertrag / Änderungsvereinbarung", tr: "İş sözleşmesi / değişiklik", bg: "Трудов договор / изменение", ro: "Contract de muncă / modificare", ar: "عقد عمل / تعديل", en: "Employment contract / amendment" },
+    publicClaim: { de: "Stadt / öffentliche Mahnung", tr: "Belediye / resmi ödeme uyarısı", bg: "Община / публично вземане", ro: "Primărie / somație publică", ar: "بلدية / مطالبة رسمية", en: "City / public claim" },
+    bank: { de: "Bank / Pfändung / P-Konto", tr: "Banka / Haciz / P-Konto", bg: "Банка / Запор / P-Konto", ro: "Bancă / poprire / P-Konto", ar: "بنك / حجز / حساب P-Konto", en: "Bank / garnishment / P-Konto" }
+  };
+
+  if (hasAny(text, ["anklageschrift", "hauptverfahren", "zulassung der anklage", "angeschuldig", "strafverfahren", "strafgericht", "fahren ohne fahrerlaubnis"])) return (fineLabels.indictment[lang] || fineLabels.indictment.de);
+  if (hasAny(text, ["rundfunkbeitrag", "beitragsservice", "beitragskonto", "ard zdf", "deutschlandradio", "rundfunkgebühr"])) return (fineLabels.broadcast[lang] || fineLabels.broadcast.de);
+  if (hasAny(text, ["finanzamt", "einkommensteuer", "steuerbescheid", "steuernummer", "säumniszuschlag", "vollstreckungsstelle", "steuerforderung"])) return (fineLabels.tax[lang] || fineLabels.tax.de);
+  if (hasAny(text, ["dzr", "zahnarzt", "zahnärzt", "goz", "bema", "zahnnummer", "labor", "materialkosten", "zahnersatz"])) return (fineLabels.dental[lang] || fineLabels.dental.de);
+  if (hasAny(text, ["änderungsvereinbarung", "arbeitsvertrag", "arbeitgeber", "anstellung", "unbefristet", "befristet", "arbeitszeit", "gehalt"])) return (fineLabels.work[lang] || fineLabels.work.de);
+  if (hasAny(text, ["stadt", "stadtkasse", "kassenzeichen", "verwaltungsgebühr", "gebührenbescheid", "öffentliche forderung"])) return (fineLabels.publicClaim[lang] || fineLabels.publicClaim.de);
+  if (hasAny(text, ["p-konto", "pfändungsschutzkonto", "kontopfändung", "konto gepfändet", "bank", "freibetrag"])) return (fineLabels.bank[lang] || fineLabels.bank.de);
   if (hasAny(text, ["inkasso", "vollstreckungstitel", "vollstreckung", "gerichtsvollzieher", "pfändung"])) return H.types.inkasso;
   if (hasAny(text, ["jobcenter", "bürgergeld", "aufrechnung", "rückforderung", "bescheid", "rechtsbehelf", "widerspruch"])) return H.types.jobcenter;
+  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return H.types.policeCourt;
   if (hasAny(text, ["rechnung"])) return H.types.invoice;
   if (hasAny(text, ["mahnung", "forderung"])) return H.types.claim;
   if (hasAny(text, ["termin", "einladung", "ladung"])) return H.types.appointment;
-  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return H.types.policeCourt;
   if (hasAny(text, ["krankenkasse", "aok", "medizin", "arzt"])) return H.types.health;
   if (hasAny(text, ["werbung", "angebot"])) return H.types.ad;
 
@@ -2828,6 +2861,12 @@ function isHighRiskLetter(info) {
 
 function buildQualityModeType(info) {
   const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
+  if (hasAny(text, ["anklageschrift", "hauptverfahren", "zulassung der anklage", "angeschuldig", "strafverfahren", "fahren ohne fahrerlaubnis"])) return "anklageschrift_strafsache";
+  if (hasAny(text, ["rundfunkbeitrag", "beitragsservice", "beitragskonto", "ard zdf", "deutschlandradio"])) return "rundfunkbeitrag_vollstreckung";
+  if (hasAny(text, ["finanzamt", "einkommensteuer", "steuerbescheid", "steuernummer", "säumniszuschlag", "steuerforderung"])) return "finanzamt_steuer";
+  if (hasAny(text, ["dzr", "zahnarzt", "zahnärzt", "goz", "bema", "zahnnummer", "labor", "materialkosten", "zahnersatz"])) return "zahnarztrechnung_dzr";
+  if (hasAny(text, ["änderungsvereinbarung", "arbeitsvertrag", "arbeitgeber", "unbefristet", "befristet", "arbeitszeit", "gehalt"])) return "arbeitsvertrag_aenderung";
+  if (hasAny(text, ["stadt", "stadtkasse", "kassenzeichen", "verwaltungsgebühr", "gebührenbescheid"])) return "stadt_oeffentliche_mahnung";
   if (hasAny(text, ["p-konto", "pfändungsschutzkonto", "kontopfändung", "konto gepfändet", "freibetrag", "bank"])) return "bank_pfaendung_pkonto";
   if (hasAny(text, ["inkasso", "vollstreckung", "vollstreckungstitel", "pfändung", "gerichtsvollzieher"])) return "inkasso_vollstreckung";
   if (hasAny(text, ["jobcenter", "bürgergeld", "rückforderung", "aufrechnung", "sanktion", "minderung"])) return "jobcenter_bescheid";
@@ -3533,6 +3572,25 @@ function shortenOfficialTemplateAnswer(answer, frageMode, lang) {
   return out;
 }
 
+function isDetailQuestionV865(frage) {
+  const q = normalizeQuestionText(frage);
+  return hasAny(q, [
+    "welche behandlung", "was wurde gemacht", "wofür ist", "wofür ist diese rechnung", "positionen", "leistungsposition", "goz", "bema", "zahnbehandlung",
+    "was ändert sich", "was wurde geändert", "arbeitsvertrag", "änderungsvereinbarung",
+    "was wirft", "vorwurf", "anklageschrift", "tatvorwurf", "wer ist zeuge",
+    "berechnung", "steuer", "säumnis", "beitragsnummer", "beitragskonto"
+  ]);
+}
+
+function cleanUselessCheckYourselfPhrasesV865(text) {
+  let out = cleanText(text);
+  out = out.replace(/(?:Schau|Sehen|Prüfe) Sie (?:bitte )?(?:selbst )?(?:auf|in) (?:der|dem|den) (?:detaillierten )?(?:Rechnung|Brief|Schreiben) nach\.?/gi,
+    "Lade bitte die Seite oder den Ausschnitt hoch, auf dem die einzelnen Details stehen. Dann lese ich sie dir genau heraus.");
+  out = out.replace(/Du musst .* selbst .* prüfen\.?/gi,
+    "Wenn die Stelle auf dem Foto nicht lesbar ist, lade bitte den passenden Ausschnitt hoch. Dann prüfe ich es für dich.");
+  return cleanText(out);
+}
+
 function clampChatAnswerV864(answer, frageMode, frage, lang) {
   let out = cleanText(answer)
     .replace(/\n{3,}/g, "\n\n")
@@ -3540,6 +3598,7 @@ function clampChatAnswerV864(answer, frageMode, frage, lang) {
     .trim();
 
   out = shortenOfficialTemplateAnswer(out, frageMode, lang);
+  out = cleanUselessCheckYourselfPhrasesV865(out);
 
   const mode = String(frageMode || "free").toLowerCase();
   const q = normalizeQuestionText(frage);
@@ -3548,7 +3607,8 @@ function clampChatAnswerV864(answer, frageMode, frage, lang) {
     return out;
   }
 
-  const maxChars = mode === "next_steps" ? 520 : mode === "deadline" ? 480 : mode === "consequence" ? 620 : 700;
+  const isDetail = isDetailQuestionV865(frage);
+  const maxChars = isDetail ? 1250 : (mode === "next_steps" ? 520 : mode === "deadline" ? 480 : mode === "consequence" ? 620 : 700);
   const lines = out.split("\n").map(x => x.trim()).filter(Boolean);
 
   let maxLines = 6;
@@ -3556,6 +3616,7 @@ function clampChatAnswerV864(answer, frageMode, frage, lang) {
   if (mode === "deadline") maxLines = 4;
   if (mode === "consequence") maxLines = 5;
   if (hasAny(q, ["was soll ich tun", "was muss ich tun", "ne yap", "what should i do"])) maxLines = 4;
+  if (isDetail) maxLines = 10;
 
   if (lines.length > maxLines) {
     out = lines.slice(0, maxLines).join("\n");
@@ -3794,23 +3855,32 @@ Mache keine falschen Versprechen. Schreibe „könnte möglich sein“, „prüf
 Wenn der Nutzer nach Name, Aktenzeichen, Betrag, Datum oder Frist fragt und die Daten unsicher sind, sage, dass er „Daten genauer prüfen“ nutzen oder das Original prüfen soll.
 Wenn der Nutzer eine Antwortvorlage verlangt, schreibe direkt den fertigen Text, aber nutze keine unsicheren Namen oder Aktenzeichen.
 
-CHAT-LÄNGENREGEL V8.6.4:
-- Normale Chatantwort: maximal 4 bis 6 kurze Zeilen.
-- Bei "Was soll ich tun?": maximal 3 Schritte.
-- Bei "Bis wann?": maximal 4 kurze Zeilen.
-- Bei "Was passiert, wenn ich nichts mache?": maximal 5 kurze Zeilen.
-- Bei Antwortvorlagen: maximal 1 kurzer Satz vor der Vorlage und kein langer Zusatztext danach.
-- Wiederhole nicht die komplette Brief-Erklärung.
-- Schreibe so, dass die Antwort gut vorgelesen werden kann.
-- Fachwort kurz erklären, wenn es wichtig ist. Beispiel: "Freibetrag = Geld, das trotz Pfändung geschützt ist."
+CHAT-REGEL V8.6.5 – PRAKTISCH, ABER NICHT DUMM KURZ:
+- Grundsatz: so kurz wie möglich, so ausführlich wie nötig.
+- Smalltalk wie Hallo, Danke, Ok: 1 kurzer Satz.
+- "Was soll ich tun?": maximal 3 klare Schritte.
+- "Bis wann?": Frist/Termin + Bedeutung + nächster Schritt, maximal 4 kurze Zeilen.
+- "Schreib mir eine Antwort/E-Mail/Brief": maximal 1 kurzer Satz davor, dann direkt fertiger Text. Kein langer Nachtrag.
+- Detailfragen wie "Welche Zahnbehandlung war das?", "Wofür ist die Rechnung?", "Was wurde genau gemacht?", "Was ändert sich im Vertrag?", "Was ist der Vorwurf?": ausführlicher antworten, aber gegliedert. Lies aktiv aus dem Schreiben heraus.
+- Wenn das Detail nicht sicher erkennbar ist: nicht "prüfe selbst" schreiben. Sage genau, welche Seite oder welchen Ausschnitt der Nutzer hochladen soll.
+- Schreibe gut vorlesbar: kurze Sätze, keine Markdown-Sterne, keine unnötigen Sonderzeichen.
 
-FEHLENDE-DATEN-REGEL V8.6.4:
+BRIEFARTEN V8.6.5 FEIN SORTIEREN:
+- Stadt/Behörde Mahnung ≠ privates Inkasso.
+- Rundfunkbeitrag/Beitragsservice ≠ normales Inkasso.
+- Staatsanwaltschaft/Anklageschrift ≠ Inkasso/Forderung.
+- Finanzamt/Steuerforderung hat eigene Logik: Steuerjahr, Betrag, Fälligkeit, Einspruch, Stundung/Ratenzahlung.
+- Zahnarztrechnung/DZR hat eigene Logik: Praxis, Patient, Behandlungstag, GOZ/BEMA, Leistungspositionen, Eigenanteil, Erstattung prüfen.
+- Arbeitsvertrag/Änderungsvereinbarung hat eigene Logik: was ändert sich, ab wann, befristet/unbefristet, Unterschrift nötig.
+
+FEHLENDE-DATEN-REGEL V8.6.5:
 Wenn der Nutzer eine E-Mail, Antwort oder einen Brief will, prüfe zuerst:
 - sicherer Name für die Unterschrift
-- sichere Referenz/Aktenzeichen
-- Empfänger/E-Mail/Adresse
+- sichere Referenz/Aktenzeichen/Beitragsnummer/Steuernummer/Kassenzeichen
+- Empfänger/E-Mail/Adresse oder sicherer Übermittlungsweg
 Wenn der Name fehlt, frage kurz nach dem vollständigen Namen statt eine fertige Vorlage mit falschem Namen zu bauen.
-Wenn E-Mail-Adresse fehlt, erkläre kurz den sicheren Weg: Online-Banking-Postfach oder Adresse aus dem Brief.
+Wenn nur Aktenzeichen/Datum unsicher ist, überlade den Betreff nicht mit Platzhaltern. Lieber weglassen oder kurz schreiben: "Aktenzeichen bitte aus dem Brief übernehmen".
+Bei Inkasso/Ratenzahlung kurz warnen: Eine Ratenzahlung kann als Anerkennung der Forderung gewertet werden. Bei Unsicherheit erst Forderungsaufstellung verlangen.
 
 ANTWORT-STIL FÜR HILFE24:
 Nutze immer diese 4 Regeln:
@@ -4000,6 +4070,33 @@ BEREICH STILL ERKENNEN:
 - sonstiger Alltag
 
 SPEZIALREGELN:
+
+BEI ANKLAGESCHRIFT / STRAFSACHE / GERICHT:
+- Briefart genau nennen: Anklageschrift / Strafsache / Amtsgericht, wenn passend.
+- Vorwurf konkret erklären: was, wann, wo, welches Fahrzeug/Handlung, soweit sichtbar.
+- Frist "eine Woche" oder andere Fristen klar hervorheben.
+- Normale E-Mail reicht nicht, wenn das Schreiben das sagt. Dann Post, Geschäftsstelle zu Protokoll oder sicherer elektronischer Weg.
+- Keine Schuldeingeständnisse formulieren. Bei Antworttext neutral bleiben.
+
+BEI RUNDFUNKBEITRAG / BEITRAGSSERVICE:
+- Nicht nur Inkasso schreiben. Nenne Rundfunkbeitrag / Beitragsservice / Vollstreckung.
+- Beitragsnummer oder Beitragskonto gezielt beachten.
+- Bei Ratenzahlung: schriftlich beantragen, Betrag nennen, Forderungsaufstellung verlangen, Bestätigung abwarten.
+
+BEI FINANZAMT / STEUER:
+- Steuerart/Jahr, Betrag, Fälligkeit und Steuernummer prüfen.
+- Optionen kurz nennen: zahlen, Einspruch prüfen, Stundung/Ratenzahlung beantragen, Finanzamt kontaktieren.
+- Bei drohender Vollstreckung schnell handeln, aber keine Panik machen.
+
+BEI ZAHNARZTRECHNUNG / DZR:
+- Nicht nur sagen "prüfe die Rechnung".
+- Suche aktiv nach GOZ/BEMA, Leistungsbeschreibung, Zahnnummer, Behandlungstag, Faktor, Labor/Materialkosten.
+- Wenn die Detailseite fehlt, bitte genau darum: Seite mit Leistungspositionen/GOZ/BEMA hochladen.
+- Erkläre, ob es nach Zahnreinigung, Füllung, Krone, Brücke, Prothese, Wurzelbehandlung oder Material/Labor aussieht, aber nur wenn sichtbar.
+
+BEI ARBEITSVERTRAG / ÄNDERUNGSVEREINBARUNG:
+- Erkläre konkret, was sich ändert, ab wann es gilt, ob es befristet/unbefristet ist und ob unterschrieben werden muss.
+- Wenn es nur eine bestätigte Änderung ist, sage auch, was gleich bleibt.
 
 BEI BANK / P-KONTO / KONTOPFÄNDUNG:
 - Erkläre: Ein P-Konto schützt grundsätzlich nur den Freibetrag, nicht automatisch die ganze Forderung.
