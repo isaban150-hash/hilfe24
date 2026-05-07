@@ -2602,7 +2602,7 @@ function renderBankPkontoExplanation(info, lang, sourceMode = "text") {
       head: "Die Bank informiert dich über eine Kontopfändung.",
       protect: "Ein P-Konto schützt nicht das ganze Konto, sondern nur den monatlichen Freibetrag.",
       already: "Prüfe bei der Bank, ob dein Konto wirklich als P-Konto geführt wird und welcher Freibetrag gilt.",
-      notYet: "Wenn dein Konto noch kein P-Konto ist, beantrage die Umwandlung sofort bei der Bank.",
+      notYet: "Prüfe zuerst, ob dein Konto bereits als P-Konto geführt wird. Wenn nicht, beantrage die Umwandlung sofort bei der Bank.",
       check: "Prüfe zusätzlich Gläubiger, Betrag und Aktenzeichen im Brief.",
       amount: "Betrag: ",
       deadline: "Frist/Termin: ",
@@ -2612,7 +2612,7 @@ function renderBankPkontoExplanation(info, lang, sourceMode = "text") {
       head: "Banka sana hesap haczi hakkında bilgi veriyor.",
       protect: "P-Konto tüm hesabı değil, sadece aylık korunan tutarı korur.",
       already: "Bankadan hesabın gerçekten P-Konto olarak kayıtlı olup olmadığını ve korunan tutarı kontrol et.",
-      notYet: "Hesabın henüz P-Konto değilse, bankadan hemen dönüştürme iste.",
+      notYet: "Önce hesabın P-Konto olarak kayıtlı olup olmadığını kontrol et. Değilse, bankadan hemen dönüştürme iste.",
       check: "Ayrıca alacaklıyı, tutarı ve numarayı mektupta kontrol et.",
       amount: "Tutar: ",
       deadline: "Süre/Randevu: ",
@@ -2622,7 +2622,7 @@ function renderBankPkontoExplanation(info, lang, sourceMode = "text") {
       head: "Банката те информира за запор на сметката.",
       protect: "P-Konto не защитава цялата сметка, а само месечната защитена сума.",
       already: "Провери в банката дали сметката наистина е P-Konto и каква сума е защитена.",
-      notYet: "Ако сметката още не е P-Konto, поискай веднага преобразуване в банката.",
+      notYet: "Първо провери дали сметката вече е P-Konto. Ако не е, поискай веднага преобразуване в банката.",
       check: "Провери също кредитора, сумата и номера в писмото.",
       amount: "Сума: ",
       deadline: "Срок/термин: ",
@@ -2632,7 +2632,7 @@ function renderBankPkontoExplanation(info, lang, sourceMode = "text") {
       head: "Banca te informează despre o poprire pe cont.",
       protect: "Un P-Konto nu protejează tot contul, ci doar suma lunară protejată.",
       already: "Verifică la bancă dacă acest cont este într-adevăr P-Konto și ce sumă este protejată.",
-      notYet: "Dacă acest cont nu este încă P-Konto, cere imediat transformarea la bancă.",
+      notYet: "Verifică mai întâi dacă acest cont este deja P-Konto. Dacă nu, cere imediat transformarea la bancă.",
       check: "Verifică și creditorul, suma și numărul de dosar din scrisoare.",
       amount: "Sumă: ",
       deadline: "Termen/programare: ",
@@ -2642,7 +2642,7 @@ function renderBankPkontoExplanation(info, lang, sourceMode = "text") {
       head: "البنك يُبلغك بوجود حجز على الحساب.",
       protect: "حساب P-Konto لا يحمي الحساب كله، بل يحمي فقط المبلغ الشهري المحمي.",
       already: "تحقق مع البنك هل الحساب مسجل فعلًا كـ P-Konto وما هو المبلغ المحمي.",
-      notYet: "إذا لم يكن الحساب P-Konto بعد، اطلب التحويل فورًا من البنك.",
+      notYet: "تحقق أولًا هل الحساب مسجل بالفعل كـ P-Konto. إذا لم يكن كذلك، اطلب التحويل فورًا من البنك.",
       check: "تحقق أيضًا من الدائن والمبلغ ورقم الملف في الرسالة.",
       amount: "المبلغ: ",
       deadline: "المهلة/الموعد: ",
@@ -2652,7 +2652,7 @@ function renderBankPkontoExplanation(info, lang, sourceMode = "text") {
       head: "The bank informs you about an account garnishment.",
       protect: "A P-Konto does not protect the whole account, only the monthly protected amount.",
       already: "Check with the bank whether this account is really a P-Konto and which amount is protected.",
-      notYet: "If the account is not yet a P-Konto, request the conversion immediately at the bank.",
+      notYet: "First check whether the account is already a P-Konto. If not, request the conversion immediately at the bank.",
       check: "Also check the creditor, amount and reference number in the letter.",
       amount: "Amount: ",
       deadline: "Deadline/appointment: ",
@@ -2685,7 +2685,11 @@ function postProcessFinalExplanation(text, lang, mode = "wichtiger_brief") {
     .replace(/Sonst ist dein gesamtes Geld weg\.?/gi, "Ohne P-Konto ist dein Guthaben deutlich schlechter geschützt.")
     .replace(/Sie verlieren es\.?/gi, "Guthaben über dem geschützten Betrag kann abgeführt werden.")
     .replace(/du verlierst es\.?/gi, "Guthaben über dem geschützten Betrag kann abgeführt werden.")
+    .replace(/Beantrage SOFORT ein Pfändungsschutzkonto \(P-Konto\) bei der Postbank\.?/gi, "Prüfe zuerst, ob dein Konto bereits als P-Konto geführt wird. Wenn nicht, beantrage die Umwandlung sofort bei der Bank.")
+    .replace(/Beantrage sofort ein Pfändungsschutzkonto \(P-Konto\)[^.]*\.?/gi, "Prüfe zuerst, ob dein Konto bereits als P-Konto geführt wird. Wenn nicht, beantrage die Umwandlung sofort bei der Bank.")
     .replace(/P-Konto beantragen:/gi, "P-Konto-Status prüfen:")
+    .replace(/Ihr Konto ist dann nicht mehr komplett blockiert\.?/gi, "Der geschützte Freibetrag bleibt dann grundsätzlich verfügbar.")
+    .replace(/dein Konto ist dann nicht mehr komplett blockiert\.?/gi, "Der geschützte Freibetrag bleibt dann grundsätzlich verfügbar.")
     .replace(/Pfändungsschutzkonto \(P-Konto\) umzuwandeln/gi, "P-Konto-Status und Freibetrag zu klären");
 
   return clampBalancedExplanation(out, getLanguageMeta(lang).code, mode);
@@ -3364,12 +3368,12 @@ function isPoliteSmallTalkQuestion(text) {
 function politeSmallTalkReply(lang) {
   const code = getLanguageMeta(lang).code;
   const replies = {
-    de: "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.",
-    tr: "Rica ederim. Başka bir şey öğrenmek istersen sorunu yazabilirsin.",
-    bg: "Моля. Ако искаш да знаеш още нещо, напиши въпроса си.",
-    ar: "على الرحب والسعة. إذا أردت معرفة شيء آخر، اكتب سؤالك.",
-    ro: "Cu plăcere. Dacă mai vrei să știi ceva, scrie întrebarea ta.",
-    en: "You are welcome. If you want to know anything else, write your question."
+    de: "Gerne. Schreib deine nächste Frage.",
+    tr: "Rica ederim. Sonraki sorunu yazabilirsin.",
+    bg: "Моля. Напиши следващия си въпрос.",
+    ar: "على الرحب والسعة. اكتب سؤالك التالي.",
+    ro: "Cu plăcere. Scrie următoarea întrebare.",
+    en: "You’re welcome. Write your next question."
   };
   return replies[code] || replies.de;
 }
@@ -3441,6 +3445,129 @@ function buildQuestionFallbackAnswer(frageMode, meta, lang) {
     deadline ? `Frist/Termin: ${deadline}.` : "Wenn eine Frist genannt wird, prüfe sie im Brief.",
     "Erster Schritt: Prüfe die Daten im Brief und schreibe bei Unsicherheit an die zuständige Stelle."
   ].join("\n");
+}
+
+
+function isOfficialReplyMode(frageMode, frage) {
+  const mode = String(frageMode || "").toLowerCase();
+  const q = normalizeQuestionText(frage);
+  if (mode === "reply") return true;
+  return hasAny(q, [
+    "schreib", "antwort", "e-mail", "email", "brief", "vorlage", "pdf", "whatsapp",
+    "cevap", "mail", "yaz", "писмо", "отговор", "scrie", "răspuns", "اكتب", "رد"
+  ]);
+}
+
+function containsUserProvidedName(frage, historyText = "") {
+  const text = String(frage + "\n" + historyText).toLowerCase();
+  return /\b(ich heiße|mein name ist|name ist|benim adım|adım|казвам се|името ми е|mă numesc|numele meu este|my name is|اسمي)\b/i.test(text);
+}
+
+function shouldAskForMissingOfficialData(meta, frageMode, frage, historyText = "") {
+  if (!isOfficialReplyMode(frageMode, frage)) return false;
+
+  const hasSafeName = Boolean(meta && meta.person_sicher === true && normalizeString(meta.person));
+  if (!hasSafeName && !containsUserProvidedName(frage, historyText)) {
+    return { needed: true, reason: "name" };
+  }
+
+  return { needed: false, reason: "" };
+}
+
+function buildMissingOfficialDataQuestion(reason, meta, lang) {
+  const code = getLanguageMeta(lang).code;
+  const replies = {
+    de: {
+      name: "Ich kann den Text schreiben. Mir fehlt nur dein vollständiger Name für die Unterschrift.\n\nWie soll ich den Namen eintragen?"
+    },
+    tr: {
+      name: "Metni yazabilirim. Sadece imza için tam adın eksik.\n\nHangi adı yazayım?"
+    },
+    bg: {
+      name: "Мога да напиша текста. Липсва само пълното име за подпис.\n\nКакво име да впиша?"
+    },
+    ro: {
+      name: "Pot scrie textul. Îmi lipsește doar numele complet pentru semnătură.\n\nCe nume să trec?"
+    },
+    ar: {
+      name: "أستطيع كتابة النص. ينقصني فقط الاسم الكامل للتوقيع.\n\nما الاسم الذي أكتبه؟"
+    },
+    en: {
+      name: "I can write the text. I only need your full name for the signature.\n\nWhich name should I use?"
+    }
+  };
+  const dict = replies[code] || replies.de;
+  return dict[reason] || dict.name;
+}
+
+function explainOnlineBankingSimple(lang) {
+  const code = getLanguageMeta(lang).code;
+  const texts = {
+    de: "Online-Banking-Postfach = du loggst dich bei deiner Bank ein und schreibst dort eine sichere Nachricht an die Bank.",
+    tr: "Online-Banking mesaj kutusu = bankanın uygulamasına veya sitesine girip bankaya güvenli mesaj yazman demek.",
+    bg: "Online-Banking поща = влизаш в банковото приложение или сайта и пишеш сигурно съобщение до банката.",
+    ro: "Mesageria din online banking = intri în aplicația sau site-ul băncii și trimiți un mesaj sigur către bancă.",
+    ar: "صندوق رسائل البنك الإلكتروني = تدخل إلى تطبيق أو موقع البنك وتكتب رسالة آمنة للبنك.",
+    en: "Online banking inbox = you log in to your bank app or website and send a secure message to the bank."
+  };
+  return texts[code] || texts.de;
+}
+
+function shortenOfficialTemplateAnswer(answer, frageMode, lang) {
+  let out = cleanText(answer).replace(/\n{3,}/g, "\n\n").trim();
+  if (String(frageMode || "").toLowerCase() !== "reply") return out;
+
+  // Entferne typische lange Nachträge nach fertigen Vorlagen.
+  out = out.replace(/\n\n(?:Was du jetzt tun musst|Du kannst den Text direkt kopieren|Achte darauf|Ich kann dir auch helfen|Wenn du möchtest)[\s\S]*$/i, "").trim();
+  out = out.replace(/\n\n(?:Sende den Text ab|Prüfe den Freibetrag)[\s\S]*$/i, "").trim();
+
+  // Entferne zu lange Einleitungen vor Empfänger/Betreff.
+  const idxEmp = out.search(/(^|\n)Empfänger:/i);
+  const idxBetreff = out.search(/(^|\n)Betreff:/i);
+  const idx = idxEmp >= 0 ? idxEmp : idxBetreff;
+  if (idx > 160) {
+    const prefix = lang === "tr" ? "Kısa metin:" : lang === "bg" ? "Кратък текст:" : lang === "ro" ? "Text scurt:" : lang === "ar" ? "نص قصير:" : lang === "en" ? "Short text:" : "Hier ist ein kurzer Text:";
+    out = prefix + "\n\n" + out.slice(idx).trim();
+  }
+
+  return out;
+}
+
+function clampChatAnswerV864(answer, frageMode, frage, lang) {
+  let out = cleanText(answer)
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\*\s{2,}/g, "- ")
+    .trim();
+
+  out = shortenOfficialTemplateAnswer(out, frageMode, lang);
+
+  const mode = String(frageMode || "free").toLowerCase();
+  const q = normalizeQuestionText(frage);
+
+  if (mode === "reply") {
+    return out;
+  }
+
+  const maxChars = mode === "next_steps" ? 520 : mode === "deadline" ? 480 : mode === "consequence" ? 620 : 700;
+  const lines = out.split("\n").map(x => x.trim()).filter(Boolean);
+
+  let maxLines = 6;
+  if (mode === "next_steps") maxLines = 4;
+  if (mode === "deadline") maxLines = 4;
+  if (mode === "consequence") maxLines = 5;
+  if (hasAny(q, ["was soll ich tun", "was muss ich tun", "ne yap", "what should i do"])) maxLines = 4;
+
+  if (lines.length > maxLines) {
+    out = lines.slice(0, maxLines).join("\n");
+  }
+
+  if (out.length > maxChars) {
+    out = out.slice(0, maxChars).trim();
+    const lastEnd = Math.max(out.lastIndexOf("."), out.lastIndexOf("!"), out.lastIndexOf("?"), out.lastIndexOf("؟"));
+    if (lastEnd > 180) out = out.slice(0, lastEnd + 1).trim();
+  }
+
+  return cleanText(out);
 }
 
 
@@ -3523,7 +3650,7 @@ Keine lange Erklärung.
   }
 });
 
-// V8.6: echter Hilfe-Chat mit Verlauf und freundlichen Folgeantworten
+// V8.6.4: kurzer Universal-Chat mit fehlenden Daten und Audio-freundlichen Antworten
 app.post("/api/frage", async (req, res) => {
   try {
     const briefText = cleanText(req.body.briefText || "");
@@ -3576,10 +3703,22 @@ const lang = (req.body.lang || "de").toLowerCase();
       });
     }
 
-    if (frageMode === "reply" && (meta.bank_pkonto || isBankPkontoLetter(meta, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`))) {
+    const missingOfficialData = shouldAskForMissingOfficialData(meta, frageMode, frage, chatHistoryText);
+    if (missingOfficialData.needed) {
       return res.json({
         ok: true,
-        antwort: buildPkontoReplyTemplate(meta, lang, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`)
+        antwort: buildMissingOfficialDataQuestion(missingOfficialData.reason, meta, lang)
+      });
+    }
+
+    if (frageMode === "reply" && (meta.bank_pkonto || isBankPkontoLetter(meta, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`))) {
+      const template = buildPkontoReplyTemplate(meta, lang, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`);
+      const hint = explainOnlineBankingSimple(lang);
+      return res.json({
+        ok: true,
+        antwort: cleanText(`${hint}
+
+${template}`)
       });
     }
 
@@ -3654,6 +3793,24 @@ Gib nach einer Antwort höchstens einen kurzen Hilfe-Hinweis, z. B.:
 Mache keine falschen Versprechen. Schreibe „könnte möglich sein“, „prüfen lassen“ oder „bei der zuständigen Stelle nachfragen“, wenn etwas unsicher ist.
 Wenn der Nutzer nach Name, Aktenzeichen, Betrag, Datum oder Frist fragt und die Daten unsicher sind, sage, dass er „Daten genauer prüfen“ nutzen oder das Original prüfen soll.
 Wenn der Nutzer eine Antwortvorlage verlangt, schreibe direkt den fertigen Text, aber nutze keine unsicheren Namen oder Aktenzeichen.
+
+CHAT-LÄNGENREGEL V8.6.4:
+- Normale Chatantwort: maximal 4 bis 6 kurze Zeilen.
+- Bei "Was soll ich tun?": maximal 3 Schritte.
+- Bei "Bis wann?": maximal 4 kurze Zeilen.
+- Bei "Was passiert, wenn ich nichts mache?": maximal 5 kurze Zeilen.
+- Bei Antwortvorlagen: maximal 1 kurzer Satz vor der Vorlage und kein langer Zusatztext danach.
+- Wiederhole nicht die komplette Brief-Erklärung.
+- Schreibe so, dass die Antwort gut vorgelesen werden kann.
+- Fachwort kurz erklären, wenn es wichtig ist. Beispiel: "Freibetrag = Geld, das trotz Pfändung geschützt ist."
+
+FEHLENDE-DATEN-REGEL V8.6.4:
+Wenn der Nutzer eine E-Mail, Antwort oder einen Brief will, prüfe zuerst:
+- sicherer Name für die Unterschrift
+- sichere Referenz/Aktenzeichen
+- Empfänger/E-Mail/Adresse
+Wenn der Name fehlt, frage kurz nach dem vollständigen Namen statt eine fertige Vorlage mit falschem Namen zu bauen.
+Wenn E-Mail-Adresse fehlt, erkläre kurz den sicheren Weg: Online-Banking-Postfach oder Adresse aus dem Brief.
 
 ANTWORT-STIL FÜR HILFE24:
 Nutze immer diese 4 Regeln:
@@ -3946,10 +4103,12 @@ Nicht wie ein langer KI-Aufsatz.
       .trim();
 
     antwort = postProcessQuestionAnswer(antwort, meta);
+    antwort = clampChatAnswerV864(antwort, frageMode, frage, lang);
 
     if (frageMode === "next_steps") {
       antwort = shortenNextStepsAnswer(antwort, lang);
       antwort = postProcessQuestionAnswer(antwort, meta);
+      antwort = clampChatAnswerV864(antwort, frageMode, frage, lang);
     }
 
     return res.json({
