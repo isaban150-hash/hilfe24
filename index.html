@@ -63,6 +63,7 @@
   }
   .upload-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .upload-actions { display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%; }
+  .upload-actions.single-upload { grid-template-columns: 1fr; }
   .upload-btn {
     display:inline-flex; align-items:center; justify-content:center; gap:8px; margin:0;
     border-radius:16px; padding:12px 14px; background:linear-gradient(135deg,#0ea5a4,#2563eb);
@@ -347,19 +348,18 @@
         <div class="assistant-head"><div class="assistant-avatar">🤝</div><div><strong id="assistantTitle">Schick mir dein Schreiben.</strong><span id="assistantSub">Foto hochladen oder Text einfügen.</span></div></div>
         <div class="input-grid">
           <div class="input-panel">
-            <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
+            <label id="briefPhotoLabel" for="bilder">Datei oder Foto hochladen</label>
             <div class="upload-box">
               <input id="cameraInput" class="file-input-hidden" type="file" accept="image/*" capture="environment" />
               <input id="bilder" class="file-input-hidden" type="file" accept="image/*" multiple />
               <div class="upload-row">
-                <div class="upload-actions">
-                  <label id="uploadCameraBtn" class="upload-btn" for="cameraInput">📷 Foto machen</label>
-                  <label id="uploadChooseBtn" class="upload-btn secondary-upload" for="bilder">🖼️ Aus Galerie wählen</label>
+                <div class="upload-actions single-upload">
+                  <label id="uploadChooseBtn" class="upload-btn" for="bilder">📎 Datei hochladen</label>
                 </div>
                 <span id="uploadFileInfo" class="upload-info">Noch keine Fotos ausgewählt</span>
                 <button id="uploadClearBtn" class="upload-clear" type="button">Auswahl löschen</button>
               </div>
-              <div id="photoHintText" class="hint">Tipp für gute Fotos: 1. Ganze Seite fotografieren. 2. Bei kleiner Schrift zusätzlich näher fotografieren: Name, Datum, Aktenzeichen, Betrag oder Frist. 3. Ohne Schatten, gerade von oben, scharf.</div>
+              <div id="photoHintText" class="hint">Du kannst ein Foto machen oder ein Foto aus der Galerie hochladen. Wichtig: ganze Seite, scharf, ohne Schatten. Bei kleiner Schrift zusätzlich einen nahen Ausschnitt hochladen.</div>
               <div id="previewGrid" class="preview-grid"></div>
             </div>
           </div>
@@ -626,9 +626,9 @@
   de: {
     sub: "Briefe einfach verstehen. Klar erklärt und mit dem nächsten Schritt.",
     textLabel: "Brief als Text",
-    photoLabel: "Brief-Fotos hochladen",
+    photoLabel: "Datei oder Foto hochladen",
     placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
-    hint: "Tipp für gute Fotos: 1. Ganze Seite fotografieren. 2. Bei kleiner Schrift zusätzlich näher fotografieren: Name, Datum, Aktenzeichen, Betrag oder Frist. 3. Ohne Schatten, gerade von oben, scharf.",
+    hint: "Du kannst ein Foto machen oder ein Foto aus der Galerie hochladen. Wichtig: ganze Seite, scharf, ohne Schatten. Bei kleiner Schrift zusätzlich einen nahen Ausschnitt hochladen.",
     analyze: "Brief erklären",
     back: "← Zurück zur Startseite",
     langLabel: "Sprache",
@@ -636,10 +636,10 @@
     answerLabel: "Antwort",
     assistantTitle: "Schick mir dein Schreiben.",
     assistantSub: "Foto hochladen oder Text einfügen.",
-    uploadCamera: "📷 Foto machen",
-    uploadChoose: "🖼️ Aus Galerie wählen",
-    uploadEmpty: "Noch keine Fotos ausgewählt",
-    uploadSelected: "Fotos ausgewählt",
+    uploadCamera: "📎 Datei hochladen",
+    uploadChoose: "📎 Datei hochladen",
+    uploadEmpty: "Noch keine Datei ausgewählt",
+    uploadSelected: "Datei(en) ausgewählt",
     uploadClear: "Auswahl löschen",
     uploadLimit: "Du kannst maximal 3 Fotos hinzufügen.",
     audioDock: "Audio"
