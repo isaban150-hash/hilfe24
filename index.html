@@ -177,6 +177,19 @@
   .chat-meta { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:950; opacity:.78; margin-bottom:5px; letter-spacing:.02em; }
   .chat-meta.user::before { content:"👤"; }
   .chat-meta.assistant::before { content:"💬"; }
+
+  .chat-audio-btn {
+    margin-top:10px;
+    border:1px solid #ccfbf1;
+    background:#ecfeff;
+    color:#0f766e;
+    padding:8px 11px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:950;
+    box-shadow:none;
+  }
+  .chat-audio-btn:hover { background:#dffdf8; }
   .chat-suggestions { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 0; align-self:flex-start; max-width:96%; }
   .chat-suggestion-btn { border:1px solid #ccfbf1; background:#ecfeff; color:#0f766e; padding:9px 11px; border-radius:999px; font-size:13px; font-weight:900; box-shadow:none; }
   .chat-suggestion-btn:hover { background:#dffdf8; }
@@ -1482,6 +1495,32 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
 
+    function getChatAudioLabel() {
+      const lang = getSelectedLang();
+      const labels = {
+        de: "🔊 Vorlesen",
+        tr: "🔊 Oku",
+        bg: "🔊 Прочети",
+        ro: "🔊 Citește",
+        ar: "🔊 اقرأ",
+        en: "🔊 Read aloud"
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function addChatAudioButton(bubble, text) {
+      if (!bubble || !text) return;
+      const audioBtn = document.createElement("button");
+      audioBtn.type = "button";
+      audioBtn.className = "chat-audio-btn";
+      audioBtn.textContent = getChatAudioLabel();
+      audioBtn.onclick = function () {
+        playServerAudio(text);
+      };
+      bubble.appendChild(audioBtn);
+    }
+
+
     function appendChatMessage(role, text, options = {}) {
       if (!chatMessagesEl) return;
       const clean = String(text || "").trim();
@@ -1496,6 +1535,9 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       body.textContent = clean;
       bubble.appendChild(meta);
       bubble.appendChild(body);
+      if (role !== "user") {
+        addChatAudioButton(bubble, clean);
+      }
       chatMessagesEl.appendChild(bubble);
 
       if (!options.skipHistory) {
