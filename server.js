@@ -1,3712 +1,2428 @@
-const express = require("express");
-const path = require("path");
-const textToSpeech = require("@google-cloud/text-to-speech");
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hilfe24</title>
 
-function createTtsClient() {
-  const raw = process.env.GOOGLE_CREDENTIALS_JSON;
+<style>
+  html { color-scheme: light; }
+  :root {
+    --bg: #f5fbf8;
+    --bg-warm: #fff8ed;
+    --card: rgba(255,255,255,0.96);
+    --text: #101828;
+    --muted: #667085;
+    --soft: #f1f7f5;
+    --primary: #0ea5a4;
+    --primary-dark: #087f7d;
+    --blue: #2563eb;
+    --navy: #102a43;
+    --accent: #22c55e;
+    --gold: #f59e0b;
+    --danger: #dc2626;
+    --success: #15803d;
+    --warning: #b45309;
+    --border: #dde8e4;
+    --shadow: 0 22px 70px rgba(16, 42, 67, 0.14);
+    --shadow-soft: 0 12px 34px rgba(16, 42, 67, 0.09);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background:
+      radial-gradient(circle at 10% -5%, rgba(14,165,164,0.20), transparent 32%),
+      radial-gradient(circle at 95% 4%, rgba(245,158,11,0.15), transparent 28%),
+      linear-gradient(180deg, #f7fffb 0%, #eef8f6 48%, #f7f7fb 100%);
+    color: var(--text);
+    padding-bottom: 72px;
+  }
+  input, textarea, select, button { color-scheme: light; font-family: inherit; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 18px; }
+  .app-shell { min-height: 100vh; }
+  .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:20px; position:relative; z-index:1; }
+  .brand { display:flex; align-items:center; gap:12px; font-weight:900; letter-spacing:-0.04em; font-size:26px; }
+  .brand-mark {
+    width:46px; height:46px; border-radius:16px;
+    background:linear-gradient(135deg,#0ea5a4,#2563eb 70%);
+    color:white; display:flex; align-items:center; justify-content:center;
+    font-size:26px; box-shadow:0 14px 30px rgba(14,165,164,.28);
+  }
+  .language-pill { min-width: 220px; }
+  select, textarea {
+    width:100%; padding:13px 14px; border:1px solid var(--border);
+    border-radius:18px; font-size:16px; background:#fff; outline:none;
+  }
+  .file-input-hidden {
+    position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none;
+  }
+  .upload-box {
+    border:1px solid var(--border); border-radius:20px; background:linear-gradient(180deg,#ffffff,#f8fdfb);
+    padding:12px; margin-top:8px; box-shadow:0 8px 22px rgba(16,42,67,.05);
+  }
+  .upload-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .upload-actions { display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%; }
+  .upload-btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; margin:0;
+    border-radius:16px; padding:12px 14px; background:linear-gradient(135deg,#0ea5a4,#2563eb);
+    color:white; font-weight:900; cursor:pointer; box-shadow:0 10px 22px rgba(14,165,164,.22);
+    text-align:center; min-height:48px;
+  }
+  .upload-btn.secondary-upload {
+    background:linear-gradient(135deg,#ecfeff,#eef2ff); color:#0f172a; box-shadow:none; border:1px solid var(--border);
+  }
+  .upload-info { color:var(--muted); font-size:14px; font-weight:800; display:block; width:100%; }
+  .upload-clear { border:0; background:transparent; color:#dc2626; padding:4px 0 0; font-size:13px; font-weight:900; cursor:pointer; display:none; }
+  .upload-clear.visible { display:inline-flex; }
+  select:focus, textarea:focus { border-color: var(--primary); box-shadow:0 0 0 4px rgba(14,165,164,.13); }
+  .hero {
+    background:
+      linear-gradient(145deg, rgba(255,255,255,.92), rgba(255,255,255,.78)),
+      radial-gradient(circle at 85% 0%, rgba(14,165,164,.18), transparent 36%),
+      radial-gradient(circle at 5% 100%, rgba(37,99,235,.13), transparent 34%);
+    backdrop-filter: blur(14px);
+    border:1px solid rgba(255,255,255,.85);
+    border-radius:34px; padding:24px; box-shadow:var(--shadow); overflow:hidden; position:relative;
+  }
+  .hero:before {
+    content:""; position:absolute; right:-120px; top:-100px; width:330px; height:330px;
+    border-radius:50%; background:linear-gradient(135deg, rgba(14,165,164,.15), rgba(37,99,235,.08));
+  }
+  .hero:after {
+    content:""; position:absolute; left:-60px; bottom:-90px; width:250px; height:250px;
+    border-radius:50%; background:rgba(245,158,11,.10);
+  }
+  h1 { margin:0 0 8px; font-size:34px; line-height:1.05; letter-spacing:-0.045em; }
+  .sub { color:var(--muted); margin-bottom:8px; line-height:1.5; font-size:16px; }
+  .hero-title { font-size:40px; margin-top:6px; max-width:660px; position:relative; z-index:1; }
+  .hero-sub { font-size:18px; max-width:710px; position:relative; z-index:1; }
+  label { display:block; font-weight:800; margin:14px 0 7px; font-size:15px; color:#263244; }
+  .mini-label { color:#0f766e; font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; position:relative; z-index:1; }
 
-  if (raw && raw.trim()) {
-    const credentials = JSON.parse(raw);
+  .home-grid { display:grid; grid-template-columns: 1.2fr 1fr; gap:13px; margin-top:18px; position:relative; z-index:1; }
+  .home-btn {
+    background:#fff; border:1px solid rgba(221,232,228,.95); border-radius:24px; padding:18px;
+    text-align:left; font-size:19px; font-weight:900; color:var(--text); box-shadow:var(--shadow-soft);
+    cursor:pointer; transition:.16s transform,.16s border-color,.16s box-shadow; min-height:104px;
+  }
+  .home-btn:hover { transform:translateY(-2px); border-color:#b8d7d1; box-shadow:var(--shadow); }
+  .home-btn span { display:block; margin-top:7px; font-size:14px; font-weight:600; color:var(--muted); line-height:1.45; }
+  #openBriefBtn { background:linear-gradient(135deg,#0ea5a4,#2563eb); color:white; border:0; box-shadow:0 18px 42px rgba(14,165,164,.30); }
+  #openBriefBtn span { color:rgba(255,255,255,.88); }
+  .popular-section { margin-top:20px; position:relative; z-index:1; }
+  .popular-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:10px; }
+  .popular-head h2 { margin:0; font-size:20px; letter-spacing:-.03em; }
+  .popular-head p { margin:0; color:var(--muted); font-size:13px; font-weight:700; }
+  .popular-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; }
+  .popular-card {
+    border:1px solid rgba(221,232,228,.95);
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,253,251,.94));
+    border-radius:22px;
+    padding:15px;
+    text-align:left;
+    box-shadow:0 10px 26px rgba(16,42,67,.08);
+    min-height:96px;
+    cursor:pointer;
+    display:grid;
+    grid-template-columns:52px 1fr;
+    gap:12px;
+    align-items:center;
+  }
+  .popular-card strong { display:block; font-size:17px; font-weight:900; color:#0f172a; line-height:1.15; letter-spacing:-.02em; }
+  .popular-card span { display:block; margin-top:5px; font-size:13px; color:#667085; line-height:1.32; font-weight:700; }
+  .popular-icon { width:48px; height:48px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#ecfeff,#eef2ff); font-size:24px; }
+  .topic-chips { display:none; }
 
-    return new textToSpeech.TextToSpeechClient({
-      credentials: {
-        client_email: credentials.client_email,
-        private_key: credentials.private_key
+  .assistant-card { margin-top:18px; background:#fff; border:1px solid var(--border); border-radius:26px; padding:18px; box-shadow:var(--shadow-soft); position:relative; }
+  .assistant-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .assistant-avatar { width:44px; height:44px; border-radius:17px; background:#e9fbf7; color:#087f7d; display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .assistant-head strong { display:block; font-size:18px; }
+  .assistant-head span { color:var(--muted); font-size:14px; }
+  .card { background:var(--card); border-radius:26px; padding:18px; box-shadow:var(--shadow-soft); margin-bottom:14px; border:1px solid var(--border); }
+  .hidden { display:none !important; }
+  .input-grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  .input-panel { background:#fff; border:1px solid var(--border); border-radius:22px; padding:15px; }
+  textarea { min-height:180px; resize:vertical; }
+  .hint { font-size:14px; color:var(--muted); margin-top:8px; line-height:1.45; }
+  .button-row, .audio-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .button-row button, .audio-row button { flex:1 1 210px; min-width:0; }
+  button { border:none; border-radius:16px; padding:13px 16px; font-size:16px; font-weight:800; cursor:pointer; }
+  button:disabled { opacity:.62; cursor:not-allowed; }
+  .btn-primary { background:linear-gradient(135deg,var(--primary),var(--blue)); color:white; box-shadow:0 10px 22px rgba(14,165,164,.23); }
+  .btn-secondary { background:#eef8f6; color:#0f3f3d; border:1px solid #d7eee9; }
+  .btn-danger { background:#fee2e2; color:var(--danger); border:1px solid #fecaca; }
+  .preview-grid { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:9px; margin-top:12px; }
+  .preview-grid img { width:100%; height:118px; object-fit:cover; border-radius:16px; border:1px solid var(--border); background:#fff; }
+  .section-title { margin:0 0 10px; font-size:21px; font-weight:900; letter-spacing:-.02em; }
+  .result-stack { display:grid; gap:12px; }
+  .short-box { background:linear-gradient(180deg,#ecfdf3,#f7fff9); border:1px solid #a7f3d0; border-radius:20px; padding:16px; line-height:1.65; white-space:pre-wrap; font-size:18px; font-weight:700; color:#064e3b; }
+  .detail-box { background:#f8fafc; border:1px solid var(--border); border-radius:20px; padding:16px; line-height:1.75; white-space:pre-wrap; font-size:17px; max-height:360px; overflow:auto; }
+  .helper-card { border:1px solid rgba(20,184,166,.28); background:linear-gradient(180deg,#ffffff,#f6fffc); padding:20px; }
+  .helper-section { margin-top:16px; }
+  .helper-section-title { font-size:15px; font-weight:950; color:#0f766e; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
+  .helper-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .helper-pill { border:1px solid #d7eee9; border-radius:18px; padding:13px; background:linear-gradient(180deg,#ffffff,#f8fffd); box-shadow:0 8px 20px rgba(16,42,67,.04); }
+  .helper-pill small { display:block; color:#64748b; font-weight:900; margin-bottom:5px; font-size:12px; }
+  .helper-pill strong { display:block; color:#0f172a; line-height:1.35; font-size:15px; }
+  .helper-pill.warn { background:#fff7ed; border-color:#fed7aa; }
+  .helper-pill.warn strong { color:#9a3412; }
+
+  .chat-box { display:flex; flex-direction:column; gap:12px; margin-top:14px; }
+  .chat-messages { display:flex; flex-direction:column; gap:12px; max-height:520px; overflow:auto; padding:6px 2px 10px; scroll-behavior:smooth; }
+  .chat-empty { color:#64748b; font-size:15px; line-height:1.55; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:18px; padding:14px; }
+  .chat-bubble { max-width:88%; border-radius:22px; padding:13px 15px; line-height:1.55; white-space:pre-wrap; font-size:16px; box-shadow:0 8px 18px rgba(15,23,42,.06); }
+  .chat-bubble.user { align-self:flex-end; background:linear-gradient(135deg,#0f766e,#2563eb); color:#fff; border-bottom-right-radius:8px; }
+  .chat-bubble.assistant { align-self:flex-start; background:#ffffff; border:1px solid #dbeafe; color:#0f172a; border-bottom-left-radius:8px; }
+  .chat-meta { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:950; opacity:.78; margin-bottom:5px; letter-spacing:.02em; }
+  .chat-meta.user::before { content:"👤"; }
+  .chat-meta.assistant::before { content:"💬"; }
+  .chat-suggestions { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 0; align-self:flex-start; max-width:96%; }
+  .chat-suggestion-btn { border:1px solid #ccfbf1; background:#ecfeff; color:#0f766e; padding:9px 11px; border-radius:999px; font-size:13px; font-weight:900; box-shadow:none; }
+  .chat-suggestion-btn:hover { background:#dffdf8; }
+  .chat-input-row { display:flex; gap:10px; align-items:flex-end; margin-top:10px; }
+  .chat-input-row textarea { min-height:78px; flex:1; }
+  .chat-input-row button { flex:0 0 auto; min-width:112px; }
+  .data-check-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+  .btn-soft-warning { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+  @media (max-width:600px){ .chat-input-row{flex-direction:column;} .chat-input-row button{width:100%;} .chat-bubble{max-width:96%;} .chat-suggestions{max-width:100%;} .chat-suggestion-btn{font-size:12px;padding:8px 10px;} }
+
+  .data-list { display:grid; gap:8px; }
+  .data-row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border:1px solid #e2e8f0; background:#fff; border-radius:16px; padding:12px 13px; }
+  .data-row .data-label { color:#64748b; font-weight:900; font-size:13px; }
+  .data-row .data-value { text-align:right; font-weight:950; color:var(--text); overflow-wrap:anywhere; font-size:14px; }
+  .data-row.check .data-value { color:#9a3412; }
+  .step-list { margin:0; padding-left:20px; line-height:1.7; font-weight:800; }
+  .safe-notice { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:16px; padding:13px; font-weight:900; line-height:1.5; }
+  .copy-box { background:#f8fafc; border:1px solid var(--border); border-radius:16px; padding:12px; line-height:1.55; white-space:pre-wrap; }
+  .action-chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .action-chip { background:#ecfeff; color:#0f766e; border:1px solid #99f6e4; border-radius:999px; padding:9px 11px; font-weight:950; font-size:13px; }
+
+  .warning { background:#fff7ed; border:1px solid #fdba74; color:#9a3412; padding:14px; border-radius:18px; line-height:1.5; font-size:17px; font-weight:700; }
+  .loader { margin-top:12px; color:var(--primary); font-weight:900; }
+  .analysis-progress {
+    margin-top:12px;
+    border:1px solid #c7eee6;
+    background:linear-gradient(180deg,#ffffff,#f5fffc);
+    border-radius:18px;
+    padding:12px;
+    box-shadow:0 8px 24px rgba(16,42,67,.06);
+  }
+  .analysis-progress-title { font-weight:950; color:#0f766e; margin-bottom:8px; }
+  .analysis-progress-list { display:grid; gap:7px; margin:0; padding:0; list-style:none; }
+  .analysis-progress-list li {
+    display:flex; align-items:center; gap:8px; color:#667085; font-size:14px; font-weight:800;
+  }
+  .analysis-progress-list li.done { color:#0f766e; }
+  .analysis-progress-list li.active { color:#101828; }
+  .analysis-dot {
+    width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+    background:#e2e8f0; color:#64748b; font-size:12px; flex:0 0 auto;
+  }
+  li.done .analysis-dot { background:#ccfbf1; color:#0f766e; }
+  li.active .analysis-dot { background:linear-gradient(135deg,#0ea5a4,#2563eb); color:white; }
+  .analysis-progress-note { margin-top:9px; color:#667085; font-size:12px; font-weight:700; line-height:1.4; }
+
+  .ok { color:var(--success); font-weight:900; margin-top:10px; }
+  .error { color:var(--danger); font-weight:900; margin-top:10px; line-height:1.5; }
+  .audio-status { color:var(--muted); font-size:13px; margin:0; }
+  audio { width:100%; margin-top:6px; }
+  .audio-dock {
+    position:fixed; left:14px; right:14px; bottom:12px; z-index:20; max-width:720px; margin:0 auto;
+    background:rgba(255,255,255,.92); color:var(--text); border:1px solid rgba(221,232,228,.95);
+    box-shadow:0 16px 46px rgba(16,42,67,.18); border-radius:999px; padding:8px;
+    display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; backdrop-filter: blur(16px);
+  }
+  .audio-dock-inner { display:flex; align-items:center; gap:8px; min-width:0; }
+  .audio-mini-label { font-size:12px; font-weight:900; color:#0f766e; white-space:nowrap; padding-left:8px; }
+  .audio-dock .audio-status { color:var(--muted); font-size:12px; padding-left:0; }
+  .audio-dock audio { margin:0; height:30px; min-width:0; }
+  .audio-dock .btn-danger {
+    white-space:nowrap; padding:10px 15px; border-radius:999px; background:#fff1f2; color:#be123c; border:1px solid #fecdd3;
+    box-shadow:none; font-size:14px;
+  }
+  .backline { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+  @media (max-width: 760px) {
+    .wrap { padding:14px; }
+    .topbar { align-items:stretch; flex-direction:column; }
+    .language-pill { min-width:0; }
+    .hero { border-radius:28px; padding:18px; }
+    .hero-title { font-size:32px; }
+    .home-grid, .input-grid, .popular-grid { grid-template-columns:1fr; }
+    .popular-grid { gap:10px; }
+    .popular-card { min-height:86px; grid-template-columns:50px 1fr; padding:14px; }
+    .button-row, .audio-row { flex-direction:column; }
+    .button-row button, .audio-row button { width:100%; flex:none; }
+    h1 { font-size:26px; }
+    .short-box { font-size:17px; }
+    button, select, textarea { font-size:16px; }
+    .audio-dock { grid-template-columns:1fr auto; left:10px; right:10px; border-radius:24px; }
+    .audio-mini-label { display:none; }
+    .audio-dock audio { max-width:100%; }
+  }
+</style>
+</head>
+
+<body>
+  <div class="wrap app-shell">
+    <div id="homeCard" class="hero">
+      <div class="topbar">
+        <div class="brand"><div class="brand-mark">H</div><div>Hilfe24</div></div>
+        <div class="language-pill">
+          <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
+          <select id="homeLang">
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="tr">🇹🇷 Türkçe</option>
+            <option value="bg">🇧🇬 Български</option>
+            <option value="ar">🌍 العربية</option>
+            <option value="ro">🇷🇴 Română</option>
+            <option value="en">🇬🇧 English</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mini-label">Dein Alltagshelfer</div>
+      <h1 class="hero-title">Was brauchst du gerade?</h1>
+      <div id="homeSubTitle" class="sub hero-sub">
+        Foto, Brief oder Frage rein. Hilfe24 erklärt es einfach und zeigt dir den nächsten Schritt.
+      </div>
+
+      <div id="homeQuestionTitle" class="section-title" style="margin-top:20px;">Schnelle Hilfe</div>
+      <div class="home-grid">
+        <button id="openBriefBtn" class="home-btn" type="button">📄 Schreiben verstehen<span>Briefe, Rechnungen, E-Mails, SMS, WhatsApp, Behördenpost</span></button>
+        <button id="soonAntraegeBtn" class="home-btn" type="button">📝 Ansprüche & Anträge<span>Leistungen, Erstattungen, Krankenkasse, Pflege, Wohngeld, Familie</span></button>
+        <button id="soonAntwortBtn" class="home-btn" type="button">✍️ Antwort erstellen<span>E-Mail, Brief, Kündigung, Reklamation, WhatsApp, Nachricht</span></button>
+        <button id="soonFotoBtn" class="home-btn" type="button">📸 Foto fragen<span>Produkt, Medikament, Screenshot, Anleitung, Technik</span></button>
+        <button id="soonHilfeBtn" class="home-btn" type="button">❓ Allgemeine Frage<span>Auto, Krypto, Rezepte, Sport, Filme, Religion, Alltag</span></button>
+      </div>
+
+      <div class="popular-section">
+        <div class="popular-head">
+          <div>
+            <div class="mini-label">Gerade wichtig</div>
+            <h2 id="popularTitle">Beliebt bei Nutzern</h2>
+          </div>
+          <p id="popularHint">Schreib einfach dein Thema rein.</p>
+        </div>
+        <div class="popular-grid">
+          <button id="popularCrypto" class="popular-card" type="button" onclick="showComingSoon()"><div class="popular-icon">🔥</div><div><strong>Krypto verstehen</strong><span>Coins, Risiken und Chancen einfach erklärt</span></div></button>
+          <button id="popularAuto" class="popular-card" type="button" onclick="showComingSoon()"><div class="popular-icon">🚗</div><div><strong>Auto-Angebot prüfen</strong><span>Kauf, Verkauf, Mängel, Versicherung</span></div></button>
+          <button id="popularMessage" class="popular-card" type="button" onclick="showComingSoon()"><div class="popular-icon">💬</div><div><strong>Nachricht schreiben</strong><span>WhatsApp, Dating, Streit, Entschuldigung</span></div></button>
+          <button id="popularMoney" class="popular-card" type="button" onclick="showComingSoon()"><div class="popular-icon">💶</div><div><strong>Anträge & Geld</strong><span>Jobcenter, Wohngeld, Krankenkasse</span></div></button>
+          <button id="popularPhoto" class="popular-card" type="button" onclick="showComingSoon()"><div class="popular-icon">📸</div><div><strong>Foto erklären</strong><span>Produkt, Medikament, Screenshot, Anleitung</span></div></button>
+          <button id="popularFun" class="popular-card" type="button" onclick="showComingSoon()"><div class="popular-icon">⭐</div><div><strong>Unterhaltung</strong><span>Horoskop, Filme, Sport, Rezepte</span></div></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="briefInputCard" class="card hidden">
+      <div class="backline">
+        <div><div id="analysisMiniLabel" class="mini-label">Analyse</div><h1>Hilfe24</h1></div>
+        <button id="resetBtn" class="btn-secondary" type="button">← Zurück zur Startseite</button>
+      </div>
+      <div id="briefSubTitle" class="sub">Briefe einfach verstehen. Klar erklärt und mit dem nächsten Schritt.</div>
+      <label id="briefLangLabel" for="lang">Sprache</label>
+      <select id="lang">
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="tr">🇹🇷 Türkçe</option>
+        <option value="bg">🇧🇬 Български</option>
+        <option value="ar">🌍 العربية</option>
+        <option value="ro">🇷🇴 Română</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+      <div class="assistant-card">
+        <div class="assistant-head"><div class="assistant-avatar">🤝</div><div><strong id="assistantTitle">Schick mir dein Schreiben.</strong><span id="assistantSub">Foto hochladen oder Text einfügen.</span></div></div>
+        <div class="input-grid">
+          <div class="input-panel">
+            <label id="briefPhotoLabel" for="bilder">Brief-Fotos hochladen</label>
+            <div class="upload-box">
+              <input id="cameraInput" class="file-input-hidden" type="file" accept="image/*" capture="environment" />
+              <input id="bilder" class="file-input-hidden" type="file" accept="image/*" multiple />
+              <div class="upload-row">
+                <div class="upload-actions">
+                  <label id="uploadCameraBtn" class="upload-btn" for="cameraInput">📷 Foto machen</label>
+                  <label id="uploadChooseBtn" class="upload-btn secondary-upload" for="bilder">🖼️ Aus Galerie wählen</label>
+                </div>
+                <span id="uploadFileInfo" class="upload-info">Noch keine Fotos ausgewählt</span>
+                <button id="uploadClearBtn" class="upload-clear" type="button">Auswahl löschen</button>
+              </div>
+              <div id="photoHintText" class="hint">Tipp für gute Fotos: 1. Ganze Seite fotografieren. 2. Bei kleiner Schrift zusätzlich näher fotografieren: Name, Datum, Aktenzeichen, Betrag oder Frist. 3. Ohne Schatten, gerade von oben, scharf.</div>
+              <div id="previewGrid" class="preview-grid"></div>
+            </div>
+          </div>
+          <div class="input-panel">
+            <label id="briefTextLabel" for="briefText">Brief als Text</label>
+            <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
+          </div>
+        </div>
+        <div class="button-row">
+          <button id="analyzeBtn" class="btn-primary" type="button">Brief erklären</button>
+        </div>
+        <div id="status" class="loader hidden">Bitte warten...</div>
+        <div id="errorBox" class="error hidden"></div>
+        <div id="okBox" class="ok hidden"></div>
+      </div>
+    </div>
+
+    <div id="warningCard" class="card hidden"><div class="section-title">Hinweis</div><div id="warningText" class="warning"></div></div>
+
+    <div class="result-stack">
+      <div id="resultCard" class="card hidden">
+        <div id="answerMiniLabel" class="mini-label">Antwort</div>
+        <div id="shortTitle" class="section-title">Erklärung zum Brief</div>
+        <div id="kurzText" class="short-box"></div>
+        <div class="audio-row"><button id="readShortBtn" class="btn-primary" type="button">🔊 Kurz vorlesen</button></div>
+      </div>
+
+      <div id="helperCard" class="card helper-card hidden">
+        <div class="mini-label">Sicherheitscheck</div>
+        <div id="helperContent"></div>
+      </div>
+
+      <div id="detailToggleCard" class="card hidden">
+        <button id="toggleDetailsBtn" class="btn-secondary" type="button">📋 Mehr anzeigen</button>
+      </div>
+
+      <div id="detailCard" class="card hidden">
+        <div id="detailTitle" class="section-title">Mehr anzeigen</div>
+        <div id="detailText" class="detail-box"></div>
+        <div class="audio-row"><button id="readAllBtn" class="btn-secondary" type="button">🔊 Diesen Teil vorlesen</button></div>
+      </div>
+
+      <div id="frageCard" class="card hidden">
+        <div id="frageTitle" class="section-title">💬 Hilfe-Chat zum Brief</div>
+        <div id="frageHelp" class="sub">Frag weiter zu diesem Brief. Hilfe24 merkt sich den Verlauf und hilft dir Schritt für Schritt.</div>
+
+        <div class="data-check-row">
+          <button id="dataCheckBtn" class="btn-soft-warning" type="button">🔎 Daten genauer prüfen</button>
+        </div>
+
+        <div class="chat-box">
+          <div id="chatMessages" class="chat-messages"></div>
+          <div id="chatEmptyHint" class="chat-empty">Noch keine Frage gestellt. Frag zum Beispiel: „Was soll ich jetzt tun?“ oder „Schreib mir eine Antwort.“</div>
+          <label id="frageTextLabel" for="frageText">Deine Frage</label>
+          <div class="chat-input-row">
+            <textarea id="frageText" placeholder="Zum Beispiel: Was soll ich jetzt tun? Oder: Schreib mir eine Antwort."></textarea>
+            <button id="frageBtn" class="btn-primary" type="button">Senden</button>
+          </div>
+        </div>
+
+        <div id="frageStatus" class="loader hidden">Antwort wird erstellt...</div>
+        <div id="frageError" class="error hidden"></div>
+        <div id="frageAntwortBox" class="hidden">
+          <div id="frageAntwortTitle" class="section-title">Letzte Antwort</div>
+          <div id="frageAntwort" class="detail-box"></div>
+          <div class="audio-row"><button id="readFrageAntwortBtn" class="btn-secondary" type="button">🔊 Letzte Antwort vorlesen</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="audio-dock">
+    <div class="audio-dock-inner">
+      <span id="audioDockLabel" class="audio-mini-label">Audio</span>
+      <div id="audioStatus" class="audio-status hidden"></div>
+      <audio id="audioPlayer" controls class="hidden"></audio>
+    </div>
+    <button id="stopBtn" class="btn-danger" type="button">⏹️ Stopp</button>
+  </div>
+
+<script>
+
+  
+   const homeTexts = {
+  
+
+     de: {
+        sub: "Verstehen. Antworten. Erledigen.",
+        langLabel: "Sprache auswählen",
+        question: "Wobei brauchst du Hilfe?",
+        brief: "📄 Schreiben verstehen",
+        briefSub: "Briefe, E-Mails, SMS, WhatsApp, Behördenpost",
+        antraege: "📝 Anträge & Vorteile",
+        antraegeSub: "Jobcenter, Rente, Krankenkasse, Wohngeld, Pflegegrad, Familie, Schule, Geld & viele weitere Anträge",
+        antwort: "✍️ Antwort erstellen",
+        antwortSub: "E-Mail, Brief, PDF, Kündigung, Reklamation",
+        foto: "📸 Foto fragen",
+        fotoSub: "Produkt, Medikament, Screenshot, Anleitung, Technik",
+        hilfe: "❓ Alltag & Beruf",
+        hilfeSub: "Auto, Krypto, Rezepte, Sport, Filme, Religion, Horoskop",
+        popularTitle: "Beliebt bei Nutzern",
+        popularHint: "Schreib einfach dein Thema rein.",
+        popularCrypto: "🔥 Krypto verstehen",
+        popularCryptoSub: "Coins, Risiken und Chancen einfach erklärt",
+        popularAuto: "🚗 Auto-Angebot prüfen",
+        popularAutoSub: "Kauf, Verkauf, Mängel, Versicherung",
+        popularMessage: "💬 Nachricht schreiben",
+        popularMessageSub: "WhatsApp, Dating, Streit, Entschuldigung",
+        popularMoney: "💶 Anträge & Geld",
+        popularMoneySub: "Jobcenter, Wohngeld, Krankenkasse",
+        popularPhoto: "📸 Foto erklären",
+        popularPhotoSub: "Produkt, Medikament, Screenshot, Anleitung",
+        popularFun: "⭐ Unterhaltung",
+        popularFunSub: "Horoskop, Filme, Sport, Rezepte"
       },
-      projectId: credentials.project_id
-    });
-  }
-
-  return new textToSpeech.TextToSpeechClient();
-}
-
-const app = express();
-const PORT = process.env.PORT || 8080;
-const apiKey = process.env.GEMINI_API_KEY;
-const MODEL = "gemini-2.5-flash";
-const ttsClient = createTtsClient();
-
-function getTodayGerman() {
-  return new Date().toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  });
-}
-
-app.use(express.json({ limit: "70mb" }));
-app.use(express.static(__dirname));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-app.get("/test", (req, res) => {
-  res.json({
-    ok: true,
-    message: "Server läuft sauber"
-  });
-});
-
-function getLanguageMeta(lang) {
-  switch ((lang || "de").toLowerCase()) {
-    case "tr":
-      return {
-        code: "tr",
-        label: "Türkisch",
-        ttsLanguageCode: "tr-TR",
-        ttsVoiceName: "",
-        ttsGender: "FEMALE"
-      };
-
-    case "bg":
-      return {
-        code: "bg",
-        label: "Bulgarisch",
-        ttsLanguageCode: "bg-BG",
-        ttsVoiceName: "",
-        ttsGender: "FEMALE"
-      };
-
-    case "ar":
-      return {
-        code: "ar",
-        label: "Arabisch",
-        ttsLanguageCode: "ar-XA",
-        ttsVoiceName: "",
-        ttsGender: "FEMALE"
-      };
-case "ro":
-      return {
-        code: "ro",
-        label: "Rumänisch",
-        ttsLanguageCode: "ro-RO",
-        ttsVoiceName: "",
-        ttsGender: "FEMALE"
-      };
-
-    case "en":
-      return {
-        code: "en",
-        label: "Englisch",
-        ttsLanguageCode: "en-US",
-        ttsVoiceName: "",
-        ttsGender: "FEMALE"
-      };
-    default:
-      return {
-        code: "de",
-        label: "Deutsch",
-        ttsLanguageCode: "de-DE",
-        ttsVoiceName: "",
-        ttsGender: "FEMALE"
-      };
-  }
-}
-
-async function callGemini(parts) {
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY fehlt auf dem Server");
-  }
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
+      tr: {
+        sub: "Anla. Cevap yaz. İşini hallet.",
+        langLabel: "Dil seç",
+        question: "Hangi konuda yardıma ihtiyacın var?",
+        brief: "📄 Yazıyı anlamak",
+        briefSub: "Mektuplar, e-posta, SMS, WhatsApp, resmi yazılar",
+        antraege: "📝 Başvurular & haklar",
+        antraegeSub: "Jobcenter, emeklilik, sağlık sigortası, kira yardımı, bakım derecesi, aile, okul, para ve daha birçok başvuru",
+        antwort: "✍️ Cevap oluştur",
+        antwortSub: "E-posta, mektup, PDF, iptal, şikayet",
+        foto: "📸 Fotoğraf sor",
+        fotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım kılavuzu, teknik",
+        hilfe: "❓ Günlük yaşam & iş",
+        hilfeSub: "Araba, kripto, yemek tarifleri, spor, film, din, burç",
+        popularTitle: "Kullanıcıların en çok sorduğu şeyler",
+        popularHint: "Konunu yaz, Hilfe24 sıralasın.",
+        popularCrypto: "🔥 Kriptoyu anla",
+        popularCryptoSub: "Coinler, riskler ve fırsatlar sade anlatım",
+        popularAuto: "🚗 Araç ilanı kontrolü",
+        popularAutoSub: "Alım, satım, hasar, sigorta",
+        popularMessage: "💬 Mesaj yaz",
+        popularMessageSub: "WhatsApp, flört, tartışma, özür",
+        popularMoney: "💶 Başvuru & para",
+        popularMoneySub: "Jobcenter, kira yardımı, sağlık sigortası",
+        popularPhoto: "📸 Fotoğrafı açıkla",
+        popularPhotoSub: "Ürün, ilaç, ekran görüntüsü, kullanım",
+        popularFun: "⭐ Eğlence",
+        popularFunSub: "Burç, film, spor, yemek"
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts
+      bg: {
+        sub: "Разбери. Отговори. Реши проблема.",
+        langLabel: "Избери език",
+        question: "За какво имаш нужда от помощ?",
+        brief: "📄 Разбиране на писмо",
+        briefSub: "Писма, имейли, SMS, WhatsApp, официални документи",
+        antraege: "📝 Молби & права",
+        antraegeSub: "Jobcenter, пенсия, здравна каса, жилищна помощ, грижи, семейство, училище, пари и още много молби",
+        antwort: "✍️ Създай отговор",
+        antwortSub: "Имейл, писмо, PDF, прекратяване, рекламация",
+        foto: "📸 Попитай със снимка",
+        fotoSub: "Продукт, лекарство, снимка от екран, инструкция, техника",
+        hilfe: "❓ Ежедневие & работа",
+        hilfeSub: "Кола, крипто, рецепти, спорт, филми, религия, хороскоп",
+        popularTitle: "Популярно при потребителите",
+        popularHint: "Напиши темата си.",
+        popularCrypto: "🔥 Крипто лесно",
+        popularCryptoSub: "Монети, рискове и възможности",
+        popularAuto: "🚗 Проверка на автомобил",
+        popularAutoSub: "Покупка, продажба, дефекти, застраховка",
+        popularMessage: "💬 Напиши съобщение",
+        popularMessageSub: "WhatsApp, срещи, спор, извинение",
+        popularMoney: "💶 Молби & пари",
+        popularMoneySub: "Jobcenter, жилищна помощ, здравна каса",
+        popularPhoto: "📸 Обясни снимка",
+        popularPhotoSub: "Продукт, лекарство, екран, инструкция",
+        popularFun: "⭐ Забавление",
+        popularFunSub: "Хороскоп, филми, спорт, рецепти"
+      },
+      ro: {
+        sub: "Înțelege. Răspunde. Rezolvă.",
+        langLabel: "Alege limba",
+        question: "Cu ce ai nevoie de ajutor?",
+        brief: "📄 Înțelege documentul",
+        briefSub: "Scrisori, e-mailuri, SMS, WhatsApp, acte oficiale",
+        antraege: "📝 Cereri & beneficii",
+        antraegeSub: "Jobcenter, pensie, asigurare medicală, ajutor pentru locuință, îngrijire, familie, școală, bani și multe alte cereri",
+        antwort: "✍️ Creează răspuns",
+        antwortSub: "E-mail, scrisoare, PDF, anulare, reclamație",
+        foto: "📸 Întreabă cu poză",
+        fotoSub: "Produs, medicament, captură de ecran, instrucțiuni, tehnică",
+        hilfe: "❓ Viață & muncă",
+        hilfeSub: "Mașină, crypto, rețete, sport, filme, religie, horoscop",
+        popularTitle: "Popular acum",
+        popularHint: "Scrie tema ta.",
+        popularCrypto: "🔥 Înțelege crypto",
+        popularCryptoSub: "Monede, riscuri și șanse explicate simplu",
+        popularAuto: "🚗 Verifică ofertă auto",
+        popularAutoSub: "Cumpărare, vânzare, defecte, asigurare",
+        popularMessage: "💬 Scrie mesaj",
+        popularMessageSub: "WhatsApp, dating, ceartă, scuze",
+        popularMoney: "💶 Cereri & bani",
+        popularMoneySub: "Jobcenter, ajutor chirie, asigurare",
+        popularPhoto: "📸 Explică poza",
+        popularPhotoSub: "Produs, medicament, screenshot, instrucțiuni",
+        popularFun: "⭐ Distracție",
+        popularFunSub: "Horoscop, filme, sport, rețete"
+      },
+      en: {
+        sub: "Understand. Reply. Get it done.",
+        langLabel: "Choose language",
+        question: "What do you need help with?",
+        brief: "📄 Understand a document",
+        briefSub: "Letters, emails, SMS, WhatsApp, official mail",
+        antraege: "📝 Applications & benefits",
+        antraegeSub: "Jobcenter, pension, health insurance, housing benefit, care level, family, school, money and many more applications",
+        antwort: "✍️ Create a reply",
+        antwortSub: "Email, letter, PDF, cancellation, complaint",
+        foto: "📸 Ask with a photo",
+        fotoSub: "Product, medication, screenshot, instructions, tech",
+        hilfe: "❓ Everyday life & work",
+        hilfeSub: "Cars, crypto, recipes, sports, movies, religion, horoscope",
+        popularTitle: "Popular right now",
+        popularHint: "Just type your topic.",
+        popularCrypto: "🔥 Understand crypto",
+        popularCryptoSub: "Coins, risks and chances in simple words",
+        popularAuto: "🚗 Check car offer",
+        popularAutoSub: "Buying, selling, defects, insurance",
+        popularMessage: "💬 Write a message",
+        popularMessageSub: "WhatsApp, dating, conflict, apology",
+        popularMoney: "💶 Applications & money",
+        popularMoneySub: "Benefits, refunds, health insurance",
+        popularPhoto: "📸 Explain photo",
+        popularPhotoSub: "Product, medication, screenshot, manual",
+        popularFun: "⭐ Entertainment",
+        popularFunSub: "Horoscope, movies, sports, recipes"
+      },
+      ar: {
+        sub: "افهم. أجب. أنجز الأمر.",
+        langLabel: "اختر اللغة",
+        question: "بماذا تحتاج إلى مساعدة؟",
+        brief: "📄 فهم الرسالة",
+        briefSub: "رسائل، بريد إلكتروني، SMS، واتساب، رسائل رسمية",
+        antraege: "📝 طلبات & حقوق",
+        antraegeSub: "Jobcenter، التقاعد، التأمين الصحي، السكن، الرعاية، العائلة، المدرسة، المال وطلبات أخرى كثيرة",
+        antwort: "✍️ إنشاء رد",
+        antwortSub: "بريد إلكتروني، رسالة، PDF، إلغاء، شكوى",
+        foto: "📸 اسأل بصورة",
+        fotoSub: "منتج، دواء، لقطة شاشة، تعليمات، تقنية",
+        hilfe: "❓ الحياة اليومية & العمل",
+        hilfeSub: "سيارة، كريبتو، وصفات، رياضة، أفلام، دين، أبراج",
+        popularTitle: "الأكثر طلبًا الآن",
+        popularHint: "اكتب موضوعك فقط.",
+        popularCrypto: "🔥 فهم الكريبتو",
+        popularCryptoSub: "عملات، مخاطر وفرص بشرح بسيط",
+        popularAuto: "🚗 فحص عرض سيارة",
+        popularAutoSub: "شراء، بيع، أعطال، تأمين",
+        popularMessage: "💬 كتابة رسالة",
+        popularMessageSub: "واتساب، تعارف، خلاف، اعتذار",
+        popularMoney: "💶 طلبات ومال",
+        popularMoneySub: "Jobcenter، سكن، تأمين صحي",
+        popularPhoto: "📸 شرح صورة",
+        popularPhotoSub: "منتج، دواء، لقطة شاشة، تعليمات",
+        popularFun: "⭐ ترفيه",
+        popularFunSub: "أبراج، أفلام، رياضة، وصفات"
+      }
+    };
+
+ const briefTexts = {
+  de: {
+    sub: "Briefe einfach verstehen. Klar erklärt und mit dem nächsten Schritt.",
+    textLabel: "Brief als Text",
+    photoLabel: "Brief-Fotos hochladen",
+    placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
+    hint: "Tipp für gute Fotos: 1. Ganze Seite fotografieren. 2. Bei kleiner Schrift zusätzlich näher fotografieren: Name, Datum, Aktenzeichen, Betrag oder Frist. 3. Ohne Schatten, gerade von oben, scharf.",
+    analyze: "Brief erklären",
+    back: "← Zurück zur Startseite",
+    langLabel: "Sprache",
+    analysisLabel: "Analyse",
+    answerLabel: "Antwort",
+    assistantTitle: "Schick mir dein Schreiben.",
+    assistantSub: "Foto hochladen oder Text einfügen.",
+    uploadCamera: "📷 Foto machen",
+    uploadChoose: "🖼️ Aus Galerie wählen",
+    uploadEmpty: "Noch keine Fotos ausgewählt",
+    uploadSelected: "Fotos ausgewählt",
+    uploadClear: "Auswahl löschen",
+    uploadLimit: "Du kannst maximal 3 Fotos hinzufügen.",
+    audioDock: "Audio"
+  },
+  tr: {
+    sub: "Mektupları kolayca anla. Net açıklama ve sonraki adım.",
+    textLabel: "Mektup metni",
+    photoLabel: "Mektup fotoğrafları yükle",
+    placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yaz veya yapıştır",
+    hint: "Toplam 3 fotoğraf ekleyebilirsin. Her sayfayı ayrı çek: düz, net, gölgesiz. Küçük yazılar varsa biraz daha yakından çek.",
+    analyze: "Mektubu açıkla",
+    back: "← Ana sayfaya dön",
+    langLabel: "Dil",
+    analysisLabel: "Analiz",
+    answerLabel: "Cevap",
+    assistantTitle: "Yazını bana gönder.",
+    assistantSub: "Fotoğraf yükle veya metin ekle.",
+    uploadCamera: "📷 Fotoğraf çek",
+    uploadChoose: "🖼️ Galeriden seç",
+    uploadEmpty: "Henüz fotoğraf seçilmedi",
+    uploadSelected: "fotoğraf seçildi",
+    uploadClear: "Seçimi temizle",
+    uploadLimit: "En fazla 3 fotoğraf ekleyebilirsin.",
+    audioDock: "Ses"
+  },
+  bg: {
+    sub: "Разбери писмата лесно. Ясно обяснение и следваща стъпка.",
+    textLabel: "Текст на писмото",
+    photoLabel: "Качи снимки на писмото",
+    placeholder: "Постави текста тук, ако не искаш да качваш снимка",
+    hint: "Можеш да добавиш до 3 снимки. Снимай всяка страница отделно: право отгоре, ясно и без сянка. Малък текст снимай малко по-отблизо.",
+    analyze: "Обясни писмото",
+    back: "← Назад към началната страница",
+    langLabel: "Език",
+    analysisLabel: "Анализ",
+    answerLabel: "Отговор",
+    assistantTitle: "Изпрати ми писмото.",
+    assistantSub: "Качи снимка или постави текст.",
+    uploadCamera: "📷 Направи снимка",
+    uploadChoose: "🖼️ Избери от галерията",
+    uploadEmpty: "Още няма избрани снимки",
+    uploadSelected: "избрани снимки",
+    uploadClear: "Изчисти избора",
+    uploadLimit: "Можеш да добавиш най-много 3 снимки.",
+    audioDock: "Аудио"
+  },
+  ar: {
+    sub: "افهم الرسائل بسهولة. شرح واضح والخطوة التالية.",
+    textLabel: "نص الرسالة",
+    photoLabel: "ارفع صور الرسالة",
+    placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
+    hint: "يمكنك إضافة حتى 3 صور. صوّر كل صفحة وحدها بوضوح ومن الأعلى وبدون ظل. إذا كان الخط صغيرًا، اقترب قليلًا.",
+    analyze: "اشرح الرسالة",
+    back: "← الرجوع إلى الصفحة الرئيسية",
+    langLabel: "اللغة",
+    analysisLabel: "تحليل",
+    answerLabel: "الإجابة",
+    assistantTitle: "أرسل لي الرسالة.",
+    assistantSub: "ارفع صورة أو أدخل النص.",
+    uploadCamera: "📷 التقط صورة",
+    uploadChoose: "🖼️ اختر من المعرض",
+    uploadEmpty: "لم يتم اختيار صور بعد",
+    uploadSelected: "صور مختارة",
+    uploadClear: "مسح الاختيار",
+    uploadLimit: "يمكنك إضافة 3 صور كحد أقصى.",
+    audioDock: "الصوت"
+  },
+  ro: {
+    sub: "Înțelege scrisorile ușor. Explicație clară și pasul următor.",
+    textLabel: "Textul scrisorii",
+    photoLabel: "Încarcă poze cu scrisoarea",
+    placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
+    hint: "Poți adăuga până la 3 poze din aceeași scrisoare. Pe telefon poți face poze de mai multe ori sau poți alege din galerie.",
+    analyze: "Explică scrisoarea",
+    back: "← Înapoi la pagina principală",
+    langLabel: "Limbă",
+    analysisLabel: "Analiză",
+    answerLabel: "Răspuns",
+    assistantTitle: "Trimite-mi documentul.",
+    assistantSub: "Încarcă o poză sau introdu textul.",
+    uploadCamera: "📷 Fă o poză",
+    uploadChoose: "🖼️ Alege din galerie",
+    uploadEmpty: "Nu ai ales poze încă",
+    uploadSelected: "poze selectate",
+    uploadClear: "Șterge selecția",
+    uploadLimit: "Poți adăuga maximum 3 poze.",
+    audioDock: "Audio"
+  },
+  en: {
+    sub: "Understand letters easily. Clear explanation and next step.",
+    textLabel: "Letter text",
+    photoLabel: "Upload letter photos",
+    placeholder: "Paste the text here if you do not want to upload a photo",
+    hint: "You can add up to 3 photos from the same letter. On a smartphone, you can take photos more than once or choose them from your gallery.",
+    analyze: "Explain letter",
+    back: "← Back to start page",
+    langLabel: "Language",
+    analysisLabel: "Analysis",
+    answerLabel: "Answer",
+    assistantTitle: "Send me your document.",
+    assistantSub: "Upload a photo or paste text.",
+    uploadCamera: "📷 Take photo",
+    uploadChoose: "🖼️ Choose from gallery",
+    uploadEmpty: "No photos selected yet",
+    uploadSelected: "photos selected",
+    uploadClear: "Clear selection",
+    uploadLimit: "You can add a maximum of 3 photos.",
+    audioDock: "Audio"
+  }
+};
+    const uiTexts = {
+  de: {
+  waiting: "Bitte warten... Der Brief wird geprüft.",
+  noInput: "Bitte füge Text ein oder lade mindestens ein Bild hoch.",
+  maxImages: "Du kannst aktuell maximal 3 Bilder hochladen.",
+  serverError: "Serverfehler. Bitte später nochmal versuchen.",
+  okExplained: "Der Brief wurde erklärt.",
+  noAudioText: "Es gibt keinen Text zum Vorlesen.",
+  audioLoading: "Audio wird geladen...",
+  audioError: "Audio konnte nicht geladen werden.",
+  questionMissing: "Bitte schreibe zuerst eine Frage.",
+  explainFirst: "Bitte erkläre zuerst einen Brief.",
+  questionLoading: "Antwort wird erstellt...",
+  questionError: "Die Frage konnte nicht beantwortet werden.",
+  questionNetworkError: "Die Verbindung ist abgebrochen. Bitte prüfe kurz dein Internet und sende die Frage nochmal.",
+  politeReply: "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.",
+  detailsShow: "📋 Mehr anzeigen",
+  detailsHide: "📋 Weniger anzeigen",
+  shortTitle: "Erklärung zum Brief",
+  detailTitle: "Mehr anzeigen",
+  questionTitle: "Eigene Frage senden",
+  answerTitle: "Antwort",
+  readShort: "🔊 Kurz vorlesen",
+  readDetails: "🔊 Details vorlesen",
+  readAnswer: "🔊 Antwort vorlesen",
+  stopAudio: "⏹ Stopp",
+  comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark."
+},
+     tr: {
+  waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
+  noInput: "Lütfen metin ekle veya en az bir fotoğraf yükle.",
+  maxImages: "Şu anda en fazla 3 fotoğraf yükleyebilirsin.",
+  serverError: "Sunucu hatası. Lütfen daha sonra tekrar dene.",
+  okExplained: "Mektup açıklandı.",
+  noAudioText: "Okunacak metin yok.",
+  audioLoading: "Ses yükleniyor...",
+  audioError: "Ses yüklenemedi.",
+  questionMissing: "Lütfen önce bir soru yaz.",
+  explainFirst: "Lütfen önce bir mektubu açıkla.",
+  questionLoading: "Cevap oluşturuluyor...",
+  questionError: "Soru cevaplanamadı.",
+  questionNetworkError: "Bağlantı kesildi. Lütfen interneti kontrol edip soruyu tekrar gönder.",
+  politeReply: "Rica ederim. Başka bir şey öğrenmek istersen sorunu yazabilirsin.",
+  detailsShow: "📋 Daha fazla göster",
+  detailsHide: "📋 Daha az göster",
+  shortTitle: "Yazının açıklaması",
+  detailTitle: "Daha fazla göster",
+  questionTitle: "Kendi sorunu yaz",
+  answerTitle: "Cevap",
+  readShort: "🔊 Kısaca oku",
+  readDetails: "🔊 Detayları oku",
+  readAnswer: "🔊 Cevabı oku",
+  stopAudio: "⏹ Durdur",
+  comingSoon: "Bu bölüm daha sonra gelecek. Önce mektup anlama kısmını güçlü yapıyoruz."
+},
+
+bg: {
+  waiting: "Моля, изчакай... Писмото се проверява.",
+  noInput: "Моля, въведи текст или качи поне една снимка.",
+  maxImages: "В момента можеш да качиш най-много 3 снимки.",
+  serverError: "Грешка в сървъра. Моля, опитай отново по-късно.",
+  okExplained: "Писмото беше обяснено.",
+  noAudioText: "Няма текст за прочитане.",
+  audioLoading: "Аудиото се зарежда...",
+  audioError: "Аудиото не можа да се зареди.",
+  questionMissing: "Моля, първо напиши въпрос.",
+  explainFirst: "Моля, първо обясни писмо.",
+  questionLoading: "Отговорът се създава...",
+  questionError: "Въпросът не можа да бъде отговорен.",
+  questionNetworkError: "Връзката прекъсна. Моля, провери интернета и изпрати въпроса отново.",
+  politeReply: "Моля. Ако искаш да знаеш още нещо, напиши въпроса си.",
+  detailsShow: "📋 Покажи повече",
+  detailsHide: "📋 Покажи по-малко",
+  shortTitle: "Обяснение на писмото",
+  detailTitle: "Покажи повече",
+  questionTitle: "Напиши свой въпрос",
+  answerTitle: "Отговор",
+  readShort: "🔊 Прочети кратко",
+  readDetails: "🔊 Прочети подробностите",
+  readAnswer: "🔊 Прочети отговора",
+  stopAudio: "⏹ Стоп",
+  comingSoon: "Този раздел ще дойде по-късно. Първо правим разбирането на писма силно."
+},
+
+ar: {
+  waiting: "يرجى الانتظار... يتم فحص الرسالة.",
+  noInput: "يرجى إدخال نص أو رفع صورة واحدة على الأقل.",
+  maxImages: "يمكنك حاليًا رفع 3 صور كحد أقصى.",
+  serverError: "خطأ في الخادم. يرجى المحاولة مرة أخرى لاحقًا.",
+  okExplained: "تم شرح الرسالة.",
+  noAudioText: "لا يوجد نص للقراءة.",
+  audioLoading: "يتم تحميل الصوت...",
+  audioError: "تعذر تحميل الصوت.",
+  questionMissing: "يرجى كتابة سؤال أولًا.",
+  explainFirst: "يرجى شرح رسالة أولًا.",
+  questionLoading: "يتم إنشاء الإجابة...",
+  questionError: "تعذر الإجابة على السؤال.",
+  questionNetworkError: "انقطع الاتصال. يرجى فحص الإنترنت وإرسال السؤال مرة أخرى.",
+  politeReply: "على الرحب والسعة. إذا أردت معرفة شيء آخر، اكتب سؤالك.",
+  detailsShow: "📋 عرض المزيد",
+  detailsHide: "📋 عرض أقل",
+  shortTitle: "شرح الرسالة",
+  detailTitle: "عرض المزيد",
+  questionTitle: "اطرح سؤالًا عن هذه الرسالة",
+  answerTitle: "الإجابة",
+  readShort: "🔊 اقرأ المختصر",
+  readDetails: "🔊 اقرأ التفاصيل",
+  readAnswer: "🔊 اقرأ الإجابة",
+  stopAudio: "⏹ إيقاف",
+  comingSoon: "هذا القسم سيأتي لاحقًا. أولًا نجعل فهم الرسائل قويًا."
+},
+
+ro: {
+  waiting: "Te rog așteaptă... Scrisoarea este verificată.",
+  noInput: "Te rog introdu text sau încarcă cel puțin o poză.",
+  maxImages: "Momentan poți încărca maximum 3 poze.",
+  serverError: "Eroare de server. Te rog încearcă din nou mai târziu.",
+  okExplained: "Scrisoarea a fost explicată.",
+  noAudioText: "Nu există text de citit.",
+  audioLoading: "Audio se încarcă...",
+  audioError: "Audio nu a putut fi încărcat.",
+  questionMissing: "Te rog scrie mai întâi o întrebare.",
+  explainFirst: "Te rog explică mai întâi o scrisoare.",
+  questionLoading: "Răspunsul se creează...",
+  questionError: "Întrebarea nu a putut fi răspunsă.",
+  questionNetworkError: "Conexiunea s-a întrerupt. Te rog verifică internetul și trimite întrebarea din nou.",
+  politeReply: "Cu plăcere. Dacă mai vrei să știi ceva, scrie întrebarea ta.",
+  detailsShow: "📋 Arată mai mult",
+  detailsHide: "📋 Arată mai puțin",
+  shortTitle: "Explicația documentului",
+  detailTitle: "Arată mai mult",
+  questionTitle: "Scrie propria întrebare",
+  answerTitle: "Răspuns",
+  readShort: "🔊 Citește pe scurt",
+  readDetails: "🔊 Citește detaliile",
+  readAnswer: "🔊 Citește răspunsul",
+  stopAudio: "⏹ Stop",
+  comingSoon: "Această zonă va veni mai târziu. Mai întâi facem înțelegerea scrisorilor foarte bună."
+},
+
+en: {
+  waiting: "Please wait... The letter is being checked.",
+  noInput: "Please enter text or upload at least one photo.",
+  maxImages: "You can currently upload a maximum of 3 photos.",
+  serverError: "Server error. Please try again later.",
+  okExplained: "The letter was explained.",
+  noAudioText: "There is no text to read aloud.",
+  audioLoading: "Audio is loading...",
+  audioError: "Audio could not be loaded.",
+  questionMissing: "Please write a question first.",
+  explainFirst: "Please explain a letter first.",
+  questionLoading: "Answer is being created...",
+  questionError: "The question could not be answered.",
+  questionNetworkError: "The connection was interrupted. Please check your internet and send the question again.",
+  politeReply: "You are welcome. If you want to know anything else, write your question.",
+  detailsShow: "📋 Show more",
+  detailsHide: "📋 Show less",
+  shortTitle: "Letter explanation",
+  detailTitle: "Show more",
+  questionTitle: "Write your own question",
+  answerTitle: "Answer",
+  readShort: "🔊 Read short version",
+  readDetails: "🔊 Read details",
+  readAnswer: "🔊 Read answer",
+  stopAudio: "⏹ Stop",
+  comingSoon: "This section will come later. First we are making letter understanding really strong."
+}
+    };
+
+
+    const analysisStepTexts = {
+      de: {
+        title: "Analyse läuft",
+        note: "Große oder wichtige Briefe können etwas dauern. Bitte nicht neu laden.",
+        steps: ["Fotos werden vorbereitet", "Text wird gelesen", "Wichtige Daten werden geprüft", "Erklärung wird erstellt", "Fast fertig"]
+      },
+      tr: {
+        title: "Analiz yapılıyor",
+        note: "Büyük veya önemli mektuplar biraz sürebilir. Lütfen sayfayı yenileme.",
+        steps: ["Fotoğraflar hazırlanıyor", "Metin okunuyor", "Önemli bilgiler kontrol ediliyor", "Açıklama hazırlanıyor", "Neredeyse bitti"]
+      },
+      bg: {
+        title: "Анализът се изпълнява",
+        note: "Големи или важни писма може да отнемат малко повече време. Моля, не презареждай страницата.",
+        steps: ["Снимките се подготвят", "Текстът се прочита", "Важните данни се проверяват", "Обяснението се подготвя", "Почти готово"]
+      },
+      ar: {
+        title: "يتم التحليل",
+        note: "الرسائل الكبيرة أو المهمة قد تستغرق وقتًا أطول قليلًا. من فضلك لا تقم بتحديث الصفحة.",
+        steps: ["يتم تجهيز الصور", "تتم قراءة النص", "يتم فحص البيانات المهمة", "يتم إعداد الشرح", "أوشكنا على الانتهاء"]
+      },
+      ro: {
+        title: "Analiza rulează",
+        note: "Scrisorile mari sau importante pot dura puțin mai mult. Te rog nu reîncărca pagina.",
+        steps: ["Pozele sunt pregătite", "Textul este citit", "Datele importante sunt verificate", "Explicația este creată", "Aproape gata"]
+      },
+      en: {
+        title: "Analysis running",
+        note: "Large or important letters can take a little longer. Please do not reload the page.",
+        steps: ["Preparing photos", "Reading text", "Checking important data", "Creating explanation", "Almost done"]
+      }
+    };
+
+    const questionTexts = {
+      de: {
+        title: "Eigene Frage senden",
+        help: "Schreibe deine eigene Frage zu diesem Brief. Hilfe24 antwortet passend zu deinem Anliegen.",
+        quickTitle: "Schnellfragen:",
+        what: "Was muss ich tun?",
+        deadline: "Bis wann?",
+        consequence: "Was passiert, wenn ich nichts mache?",
+        reply: "Schreib mir eine Antwort",
+      
+        own: "✍️ Eigene Frage senden",
+        label: "Deine Frage",
+        placeholder: "Zum Beispiel: Was soll ich jetzt tun? Oder: Schreib mir eine Antwort.",
+        button: "Frage senden",
+        answerTitle: "Antwort",
+        readAnswer: "🔊 Antwort vorlesen"
+      },
+      tr: {
+        title: "Kendi sorunu yaz",
+        help: "Bu mektupla ilgili kendi sorunu yaz. Hilfe24 soruna uygun cevap verir.",
+        quickTitle: "Sık sorulan sorular:",
+        what: "Ne yapmam gerekiyor?",
+        deadline: "Son tarih ne zaman?",
+        consequence: "Hiçbir şey yapmazsam ne olur?",
+        reply: "Benim için cevap yaz",
+       own: "✍️ Kendi sorumu yazmak istiyorum",
+        label: "Sorunuz",
+        placeholder: "Örneğin: Şimdi ne yapmalıyım? Veya: Benim için cevap yaz.",
+        button: "Soruyu gönder",
+        answerTitle: "Cevap",
+        readAnswer: "🔊 Cevabı oku"
+      },
+      bg: {
+        title: "Напиши свой въпрос",
+        help: "Напиши своя въпрос за това писмо. Hilfe24 ще отговори според въпроса ти.",
+        quickTitle: "Бързи въпроси:",
+        what: "Какво трябва да направя?",
+        deadline: "До кога?",
+        consequence: "Какво ще стане, ако не направя нищо?",
+        reply: "Напиши ми отговор",
+      own: "✍️ Искам да задам свой въпрос",
+        label: "Твоят въпрос",
+        placeholder: "Например: Какво трябва да направя сега? Или: Напиши ми отговор.",
+        button: "Задай въпрос",
+        answerTitle: "Отговор",
+        readAnswer: "🔊 Прочети отговора"
+      },
+      ar: {
+        title: "اكتب سؤالك الخاص",
+        help: "اكتب سؤالك الخاص عن هذه الرسالة. سيجيبك Hilfe24 حسب سؤالك.",
+        quickTitle: "أسئلة سريعة:",
+        what: "ماذا يجب أن أفعل؟",
+        deadline: "إلى متى؟",
+        consequence: "ماذا يحدث إذا لم أفعل شيئًا؟",
+        reply: "اكتب لي ردًا",
+      own: "✍️ أريد كتابة سؤالي بنفسي",
+        label: "سؤالك",
+        placeholder: "مثال: ماذا يجب أن أفعل الآن؟ أو: اكتب لي ردًا.",
+        button: "اطرح السؤال",
+        answerTitle: "الإجابة",
+        readAnswer: "🔊 اقرأ الإجابة"
+      },
+      ro: {
+        title: "Scrie propria întrebare",
+        help: "Scrie propria întrebare despre această scrisoare. Hilfe24 răspunde potrivit întrebării tale.",
+        quickTitle: "Întrebări rapide:",
+        what: "Ce trebuie să fac?",
+        deadline: "Până când?",
+        consequence: "Ce se întâmplă dacă nu fac nimic?",
+        reply: "Scrie-mi un răspuns",
+       own: "✍️ Vreau să scriu propria întrebare",
+        label: "Întrebarea ta",
+        placeholder: "De exemplu: Ce trebuie să fac acum? Sau: Scrie-mi un răspuns.",
+        button: "Pune întrebarea",
+        answerTitle: "Răspuns",
+        readAnswer: "🔊 Citește răspunsul"
+      },
+      en: {
+        title: "Write your own question",
+        help: "Write your own question about this letter. Hilfe24 will answer based on your request.",
+        quickTitle: "Quick questions:",
+        what: "What do I have to do?",
+        deadline: "By when?",
+        consequence: "What happens if I do nothing?",
+        reply: "Write me a reply",
+      own: "✍️ I want to ask my own question",
+        label: "Your question",
+        placeholder: "For example: What should I do now? Or: Write me a reply.",
+        button: "Send question",
+        answerTitle: "Answer",
+        readAnswer: "🔊 Read answer"
+      }
+    };
+
+    const homeCardEl = document.getElementById("homeCard");
+    const briefInputCardEl = document.getElementById("briefInputCard");
+    const homeLangEl = document.getElementById("homeLang");
+    const homeSubTitleEl = document.getElementById("homeSubTitle");
+    const homeLangLabelEl = document.getElementById("homeLangLabel");
+    const homeQuestionTitleEl = document.getElementById("homeQuestionTitle");
+    const analysisMiniLabelEl = document.getElementById("analysisMiniLabel");
+    const briefLangLabelEl = document.getElementById("briefLangLabel");
+    const assistantTitleEl = document.getElementById("assistantTitle");
+    const assistantSubEl = document.getElementById("assistantSub");
+    const answerMiniLabelEl = document.getElementById("answerMiniLabel");
+
+    const openBriefBtn = document.getElementById("openBriefBtn");
+    const soonAntraegeBtn = document.getElementById("soonAntraegeBtn");
+    const soonAntwortBtn = document.getElementById("soonAntwortBtn");
+    const soonFotoBtn = document.getElementById("soonFotoBtn");
+    const soonHilfeBtn = document.getElementById("soonHilfeBtn");
+
+    const langEl = document.getElementById("lang");
+    const briefTextEl = document.getElementById("briefText");
+    const bilderEl = document.getElementById("bilder");
+    const cameraInputEl = document.getElementById("cameraInput");
+    const uploadCameraBtnEl = document.getElementById("uploadCameraBtn");
+    const uploadChooseBtnEl = document.getElementById("uploadChooseBtn");
+    const uploadClearBtnEl = document.getElementById("uploadClearBtn");
+    const uploadFileInfoEl = document.getElementById("uploadFileInfo");
+    const previewGridEl = document.getElementById("previewGrid");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const statusEl = document.getElementById("status");
+    const errorBoxEl = document.getElementById("errorBox");
+    const okBoxEl = document.getElementById("okBox");
+
+    const warningCardEl = document.getElementById("warningCard");
+    const warningTextEl = document.getElementById("warningText");
+
+    const resultCardEl = document.getElementById("resultCard");
+    const kurzTextEl = document.getElementById("kurzText");
+    const helperCardEl = document.getElementById("helperCard");
+    const helperContentEl = document.getElementById("helperContent");
+
+    const detailToggleCardEl = document.getElementById("detailToggleCard");
+    const toggleDetailsBtn = document.getElementById("toggleDetailsBtn");
+    const detailCardEl = document.getElementById("detailCard");
+    const detailTextEl = document.getElementById("detailText");
+
+    const frageCardEl = document.getElementById("frageCard");
+    const frageTextEl = document.getElementById("frageText");
+    const frageBtn = document.getElementById("frageBtn");
+    const frageStatusEl = document.getElementById("frageStatus");
+    const frageErrorEl = document.getElementById("frageError");
+    const frageAntwortBoxEl = document.getElementById("frageAntwortBox");
+    const frageAntwortEl = document.getElementById("frageAntwort");
+    const readFrageAntwortBtn = document.getElementById("readFrageAntwortBtn");
+    const frageTitleEl = document.getElementById("frageTitle");
+    const frageHelpEl = document.getElementById("frageHelp");
+    const quickQuestionTitleEl = document.getElementById("quickQuestionTitle");
+    const quickWhatBtn = document.getElementById("quickWhatBtn");
+    const quickDeadlineBtn = document.getElementById("quickDeadlineBtn");
+    const quickConsequenceBtn = document.getElementById("quickConsequenceBtn");
+    const quickReplyBtn = document.getElementById("quickReplyBtn");
+ 
+    const ownQuestionBtn = document.getElementById("ownQuestionBtn");
+    const frageTextLabelEl = document.getElementById("frageTextLabel");
+    const frageAntwortTitleEl = document.getElementById("frageAntwortTitle");
+    const chatMessagesEl = document.getElementById("chatMessages");
+    const chatEmptyHintEl = document.getElementById("chatEmptyHint");
+    const dataCheckBtn = document.getElementById("dataCheckBtn");
+
+    const readShortBtn = document.getElementById("readShortBtn");
+    const readAllBtn = document.getElementById("readAllBtn");
+ const stopBtn = document.getElementById("stopBtn");
+    const stopDetailsBtn = document.getElementById("stopDetailsBtn");
+    const stopAnswerBtn = document.getElementById("stopAnswerBtn");
+    const audioPlayerEl = document.getElementById("audioPlayer");
+    const audioStatusEl = document.getElementById("audioStatus");
+    const audioDockLabelEl = document.getElementById("audioDockLabel");
+
+    let currentLang = "de";
+
+function getSelectedLang() {
+  const langSelect = document.getElementById("lang");
+  return langSelect ? langSelect.value : "de";
+}
+
+let currentKurzText = "";
+let currentDetailText = "";
+let currentBriefText = "";
+let currentMeta = {};
+let activeRequestId = 0;
+let activeAudioUrl = "";
+let selectedImageFiles = [];
+let chatHistory = [];
+let analysisStatusTimer = null;
+let analysisProgressIndex = 0;
+let frageMode = "free";
+window.frageMode = "free";
+  
+  
+    function getUiText() {
+      return uiTexts[currentLang] || uiTexts.de;
+    }
+
+    function getAnalysisText() {
+      const lang = getSelectedLang ? getSelectedLang() : currentLang || "de";
+      return analysisStepTexts[lang] || analysisStepTexts.de;
+    }
+
+    function renderAnalysisProgress(index) {
+      if (!statusEl) return;
+      const t = getAnalysisText();
+      const steps = t.steps || [];
+      const items = steps.map((step, i) => {
+        const cls = i < index ? "done" : (i === index ? "active" : "");
+        const symbol = i < index ? "✓" : (i === index ? "…" : "");
+        return `<li class="${cls}"><span class="analysis-dot">${symbol}</span><span>${escapeHtml(step)}</span></li>`;
+      }).join("");
+
+      statusEl.innerHTML = `
+        <div class="analysis-progress">
+          <div class="analysis-progress-title">${escapeHtml(t.title)}</div>
+          <ul class="analysis-progress-list">${items}</ul>
+          <div class="analysis-progress-note">${escapeHtml(t.note)}</div>
+        </div>
+      `;
+      show(statusEl);
+    }
+
+    function setAnalysisProgressStep(index) {
+      analysisProgressIndex = Math.max(0, Math.min(index, 4));
+      renderAnalysisProgress(analysisProgressIndex);
+    }
+
+    function startAnalysisProgress() {
+      stopAnalysisProgress();
+      analysisProgressIndex = 0;
+      renderAnalysisProgress(0);
+
+      const plan = [
+        { after: 4500, step: 1 },
+        { after: 12000, step: 2 },
+        { after: 26000, step: 3 },
+        { after: 45000, step: 4 }
+      ];
+
+      const started = Date.now();
+      analysisStatusTimer = setInterval(() => {
+        const elapsed = Date.now() - started;
+        for (const item of plan) {
+          if (elapsed >= item.after && analysisProgressIndex < item.step) {
+            setAnalysisProgressStep(item.step);
           }
-        ]
-      })
-    }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    console.error("Gemini Fehler:", data);
-    throw new Error(data?.error?.message || "Gemini API Fehler");
-  }
-
-  const text =
-    data?.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text || "")
-      .join("\n")
-      .trim() || "";
-
-  if (!text) {
-    throw new Error("Keine Antwort von Gemini erhalten");
-  }
-
-  return text;
-}
-
-function cleanText(text) {
-  return String(text || "")
-    .replace(/\*\*/g, "")
-    .replace(/^\s*\d+\.\s*/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-
-function shortenNextStepsAnswer(text, lang) {
-  const clean = cleanText(text)
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  if (!clean) return "";
-
-  const maxCharsByLang = {
-    de: 430,
-    tr: 430,
-    bg: 500,
-    ro: 500,
-    en: 430,
-    ar: 550
-  };
-
-  const maxChars = maxCharsByLang[lang] || 430;
-
-  if (clean.length <= maxChars) {
-    return clean;
-  }
-
-  const lines = clean
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const keep = [];
-  let total = 0;
-
-  for (const line of lines) {
-    const isHeading = line.endsWith(":");
-    const isNumberedStep = /^\d+\./.test(line);
-
-    if (isHeading) {
-      keep.push(line);
-      total += line.length + 1;
-      continue;
+        }
+      }, 1000);
     }
 
-    if (isNumberedStep && keep.filter((x) => /^\d+\./.test(x)).length >= 3) {
-      continue;
+    function stopAnalysisProgress() {
+      if (analysisStatusTimer) {
+        clearInterval(analysisStatusTimer);
+        analysisStatusTimer = null;
+      }
     }
 
-    const nextTotal = total + line.length + 1;
-
-    if (nextTotal > maxChars) {
-      break;
+    function show(el) {
+      if (el) el.classList.remove("hidden");
     }
 
-    keep.push(line);
-    total = nextTotal;
+    function hide(el) {
+      if (el) el.classList.add("hidden");
+    }
 
-    if (keep.length >= 8) break;
-  }
+    function setButton(id, title, subtitle) {
+      const btn = document.getElementById(id);
+      if (btn) btn.innerHTML = title + "<span>" + subtitle + "</span>";
+    }
 
-  let result = keep.join("\n").trim();
+    function stripLeadingEmoji(text) {
+      return String(text || "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
+    }
 
-  if (!result || result.length < 80) {
-    result = clean.slice(0, maxChars).trim();
-  }
+    function setPopularButton(id, icon, title, subtitle) {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.innerHTML = '<div class="popular-icon">' + icon + '</div><div><strong>' + stripLeadingEmoji(title) + '</strong><span>' + (subtitle || '') + '</span></div>';
+    }
 
-  const sentenceEndings = [".", "!", "?", "؟"];
-  const lastDot = Math.max(
-    result.lastIndexOf("."),
-    result.lastIndexOf("!"),
-    result.lastIndexOf("?"),
-    result.lastIndexOf("؟")
-  );
+    function updateHomeLanguage() {
+      const lang = homeLangEl ? homeLangEl.value : "de";
+      const t = homeTexts[lang] || homeTexts.de;
 
-  if (lastDot > 120) {
-    result = result.slice(0, lastDot + 1).trim();
-  }
+      if (homeSubTitleEl) homeSubTitleEl.textContent = t.sub;
+      if (homeLangLabelEl) homeLangLabelEl.textContent = t.langLabel;
+      if (homeQuestionTitleEl) homeQuestionTitleEl.textContent = t.question;
 
-  result = result.replace(/[,\s]+$/, "");
+      setButton("openBriefBtn", t.brief, t.briefSub);
+      setButton("soonAntraegeBtn", t.antraege, t.antraegeSub);
+      setButton("soonAntwortBtn", t.antwort, t.antwortSub);
+      setButton("soonFotoBtn", t.foto, t.fotoSub);
+      setButton("soonHilfeBtn", t.hilfe, t.hilfeSub);
 
-  if (!sentenceEndings.some((ending) => result.endsWith(ending))) {
-    result += ".";
-  }
+      const popularTitleEl = document.getElementById("popularTitle");
+      const popularHintEl = document.getElementById("popularHint");
+      if (popularTitleEl && t.popularTitle) popularTitleEl.textContent = t.popularTitle;
+      if (popularHintEl && t.popularHint) popularHintEl.textContent = t.popularHint;
+      setPopularButton("popularCrypto", "🔥", t.popularCrypto || "Krypto verstehen", t.popularCryptoSub || "Coins, Risiken und Chancen einfach erklärt");
+      setPopularButton("popularAuto", "🚗", t.popularAuto || "Auto-Angebot prüfen", t.popularAutoSub || "Kauf, Verkauf, Mängel, Versicherung");
+      setPopularButton("popularMessage", "💬", t.popularMessage || "Nachricht schreiben", t.popularMessageSub || "WhatsApp, Dating, Streit, Entschuldigung");
+      setPopularButton("popularMoney", "💶", t.popularMoney || "Anträge & Geld", t.popularMoneySub || "Jobcenter, Wohngeld, Krankenkasse");
+      setPopularButton("popularPhoto", "📸", t.popularPhoto || "Foto erklären", t.popularPhotoSub || "Produkt, Medikament, Screenshot, Anleitung");
+      setPopularButton("popularFun", "⭐", t.popularFun || "Unterhaltung", t.popularFunSub || "Horoskop, Filme, Sport, Rezepte");
+    }
 
-  return result;
-}
+    function updateBriefLanguage() {
+      const lang = langEl ? langEl.value : "de";
+      const t = briefTexts[lang] || briefTexts.de;
+      const u = uiTexts[lang] || uiTexts.de;
 
-function extractJson(text) {
-  const raw = String(text || "").trim();
+      const briefSubTitle = document.getElementById("briefSubTitle");
+      const briefTextLabel = document.getElementById("briefTextLabel");
+      const briefPhotoLabel = document.getElementById("briefPhotoLabel");
+      const photoHintText = document.getElementById("photoHintText");
 
-  const fenced = raw.match(/```json\s*([\s\S]*?)```/i);
-  if (fenced) {
-    return JSON.parse(fenced[1]);
-  }
+      if (briefSubTitle) briefSubTitle.textContent = t.sub;
+      if (briefLangLabelEl) briefLangLabelEl.textContent = t.langLabel || "Sprache";
+      if (analysisMiniLabelEl) analysisMiniLabelEl.textContent = t.analysisLabel || "Analyse";
+      if (answerMiniLabelEl) answerMiniLabelEl.textContent = t.answerLabel || "Antwort";
+      if (assistantTitleEl) assistantTitleEl.textContent = t.assistantTitle || "Schick mir dein Schreiben.";
+      if (assistantSubEl) assistantSubEl.textContent = t.assistantSub || "Foto hochladen oder Text einfügen.";
+      if (briefTextLabel) briefTextLabel.textContent = t.textLabel;
+      if (briefPhotoLabel) briefPhotoLabel.textContent = t.photoLabel;
+      if (photoHintText) photoHintText.textContent = t.hint;
+      if (briefTextEl) briefTextEl.placeholder = t.placeholder;
+      if (analyzeBtn) analyzeBtn.textContent = t.analyze;
+      if (resetBtn) resetBtn.textContent = t.back;
 
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) {
-    throw new Error("Konnte keine JSON-Antwort lesen");
-  }
+      const shortTitleEl = document.getElementById("shortTitle");
+      const detailTitleEl = document.getElementById("detailTitle");
+      const questionTitleEl = document.getElementById("frageTitle");
+      const answerTitleEl = document.getElementById("frageAntwortTitle");
+      const readShortBtnEl = document.getElementById("readShortBtn");
+      const readAllBtnEl = document.getElementById("readAllBtn");
+      const stopBtnEl = document.getElementById("stopBtn");
+     const stopDetailsBtnEl = document.getElementById("stopDetailsBtn");
+     const stopAnswerBtnEl = document.getElementById("stopAnswerBtn");
+      if (shortTitleEl) shortTitleEl.textContent = u.shortTitle || "Kurz erklärt";
+      if (detailTitleEl) detailTitleEl.textContent = u.detailTitle || "Mehr Details";
+      if (questionTitleEl) questionTitleEl.textContent = u.questionTitle || "Eigene Frage senden";
+      if (answerTitleEl) answerTitleEl.textContent = u.answerTitle || "Antwort";
+      if (readShortBtnEl) readShortBtnEl.textContent = u.readShort || "🔊 Kurz vorlesen";
+      if (readAllBtnEl) readAllBtnEl.textContent = u.readDetails || "🔊 Details vorlesen";
+      if (stopBtnEl) stopBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
+if (stopDetailsBtnEl) stopDetailsBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
+if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
+      currentLang = lang;
+      updateQuestionLanguage();
+    }
 
-  return JSON.parse(match[0]);
-}
+    function updateQuestionLanguage() {
+      const lang = langEl ? langEl.value : currentLang || "de";
+      const t = questionTexts[lang] || questionTexts.de;
 
-function normalizeString(value) {
-  if (value === null || value === undefined) return "";
-  return String(value).trim().replace(/\s+/g, " ");
-}
+      if (frageTitleEl) frageTitleEl.textContent = t.title;
+      if (frageHelpEl) frageHelpEl.textContent = t.help;
+      if (quickQuestionTitleEl) quickQuestionTitleEl.textContent = t.quickTitle;
+      if (quickWhatBtn) quickWhatBtn.textContent = t.what;
+      if (quickDeadlineBtn) quickDeadlineBtn.textContent = t.deadline;
+      if (quickConsequenceBtn) quickConsequenceBtn.textContent = t.consequence;
+      if (quickReplyBtn) quickReplyBtn.textContent = t.reply;
+     if (ownQuestionBtn) ownQuestionBtn.textContent = t.own;
+      if (frageTextLabelEl) frageTextLabelEl.textContent = t.label;
+      if (frageTextEl) frageTextEl.placeholder = t.placeholder;
+      if (frageBtn) frageBtn.textContent = t.button;
+      if (frageAntwortTitleEl) frageAntwortTitleEl.textContent = t.answerTitle;
+      if (readFrageAntwortBtn) readFrageAntwortBtn.textContent = t.readAnswer;
+    }
 
-function normalizeArray(value) {
-  if (!Array.isArray(value)) return [];
+    function setQuickQuestion(button, key) {
+      if (!button) return;
 
-  return value
-    .map((item) => normalizeString(item))
-    .filter(Boolean);
-}
+      button.addEventListener("click", () => {
+        const lang = langEl ? langEl.value : currentLang || "de";
+        const t = questionTexts[lang] || questionTexts.de;
 
-function normalizeActionArray(value) {
-  if (!Array.isArray(value)) return [];
+        if (frageTextEl) {
+          frageTextEl.value = t[key];
+          frageTextEl.focus();
+        }
+      });
+    }
 
-  return value
-    .map((item) => {
-      if (!item) return "";
-
-      if (typeof item === "string") {
-        return normalizeString(item);
+    function openBriefArea() {
+      if (homeLangEl && langEl) {
+        langEl.value = homeLangEl.value;
+        currentLang = homeLangEl.value;
       }
 
-      if (typeof item === "object") {
-        return normalizeString(
-          item.label ||
-          item.title ||
-          item.name ||
-          item.text ||
-          item.action ||
-          item.value ||
-          item.code ||
-          ""
-        );
+      hide(homeCardEl);
+      show(briefInputCardEl);
+      updateBriefLanguage();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function goBackHome() {
+      if (briefTextEl) briefTextEl.value = "";
+      selectedImageFiles = [];
+      if (bilderEl) bilderEl.value = "";
+      if (cameraInputEl) cameraInputEl.value = "";
+      updateUploadState();
+
+      activeRequestId++;
+      clearOutputState();
+
+      hide(briefInputCardEl);
+      show(homeCardEl);
+      updateHomeLanguage();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function setStatus(text) {
+      if (!statusEl) return;
+      statusEl.textContent = text;
+      show(statusEl);
+    }
+
+    function clearStatus() {
+      stopAnalysisProgress();
+      if (!statusEl) return;
+      statusEl.textContent = "";
+      hide(statusEl);
+    }
+
+    function setError(text) {
+      if (!errorBoxEl) return;
+      errorBoxEl.textContent = text;
+      show(errorBoxEl);
+    }
+
+    function clearError() {
+      if (!errorBoxEl) return;
+      errorBoxEl.textContent = "";
+      hide(errorBoxEl);
+    }
+
+    function setOk(text) {
+      if (!okBoxEl) return;
+      okBoxEl.textContent = text;
+      show(okBoxEl);
+    }
+
+    function clearOk() {
+      if (!okBoxEl) return;
+      okBoxEl.textContent = "";
+      hide(okBoxEl);
+    }
+
+    function clearWarning() {
+      if (!warningTextEl) return;
+      warningTextEl.textContent = "";
+      hide(warningCardEl);
+    }
+
+    function clearAudioStatus() {
+      if (!audioStatusEl) return;
+      audioStatusEl.textContent = "";
+      hide(audioStatusEl);
+    }
+
+    function setAudioStatus(text) {
+      if (!audioStatusEl) return;
+      audioStatusEl.textContent = text;
+      show(audioStatusEl);
+    }
+
+    function revokeAudioUrl() {
+      if (activeAudioUrl) {
+        URL.revokeObjectURL(activeAudioUrl);
+        activeAudioUrl = "";
+      }
+    }
+
+    function stopAudio() {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
       }
 
-      return normalizeString(item);
-    })
-    .filter((item) => item && item !== "[object Object]");
-}
+      activeUtterance = null;
 
-function normalizeInfo(info) {
-  function normalizePerson(value) {
-    const v = normalizeString(value);
+      if (audioPlayerEl) {
+        audioPlayerEl.pause();
+        audioPlayerEl.currentTime = 0;
+        audioPlayerEl.removeAttribute("src");
+        audioPlayerEl.load();
+        hide(audioPlayerEl);
+      }
 
-    if (!v) return "";
+      revokeAudioUrl();
+      clearAudioStatus();
+    }
 
-    const lower = v.toLowerCase();
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
-    const invalidExact = new Set([
-      "sie",
-      "ihr",
-      "ihnen",
-      "empfänger",
-      "adressat",
-      "adressatin",
-      "betroffene person",
-      "person",
-      "unbekannt",
-      "nicht genannt",
-      "nicht erkennbar",
-      "n/a",
-      "-"
-    ]);
+    function getChatSuggestionTexts() {
+      const lang = getSelectedLang();
+      const map = {
+        de: ["Was soll ich jetzt tun?", "Schreib mir eine Antwort", "Welche Unterlagen brauche ich?"],
+        tr: ["Şimdi ne yapmalıyım?", "Benim için cevap yaz", "Hangi belgeler lazım?"],
+        bg: ["Какво да направя сега?", "Напиши ми отговор", "Какви документи ми трябват?"],
+        ro: ["Ce trebuie să fac acum?", "Scrie-mi un răspuns", "Ce documente îmi trebuie?"],
+        ar: ["ماذا أفعل الآن؟", "اكتب لي ردًا", "ما المستندات المطلوبة؟"],
+        en: ["What should I do now?", "Write me a reply", "Which documents do I need?"]
+      };
+      return map[lang] || map.de;
+    }
 
-    if (invalidExact.has(lower)) return "";
-    if (/^(herr|frau)$/i.test(v)) return "";
-    if (/^[A-Z0-9\-\/]{6,}$/.test(v.replace(/\s+/g, ""))) return "";
-    if (v.length < 2) return "";
+    function fillChatSuggestion(text) {
+      if (!frageTextEl) return;
+      frageTextEl.value = text || "";
+      frageTextEl.focus();
+      frageTextEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
 
-    return v;
+    function renderChatSuggestions() {
+      if (!chatMessagesEl) return;
+      const old = chatMessagesEl.querySelectorAll(".chat-suggestions");
+      old.forEach((el) => el.remove());
+      const items = getChatSuggestionTexts();
+      const wrap = document.createElement("div");
+      wrap.className = "chat-suggestions";
+      items.forEach((text) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chat-suggestion-btn";
+        btn.textContent = text;
+        btn.onclick = () => fillChatSuggestion(text);
+        wrap.appendChild(btn);
+      });
+      chatMessagesEl.appendChild(wrap);
+    }
+
+
+    function appendChatMessage(role, text, options = {}) {
+      if (!chatMessagesEl) return;
+      const clean = String(text || "").trim();
+      if (!clean) return;
+
+      const bubble = document.createElement("div");
+      bubble.className = "chat-bubble " + (role === "user" ? "user" : "assistant");
+      const meta = document.createElement("span");
+      meta.className = "chat-meta " + (role === "user" ? "user" : "assistant");
+      meta.textContent = role === "user" ? "Du" : "Hilfe24";
+      const body = document.createElement("div");
+      body.textContent = clean;
+      bubble.appendChild(meta);
+      bubble.appendChild(body);
+      chatMessagesEl.appendChild(bubble);
+
+      if (!options.skipHistory) {
+        chatHistory.push({
+          role: role === "user" ? "user" : "assistant",
+          text: clean
+        });
+        if (chatHistory.length > 12) {
+          chatHistory = chatHistory.slice(chatHistory.length - 12);
+        }
+      }
+
+      if (role !== "user" && !options.noSuggestions) {
+        renderChatSuggestions();
+      }
+
+      if (chatEmptyHintEl) hide(chatEmptyHintEl);
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+
+    function resetChatMessages() {
+      chatHistory = [];
+      if (chatMessagesEl) chatMessagesEl.innerHTML = "";
+      if (chatEmptyHintEl) show(chatEmptyHintEl);
+    }
+
+    async function prepareImagesForDataCheck() {
+      const files = selectedImageFiles.slice(0, 3);
+      const bilder = [];
+      for (const file of files) {
+        const compressed = await compressImageForUpload(file);
+        bilder.push({ mimeType: compressed.mimeType, imageData: compressed.imageData });
+      }
+      return bilder;
+    }
+
+    async function runDataCheck() {
+      const lang = getSelectedLang();
+      if (!selectedImageFiles || selectedImageFiles.length === 0) {
+        appendChatMessage("assistant", "Bitte lade zuerst Fotos vom Brief hoch. Dann kann ich Name, Aktenzeichen, Betrag, Frist und Datum genauer prüfen.");
+        return;
+      }
+
+      if (dataCheckBtn) dataCheckBtn.disabled = true;
+      if (frageStatusEl) {
+        frageStatusEl.textContent = "Daten werden genauer geprüft...";
+        show(frageStatusEl);
+      }
+      if (frageErrorEl) hide(frageErrorEl);
+
+      try {
+        appendChatMessage("user", "Daten genauer prüfen");
+        const bilder = await prepareImagesForDataCheck();
+        const response = await fetch("/api/daten-pruefen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lang, bilder, meta: currentMeta || {} })
+        });
+        const rawText = await response.text();
+        let data = null;
+        try { data = rawText ? JSON.parse(rawText) : null; } catch (e) { throw new Error("Die Datenprüfung konnte nicht sauber gelesen werden."); }
+        if (!response.ok || !data || !data.ok) throw new Error((data && data.error) || "Datenprüfung fehlgeschlagen.");
+        const answer = data.text || "Die Datenprüfung ist fertig. Bitte prüfe unsichere Daten im Originalbrief.";
+        appendChatMessage("assistant", answer);
+        if (frageAntwortEl) frageAntwortEl.textContent = answer;
+        hide(frageAntwortBoxEl);
+      } catch (err) {
+        const msg = String(err && err.message ? err.message : "Datenprüfung fehlgeschlagen.");
+        if (frageErrorEl) { frageErrorEl.textContent = msg; show(frageErrorEl); }
+        appendChatMessage("assistant", "Die genauere Datenprüfung hat gerade nicht geklappt. Bitte prüfe Name, Aktenzeichen, Betrag und Frist im Originalbrief.");
+      } finally {
+        if (frageStatusEl) hide(frageStatusEl);
+        if (dataCheckBtn) dataCheckBtn.disabled = false;
+      }
+    }
+
+    function renderHelperCards(helper) {
+      if (!helperCardEl || !helperContentEl) return;
+
+      if (!helper || typeof helper !== "object") {
+        helperContentEl.innerHTML = "";
+        hide(helperCardEl);
+        return;
+      }
+
+      const pill = (label, value, warn) => `
+        <div class="helper-pill ${warn ? "warn" : ""}">
+          <small>${escapeHtml(label)}</small>
+          <strong>${escapeHtml(value || "-")}</strong>
+        </div>`;
+
+
+      const lang = getSelectedLang();
+      const helperLabels = {
+        de: { data: "Erkannte Daten", steps: "Was du jetzt tun solltest", actions: "Passende Aktionen", whatsapp: "Kurz für WhatsApp", first: "Erster Schritt", type: "Briefart", urgency: "Dringlichkeit", react: "Musst du reagieren?", money: "Geld betroffen?", unknown: "Unklar", check: "Bitte prüfen" },
+        tr: { data: "Algılanan bilgiler", steps: "Şimdi yapman gerekenler", actions: "Uygun adımlar", whatsapp: "WhatsApp için kısa", first: "İlk adım", type: "Yazı türü", urgency: "Aciliyet", react: "Cevap vermen gerekiyor mu?", money: "Para konusu var mı?", unknown: "Belirsiz", check: "Lütfen kontrol et" },
+        bg: { data: "Разпознати данни", steps: "Какво трябва да направиш сега", actions: "Подходящи действия", whatsapp: "Кратко за WhatsApp", first: "Първа стъпка", type: "Вид писмо", urgency: "Спешност", react: "Трябва ли да реагираш?", money: "Има ли пари?", unknown: "Неясно", check: "Моля, провери" },
+        ro: { data: "Date recunoscute", steps: "Ce trebuie să faci acum", actions: "Acțiuni potrivite", whatsapp: "Pe scurt pentru WhatsApp", first: "Primul pas", type: "Tip document", urgency: "Urgență", react: "Trebuie să reacționezi?", money: "Este vorba de bani?", unknown: "Neclar", check: "Te rog verifică" },
+        ar: { data: "البيانات التي تم التعرف عليها", steps: "ماذا تفعل الآن", actions: "خطوات مناسبة", whatsapp: "مختصر للواتساب", first: "الخطوة الأولى", type: "نوع الرسالة", urgency: "الأهمية", react: "هل يجب الرد؟", money: "هل يوجد مبلغ مالي؟", unknown: "غير واضح", check: "يرجى التحقق" },
+        en: { data: "Detected data", steps: "What to do now", actions: "Suggested actions", whatsapp: "Short for WhatsApp", first: "First step", type: "Document type", urgency: "Urgency", react: "Do you need to react?", money: "Money involved?", unknown: "Unclear", check: "Please check" }
+      };
+      const HL = helperLabels[lang] || helperLabels.de;
+
+      const helpTip = String(helper.help_tip || "").trim();
+      const helpTipLabels = {
+        de: "Hilfe-Tipp",
+        tr: "Yardım ipucu",
+        bg: "Съвет за помощ",
+        ro: "Sfat util",
+        ar: "نصيحة مساعدة",
+        en: "Helpful tip"
+      };
+      const helpTipHtml = helpTip ? `
+        <div class="helper-section help-tip-section">
+          <div class="helper-section-title">💡 ${escapeHtml(helpTipLabels[lang] || helpTipLabels.de)}</div>
+          <div class="help-tip-text">${escapeHtml(helpTip)}</div>
+        </div>` : "";
+
+      const rows = Array.isArray(helper.data_rows) ? helper.data_rows : [];
+      const dataHtml = rows.length ? `
+        <div class="helper-section">
+          <div class="helper-section-title">${escapeHtml(HL.data)}</div>
+          <div class="data-list">
+            ${rows.map((row) => `
+              <div class="data-row ${row.status === "check" ? "check" : ""}">
+                <div class="data-label">${escapeHtml(row.label)}</div>
+                <div class="data-value">${escapeHtml(row.value || "-")}</div>
+              </div>`).join("")}
+          </div>
+        </div>` : "";
+
+      const steps = Array.isArray(helper.next_steps) ? helper.next_steps.filter(Boolean).slice(0, 4) : [];
+      const stepsHtml = steps.length ? `
+        <div class="helper-section">
+          <div class="helper-section-title">${escapeHtml(HL.steps)}</div>
+          <ol class="step-list">${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
+        </div>` : "";
+
+      function normalizeActionLabel(action) {
+        if (!action) return "";
+
+        if (typeof action === "string") {
+          return action.trim();
+        }
+
+        if (typeof action === "object") {
+          const possible = action.label || action.title || action.name || action.text || action.action || action.value || action.code || "";
+          return String(possible || "").trim();
+        }
+
+        return String(action || "").trim();
+      }
+
+      const actions = Array.isArray(helper.suggested_actions)
+        ? helper.suggested_actions
+            .map(normalizeActionLabel)
+            .filter((item) => item && item !== "[object Object]")
+            .slice(0, 5)
+        : [];
+
+      const actionHtml = actions.length ? `
+        <div class="helper-section">
+          <div class="helper-section-title">${escapeHtml(HL.actions)}</div>
+          <div class="action-chips">${actions.map((a) => `<span class="action-chip">${escapeHtml(a)}</span>`).join("")}</div>
+        </div>` : "";
+
+      const warningHtml = helper.unsafe_notice ? `
+        <div class="helper-section">
+          <div class="safe-notice">${escapeHtml(helper.unsafe_notice)}</div>
+        </div>` : "";
+
+      // WhatsApp-Zusammenfassung wird nicht automatisch angezeigt.
+      // Später kann daraus ein Button werden: „Für WhatsApp zusammenfassen“.
+      const whatsappHtml = "";
+
+      helperContentEl.innerHTML = `
+        <div class="helper-grid">
+          ${pill(HL.type, helper.briefart_label || "-")}
+          ${pill(HL.urgency, helper.urgency_label || HL.unknown, String(helper.urgency_label || "").toLowerCase().includes("hoch") || String(helper.urgency_label || "").toLowerCase().includes("yüksek") || String(helper.urgency_label || "").toLowerCase().includes("вис") || String(helper.urgency_label || "").toLowerCase().includes("ridic") || String(helper.urgency_label || "").includes("عالية") || String(helper.urgency_label || "").toLowerCase().includes("high"))}
+          ${pill(HL.react, helper.must_react_label || HL.check)}
+          ${pill(HL.money, helper.money_label || HL.check)}
+        </div>
+        ${helpTipHtml}
+        ${helper.first_step ? `<div class="helper-section"><div class="helper-section-title">${escapeHtml(HL.first)}</div><div class="copy-box"><strong>${escapeHtml(helper.first_step)}</strong></div></div>` : ""}
+        ${warningHtml}
+        ${dataHtml}
+        ${stepsHtml}
+        ${actionHtml}
+        ${whatsappHtml}
+      `;
+
+      show(helperCardEl);
+    }
+
+    function clearResults() {
+      if (kurzTextEl) kurzTextEl.textContent = "";
+      if (detailTextEl) detailTextEl.textContent = "";
+      if (helperContentEl) helperContentEl.innerHTML = "";
+
+      if (frageTextEl) frageTextEl.value = "";
+      if (frageAntwortEl) frageAntwortEl.textContent = "";
+      if (frageErrorEl) frageErrorEl.textContent = "";
+      if (frageStatusEl) frageStatusEl.textContent = "";
+      resetChatMessages();
+
+      currentKurzText = "";
+      currentDetailText = "";
+      currentBriefText = "";
+      currentMeta = {};
+
+      hide(resultCardEl);
+      hide(helperCardEl);
+      hide(detailCardEl);
+      hide(detailToggleCardEl);
+
+      if (toggleDetailsBtn) {
+        toggleDetailsBtn.textContent = getUiText().detailsShow;
+      }
+
+      hide(frageCardEl);
+      hide(frageAntwortBoxEl);
+      hide(frageErrorEl);
+      hide(frageStatusEl);
+
+      stopAudio();
+    }
+
+    function clearOutputState() {
+      clearError();
+      clearOk();
+      setAnalysisProgressStep(4);
+    clearStatus();
+      clearWarning();
+      clearResults();
+    }
+
+    function updateUploadState() {
+      if (!previewGridEl) return;
+
+      previewGridEl.innerHTML = "";
+      const lang = getSelectedLang();
+      const t = briefTexts[lang] || briefTexts.de;
+      const files = selectedImageFiles.slice(0, 3);
+
+      if (uploadFileInfoEl) {
+        uploadFileInfoEl.textContent = files.length
+          ? files.length + " " + (t.uploadSelected || "Fotos ausgewählt")
+          : (t.uploadEmpty || "Noch keine Fotos ausgewählt");
+      }
+
+      if (uploadClearBtnEl) {
+        if (files.length) {
+          uploadClearBtnEl.classList.add("visible");
+        } else {
+          uploadClearBtnEl.classList.remove("visible");
+        }
+      }
+
+      for (const file of files) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.onload = () => URL.revokeObjectURL(img.src);
+        previewGridEl.appendChild(img);
+      }
+    }
+
+    function addSelectedImages(files) {
+      const lang = getSelectedLang();
+      const t = briefTexts[lang] || briefTexts.de;
+      const incoming = Array.from(files || []).filter(file => file && file.type && file.type.startsWith("image/"));
+
+      for (const file of incoming) {
+        if (selectedImageFiles.length >= 3) break;
+        selectedImageFiles.push(file);
+      }
+
+      if (incoming.length && selectedImageFiles.length >= 3 && incoming.length > 3) {
+        alert(t.uploadLimit || "Du kannst maximal 3 Fotos hinzufügen.");
+      }
+
+      updateUploadState();
+    }
+
+    function clearSelectedImages() {
+      selectedImageFiles = [];
+      if (bilderEl) bilderEl.value = "";
+      if (cameraInputEl) cameraInputEl.value = "";
+      updateUploadState();
+    }
+
+    function renderPreviews() {
+      updateUploadState();
+    }
+
+    async function fileToBase64(file) {
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          const base64 = result.split(",")[1] || "";
+          resolve(base64);
+        };
+
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function compressImageForUpload(file) {
+      if (!file) {
+        return { mimeType: "image/jpeg", imageData: "" };
+      }
+
+      const mimeType = file.type || "image/jpeg";
+      const supportedOriginalTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      const originalLimitBytes = 14 * 1024 * 1024;
+
+      // V8.5: Für Briefanalyse möglichst das Originalfoto senden.
+      // Canvas-Komprimierung wird nur genutzt, wenn das Bild zu groß ist
+      // oder das Format für die KI wahrscheinlich ungeeignet ist.
+      if (
+        mimeType &&
+        supportedOriginalTypes.includes(mimeType.toLowerCase()) &&
+        file.size > 0 &&
+        file.size <= originalLimitBytes
+      ) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: mimeType.toLowerCase() === "image/jpg" ? "image/jpeg" : mimeType,
+          imageData
+        };
+      }
+
+      if (!mimeType.startsWith("image/")) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: mimeType || "image/jpeg",
+          imageData
+        };
+      }
+
+      const maxSize = 3000;
+      const quality = 0.92;
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = dataUrl;
+      });
+
+      const originalWidth = img.naturalWidth || img.width;
+      const originalHeight = img.naturalHeight || img.height;
+
+      if (!originalWidth || !originalHeight) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: mimeType || "image/jpeg",
+          imageData
+        };
+      }
+
+      const scale = Math.min(1, maxSize / Math.max(originalWidth, originalHeight));
+      const width = Math.round(originalWidth * scale);
+      const height = Math.round(originalHeight * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", quality);
+      });
+
+      if (!blob) {
+        const imageData = await fileToBase64(file);
+        return {
+          mimeType: mimeType || "image/jpeg",
+          imageData
+        };
+      }
+
+      const imageData = await fileToBase64(blob);
+
+      return {
+        mimeType: "image/jpeg",
+        imageData
+      };
+    }
+
+    function base64ToBlob(base64, mimeType) {
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+
+      const byteArray = new Uint8Array(byteNumbers);
+      return new Blob([byteArray], { type: mimeType });
+    }
+
+    function getSpeechLanguageCode(lang) {
+      const code = String(lang || getSelectedLang() || "de").toLowerCase();
+
+      const map = {
+        de: "de-DE",
+        tr: "tr-TR",
+        bg: "bg-BG",
+        ar: "ar-SA",
+        ro: "ro-RO",
+        en: "en-US"
+      };
+
+      return map[code] || "de-DE";
+    }
+
+    function prepareAudioText(text) {
+      let clean = String(text || "")
+        .replace(/\*\*/g, "")
+        .replace(/\[[^\]]*\]/g, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+      const lines = clean
+        .split("\n")
+        .map(line => line.trim())
+        .filter(Boolean);
+
+      // Beim Vorlesen nicht den ganzen Roman lesen. Die ersten klaren Zeilen reichen.
+      clean = lines.slice(0, 8).join(". ");
+
+      const maxChars = 950;
+      if (clean.length > maxChars) {
+        clean = clean.slice(0, maxChars);
+        const lastEnd = Math.max(clean.lastIndexOf("."), clean.lastIndexOf("!"), clean.lastIndexOf("?"), clean.lastIndexOf("؟"));
+        if (lastEnd > 180) clean = clean.slice(0, lastEnd + 1);
+      }
+
+      return clean.trim();
+    }
+
+    function chooseSpeechVoice(langCode) {
+      if (!window.speechSynthesis) return null;
+
+      const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+      if (!voices || !voices.length) return null;
+
+      const exact = voices.find(v => String(v.lang || "").toLowerCase() === langCode.toLowerCase());
+      if (exact) return exact;
+
+      const prefix = langCode.split("-")[0].toLowerCase();
+      return voices.find(v => String(v.lang || "").toLowerCase().startsWith(prefix)) || null;
+    }
+
+    async function playServerAudio(text) {
+      if (!text || !text.trim()) {
+        alert(getUiText().noAudioText);
+        return;
+      }
+
+      if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
+        setError(getUiText().audioError || "Audio ist auf diesem Gerät nicht verfügbar.");
+        return;
+      }
+
+      const lang = getSelectedLang();
+      const speechLang = getSpeechLanguageCode(lang);
+      const audioText = prepareAudioText(text);
+
+      if (!audioText) {
+        alert(getUiText().noAudioText);
+        return;
+      }
+
+      stopAudio();
+      hide(audioPlayerEl);
+      setAudioStatus("🔊");
+
+      const utterance = new SpeechSynthesisUtterance(audioText);
+      utterance.lang = speechLang;
+      utterance.rate = 0.92;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      const voice = chooseSpeechVoice(speechLang);
+      if (voice) utterance.voice = voice;
+
+      utterance.onend = function () {
+        activeUtterance = null;
+        clearAudioStatus();
+      };
+
+      utterance.onerror = function () {
+        activeUtterance = null;
+        clearAudioStatus();
+        setError(getUiText().audioError || "Audio konnte nicht gestartet werden.");
+      };
+
+      activeUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
+    }
+
+  async function explainLetter() {
+  const requestId = ++activeRequestId;
+
+  const text = briefTextEl ? briefTextEl.value.trim() : "";
+  const files = selectedImageFiles.slice(0, 3);
+  const lang = getSelectedLang();
+
+  currentLang = lang;
+  clearOutputState();
+
+  if (!text && files.length === 0) {
+    setError(getUiText().noInput);
+    return;
   }
 
-  function normalizeChoice(value, allowed, fallback = "") {
-    const v = normalizeString(value).toLowerCase();
-    if (!v) return fallback;
-    return allowed.includes(v) ? v : fallback;
+  if (files.length > 3) {
+    setError(getUiText().maxImages);
+    return;
   }
 
-  function normalizePersonArray(value) {
-    if (!Array.isArray(value)) return [];
-    return value
-      .map((item) => normalizePerson(item))
-      .filter(Boolean);
-  }
-
-  return {
-    absender_original: normalizeString(info.absender_original),
-    absender_kurz: normalizeString(info.absender_kurz),
-    email_adresse: normalizeString(info.email_adresse),
-    briefart: normalizeString(info.briefart),
-    betroffene_person: normalizePerson(info.betroffene_person),
-    empfaenger: normalizePerson(info.empfaenger),
-    betroffene_personen: normalizePersonArray(info.betroffene_personen),
-    zeugen: normalizePersonArray(info.zeugen),
-    angeklagte_beschuldigte: normalizePersonArray(info.angeklagte_beschuldigte),
-    weitere_genannte_personen: normalizePersonArray(info.weitere_genannte_personen),
-    aktenzeichen_gericht: normalizeString(info.aktenzeichen_gericht),
-    aktenzeichen_staatsanwaltschaft: normalizeString(info.aktenzeichen_staatsanwaltschaft),
-    worum_geht_es: normalizeString(info.worum_geht_es),
-    wichtigste_punkte: normalizeArray(info.wichtigste_punkte),
-    was_ist_zu_tun: normalizeArray(info.was_ist_zu_tun),
-    frist: normalizeString(info.frist),
-    termin: normalizeString(info.termin),
-    folge_wenn_nichts: normalizeString(info.folge_wenn_nichts),
-    versteckte_wichtige_info: normalizeString(info.versteckte_wichtige_info),
-    kurz_gesagt: normalizeString(info.kurz_gesagt),
-    unsicherheiten: normalizeArray(info.unsicherheiten),
-
-    pflicht_oder_freiwillig: normalizeChoice(
-      info.pflicht_oder_freiwillig,
-      ["pflicht", "freiwillig", "information", "werbung", "unklar"],
-      "unklar"
-    ),
-
-    dringlichkeit: normalizeChoice(
-      info.dringlichkeit,
-      ["hoch", "mittel", "niedrig", "unklar"],
-      "unklar"
-    ),
-
-    naechster_schritt: normalizeString(info.naechster_schritt),
-    betrag: normalizeString(info.betrag),
-    unterlagen: normalizeArray(info.unterlagen),
-    referenzen: normalizeArray(info.referenzen),
-
-    antwort_sprache: normalizeChoice(
-      info.antwort_sprache,
-      ["de", "tr", "bg", "ar", "ro", "en", "unklar"],
-      "unklar"
-    ),
-
-    brief_schwierigkeit: normalizeChoice(
-      info.brief_schwierigkeit,
-      ["leicht", "mittel", "ernst", "unklar"],
-      "unklar"
-    ),
-    was_will_der_absender: normalizeString(info.was_will_der_absender),
-    muss_handeln: normalizeChoice(
-      info.muss_handeln,
-      ["ja", "nein", "unklar"],
-      "unklar"
-    ),
-    geld_betroffen: normalizeChoice(
-      info.geld_betroffen,
-      ["ja", "nein", "unklar"],
-      "unklar"
-    ),
-    risiko_kurz: normalizeString(info.risiko_kurz),
-    erster_sicherer_schritt: normalizeString(info.erster_sicherer_schritt),
-    daten_unsicher: normalizeArray(info.daten_unsicher),
-
-    passende_aktionen: normalizeActionArray(info.passende_aktionen)
-  };
-}
-
-
-function buildHilfe24TextSystemRules() {
-  return `
-HILFE24-TEXTSYSTEM:
-Schreibe nach diesen festen Regeln:
-
-Human:
-- Natürlich, ruhig und menschlich schreiben.
-- Nicht wie Behörde, nicht wie Werbung, nicht wie ein langer KI-Aufsatz.
-
-EL5:
-- So einfach erklären, dass auch Menschen mit wenig Deutsch oder wenig Behördenwissen es verstehen.
-- Kurze Sätze. Einfache Wörter. Eine Aussage pro Satz.
-- Fachbegriffe direkt einfach erklären, wenn sie wichtig sind.
-
-DLTR:
-- Keine Romane. Keine Textwände. Keine unnötigen Details.
-- Nur das schreiben, was der Nutzer jetzt wirklich braucht.
-
-Listify:
-- Wenn mehrere Punkte wichtig sind, kurze Listen nutzen.
-- Maximal 3 bis 5 Punkte, außer der Nutzer fragt ausdrücklich nach mehr.
-
-DataSafe:
-- Namen, Beträge, Fristen, Termine, Aktenzeichen, Kundennummern und Rechnungsnummern nie raten.
-- Wenn ein Wert nicht sicher lesbar ist: "Bitte prüfen" oder in unsicherheiten eintragen.
-- Wenn mehrere Varianten möglich sind, keine Variante behaupten.
-
-ActionFirst:
-- Immer den nächsten praktischen Schritt nennen.
-- Nicht nur erklären, sondern führen.
-
-NoGuess:
-- Keine Fristen, Folgen, Diagnosen, Ansprüche oder Zahlungen erfinden.
-- Keine rechtliche Sicherheit behaupten.
-
-AskOnlyWhenNeeded:
-- Keine langen Antwortvorlagen automatisch erstellen.
-- Antwort, Widerspruch, Ratenzahlung, Terminabsage oder E-Mail nur erstellen, wenn der Nutzer danach fragt oder eine Aktion auswählt.
-
-Erklärung zum Brief:
-- Es gibt nur einen Haupt-Erklärblock.
-- Die Erklärung muss so lang sein wie nötig und so kurz wie möglich.
-- Leichter Brief: wenige klare Sätze.
-- Mittlerer Brief: etwas mehr Erklärung.
-- Ernster/komplizierter Brief: mehrere kurze Abschnitte oder kurze Liste, aber keine Textwand.
-- Der Nutzer muss verstehen: Was ist das? Worum geht es? Was ist wichtig? Was muss ich tun? Gibt es Frist, Termin, Geld oder Risiko?
-- Keine Datenbox wiederholen. Keine Paragraphen ausbreiten. Keine Romane.
-`;
-}
-
-function detectDetailDepth(info) {
-  const joined = [
-    info.briefart,
-    info.worum_geht_es,
-    info.kurz_gesagt,
-    info.folge_wenn_nichts,
-    info.pflicht_oder_freiwillig,
-    info.dringlichkeit,
-    ...(info.wichtigste_punkte || []),
-    ...(info.was_ist_zu_tun || [])
-  ].join(" ").toLowerCase();
-
-  if (hasAny(joined, [
-    "gericht", "polizei", "staatsanwaltschaft", "ladung", "straf", "mahnbescheid",
-    "vollstreckung", "vollstreckungstitel", "pfändung", "gerichtsvollzieher",
-    "inkasso", "kündigung", "räumung", "rückforderung", "aufrechnung",
-    "widerspruch", "rechtsbehelf", "sanktion", "minderung", "jobcenter",
-    "ablehnung", "krankenkasse", "bescheid"
-  ])) {
-    return "ernst";
-  }
-
-  if (hasAny(joined, [
-    "rechnung", "mahnung", "forderung", "zahlung", "frist", "termin",
-    "unterlagen", "nachweise", "vermieter", "versicherung", "schule", "arbeit",
-    "vertrag", "krank", "pflege", "rente"
-  ])) {
-    return "mittel";
-  }
-
-  return "leicht";
-}
-
-function shortenForDetail(text, max = 170) {
-  const clean = String(text || "").trim().replace(/\s+/g, " ").replace(/\.$/, "");
-  if (!clean) return "";
-  if (clean.length <= max) return clean + ".";
-
-  let cut = clean.slice(0, max).trim();
-  const last = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"));
-  if (last > 70) cut = cut.slice(0, last).trim();
-  cut = cut.replace(/[,:;\s]+$/, "");
-  return cut + ".";
-}
-
-function buildExtractionPromptBase(inputMode) {
-  return `
-Du bist Hilfe24.
-
-${buildHilfe24TextSystemRules()}
-
-Aufgabe:
-Du sollst ein Schreiben so verstehen wie ein erfahrener Alltagshelfer.
-Nicht nur zusammenfassen.
-Du musst erkennen, was für den Menschen wirklich wichtig ist.
-
-Input:
-${inputMode === "image" ? [
-"Du bekommst Bilder eines Briefes / Schreibens. Die Bilder können Handyfotos sein. Lies sie sehr genau, Seite für Seite.",
-"WICHTIG ZU DEN FOTOS:",
-"- Es können ganze Seiten und Nahaufnahmen gemischt sein.",
-"- Wenn ein Foto eine Nahaufnahme von Name, Datum, Aktenzeichen, Betrag, Frist oder Rechtsbehelf zeigt, nutze diese Nahaufnahme für die kritischen Daten stärker als ein weit entferntes Ganzseitenfoto.",
-"- Vergleiche kritische Daten zwischen allen Fotos.",
-"- Wenn Name, Betrag, Datum, Frist oder Aktenzeichen nicht eindeutig lesbar sind, nicht raten, sondern unsicherheiten eintragen.",
-"- Bei Namen ist ein einzelner Buchstabe wichtig. Wenn Kalina/Karina/Ksenia oder ähnliche Varianten möglich sind, betroffene_person leer lassen und bei unsicherheiten Name bitte prüfen schreiben."
-].join("\n") : "Du bekommst den Text eines Briefes / Schreibens."}
-
-GENAUIGKEIT BEI BILDERN / OCR:
-Wenn du Bilder bekommst, arbeite in dieser Reihenfolge:
-1. Lies den Text auf jeder Seite zuerst möglichst wörtlich.
-2. Unterscheide Seite 1, Seite 2 und Seite 3.
-3. Nutze nur Text, der wirklich sichtbar ist.
-4. Erkläre erst danach den Inhalt.
-
-EXTREM WICHTIG BEI NAMEN:
-- Namen niemals erraten.
-- Namen nur übernehmen, wenn Vorname/Nachname im Adressfeld, bei "Patient", "Versicherte Person", "Kunde", "Rechnungsempfänger", "Betroffene Person" oder im klaren Satz erkennbar ist.
-- Absendernamen, Firmen, Arztpraxen, Behörden, Städte, Sachbearbeiter und Zahnarztnamen NICHT als betroffene Person eintragen.
-- Wenn der Name nur teilweise lesbar ist, trage ihn NICHT in "betroffene_person" ein. Schreibe stattdessen in "unsicherheiten": "Name nicht sicher lesbar".
-- Wenn mehrere Namen vorkommen, wähle nur die Person, die wirklich vom Schreiben betroffen ist. Wenn unklar: leer lassen und Unsicherheit eintragen.
-
-ROLLEN-ERKENNUNG BEI MEHREREN PERSONEN:
-Viele Briefe nennen mehrere Menschen. Dann darfst du nicht einfach irgendeinen Namen als betroffene Person nehmen.
-Erkenne Rollen getrennt:
-- empfaenger: Person im Adressfeld / Empfänger des Briefes
-- betroffene_personen: Personen, gegen die sich der Beschluss/Forderung/Bescheid wirklich richtet
-- zeugen: Personen, die im Brief ausdrücklich als Zeugen genannt werden
-- angeklagte_beschuldigte: Angeklagte, Beschuldigte oder Betroffene im Straf-/Gerichtsverfahren
-- weitere_genannte_personen: andere erkennbare Personen, z. B. Anwalt, Sachbearbeiter nur wenn als Person relevant
-Bei Gericht/Polizei/Staatsanwaltschaft unbedingt unterscheiden:
-Empfänger ≠ Angeklagter ≠ Zeuge ≠ Sachbearbeiter.
-Wenn mehrere Personen genannt sind, schreibe in unsicherheiten: "Mehrere Personen genannt – Rolle bitte prüfen".
-Für die Kurz-Erklärung keine falsche einzelne Person behaupten, wenn mehrere Personen betroffen sind.
-
-EXTREM WICHTIG BEI RECHNUNGEN:
-- Unterscheide Rechnungssteller, Leistungserbringer, Patient/Empfänger und Versicherte Person.
-- Unterscheide Rechnungsdatum, Behandlungsdatum, Leistungsdatum, Fälligkeitsdatum und Zugangs-/Erhalt-Datum.
-- Bei Beträgen immer exakt Zahl, Komma/Punkt und Euro übernehmen.
-- Bei Rechnungsnummern, Kundennummern, RG-Nummern, Mahnnummern und Aktenzeichen exakt übernehmen.
-- Wenn die Zahlungsfrist nur "30 Tage nach Erhalt" oder "30 Tage nach Zugang" lautet, nicht automatisch ein konkretes Datum berechnen, außer das Schreiben nennt es klar.
-- Wenn Erstattung/Krankenkasse/Versicherung möglich wirkt, nur als Prüfung formulieren, niemals als sichere Erstattung.
-
-UNSICHERHEITEN AKTIV NUTZEN:
-Wenn Fotoqualität, Name, Datum, Betrag, Frist, Aktenzeichen oder Absender nicht sicher lesbar sind, trage das in "unsicherheiten" ein.
-Lieber leer lassen als falsch ausfüllen.
-
-ZAHLEN- UND DATUMSPRÜFUNG:
-- Prüfe jede Ziffer langsam und zweimal.
-- Aus 1.393,37 Euro darf niemals 139,37 Euro werden.
-- Aus 01.05.2026 darf niemals 01.05.2023 werden.
-- Aus 31.05.2028 darf niemals 31.03.2026 werden.
-- Übernimm Tausenderpunkte, Komma, Euro-Beträge und Jahreszahlen exakt aus dem Schreiben.
-- Wenn eine Zahl wegen Falte/Schatten nicht sicher lesbar ist: leer lassen oder in unsicherheiten eintragen.
-- Bei Jobcenter-Aufrechnung unterscheide: Gesamtforderung, monatlicher Aufrechnungsbetrag, Beginn, Ende, Widerspruchsfrist.
-
-ZIEL:
-Erkenne allgemein jede Art von Schreiben:
-- Brief
-- E-Mail
-- Nachricht
-- Behördenschreiben
-- Krankenkasse
-- Jobcenter
-- Finanzamt
-- Rentenkasse
-- Gericht
-- Polizei
-- Schule
-- Jugendamt
-- Inkasso
-- Mahnung
-- Rechnung
-- Vermieter
-- Vertrag
-- Kündigung
-- Reklamation
-- Arztbrief / Krankenhausbericht / Befund
-- Werbung / Angebot
-
-DENKE IMMER SO:
-1. Für wen ist das Schreiben?
-2. Von wem kommt es?
-3. Was ist das für ein Schreiben?
-4. Geht es um Termin, Frist, Betrag, Unterlagen oder reine Information?
-5. Ist es Pflicht, freiwillig, Information, Werbung oder unklar?
-6. Was passiert, wenn nichts gemacht wird?
-7. Was ist der nächste sinnvolle Schritt?
-8. Welche Aktionen passen dazu?
-
-V8 UNIVERSAL LETTER UNDERSTANDING:
-Zerlege jeden Brief zuerst in feste Bausteine. Denke nicht in einzelnen Spezialfällen, sondern allgemein:
-
-1. Absender: Wer schreibt oder übermittelt den Brief?
-2. Empfänger: An wen ist der Brief adressiert?
-3. Personen & Rollen: Welche Personen stehen im Brief und welche Rolle haben sie?
-   Beispiele: Empfänger, Antragsteller, Versicherte Person, Patient, Kunde, Schuldner, Gläubiger, Zeuge, Angeklagter, Beschuldigter, Kind, Elternteil, Vermieter, Mieter, Sachbearbeiter, Anwalt, Bevollmächtigter.
-4. Briefart: Bescheid, Rechnung, Mahnung, Inkasso, Termin, Einladung, Kündigung, Anhörung, Ablehnung, Bewilligung, Rückforderung, Vertrag, Information, Werbung, Arztbrief, Gericht/Polizei.
-5. Thema: Worum geht es wirklich? Geld, Termin, Unterlagen, Antrag, Leistung, Strafe, Vertrag, Gesundheit, Wohnung, Schule, Arbeit.
-6. Absicht des Absenders: Was will der Absender? Zahlung, Antwort, Unterlagen, Termin, Prüfung, Information, Bestätigung, Kündigung, nichts.
-7. Handlungspflicht: Muss der Nutzer reagieren? ja/nein/unklar.
-8. Frist/Termin/Datum: Gibt es Frist, Termin, Zahlungsziel, Widerspruchsfrist, Abgabedatum oder Rechtsbehelf?
-9. Geld: Geht es um Betrag, Forderung, Rechnung, Erstattung, monatlichen Abzug, Kosten oder Gebühren?
-10. Risiko: Was kann passieren, wenn nichts gemacht wird? Nur nennen, wenn es im Brief steht oder sehr klar aus Briefart folgt.
-11. Unsicherheit: Welche Daten sind unsicher? Name, Aktenzeichen, Betrag, Frist, Datum, Personenzuordnung.
-12. Erster sicherer Schritt: Der einfachste und sicherste erste Schritt für den Nutzer.
-
-SCHWIERIGKEITSSTUFE:
-- leicht: Werbung, reine Information, einfache Terminbestätigung, einfache Rechnung ohne Risiko.
-- mittel: Krankenkasse, Schule, Versicherung, Vermieter, normale Rechnung/Forderung, Unterlagennachforderung.
-- ernst: Gericht, Polizei, Staatsanwaltschaft, Inkasso, Vollstreckung, Jobcenter, Rückforderung, Aufrechnung, Kündigung, Mahnbescheid, Pfändung, Frist/Rechtsbehelf.
-
-AUSGABE-PRINZIP:
-Außen soll Hilfe24 leicht bleiben. Kein langer Roman. Der Server soll innen mehr verstehen, aber außen nur das Wichtigste geben.
-
-REFERENZEN / NUMMERN:
-Suche wichtige Identifikationsdaten im Schreiben und trage sie bei "referenzen" ein.
-Beispiele:
-- Aktenzeichen
-- Kundennummer
-- BG-Nummer
-- Versicherungsnummer
-- Mitgliedsnummer
-- Vertragsnummer
-- Rechnungsnummer
-- Mahnnummer
-- Geschäftszeichen
-- Kassenzeichen
-- Fallnummer
-- Mein Zeichen
-- Ihr Zeichen
-- Bearbeitungsnummer
-
-Wenn so etwas sicher im Schreiben steht, exakt übernehmen.
-Wenn nichts sicher erkennbar ist, referenzen leer lassen.
-Nichts erfinden.
-Bei Justiz/Gericht/Staatsanwaltschaft:
-- aktenzeichen_staatsanwaltschaft: z. B. "42 Js 1643/25"
-- aktenzeichen_gericht: z. B. "22 Ds-42 Js 1643/25-293/25"
-Wenn beide vorkommen, beide getrennt übernehmen.
-E-MAIL-ADRESSE:
-Suche im Schreiben nach einer klar erkennbaren E-Mail-Adresse des Absenders oder der zuständigen Stelle.
-Trage sie bei "email_adresse" ein.
-Beispiele:
-- info@firma.de
-- service@krankenkasse.de
-- badsalzuflen.025@jobcenter-lippe.de
-
-Nur echte E-Mail-Adressen übernehmen.
-Keine Telefonnummer eintragen.
-Keine Internetseite eintragen.
-Wenn keine E-Mail-Adresse sicher erkennbar ist, leer lassen.
-Heutiges Datum: ${getTodayGerman()}
-
-WICHTIG:
-- Nicht raten.
-- Keine Fristen, Termine, Beträge oder Folgen erfinden.
-- Keine Diagnose erfinden.
-- Keine Rechtsberatung.
-- Keine Panik machen.
-- Keine Pflicht erfinden.
-- Keine wichtigen Daten weglassen.
-- Namen, Daten, Uhrzeiten, Beträge, Aktenzeichen, Behörden und Folgen exakt übernehmen.
-- Daten-Sicherheit ist wichtiger als eine schöne Antwort.
-- Namen nur übernehmen, wenn sie im Adressfeld oder in der direkten Anrede klar lesbar sind.
-- Wenn ein Name nur unsicher gelesen wurde, betroffene_person leer lassen und bei "unsicherheiten" eintragen.
-- Beträge, Fristen, Daten, Aktenzeichen und Rechnungsnummern nur übernehmen, wenn sie klar lesbar sind.
-- Wenn mehrere ähnliche Namen möglich sind, keinen Namen sicher behaupten.
-- Wenn etwas nicht lesbar oder unklar ist, bei "unsicherheiten" eintragen.
-
-PFLICHT / FREIWILLIG / INFORMATION:
-
-"pflicht":
-Wenn klar verlangt wird, dass etwas getan werden muss.
-Beispiele:
-- Termin wahrnehmen
-- Unterlagen einreichen
-- Betrag zahlen
-- Formular ausfüllen
-- Nachweise schicken
-- Widerspruchsfrist beachten
-- Stellungnahme abgeben
-- Meldeaufforderung
-- Anhörung
-- Mahnung
-- Forderung
-
-"freiwillig":
-Wenn es nur ein Angebot oder eine freiwillige Möglichkeit ist.
-Beispiele:
-- freiwillige Untersuchung
-- optionales Angebot
-- wenn Sie möchten
-- wenn Sie teilnehmen möchten
-- keine Nachteile bei Nichtteilnahme
-
-"information":
-Wenn nur informiert wird und keine Handlung verlangt wird.
-
-"werbung":
-Wenn es wie Werbung, Verkauf, Gewinnspiel oder Angebot wirkt und keine echte Pflicht enthält.
-
-"unklar":
-Wenn nicht klar erkennbar ist, ob eine Pflicht besteht.
-
-DRINGLICHKEIT:
-
-"hoch":
-- Gericht
-- Polizei
-- Kündigung
-- Mahnung mit Frist
-- Inkasso mit Frist
-- Jobcenter-Termin / Meldeaufforderung
-- mögliche Leistungskürzung
-- Zwangsvollstreckung
-- Pfändung
-- wichtige Frist läuft
-- Zahlungsfrist
-- medizinische Warnzeichen im Text
-
-"mittel":
-- Unterlagen nachreichen
-- Antrag / Nachweis / Rückmeldung nötig
-- Termin oder Frist vorhanden, aber nicht akut bedrohlich
-
-"niedrig":
-- reine Information
-- freiwilliges Angebot
-- Werbung
-- keine Nachteile bei Nichtteilnahme
-
-"unklar":
-Wenn Frist, Folge oder Handlung nicht sicher erkennbar ist.
-
-BESONDERE LOGIK:
-
-TERMIN:
-Wenn ein Termin genannt ist:
-- termin ausfüllen
-- Unterlagen ausfüllen, wenn etwas mitgebracht werden soll
-- folge_wenn_nichts nur füllen, wenn im Brief klar steht, was passiert
-- naechster_schritt: Termin wahrnehmen oder rechtzeitig absagen/verschieben, wenn man nicht kann
-
-KRANKHEIT:
-Krankheit nicht erfinden.
-Nur wenn sie im Schreiben steht, erwähnen.
-
-INKASSO / MAHNUNG / FORDERUNG:
-Unterscheide:
-1. normale Mahnung / Forderung / Inkasso
-2. Mahnbescheid / Amtsgericht / Widerspruch
-3. Vollstreckungstitel / Zwangsvollstreckung / Pfändung / Gerichtsvollzieher
-
-Bei normaler Forderung:
-- Forderung prüfen
-- wenn richtig: zahlen oder Ratenzahlung
-- wenn falsch: widersprechen oder Hilfe holen
-
-Bei Mahnbescheid:
-- Frist beachten
-- bei falscher/unklarer Forderung rechtzeitig widersprechen
-- nicht einfach nur "zahlen" schreiben
-
-Bei Vollstreckungstitel:
-- ernster als normale Mahnung
-- sofort prüfen lassen / Hilfe holen
-- bei richtiger Forderung zahlen oder Ratenzahlung
-
-GERICHT / POLIZEI / STAATSANWALTSCHAFT:
-- Immer vorsichtig und sachlich erklären.
-- Keine Schuld behaupten.
-- Rollen sauber trennen: Empfänger, Angeklagter/Beschuldigter, Zeuge, Anwalt, Gericht/Staatsanwaltschaft.
-- Bei Ordnungsgeld/Ordnungshaft klar sagen: ernst nehmen, Grund/Nachweise prüfen, rechtliche Hilfe erwägen.
-- Wenn mehrere Personen genannt werden, in der Erklärung sagen: "Der Brief nennt mehrere Personen. Bitte prüfen, wer genau handeln muss."
-- Aktenzeichen von Gericht und Staatsanwaltschaft getrennt erfassen, wenn beide sichtbar sind.
-
-MEDIZIN:
-Wenn Arztbrief, Krankenhausbericht, Befund, Notaufnahme, Entlassungsbericht:
-- keine Behördenlogik
-- keine Zahlung / Strafe / rechtliche Schritte erfinden
-- einfach erklären: medizinischer Bericht, was festgestellt wurde, was empfohlen wird
-- Dokument aufbewahren
-- Arzt / Hausarzt / Facharzt zeigen
-- bei starken Beschwerden medizinische Hilfe holen
-- keine Diagnose erfinden
-
-OFFIZIELLE ANTWORTSPRACHE:
-Erklärung darf später in Nutzersprache sein.
-Aber offizielle Antwort an Empfänger soll in Sprache des Briefes / Empfängers sein.
-Beispiele:
-- deutscher Brief / deutsche Behörde = Antwortsprache "de"
-- türkische Behörde = "tr"
-- bulgarische Behörde = "bg"
-- arabische Stelle = "ar"
-- wenn unklar = "unklar"
-
-PASSENDE AKTIONEN:
-Gib passende Aktionen als kurze Codes zurück.
-Mögliche Codes:
-- frage_stellen
-- antwort_schreiben
-- email_schreiben
-- pdf_brief_erstellen
-- termin_bestaetigen
-- termin_verschieben
-- ich_bin_krank
-- unterlagen_nachreichen
-- unterlagenliste_anzeigen
-- fristverlaengerung
-- zahlung_pruefen
-- ratenzahlung_anfragen
-- widerspruch_pruefen
-- forderung_pruefen
-- arztbrief_erklaeren
-- warnzeichen_anzeigen
-- fragen_an_arzt
-- reklamation_schreiben
-- kuendigung_schreiben
-- nichts_tun_noetig
-
-FÜR "naechster_schritt":
-Genau 1 klarer nächster Schritt in einfacher Sprache.
-Keine Romane.
-
-FÜR "erster_sicherer_schritt":
-Der erste sichere Schritt, der fast nie schadet. Beispiele:
-- Brief vollständig aufbewahren und Frist prüfen.
-- Betrag und Absender prüfen.
-- Bei Unsicherheit schriftlich nachfragen.
-- Bei Gericht/Inkasso/Behörde Beratung holen.
-- Bei Termin: Termin prüfen und rechtzeitig absagen/verschieben, wenn man nicht kann.
-
-FÜR "daten_unsicher":
-Liste alle kritischen Daten, die nicht sicher gelesen oder nicht sicher zugeordnet wurden. Beispiele: Name, Aktenzeichen, Betrag, Frist, Datum, Personenzuordnung.
-
-FÜR "kurz_gesagt":
-Genau 1 kurzer sachlicher Satz in einfachem Deutsch.
-Der Satz soll nur den Kern treffen: Was ist das Schreiben und worum geht es?
-Keine Details, keine Berechnung, keine langen Behördenformulierungen.
-Beträge, Fristen oder Termine nur nennen, wenn sie der zentrale Punkt des Schreibens sind.
-Betroffene Person:
-- Wenn im Adressfeld oder im Schreiben ein echter Vor- und Nachname der betroffenen Person steht, schreibe ihn in "betroffene_person".
-- Keine Behörde, keine Firma, keine Stadt und keinen Absender als betroffene Person eintragen.
-- Wenn kein sicherer Personenname erkennbar ist, leer lassen.
-Gib genau dieses JSON zurück:
-{
- "absender_original": "",
-"absender_kurz": "",
-"email_adresse": "",
-"betroffene_person": "",
-"empfaenger": "",
-"betroffene_personen": [],
-"zeugen": [],
-"angeklagte_beschuldigte": [],
-"weitere_genannte_personen": [],
-"aktenzeichen_gericht": "",
-"aktenzeichen_staatsanwaltschaft": "",
-"briefart": "",
-  "worum_geht_es": "",
-  "wichtigste_punkte": [],
-  "was_ist_zu_tun": [],
-  "frist": "",
-  "termin": "",
-  "folge_wenn_nichts": "",
-  "versteckte_wichtige_info": "",
-  "kurz_gesagt": "",
-  "unsicherheiten": [],
-  "pflicht_oder_freiwillig": "unklar",
-  "dringlichkeit": "unklar",
-  "naechster_schritt": "",
-  "betrag": "",
-  "unterlagen": [],
-  "referenzen": [],
-  "antwort_sprache": "unklar",
-  "brief_schwierigkeit": "unklar",
-  "was_will_der_absender": "",
-  "muss_handeln": "unklar",
-  "geld_betroffen": "unklar",
-  "risiko_kurz": "",
-  "erster_sicherer_schritt": "",
-  "daten_unsicher": [],
-  "passende_aktionen": []
-}
-
-Gib nur gültiges JSON zurück.
-Keine Erklärung.
-Keine Markdown-Codeblöcke.
-`;
-}
-
-function buildExtractionPromptForText(text) {
-  return `
-${buildExtractionPromptBase("text")}
-
-TEXT DES SCHREIBENS:
-${String(text || "").slice(0, 12000)}
-`;
-}
-
-function buildExtractionPromptForImages() {
-  return buildExtractionPromptBase("image");
-}
-
-function toSentence(text) {
-  if (!text) return "";
-
-  const t = String(text).trim().replace(/\.$/, "");
-
-  if (!t) return "";
-
-  return t.charAt(0).toUpperCase() + t.slice(1) + ".";
-}
-
-function dedupe(arr) {
-  const out = [];
-
-  for (const item of arr) {
-    const t = String(item || "").trim();
-
-    if (!t) continue;
-
-    if (!out.some((x) => x.toLowerCase() === t.toLowerCase())) {
-      out.push(t);
+  if (analyzeBtn) analyzeBtn.disabled = true;
+  if (resetBtn) resetBtn.disabled = true;
+
+  startAnalysisProgress();
+
+  try {
+    let response;
+    let data;
+
+    if (files.length > 0) {
+      const bilder = [];
+
+      for (const file of files) {
+        const compressed = await compressImageForUpload(file);
+        bilder.push({
+          mimeType: compressed.mimeType,
+          imageData: compressed.imageData
+        });
+      }
+
+      setAnalysisProgressStep(1);
+
+      response = await fetch("/api/brief-bild", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lang,
+          bilder
+        })
+      });
+    } else {
+      setAnalysisProgressStep(1);
+      response = await fetch("/api/brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lang,
+          text
+        })
+      });
+    }
+
+    setAnalysisProgressStep(3);
+    data = await response.json();
+
+    if (requestId !== activeRequestId) return;
+
+    clearStatus();
+
+    if (!response.ok || !data.ok) {
+      setError(data.error || "Etwas ist schiefgelaufen.");
+      return;
+    }
+
+    if (data.quality_ok === false) {
+      if (warningTextEl) {
+        warningTextEl.textContent = data.hinweis || "Bitte schick ein besseres Foto vom Brief.";
+      }
+
+      show(warningCardEl);
+      return;
+    }
+
+    if (kurzTextEl) kurzTextEl.textContent = data.kurz || "";
+    if (detailTextEl) detailTextEl.textContent = data.details || "";
+    renderHelperCards(data.helper);
+
+    currentLang = lang;
+    currentKurzText = data.kurz || "";
+    currentDetailText = data.details || "";
+    currentBriefText = text || "";
+    currentMeta = data.meta || {};
+
+    show(resultCardEl);
+
+    if (data.details && String(data.details).trim()) {
+      show(detailToggleCardEl);
+    } else {
+      hide(detailToggleCardEl);
+      hide(detailCardEl);
+    }
+
+    show(frageCardEl);
+
+    if (toggleDetailsBtn) toggleDetailsBtn.textContent = getUiText().detailsShow;
+
+    setOk(getUiText().okExplained);
+  } catch (err) {
+    if (requestId !== activeRequestId) return;
+
+    clearStatus();
+    setError(getUiText().serverError);
+    console.error(err);
+  } finally {
+    if (requestId === activeRequestId) {
+      if (analyzeBtn) analyzeBtn.disabled = false;
+      if (resetBtn) resetBtn.disabled = false;
     }
   }
-
-  return out;
 }
+ async function askQuestionAboutLetter() {
+  const frage = frageTextEl ? frageTextEl.value.trim() : "";
+  const lang = getSelectedLang();
 
-function hasAny(text, words) {
-  const lower = String(text || "").toLowerCase();
-  return words.some((word) => lower.includes(word));
-}
+  currentLang = lang;
 
-function renderShortByLanguage(info, lang) {
-  const sender = String(info.absender_kurz || info.absender_original || "").trim();
-  const briefart = String(info.briefart || "").trim();
-  const nextStep = String(info.naechster_schritt || "").trim();
-  const consequence = String(info.folge_wenn_nichts || "").trim();
-  const deadline = String(info.frist || "").trim();
-  const appointment = String(info.termin || "").trim();
-  const amount = String(info.betrag || "").trim();
-  const duty = String(info.pflicht_oder_freiwillig || "unklar").trim();
-  const urgency = String(info.dringlichkeit || "unklar").trim();
-  const documents = dedupe(info.unterlagen || []);
-  const summary = String(info.kurz_gesagt || "").trim();
-  const actions = dedupe(info.was_ist_zu_tun || []);
-  const topic = String(info.worum_geht_es || "").trim();
-  const references = dedupe(info.referenzen || []);
-  const uncertainties = dedupe(info.unsicherheiten || []);
-
-  const fullContext = [
-    sender,
-    briefart,
-    topic,
-    summary,
-    nextStep,
-    consequence,
-    actions.join(" "),
-    references.join(" "),
-    uncertainties.join(" ")
-  ].join(" ").toLowerCase();
-
-  const lines = [];
-
-  function cleanSentence(text) {
+  function normalizeForIntent(text) {
     return String(text || "")
       .trim()
-      .replace(/\s+/g, " ")
-      .replace(/[.;,\s]+$/g, "");
-  }
-
-  function shorten(text, max = 105) {
-    const clean = cleanSentence(text);
-    if (!clean) return "";
-    if (clean.length <= max) return clean;
-
-    const cut = clean.slice(0, max + 1);
-    const lastSpace = cut.lastIndexOf(" ");
-    return (lastSpace > 60 ? cut.slice(0, lastSpace) : clean.slice(0, max)).trim();
-  }
-
-  function pushLine(text, max = 105) {
-    const clean = shorten(text, max);
-    if (!clean) return;
-    const sentence = clean + ".";
-
-    if (!lines.some((line) => line.toLowerCase() === sentence.toLowerCase())) {
-      lines.push(sentence);
-    }
-  }
-
-  function hasContext(words) {
-    return hasAny(fullContext, words);
-  }
-
-  function typeLine() {
-    if (briefart && sender) return `Das ist ein ${briefart} von ${sender}`;
-    if (sender) return `Das ist ein Schreiben von ${sender}`;
-    if (briefart) return `Das ist ein ${briefart}`;
-    return "Das ist ein Schreiben";
-  }
-
-  function topicLine() {
-    if (hasContext(["rückforderung", "erstattung", "aufrechnung", "jobcenter", "bürgergeld"])) {
-      if (amount) return `Es geht um eine Rückforderung oder Aufrechnung von ${amount}`;
-      return "Es geht um eine Rückforderung oder Aufrechnung";
-    }
-
-    if (hasContext(["rechnung", "forderung", "mahnung", "inkasso"])) {
-      if (amount) return `Es geht um eine Rechnung oder Forderung von ${amount}`;
-      return "Es geht um eine Rechnung oder Forderung";
-    }
-
-    if (hasContext(["termin", "ladung", "einladung", "randevu"])) {
-      return "Es geht um einen Termin";
-    }
-
-    if (hasContext(["unterlagen", "nachweise", "nachreichen", "einreichen"])) {
-      return "Es geht um Unterlagen oder Nachweise";
-    }
-
-    if (summary) return summary;
-    if (topic) return `Es geht um ${topic}`;
-    return "";
-  }
-
-  function actionLine() {
-    const firstAction = cleanSentence(actions[0]);
-    const step = cleanSentence(nextStep);
-
-    if (duty === "werbung") {
-      return "Das wirkt wie Werbung oder ein Angebot; du musst wahrscheinlich nichts tun";
-    }
-
-    if (duty === "freiwillig") {
-      return "Das ist wahrscheinlich freiwillig; du kannst selbst entscheiden";
-    }
-
-    if (duty === "information" && !deadline && !appointment && !amount) {
-      return "Du musst wahrscheinlich nichts tun, solltest den Brief aber aufbewahren";
-    }
-
-    if (appointment) {
-      return "Nimm den Termin wahr oder sage rechtzeitig ab, wenn du nicht kannst";
-    }
-
-    if (documents.length > 0 && hasContext(["unterlagen", "nachweise", "einreichen", "nachreichen", "schicken", "senden"])) {
-      return "Reiche die genannten Unterlagen rechtzeitig ein";
-    }
-
-    if (amount && hasContext(["rechnung", "forderung", "mahnu", "inkasso", "rückforderung", "aufrechnung", "zahlen", "zahlung", "betrag"])) {
-      return "Prüfe zuerst, ob die Forderung stimmt";
-    }
-
-    if (deadline && hasContext(["widerspruch", "rechtsbehelf", "frist", "antwort", "rückmeldung"])) {
-      return "Wenn du nicht einverstanden bist, reagiere innerhalb der Frist";
-    }
-
-    if (step) return step;
-    if (firstAction) return firstAction;
-
-    if (deadline) return "Prüfe die Frist und reagiere rechtzeitig";
-    if (amount) return "Prüfe den Betrag und kläre, ob du zahlen musst";
-
-    return "Prüfe den Brief und bewahre ihn auf";
-  }
-
-  function deadlineOrDateLine() {
-    if (appointment) return `Termin: ${appointment}`;
-
-    if (deadline) {
-      if (hasContext(["widerspruch", "rechtsbehelf"])) return `Widerspruchsfrist: ${deadline}`;
-      return `Frist: ${deadline}`;
-    }
-
-    return "";
-  }
-
-  function moneyLine() {
-    if (!amount) return "";
-
-    const monthlyMatch = fullContext.match(/\b\d+[,.]\d{2}\s*euro\b|\b\d+[,.]\d{2}\s*€\b/i);
-
-    if (hasContext(["aufrechnung", "monatlich", "einbehalten", "abgezogen"])) {
-      const monthly = String(nextStep + " " + topic + " " + summary + " " + actions.join(" ")).match(/\b\d+[,.]\d{2}\s*(?:€|euro)\b/i);
-      if (monthly && monthly[0] && monthly[0] !== amount) {
-        return `Betrag: ${amount}; monatlicher Abzug: ${monthly[0]}`;
-      }
-    }
-
-    return `Betrag: ${amount}`;
-  }
-
-  function consequenceLine() {
-    const text = cleanSentence(consequence);
-
-    if (!text) {
-      if (urgency === "hoch") return "Ignoriere den Brief nicht";
-      return "";
-    }
-
-    if (hasAny(text, ["keine nachteile", "keinerlei nachteile", "keinen nachteil"])) {
-      return "Wenn du nichts machst, entstehen laut Brief wahrscheinlich keine Nachteile";
-    }
-
-    if (hasAny(text, ["vollstreckung", "pfändung", "gerichtsvollzieher"])) {
-      return "Wenn du nichts machst, können weitere Kosten oder Vollstreckung folgen";
-    }
-
-    if (hasAny(text, ["kürzung", "minderung", "leistung", "bürgergeld", "jobcenter", "einbehalten"])) {
-      return "Wenn du nichts machst, können Leistungen gekürzt oder einbehalten werden";
-    }
-
-    if (text.length <= 95) return `Wenn du nichts machst: ${text}`;
-
-    return "Wenn du nichts machst, können Nachteile entstehen";
-  }
-
-  // Human + EL5 + DLTR + Listify:
-  // Menschlich, einfach wie für Anfänger, keine langen Texte, kurze Liste.
-  pushLine(typeLine(), 95);
-  pushLine(topicLine(), 105);
-  pushLine(actionLine(), 105);
-  pushLine(deadlineOrDateLine(), 95);
-
-  // Betrag nur zusätzlich zeigen, wenn noch Platz ist oder es zentral um Geld geht.
-  if (lines.length < 4 || hasContext(["rechnung", "forderung", "rückforderung", "aufrechnung", "inkasso", "zahlung"])) {
-    pushLine(moneyLine(), 115);
-  }
-
-  pushLine(consequenceLine(), 105);
-
-  return dedupe(lines.filter(Boolean)).slice(0, 5).join("\n");
-}
-
-
-function renderBalancedExplanationGerman(info) {
-  const sender = String(info.absender_kurz || info.absender_original || "").trim();
-  const briefart = String(info.briefart || "").trim();
-  const topic = String(info.worum_geht_es || "").trim();
-  const summary = String(info.kurz_gesagt || "").trim();
-  const amount = String(info.betrag || "").trim();
-  const deadline = String(info.frist || "").trim();
-  const appointment = String(info.termin || "").trim();
-  const consequence = String(info.folge_wenn_nichts || "").trim();
-  const firstStep = String(info.erster_sicherer_schritt || info.naechster_schritt || "").trim();
-  const actions = dedupe(info.was_ist_zu_tun || []);
-  const important = dedupe(info.wichtigste_punkte || []);
-  const references = dedupe(info.referenzen || []);
-  const depth = detectDetailDepth(info);
-
-  const joined = [briefart, topic, summary, consequence, firstStep, actions.join(" "), important.join(" ")].join(" ").toLowerCase();
-  const lines = [];
-
-  function clean(text) {
-    return String(text || "").trim().replace(/\s+/g, " ").replace(/[.;,\s]+$/g, "");
-  }
-
-  function add(text, max = 180) {
-    let c = clean(text);
-    if (!c) return;
-    if (c.length > max) {
-      let cut = c.slice(0, max).trim();
-      const last = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"));
-      if (last > 80) cut = cut.slice(0, last).trim();
-      c = cut.replace(/[,:;\s]+$/g, "");
-    }
-    const sentence = c + ".";
-    if (!lines.some((x) => x.toLowerCase() === sentence.toLowerCase())) lines.push(sentence);
-  }
-
-  function actionHint() {
-    if (appointment) return "Wenn du den Termin nicht wahrnehmen kannst, solltest du rechtzeitig absagen oder einen neuen Termin anfragen";
-    if (hasAny(joined, ["inkasso", "vollstreckung", "vollstreckungstitel", "forderung"])) return "Prüfe zuerst, ob Forderung, Titel, Betrag und Aktenzeichen wirklich stimmen";
-    if (hasAny(joined, ["jobcenter", "rückforderung", "aufrechnung", "widerspruch", "bescheid"])) return "Prüfe, ob der Bescheid und der Betrag stimmen, und achte auf die Widerspruchsfrist";
-    if (hasAny(joined, ["gericht", "polizei", "staatsanwaltschaft", "ordnungsgeld", "ladung"])) return "Nimm den Brief ernst und prüfe, ob du schnell schriftlich reagieren oder Nachweise einreichen musst";
-    if (hasAny(joined, ["rechnung", "zahlung", "gebühr"])) return "Prüfe, ob Rechnung, Leistung und Betrag stimmen, bevor du zahlst";
-    if (hasAny(joined, ["unterlagen", "nachweis", "nachreichen"])) return "Sammle die genannten Unterlagen und reiche sie rechtzeitig ein";
-    if (firstStep) return firstStep;
-    if (actions[0]) return actions[0];
-    return "Prüfe den Brief und bewahre ihn auf";
-  }
-
-  if (briefart && sender) add(`Das ist ein ${briefart} von ${sender}`, 130);
-  else if (sender) add(`Der Brief kommt von ${sender}`, 120);
-  else if (briefart) add(`Das ist ein ${briefart}`, 100);
-  else add("Das ist ein Schreiben", 80);
-
-  if (topic) add(`Es geht um ${topic}`, depth === "ernst" ? 230 : 180);
-  else if (summary) add(summary, depth === "ernst" ? 230 : 180);
-
-  if (amount && hasAny(joined, ["rechnung", "forderung", "rückforderung", "aufrechnung", "inkasso", "zahlung", "gebühr", "ordnungsgeld"])) {
-    add(`Es geht um einen Betrag von ${amount}`, 110);
-  }
-
-  if (appointment) add(`Wichtig ist der Termin: ${appointment}`, 130);
-  if (deadline) add(`Wichtig ist die Frist: ${deadline}`, 150);
-
-  add(actionHint(), 210);
-
-  if (consequence && depth !== "leicht") {
-    add(`Wenn du nichts machst, können Nachteile entstehen: ${consequence}`, depth === "ernst" ? 240 : 190);
-  }
-
-  if (depth === "ernst") {
-    if (references.length > 0) add("Prüfe wichtige Nummern oder Aktenzeichen im Originalbrief", 120);
-    add("Wenn du unsicher bist, hole dir Hilfe bei der zuständigen Stelle, einer Beratungsstelle oder einer fachkundigen Person", 170);
-  }
-
-  const maxLines = depth === "leicht" ? 5 : depth === "mittel" ? 7 : 9;
-  return dedupe(lines).slice(0, maxLines).join("\n");
-}
-
-function renderDetailTemplateGerman(info) {
-  const blocks = [];
-  const sender = String(info.absender_kurz || info.absender_original || "").trim();
-  const topic = String(info.worum_geht_es || "").trim();
-  const consequence = String(info.folge_wenn_nichts || "").trim();
-  const hiddenInfo = String(info.versteckte_wichtige_info || "").trim();
-  const importantPoints = dedupe(info.wichtigste_punkte || []);
-  const actions = dedupe(info.was_ist_zu_tun || []);
-  const documents = dedupe(info.unterlagen || []);
-  const references = dedupe(info.referenzen || []);
-  const person = String(info.betroffene_person || "").trim();
-  const depth = detectDetailDepth(info);
-
-  if (sender) {
-    blocks.push(`[[HEAD_FROM]]\nDer Brief ist von ${sender}.`);
-  }
-
-  if (person && depth !== "leicht") {
-    blocks.push(`[[HEAD_PERSON]]\nDer Brief betrifft ${person}.`);
-  }
-
-  if (topic) {
-    blocks.push(`[[HEAD_TOPIC]]\n${shortenForDetail(topic, depth === "ernst" ? 220 : 170)}`);
-  }
-
-  const importantLines = [];
-  const maxPoints = depth === "ernst" ? 4 : depth === "mittel" ? 3 : 2;
-
-  for (const p of importantPoints.slice(0, maxPoints)) {
-    const s = shortenForDetail(p, 150);
-    if (s) importantLines.push(s);
-  }
-
-  for (const a of actions.slice(0, depth === "ernst" ? 3 : 2)) {
-    const s = shortenForDetail(a, 150);
-    if (s) importantLines.push(s);
-  }
-
-  if (documents.length > 0 && depth !== "leicht") {
-    importantLines.push(`Unterlagen prüfen: ${documents.slice(0, 3).join(", ")}.`);
-  }
-
-  if (references.length > 0 && depth === "ernst") {
-    importantLines.push(`Nummern/Zeichen prüfen: ${references.slice(0, 3).join(", ")}.`);
-  }
-
-  if (hiddenInfo && depth === "ernst") {
-    importantLines.push(shortenForDetail(hiddenInfo, 160));
-  }
-
-  if (importantLines.length > 0) {
-    blocks.push(`[[HEAD_IMPORTANT]]\n${dedupe(importantLines).slice(0, depth === "ernst" ? 5 : 3).join("\n")}`);
-  }
-
-  const whenParts = [];
-
-  if (info.frist) {
-    whenParts.push(`Frist: ${String(info.frist).trim()}.`);
-  }
-
-  if (info.termin) {
-    whenParts.push(`Termin: ${String(info.termin).trim()}.`);
-  }
-
-  if (whenParts.length > 0) {
-    blocks.push(`[[HEAD_WHEN]]\n${whenParts.join(" ")}`);
-  }
-
-  if (consequence && depth !== "leicht") {
-    blocks.push(`[[HEAD_ELSE]]\n${shortenForDetail(consequence, depth === "ernst" ? 190 : 150)}`);
-  }
-
-  // Bei leichten Schreiben reichen 2-3 Blöcke. Bei ernsten Schreiben sind mehr Blöcke erlaubt, aber keine Textwand.
-  const maxBlocks = depth === "ernst" ? 6 : depth === "mittel" ? 5 : 3;
-  return blocks.slice(0, maxBlocks).join("\n\n");
-}
-
-function localizeDetailHeadings(text, lang) {
-  const maps = {
-    de: {
-      "[[HEAD_FROM]]": "Wer schreibt?",
-      "[[HEAD_PERSON]]": "Für wen ist der Brief?",
-      "[[HEAD_TOPIC]]": "Worum geht es?",
-      "[[HEAD_IMPORTANT]]": "Was ist jetzt wichtig?",
-      "[[HEAD_WHEN]]": "Bis wann?",
-      "[[HEAD_ELSE]]": "Was passiert sonst?",
-      "[[HEAD_SUMMARY]]": "Kurz gesagt:"
-    },
-
-    tr: {
-      "[[HEAD_FROM]]": "Kim yazıyor?",
-      "[[HEAD_PERSON]]": "Bu mektup kimin için?",
-      "[[HEAD_TOPIC]]": "Konu ne?",
-      "[[HEAD_IMPORTANT]]": "Şimdi ne önemli?",
-      "[[HEAD_WHEN]]": "Ne zamana kadar?",
-      "[[HEAD_ELSE]]": "Yoksa ne olur?",
-      "[[HEAD_SUMMARY]]": "Kısaca:"
-    },
-
-    bg: {
-      "[[HEAD_FROM]]": "Кой е изпратил писмото?",
-      "[[HEAD_PERSON]]": "За кого е писмото?",
-      "[[HEAD_TOPIC]]": "За какво става дума?",
-      "[[HEAD_IMPORTANT]]": "Какво е важно сега?",
-      "[[HEAD_WHEN]]": "До кога?",
-      "[[HEAD_ELSE]]": "Какво става иначе?",
-      "[[HEAD_SUMMARY]]": "Накратко:"
-    },
-
-    ar: {
-      "[[HEAD_FROM]]": "من أرسل الرسالة؟",
-      "[[HEAD_PERSON]]": "لمن هذه الرسالة؟",
-      "[[HEAD_TOPIC]]": "عن ماذا تتحدث الرسالة؟",
-      "[[HEAD_IMPORTANT]]": "ما المهم الآن؟",
-      "[[HEAD_WHEN]]": "إلى متى؟",
-      "[[HEAD_ELSE]]": "ماذا يحدث إذا لم أفعل شيئًا؟",
-      "[[HEAD_SUMMARY]]": "باختصار:"
-        },
- 
-ro: {
-      "[[HEAD_FROM]]": "Cine a trimis scrisoarea?",
-      "[[HEAD_PERSON]]": "Pentru cine este scrisoarea?",
-      "[[HEAD_TOPIC]]": "Despre ce este vorba?",
-      "[[HEAD_IMPORTANT]]": "Ce este important acum?",
-      "[[HEAD_WHEN]]": "Până când?",
-      "[[HEAD_ELSE]]": "Ce se întâmplă dacă nu faci nimic?",
-      "[[HEAD_SUMMARY]]": "Pe scurt:"
-    },
-
-    en: {
-      "[[HEAD_FROM]]": "Who sent this?",
-      "[[HEAD_PERSON]]": "Who is this letter for?",
-      "[[HEAD_TOPIC]]": "What is it about?",
-      "[[HEAD_IMPORTANT]]": "What is important now?",
-      "[[HEAD_WHEN]]": "By when?",
-      "[[HEAD_ELSE]]": "What happens if nothing is done?",
-      "[[HEAD_SUMMARY]]": "In short:"
-    }
- };
-  const dict = maps[lang] || maps.de;
-  let result = String(text || "");
-
-  for (const [token, heading] of Object.entries(dict)) {
-    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    result = result.replace(new RegExp(escaped, "g"), heading);
-  }
-
-  return result;
-}
-
-function protectCriticalValues(text) {
-  const tokens = [];
-  let output = String(text || "");
-
-  const patterns = [
-    /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g,
-    /\b\d{1,2}:\d{2}\b/g,
-    /\b\d+[,.]\d{2}\s*€\b/g,
-    /\b\d+\s*%\b/g,
-    /\b§\s*\d+[a-zA-Z]?\b/g,
-    /\bSGB\s*[IVX]+\b/g
-  ];
-
-  for (const pattern of patterns) {
-    output = output.replace(pattern, (match) => {
-      const key = `__H24TOKEN${tokens.length}__`;
-      tokens.push({
-        key,
-        value: match
-      });
-      return key;
-    });
-  }
-
-  return {
-    text: output,
-    tokens
-  };
-}
-
-function restoreCriticalValues(text, tokens = []) {
-  let out = String(text || "");
-
-  for (const entry of tokens) {
-    if (!entry || !entry.key) continue;
-
-    out = out.split(entry.key).join(entry.value);
-  }
-
-  return out;
-}
-
-async function translateFinalTextsIfNeeded(kurzDe, detailsDe, lang) {
-  const langMeta = getLanguageMeta(lang);
-
-  const cleanKurz = cleanText(kurzDe);
-  const cleanDetails = cleanText(detailsDe);
-
-  if (langMeta.code === "de") {
-    return {
-      kurz: cleanKurz,
-      details: localizeDetailHeadings(cleanDetails, "de")
-    };
-  }
-
-  const protectedKurz = protectCriticalValues(cleanKurz);
-  const protectedDetails = protectCriticalValues(cleanDetails);
-
-  const styleRules = {
-    tr: `
-TÜRKISCH-STIL:
-- Doğal, sade ve kısa Türkçe yaz.
-- Kısa metin en fazla 5-6 kısa satır olsun.
-- Gereksiz uzun açıklama yapma.
-- Para ödemek ile yardımın kesilmesi arasındaki farkı açık yaz.
-- Termin varsa tarih ve saati aynen koru.
-- Bürgergeld gibi resmi isimleri gerekirse aynen bırak.
-`,
-
-    bg: `
-BULGARISCH-STIL:
-- Пиши ясно, естествено и кратко.
-- Краткият текст да бъде максимум 5-6 кратки реда.
-- Не прави дълги обяснения.
-- Разграничавай плащане от намаляване/спиране на помощ.
-- Запази датите, часовете и сумите точно.
-`,
-
-    ar: `
-ARABISCH-STIL:
-- اكتب بلغة عربية بسيطة وواضحة وقصيرة.
-- النص القصير يكون بحد أقصى 5 أو 6 أسطر قصيرة.
-- لا تكتب شرحًا طويلًا.
-- فرّق بين دفع المال وبين تخفيض أو إيقاف المساعدة.
-- حافظ على التاريخ والوقت والمبلغ كما هو.
-`,
- ro: `
-RUMÄNISCH-STIL:
-- Scrie în română clară, simplă și naturală.
-- Folosește propoziții scurte.
-- Nu folosi limbaj administrativ greu.
-- Textul scurt trebuie să explice imediat: ce este scrisoarea, ce trebuie făcut, termenul sau programarea, documentele sau suma și ce se întâmplă dacă nu faci nimic.
-- Nu inventa informații.
-- Păstrează exact datele, orele, sumele, numerele de dosar și denumirile oficiale.
-`,
-
-    en: `
-ENGLISCH-STIL:
-- Write in simple, natural English.
-- Use short sentences.
-- Avoid complicated official language.
-- The short text must quickly explain: what this is, what to do, deadline or appointment, documents or amount, and what happens if nothing is done.
-- Do not invent information.
-- Keep dates, times, amounts, reference numbers and official names exactly as written.
-`
-  };
-
-  const raw = await callGemini([
-    {
-      text: `
-Du bist professioneller Übersetzer und Sprachvereinfacher für Hilfe24.
-
-Du bekommst zwei deutsche Erklärungstexte zu einem Schreiben:
-1. KURZTEXT für den oberen grünen Kasten
-2. DETAILTEXT für den unteren Detailkasten
-
-Übersetze beide Texte vollständig und korrekt in ${langMeta.label}.
-
-REGELN:
-- Bedeutung exakt beibehalten.
-- Keine Informationen hinzufügen.
-- Keine Informationen weglassen.
-- Keine Zusammenfassung.
-- Keine Mischsprache.
-- Eigennamen, Behördennamen, Aktenzeichen, Daten, Uhrzeiten, Beträge und Ortsnamen exakt erhalten.
-- Begriffe wie Jobcenter, Bürgergeld, AOK, IBAN, QR-Code dürfen im Original bleiben.
-- Kurztext kurz halten.
-- Keine vollständigen Adressen in den Kurztext übernehmen, wenn sie nicht nötig sind.
-- Überschrift-Tokens wie [[HEAD_FROM]], [[HEAD_PERSON]], [[HEAD_TOPIC]], [[HEAD_IMPORTANT]], [[HEAD_WHEN]], [[HEAD_ELSE]], [[HEAD_SUMMARY]] exakt unverändert lassen.
-
-${styleRules[langMeta.code] || ""}
-
-Antworte NUR als gültiges JSON.
-Keine Markdown-Codeblöcke.
-
-Gib genau dieses JSON zurück:
-{
-  "kurz": "",
-  "details": ""
-}
-
-KURZTEXT_DEUTSCH:
-${protectedKurz.text}
-
-DETAILTEXT_DEUTSCH:
-${protectedDetails.text}
-`
-    }
-  ]);
-
-  let parsed;
-
-  try {
-    parsed = extractJson(raw);
-  } catch (error) {
-    console.error("Übersetzung konnte nicht als JSON gelesen werden:", error.message || error);
-    return {
-      kurz: protectedKurz.text,
-      details: localizeDetailHeadings(protectedDetails.text, langMeta.code)
-    };
-  }
-
-  const kurz = restoreCriticalValues(cleanText(parsed.kurz || ""), protectedKurz.tokens)
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  const detailsRaw = restoreCriticalValues(cleanText(parsed.details || ""), protectedDetails.tokens)
-    .replace(/\[\[\s*/g, "[[")
-    .replace(/\s*\]\]/g, "]]")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  return {
-    kurz: kurz || protectedKurz.text,
-    details: localizeDetailHeadings(detailsRaw || protectedDetails.text, langMeta.code)
-  };
-}
-
-async function buildInfoFromText(text) {
-  const rawJson = await callGemini([
-    {
-      text: buildExtractionPromptForText(text)
-    }
-  ]);
-
-  return normalizeInfo(extractJson(rawJson));
-}
-
-function buildOcrPromptForImages() {
-  return `
-Du bist die OCR-Stufe von Hilfe24.
-
-Aufgabe:
-Lies die hochgeladenen Briefbilder so exakt wie möglich ab.
-Du erklärst nichts. Du fasst nichts zusammen.
-Du gibst nur den sichtbaren Text seitenweise wieder.
-
-REGELN:
-- Jede Seite einzeln mit SEITE 1, SEITE 2, SEITE 3 kennzeichnen.
-- Namen, Beträge, Daten, Aktenzeichen, Rechnungsnummern und Paragrafen exakt übernehmen.
-- Prüfe alle Ziffern langsam: 1.393,37 ist nicht 139,37.
-- Prüfe Jahreszahlen langsam: 2026 ist nicht 2023.
-- Wenn etwas wegen Falte/Schatten nicht sicher lesbar ist, schreibe [UNSICHER: ...].
-- Keine fehlenden Wörter erfinden.
-- Keine Adresse oder Zahl korrigieren, wenn du sie nicht sicher siehst.
-- Keine Markdown-Codeblöcke.
-
-Gib nur den abgelesenen Text zurück.
-`;
-}
-
-async function buildRawTextFromImages(bilder) {
-  const parts = [
-    {
-      text: buildOcrPromptForImages()
-    }
-  ];
-
-  let pageIndex = 1;
-
-  for (const bild of bilder) {
-    if (!bild.imageData || !bild.mimeType) continue;
-
-    parts.push({
-      text: `\nSEITE ${pageIndex}: Bitte diese Seite exakt ablesen.\n`
-    });
-
-    parts.push({
-      inline_data: {
-        mime_type: bild.mimeType,
-        data: bild.imageData
-      }
-    });
-
-    pageIndex++;
-  }
-
-  const raw = await callGemini(parts);
-  return cleanText(raw).slice(0, 18000);
-}
-
-async function verifyCriticalInfoFromImages(bilder, info, rawText) {
-  const parts = [
-    {
-      text: `
-Du bist die Sicherheitsprüfung von Hilfe24.
-
-Du bekommst:
-1. die Originalbilder
-2. den OCR-Text
-3. bereits erkannte JSON-Daten
-
-Aufgabe:
-Prüfe nur kritische Daten und korrigiere sie, wenn sie auf den Bildern oder im OCR-Text klar erkennbar sind.
-
-KRITISCHE DATEN:
-- betroffene_person
-- absender_original / absender_kurz
-- briefart
-- frist
-- termin
-- folge_wenn_nichts
-- betrag
-- referenzen
-- naechster_schritt
-- wichtigste_punkte
-- was_ist_zu_tun
-- unsicherheiten
-
-HARTE REGELN:
-- Namen niemals raten.
-- Wenn ein Name nicht sicher ist: betroffene_person leer lassen und "Name nicht sicher lesbar" in unsicherheiten eintragen.
-- Wenn im Adressfeld ein klarer Name steht, genau diesen übernehmen.
-- Beträge exakt übernehmen. Aus 1.393,37 darf niemals 139,37 werden.
-- Jahreszahlen exakt übernehmen. Aus 2026 darf niemals 2023 werden.
-- Aktenzeichen/Mein Zeichen exakt übernehmen.
-- Bei Widerspruchsfrist "1 Monat nach Bekanntgabe" nicht als abgelaufen bewerten.
-- Wenn etwas unklar ist, nicht schöner machen, sondern als unsicher markieren.
-
-Antworte nur mit gültigem JSON im gleichen Schema.
-Keine Markdown-Codeblöcke.
-
-OCR-TEXT:
-${String(rawText || "").slice(0, 18000)}
-
-AKTUELLE JSON-DATEN:
-${JSON.stringify(info, null, 2)}
-`
-    }
-  ];
-
-  let pageIndex = 1;
-
-  for (const bild of bilder) {
-    if (!bild.imageData || !bild.mimeType) continue;
-
-    parts.push({
-      text: `\nORIGINALBILD SEITE ${pageIndex}: Prüfe kritische Daten gegen dieses Bild.\n`
-    });
-
-    parts.push({
-      inline_data: {
-        mime_type: bild.mimeType,
-        data: bild.imageData
-      }
-    });
-
-    pageIndex++;
-  }
-
-  const rawJson = await callGemini(parts);
-  return normalizeInfo(extractJson(rawJson));
-}
-
-async function buildInfoFromImages(bilder) {
-  // V7.6 TURBO: Nur ein Gemini-Bildaufruf für die erste Analyse.
-  // Die frühere Pipeline (OCR -> Textanalyse -> Bildprüfung) war genauer,
-  // aber auf Smartphones oft 2-3 Minuten langsam.
-  // Unsichere Daten werden deshalb lieber als "bitte prüfen" behandelt.
-  const parts = [
-    {
-      text: buildExtractionPromptForImages() + `
-
-V7.6 TURBO-REGELN:
-- Arbeite schnell und direkt aus den Bildern.
-- Die Bilder können ganze Seiten oder Nahaufnahmen sein.
-- Nutze Nahaufnahmen besonders für Name, Datum, Aktenzeichen, Betrag, Frist und Rechtsbehelf.
-- Wenn ein Name oder Aktenzeichen nicht eindeutig lesbar ist: leer lassen oder in unsicherheiten schreiben.
-- Keine zweite Sicherheitsrunde. Deshalb lieber unsicher markieren als raten.
-- Betrag, Datum und Frist nur übernehmen, wenn klar lesbar.
-`
-    }
-  ];
-
-  let pageIndex = 1;
-
-  for (const bild of bilder) {
-    if (!bild.imageData || !bild.mimeType) continue;
-
-    parts.push({
-      text: `
-FOTO ${pageIndex}: Ganzseite oder Nahaufnahme. Bitte sorgfältig lesen.
-`
-    });
-
-    parts.push({
-      inline_data: {
-        mime_type: bild.mimeType,
-        data: bild.imageData
-      }
-    });
-
-    pageIndex++;
-  }
-
-  const rawJson = await callGemini(parts);
-  const info = normalizeInfo(extractJson(rawJson));
-
-  if (!Array.isArray(info.unsicherheiten)) {
-    info.unsicherheiten = [];
-  }
-
-  // Bei Bildanalyse Namen und Referenzen nicht blind als sicher behandeln.
-  // Die Datenbox zeigt sie später bei Unsicherheit als "Bitte prüfen".
-  return normalizeInfo(info);
-}
-
-function getSafeCriticalMeta(info, sourceMode = "text") {
-  const uncertainties = dedupe(info.unsicherheiten || []);
-  const uncertaintyText = uncertainties.join(" ").toLowerCase();
-  const fromImage = sourceMode === "image";
-
-  const personRaw = normalizeString(info.betroffene_person);
-  const references = dedupe(info.referenzen || []);
-
-  // Bei Fotos darf ein Name nicht als sicher gelten. Ein Buchstabe Unterschied ist zu riskant.
-  const personSafe = Boolean(personRaw) && !fromImage && !hasAny(uncertaintyText, ["name", "person", "adress", "empfänger"]);
-
-  // Aktenzeichen/Referenzen aus Fotos sind oft durch Punkte/Striche fehleranfällig.
-  const referencesSafe = references.length > 0 && !fromImage && !hasAny(uncertaintyText, ["zeichen", "akten", "referenz", "nummer"]);
-
-  return {
-    personSafe,
-    personForOfficialText: personSafe ? personRaw : "",
-    personDisplay: personSafe ? personRaw : "",
-    referencesSafe,
-    referencesDisplay: referencesSafe ? references : references,
-    criticalUncertainties: uncertainties
-  };
-}
-
-function inferMustReact(info) {
-  const combined = [
-    info.briefart,
-    info.worum_geht_es,
-    info.frist,
-    info.termin,
-    info.folge_wenn_nichts,
-    info.naechster_schritt,
-    (info.was_ist_zu_tun || []).join(" "),
-    (info.passende_aktionen || []).join(" ")
-  ].join(" ").toLowerCase();
-
-  if (info.pflicht_oder_freiwillig === "werbung" || info.pflicht_oder_freiwillig === "freiwillig") return "no";
-  if (info.frist || info.termin || info.betrag) return "yes";
-  if (hasAny(combined, ["widerspruch", "frist", "termin", "zahlen", "zahlung", "forderung", "mahnung", "unterlagen", "nachreichen", "kündigung", "gericht", "polizei", "anhörung", "aufrechnung", "rückforderung"])) return "yes";
-  if (info.pflicht_oder_freiwillig === "information") return "maybe";
-  return "maybe";
-}
-
-function inferMoneyAffected(info) {
-  const combined = [
-    info.briefart,
-    info.worum_geht_es,
-    info.betrag,
-    info.folge_wenn_nichts,
-    info.naechster_schritt,
-    (info.was_ist_zu_tun || []).join(" ")
-  ].join(" ").toLowerCase();
-
-  if (info.betrag) return "yes";
-  if (hasAny(combined, ["rechnung", "forderung", "mahnen", "inkasso", "rückforderung", "aufrechnung", "zahlung", "betrag", "kosten", "gebühr", "miete", "kaution", "erstattung", "geld", "leistung", "abzug"])) return "yes";
-  return "maybe";
-}
-
-
-function simpleLabelDict(lang) {
-  const maps = {
-    de: {
-      check: "Bitte prüfen",
-      good: "Gut",
-      medium: "Mittel",
-      low: "Niedrig",
-      unknown: "Unklar",
-      yes: "Ja",
-      no: "Nein",
-      briefart: "Briefart",
-      urgency: "Dringlichkeit",
-      react: "Musst du reagieren?",
-      money: "Geld betroffen?",
-      person: "Name",
-      sender: "Absender",
-      amount: "Betrag",
-      deadline: "Frist/Termin",
-      reference: "Aktenzeichen/Nummer",
-      risk: "Risiko",
-      recipient: "Empfänger",
-      affectedPeople: "Betroffene Personen",
-      witnesses: "Zeugen",
-      defendant: "Angeklagte/Beschuldigte",
-      courtReference: "Aktenzeichen Gericht",
-      prosecutorReference: "Aktenzeichen Staatsanwaltschaft",
-      unsafe: "Einige Daten konnten nicht sicher gelesen werden. Bitte prüfe Name, Datum und Aktenzeichen im Originalbrief.",
-      firstStepDefault: "Prüfe zuerst, ob Betrag, Frist und Absender im Brief stimmen.",
-      whatsappStart: "Kurz: "
-    },
-    tr: {
-      check: "Lütfen kontrol et",
-      good: "İyi",
-      medium: "Orta",
-      low: "Düşük",
-      unknown: "Belirsiz",
-      yes: "Evet",
-      no: "Hayır",
-      briefart: "Yazı türü",
-      urgency: "Aciliyet",
-      react: "Cevap vermen gerekiyor mu?",
-      money: "Para konusu var mı?",
-      person: "İsim",
-      sender: "Gönderen",
-      amount: "Tutar",
-      deadline: "Süre/Randevu",
-      reference: "Dosya/Numara",
-      risk: "Risk",
-      recipient: "Alıcı",
-      affectedPeople: "İlgili kişiler",
-      witnesses: "Tanıklar",
-      defendant: "Sanık/Şüpheli",
-      courtReference: "Mahkeme dosya numarası",
-      prosecutorReference: "Savcılık dosya numarası",
-      unsafe: "Bazı bilgiler kesin okunamadı. Lütfen isim, tarih ve numarayı asıl mektupta kontrol et.",
-      firstStepDefault: "Önce tutar, süre ve gönderen bilgisinin doğru olup olmadığını kontrol et.",
-      whatsappStart: "Kısaca: "
-    },
-    bg: {
-      check: "Моля, провери",
-      good: "Добра",
-      medium: "Средна",
-      low: "Ниска",
-      unknown: "Неясно",
-      yes: "Да",
-      no: "Не",
-      briefart: "Вид писмо",
-      urgency: "Спешност",
-      react: "Трябва ли да реагираш?",
-      money: "Има ли пари?",
-      person: "Име",
-      sender: "Изпращач",
-      amount: "Сума",
-      deadline: "Срок/термин",
-      reference: "Номер/знак",
-      risk: "Риск",
-      recipient: "Получател",
-      affectedPeople: "Засегнати лица",
-      witnesses: "Свидетели",
-      defendant: "Обвиняем/подсъдим",
-      courtReference: "Номер на съда",
-      prosecutorReference: "Номер на прокуратурата",
-      unsafe: "Някои данни не се четат сигурно. Провери името, датата и номера в оригиналното писмо.",
-      firstStepDefault: "Първо провери дали сумата, срокът и изпращачът са правилни.",
-      whatsappStart: "Накратко: "
-    },
-    ro: {
-      check: "Te rog verifică",
-      good: "Bună",
-      medium: "Medie",
-      low: "Scăzută",
-      unknown: "Neclar",
-      yes: "Da",
-      no: "Nu",
-      briefart: "Tip document",
-      urgency: "Urgență",
-      react: "Trebuie să reacționezi?",
-      money: "Este vorba de bani?",
-      person: "Nume",
-      sender: "Expeditor",
-      amount: "Sumă",
-      deadline: "Termen/Programare",
-      reference: "Număr/Dosar",
-      risk: "Risc",
-      recipient: "Destinatar",
-      affectedPeople: "Persoane vizate",
-      witnesses: "Martori",
-      defendant: "Inculpat/suspect",
-      courtReference: "Număr instanță",
-      prosecutorReference: "Număr parchet",
-      unsafe: "Unele date nu au putut fi citite sigur. Verifică numele, data și numărul în scrisoarea originală.",
-      firstStepDefault: "Verifică mai întâi suma, termenul și expeditorul din scrisoare.",
-      whatsappStart: "Pe scurt: "
-    },
-    ar: {
-      check: "يرجى التحقق",
-      good: "جيد",
-      medium: "متوسط",
-      low: "منخفض",
-      unknown: "غير واضح",
-      yes: "نعم",
-      no: "لا",
-      briefart: "نوع الرسالة",
-      urgency: "الأهمية",
-      react: "هل يجب الرد؟",
-      money: "هل يوجد مبلغ مالي؟",
-      person: "الاسم",
-      sender: "المرسل",
-      amount: "المبلغ",
-      deadline: "مهلة/موعد",
-      reference: "رقم/ملف",
-      risk: "الخطر",
-      recipient: "المستلم",
-      affectedPeople: "الأشخاص المعنيون",
-      witnesses: "الشهود",
-      defendant: "المتهم",
-      courtReference: "رقم المحكمة",
-      prosecutorReference: "رقم النيابة",
-      unsafe: "بعض البيانات لم تُقرأ بشكل مؤكد. يرجى التحقق من الاسم والتاريخ والرقم في الرسالة الأصلية.",
-      firstStepDefault: "تحقق أولًا من المبلغ والمهلة والمرسل في الرسالة.",
-      whatsappStart: "باختصار: "
-    },
-    en: {
-      check: "Please check",
-      good: "Good",
-      medium: "Medium",
-      low: "Low",
-      unknown: "Unclear",
-      yes: "Yes",
-      no: "No",
-      briefart: "Document type",
-      urgency: "Urgency",
-      react: "Do you need to react?",
-      money: "Money involved?",
-      person: "Name",
-      sender: "Sender",
-      amount: "Amount",
-      deadline: "Deadline/Appointment",
-      reference: "Reference number",
-      recipient: "Recipient",
-      affectedPeople: "Affected people",
-      witnesses: "Witnesses",
-      defendant: "Defendant/suspect",
-      courtReference: "Court file number",
-      prosecutorReference: "Prosecution file number",
-      unsafe: "Some data could not be read safely. Please check name, date and reference number in the original letter.",
-      firstStepDefault: "First check whether the amount, deadline and sender match the letter.",
-      whatsappStart: "Short: "
-    }
-  };
-  return maps[lang] || maps.de;
-}
-
-
-function helperTextDict(lang) {
-  const maps = {
-    de: {
-      from: "von",
-      amount: "Betrag",
-      deadline: "Frist",
-      appointment: "Termin",
-      urgencyHigh: "Hoch",
-      urgencyMedium: "Mittel",
-      urgencyLow: "Niedrig",
-      documentDefault: "Schreiben",
-      types: {
-        inkasso: "Inkasso / Forderung",
-        jobcenter: "Bescheid",
-        invoice: "Rechnung",
-        claim: "Forderung / Mahnung",
-        appointment: "Termin",
-        policeCourt: "Gericht / Polizei",
-        health: "Krankenkasse / Gesundheit",
-        ad: "Angebot / Werbung"
-      },
-      steps: {
-        checkMoney: "Prüfe, ob Betrag und Forderung stimmen.",
-        checkDeadline: "Achte auf die Frist und notiere dir das Datum.",
-        checkAppointment: "Prüfe den Termin und sage rechtzeitig ab, wenn du nicht kannst.",
-        collectDocs: "Sammle die genannten Unterlagen oder Nachweise.",
-        getHelp: "Wenn du unsicher bist, hole Beratung oder frage die Stelle schriftlich."
-      },
-      actions: {
-        checkClaim: "Forderung prüfen",
-        requestStatement: "Forderungsaufstellung anfordern",
-        checkInstallments: "Ratenzahlung prüfen",
-        seekAdvice: "Beratung suchen",
-        checkObjection: "Widerspruch prüfen",
-        checkAmount: "Betrag prüfen",
-        checkInvoice: "Rechnung prüfen",
-        clarifyPayment: "Zahlung klären",
-        writeMessage: "Nachricht schreiben",
-        checkAppointment: "Termin prüfen",
-        prepareDocs: "Unterlagen vorbereiten",
-        askQuestion: "Frage stellen",
-        writeReply: "Antwort schreiben"
-      }
-    },
-    tr: {
-      from: "gönderen",
-      amount: "Tutar",
-      deadline: "Süre",
-      appointment: "Randevu",
-      urgencyHigh: "Yüksek",
-      urgencyMedium: "Orta",
-      urgencyLow: "Düşük",
-      documentDefault: "Yazı",
-      types: {
-        inkasso: "Tahsilat / Alacak",
-        jobcenter: "Karar yazısı",
-        invoice: "Fatura",
-        claim: "Alacak / İhtar",
-        appointment: "Randevu",
-        policeCourt: "Mahkeme / Polis",
-        health: "Sağlık sigortası / Sağlık",
-        ad: "Teklif / Reklam"
-      },
-      steps: {
-        checkMoney: "Önce tutarın ve alacağın doğru olup olmadığını kontrol et.",
-        checkDeadline: "Süreyi kontrol et ve tarihi not al.",
-        checkAppointment: "Randevuyu kontrol et; gidemeyeceksen zamanında haber ver.",
-        collectDocs: "İstenen belgeleri veya kanıtları hazırla.",
-        getHelp: "Emin değilsen danışmanlık al veya kuruma yazılı olarak sor."
-      },
-      actions: {
-        checkClaim: "Alacağı kontrol et",
-        requestStatement: "Borç dökümü iste",
-        checkInstallments: "Taksit seçeneğini kontrol et",
-        seekAdvice: "Danışmanlık al",
-        checkObjection: "İtirazı kontrol et",
-        checkAmount: "Tutarı kontrol et",
-        checkInvoice: "Faturayı kontrol et",
-        clarifyPayment: "Ödemeyi netleştir",
-        writeMessage: "Mesaj yaz",
-        checkAppointment: "Randevuyu kontrol et",
-        prepareDocs: "Belgeleri hazırla",
-        askQuestion: "Soru sor",
-        writeReply: "Cevap yaz"
-      }
-    },
-    bg: {
-      from: "от",
-      amount: "Сума",
-      deadline: "Срок",
-      appointment: "Термин",
-      urgencyHigh: "Висока",
-      urgencyMedium: "Средна",
-      urgencyLow: "Ниска",
-      documentDefault: "Писмо",
-      types: {
-        inkasso: "Инкасо / Задължение",
-        jobcenter: "Решение",
-        invoice: "Фактура",
-        claim: "Задължение / Напомняне",
-        appointment: "Термин",
-        policeCourt: "Съд / Полиция",
-        health: "Здравна каса / Здраве",
-        ad: "Оферта / Реклама"
-      },
-      steps: {
-        checkMoney: "Първо провери дали сумата и задължението са правилни.",
-        checkDeadline: "Провери срока и си запиши датата.",
-        checkAppointment: "Провери термина; ако не можеш да отидеш, съобщи навреме.",
-        collectDocs: "Подготви посочените документи или доказателства.",
-        getHelp: "Ако не си сигурен, потърси консултация или попитай писмено съответната служба."
-      },
-      actions: {
-        checkClaim: "Провери задължението",
-        requestStatement: "Поискай разбивка на сумата",
-        checkInstallments: "Провери плащане на вноски",
-        seekAdvice: "Потърси консултация",
-        checkObjection: "Провери възражение",
-        checkAmount: "Провери сумата",
-        checkInvoice: "Провери фактурата",
-        clarifyPayment: "Изясни плащането",
-        writeMessage: "Напиши съобщение",
-        checkAppointment: "Провери термина",
-        prepareDocs: "Подготви документи",
-        askQuestion: "Задай въпрос",
-        writeReply: "Напиши отговор"
-      }
-    },
-    ro: {
-      from: "de la",
-      amount: "Sumă",
-      deadline: "Termen",
-      appointment: "Programare",
-      urgencyHigh: "Ridicată",
-      urgencyMedium: "Medie",
-      urgencyLow: "Scăzută",
-      documentDefault: "Document",
-      types: {
-        inkasso: "Recuperare creanță / Datorie",
-        jobcenter: "Decizie",
-        invoice: "Factură",
-        claim: "Creanță / Somație",
-        appointment: "Programare",
-        policeCourt: "Instanță / Poliție",
-        health: "Asigurare medicală / Sănătate",
-        ad: "Ofertă / Publicitate"
-      },
-      steps: {
-        checkMoney: "Verifică mai întâi dacă suma și creanța sunt corecte.",
-        checkDeadline: "Verifică termenul și notează data.",
-        checkAppointment: "Verifică programarea și anunță din timp dacă nu poți merge.",
-        collectDocs: "Pregătește documentele sau dovezile menționate.",
-        getHelp: "Dacă nu ești sigur, cere consiliere sau întreabă instituția în scris."
-      },
-      actions: {
-        checkClaim: "Verifică creanța",
-        requestStatement: "Cere detalierea datoriei",
-        checkInstallments: "Verifică plata în rate",
-        seekAdvice: "Caută consiliere",
-        checkObjection: "Verifică contestația",
-        checkAmount: "Verifică suma",
-        checkInvoice: "Verifică factura",
-        clarifyPayment: "Clarifică plata",
-        writeMessage: "Scrie mesaj",
-        checkAppointment: "Verifică programarea",
-        prepareDocs: "Pregătește documente",
-        askQuestion: "Pune o întrebare",
-        writeReply: "Scrie răspuns"
-      }
-    },
-    ar: {
-      from: "من",
-      amount: "المبلغ",
-      deadline: "المهلة",
-      appointment: "الموعد",
-      urgencyHigh: "عالية",
-      urgencyMedium: "متوسطة",
-      urgencyLow: "منخفضة",
-      documentDefault: "رسالة",
-      types: {
-        inkasso: "تحصيل / مطالبة مالية",
-        jobcenter: "قرار رسمي",
-        invoice: "فاتورة",
-        claim: "مطالبة / إنذار",
-        appointment: "موعد",
-        policeCourt: "محكمة / شرطة",
-        health: "تأمين صحي / صحة",
-        ad: "عرض / إعلان"
-      },
-      steps: {
-        checkMoney: "تحقق أولًا من صحة المبلغ والمطالبة.",
-        checkDeadline: "تحقق من المهلة وسجل التاريخ.",
-        checkAppointment: "تحقق من الموعد وأبلغ الجهة مبكرًا إذا لم تستطع الحضور.",
-        collectDocs: "جهز المستندات أو الإثباتات المذكورة.",
-        getHelp: "إذا لم تكن متأكدًا، اطلب استشارة أو اسأل الجهة كتابيًا."
-      },
-      actions: {
-        checkClaim: "تحقق من المطالبة",
-        requestStatement: "اطلب كشفًا بالمبلغ",
-        checkInstallments: "تحقق من الدفع بالتقسيط",
-        seekAdvice: "اطلب استشارة",
-        checkObjection: "تحقق من الاعتراض",
-        checkAmount: "تحقق من المبلغ",
-        checkInvoice: "تحقق من الفاتورة",
-        clarifyPayment: "وضح الدفع",
-        writeMessage: "اكتب رسالة",
-        checkAppointment: "تحقق من الموعد",
-        prepareDocs: "جهز المستندات",
-        askQuestion: "اطرح سؤالًا",
-        writeReply: "اكتب ردًا"
-      }
-    },
-    en: {
-      from: "from",
-      amount: "Amount",
-      deadline: "Deadline",
-      appointment: "Appointment",
-      urgencyHigh: "High",
-      urgencyMedium: "Medium",
-      urgencyLow: "Low",
-      documentDefault: "Document",
-      types: {
-        inkasso: "Debt collection / Claim",
-        jobcenter: "Official decision",
-        invoice: "Invoice",
-        claim: "Claim / Reminder",
-        appointment: "Appointment",
-        policeCourt: "Court / Police",
-        health: "Health insurance / Health",
-        ad: "Offer / Advertising"
-      },
-      steps: {
-        checkMoney: "First check whether the amount and claim are correct.",
-        checkDeadline: "Check the deadline and write down the date.",
-        checkAppointment: "Check the appointment and cancel in time if you cannot attend.",
-        collectDocs: "Prepare the mentioned documents or proof.",
-        getHelp: "If you are unsure, get advice or ask the office in writing."
-      },
-      actions: {
-        checkClaim: "Check claim",
-        requestStatement: "Request statement of claim",
-        checkInstallments: "Check installment option",
-        seekAdvice: "Get advice",
-        checkObjection: "Check objection",
-        checkAmount: "Check amount",
-        checkInvoice: "Check invoice",
-        clarifyPayment: "Clarify payment",
-        writeMessage: "Write message",
-        checkAppointment: "Check appointment",
-        prepareDocs: "Prepare documents",
-        askQuestion: "Ask question",
-        writeReply: "Write reply"
-      }
-    }
-  };
-  return maps[lang] || maps.de;
-}
-
-function simpleBriefartLabel(info, lang = "de") {
-  const H = helperTextDict(lang);
-  const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
-
-  if (hasAny(text, ["inkasso", "vollstreckungstitel", "vollstreckung", "gerichtsvollzieher", "pfändung"])) return H.types.inkasso;
-  if (hasAny(text, ["jobcenter", "bürgergeld", "aufrechnung", "rückforderung", "bescheid", "rechtsbehelf", "widerspruch"])) return H.types.jobcenter;
-  if (hasAny(text, ["rechnung"])) return H.types.invoice;
-  if (hasAny(text, ["mahnung", "forderung"])) return H.types.claim;
-  if (hasAny(text, ["termin", "einladung", "ladung"])) return H.types.appointment;
-  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft"])) return H.types.policeCourt;
-  if (hasAny(text, ["krankenkasse", "aok", "medizin", "arzt"])) return H.types.health;
-  if (hasAny(text, ["werbung", "angebot"])) return H.types.ad;
-
-  const raw = normalizeString(info.briefart);
-  if (!raw) return H.documentDefault;
-  if (/^(forderung|mahnung)$/i.test(raw)) return H.types.claim;
-  return raw;
-}
-
-function simpleUrgencyLabel(info, lang) {
-  const L = simpleLabelDict(lang);
-  const H = helperTextDict(lang);
-  const u = String(info.dringlichkeit || "unklar").toLowerCase();
-  if (u === "hoch") return H.urgencyHigh;
-  if (u === "mittel") return H.urgencyMedium;
-  if (u === "niedrig") return H.urgencyLow;
-  const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.folge_wenn_nichts, (info.was_ist_zu_tun||[]).join(" ")].join(" ").toLowerCase();
-  if (hasAny(text, ["widerspruch", "frist", "rechtsbehelf", "kündigung", "gericht", "polizei", "pfändung", "vollstreckung"])) return H.urgencyHigh;
-  if (hasAny(text, ["betrag", "forderung", "rechnung", "aufrechnung", "rückforderung", "termin", "unterlagen"])) return H.urgencyMedium;
-  return L.unknown;
-}
-
-function buildDeterministicNextSteps(info, lang) {
-  const H = helperTextDict(lang);
-  const text = [info.briefart, info.worum_geht_es, info.frist, info.termin, info.betrag, info.folge_wenn_nichts, info.naechster_schritt, (info.was_ist_zu_tun||[]).join(" ")].join(" ").toLowerCase();
-  const steps = [];
-
-  if (info.betrag || hasAny(text, ["forderung", "rechnung", "rückforderung", "aufrechnung", "zahlung"])) {
-    steps.push(H.steps.checkMoney);
-  }
-  if (info.frist || hasAny(text, ["frist", "widerspruch", "rechtsbehelf"])) {
-    steps.push(H.steps.checkDeadline);
-  }
-  if (info.termin) {
-    steps.push(H.steps.checkAppointment);
-  }
-  if ((info.unterlagen || []).length || hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) {
-    steps.push(H.steps.collectDocs);
-  }
-  if (hasAny(text, ["jobcenter", "behörde", "bescheid", "widerspruch", "inkasso", "gericht", "polizei"])) {
-    steps.push(H.steps.getHelp);
-  }
-  if (info.erster_sicherer_schritt) {
-    steps.unshift(info.erster_sicherer_schritt);
-  }
-  if (!steps.length) {
-    steps.push(simpleLabelDict(lang).firstStepDefault);
-  }
-  return dedupe(steps).slice(0,4);
-}
-
-function buildSuggestedActions(info, lang) {
-  const H = helperTextDict(lang);
-  const text = [
-    info.briefart,
-    info.worum_geht_es,
-    info.frist,
-    info.termin,
-    info.betrag,
-    info.folge_wenn_nichts,
-    info.naechster_schritt,
-    (info.passende_aktionen || []).join(" "),
-    (info.wichtigste_punkte || []).join(" ")
-  ].join(" ").toLowerCase();
-
-  const actions = [];
-
-  if (hasAny(text, ["inkasso", "vollstreckung", "vollstreckungstitel", "gerichtsvollzieher", "pfändung"])) {
-    actions.push(H.actions.checkClaim);
-    actions.push(H.actions.requestStatement);
-    actions.push(H.actions.checkInstallments);
-    actions.push(H.actions.seekAdvice);
-  } else if (hasAny(text, ["widerspruch", "rechtsbehelf", "bescheid", "aufrechnung", "rückforderung", "jobcenter", "bürgergeld"])) {
-    actions.push(H.actions.checkObjection);
-    actions.push(H.actions.checkAmount);
-    actions.push(H.actions.seekAdvice);
-  } else if (hasAny(text, ["rechnung", "forderung", "zahlung", "mahnung"])) {
-    actions.push(H.actions.checkInvoice);
-    actions.push(H.actions.clarifyPayment);
-    actions.push(H.actions.writeMessage);
-  }
-
-  if (hasAny(text, ["termin", "ladung", "einladung"])) actions.push(H.actions.checkAppointment);
-  if (hasAny(text, ["unterlagen", "nachweise", "einreichen", "nachreichen"])) actions.push(H.actions.prepareDocs);
-
-  actions.push(H.actions.askQuestion);
-  actions.push(H.actions.writeReply);
-  return dedupe(actions).slice(0,5);
-}
-
-function listValue(items) {
-  const arr = dedupe(Array.isArray(items) ? items : []).filter(Boolean);
-  return arr.join(", ");
-}
-
-function buildRoleAwareDataRows(info, L, safe, values) {
-  const rows = [];
-
-  const recipient = normalizeString(info.empfaenger);
-  const affected = listValue(info.betroffene_personen);
-  const witnesses = listValue(info.zeugen);
-  const defendants = listValue(info.angeklagte_beschuldigte);
-  const courtRef = normalizeString(info.aktenzeichen_gericht);
-  const prosecutorRef = normalizeString(info.aktenzeichen_staatsanwaltschaft);
-
-  if (recipient) rows.push({ key: "recipient", label: L.recipient || "Empfänger", value: recipient, status: "check" });
-  if (affected) rows.push({ key: "affected_people", label: L.affectedPeople || "Betroffene Personen", value: affected, status: "check" });
-  if (witnesses) rows.push({ key: "witnesses", label: L.witnesses || "Zeugen", value: witnesses, status: "check" });
-  if (defendants) rows.push({ key: "defendant", label: L.defendant || "Angeklagte/Beschuldigte", value: defendants, status: "check" });
-
-  rows.push({ key: "person", label: L.person, value: values.personValue, status: safe.personSafe ? "safe" : "check" });
-  rows.push({ key: "sender", label: L.sender, value: values.senderValue, status: values.senderValue === L.check ? "check" : "safe" });
-  rows.push({ key: "amount", label: L.amount, value: values.amountValue, status: values.amountValue === L.check ? "check" : "safe" });
-  rows.push({ key: "deadline", label: L.deadline, value: values.deadlineValue, status: values.deadlineValue === L.check ? "check" : "safe" });
-  if (info.risiko_kurz) rows.push({ key: "risk", label: L.risk || "Risiko", value: info.risiko_kurz, status: "check" });
-
-  if (prosecutorRef) rows.push({ key: "prosecutor_reference", label: L.prosecutorReference || "Aktenzeichen Staatsanwaltschaft", value: prosecutorRef, status: "check" });
-  if (courtRef) rows.push({ key: "court_reference", label: L.courtReference || "Aktenzeichen Gericht", value: courtRef, status: "check" });
-  rows.push({ key: "reference", label: L.reference, value: values.referenceValue, status: safe.referencesSafe ? "safe" : "check" });
-
-  return rows.filter((row) => row.value && row.value !== "");
-}
-
-
-function buildHelpTip(info, lang) {
-  const code = getLanguageMeta(lang).code;
-  const text = [
-    info.briefart,
-    info.worum_geht_es,
-    info.kurz_gesagt,
-    info.folge_wenn_nichts,
-    info.naechster_schritt,
-    (info.wichtigste_punkte || []).join(" "),
-    (info.was_ist_zu_tun || []).join(" "),
-    (info.passende_aktionen || []).join(" ")
-  ].join(" ").toLowerCase();
-
-  const tips = {
-    de: {
-      inkasso: "Prüfe zuerst Forderung, Betrag und Titel. Wenn du möchtest, kann ich dir helfen, eine sachliche Nachricht zur Forderungsprüfung zu schreiben.",
-      jobcenter: "Prüfe Betrag, Frist und Bescheid. Wenn du möchtest, kann ich dir helfen, eine Frage ans Jobcenter oder einen Widerspruch vorzubereiten.",
-      gericht: "Nimm den Brief ernst. Wenn du einen Grund oder Nachweis hast, kann ich dir helfen, eine ruhige Erklärung zu formulieren.",
-      krankenkasse: "Prüfe, ob Unterlagen fehlen oder ob eine Erstattung möglich sein könnte. Ich kann dir helfen, eine kurze Nachricht an die Krankenkasse zu schreiben.",
-      rechnung: "Prüfe zuerst Leistung, Betrag und Zahlungsfrist. Wenn etwas unklar ist, kann ich dir eine Nachfrage oder Reklamation formulieren.",
-      termin: "Wenn du den Termin nicht wahrnehmen kannst, kann ich dir helfen, eine kurze Bitte um Verschiebung zu schreiben.",
-      default: "Wenn du möchtest, helfe ich dir beim nächsten Schritt: Antwort schreiben, Unterlagenliste erstellen oder prüfen, ob ein Antrag sinnvoll sein könnte."
-    },
-    tr: {
-      inkasso: "Önce alacağı, tutarı ve varsa belgeyi kontrol et. İstersen alacağı kontrol ettirmek için sakin bir mesaj yazmana yardım edebilirim.",
-      jobcenter: "Tutarı, süreyi ve kararı kontrol et. İstersen Jobcenter'a soru yazmana veya itirazı hazırlamana yardım edebilirim.",
-      gericht: "Bu yazıyı ciddiye al. Geçerli bir nedenin veya belgen varsa, bunu sakin bir şekilde açıklayan bir yazı hazırlamana yardım edebilirim.",
-      krankenkasse: "Eksik evrak veya geri ödeme ihtimali var mı kontrol et. İstersen sağlık sigortasına kısa bir mesaj yazmana yardım edebilirim.",
-      rechnung: "Önce hizmeti, tutarı ve ödeme süresini kontrol et. Bir şey net değilse soru veya itiraz mesajı yazmana yardım edebilirim.",
-      termin: "Randevuya gidemiyorsan, erteleme için kısa bir mesaj yazmana yardım edebilirim.",
-      default: "İstersen bir sonraki adımda yardım ederim: cevap yazmak, evrak listesi yapmak veya başvuru gerekip gerekmediğini kontrol etmek."
-    },
-    bg: {
-      inkasso: "Първо провери задължението, сумата и документа. Ако искаш, мога да ти помогна да напишеш спокойно съобщение за проверка на вземането.",
-      jobcenter: "Провери сумата, срока и решението. Ако искаш, мога да ти помогна с въпрос до Jobcenter или с подготовка на възражение.",
-      gericht: "Вземи писмото сериозно. Ако имаш причина или доказателство, мога да ти помогна да напишеш спокойно обяснение.",
-      krankenkasse: "Провери дали липсват документи или дали може да има възстановяване на разходи. Мога да ти помогна с кратко съобщение до здравната каса.",
-      rechnung: "Първо провери услугата, сумата и срока за плащане. Ако нещо е неясно, мога да ти помогна с въпрос или рекламация.",
-      termin: "Ако не можеш да отидеш на термина, мога да ти помогна да напишеш кратка молба за преместване.",
-      default: "Ако искаш, мога да ти помогна със следващата стъпка: отговор, списък с документи или проверка дали е нужен Antrag."
-    },
-    ro: {
-      inkasso: "Verifică mai întâi datoria, suma și titlul. Dacă vrei, te pot ajuta să scrii un mesaj pentru verificarea creanței.",
-      jobcenter: "Verifică suma, termenul și decizia. Dacă vrei, te pot ajuta să scrii o întrebare către Jobcenter sau să pregătești o contestație.",
-      gericht: "Ia scrisoarea în serios. Dacă ai un motiv sau dovadă, te pot ajuta să formulezi o explicație calmă.",
-      krankenkasse: "Verifică dacă lipsesc documente sau dacă poate exista rambursare. Te pot ajuta să scrii un mesaj scurt către casa de sănătate.",
-      rechnung: "Verifică mai întâi serviciul, suma și termenul de plată. Dacă ceva este neclar, te pot ajuta cu o întrebare sau reclamație.",
-      termin: "Dacă nu poți merge la programare, te pot ajuta să scrii o cerere scurtă de amânare.",
-      default: "Dacă vrei, te ajut cu următorul pas: răspuns, listă de documente sau verificarea unei posibile cereri."
-    },
-    ar: {
-      inkasso: "تحقق أولًا من المطالبة والمبلغ والوثيقة المذكورة. إذا أردت، أساعدك في كتابة رسالة هادئة لطلب التحقق من المطالبة.",
-      jobcenter: "تحقق من المبلغ والمهلة والقرار. إذا أردت، أساعدك في كتابة سؤال إلى Jobcenter أو تحضير اعتراض.",
-      gericht: "تعامل مع الرسالة بجدية. إذا كان لديك سبب أو دليل، أساعدك في صياغة توضيح هادئ.",
-      krankenkasse: "تحقق هل توجد مستندات ناقصة أو إمكانية استرداد تكاليف. أستطيع مساعدتك في كتابة رسالة قصيرة للتأمين الصحي.",
-      rechnung: "تحقق أولًا من الخدمة والمبلغ وموعد الدفع. إذا كان هناك شيء غير واضح، أساعدك في كتابة سؤال أو اعتراض.",
-      termin: "إذا لم تستطع حضور الموعد، أساعدك في كتابة طلب قصير لتغيير الموعد.",
-      default: "إذا أردت، أساعدك في الخطوة التالية: كتابة رد، إعداد قائمة مستندات أو فحص ما إذا كان طلب ما مناسبًا."
-    },
-    en: {
-      inkasso: "First check the claim, amount and title. I can help you write a calm message asking for verification.",
-      jobcenter: "Check the amount, deadline and decision. I can help you write a question to the Jobcenter or prepare an objection.",
-      gericht: "Take this letter seriously. If you had a reason or proof, I can help you write a calm explanation.",
-      krankenkasse: "Check whether documents are missing or reimbursement could be possible. I can help you write a short message to the health insurance.",
-      rechnung: "First check the service, amount and payment deadline. If something is unclear, I can help you write a question or complaint.",
-      termin: "If you cannot attend the appointment, I can help you write a short request to reschedule.",
-      default: "I can help with the next step: writing a reply, making a document list or checking whether an application could be useful."
-    }
-  };
-
-  const T = tips[code] || tips.de;
-
-  if (hasAny(text, ["inkasso", "mahnbescheid", "vollstreck", "pfändung", "forderung"])) return T.inkasso;
-  if (hasAny(text, ["jobcenter", "bürgergeld", "rückforderung", "aufrechnung", "bescheid", "widerspruch"])) return T.jobcenter;
-  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft", "ordnungsgeld", "ladung", "zeuge", "termin" ])) return T.gericht;
-  if (hasAny(text, ["krankenkasse", "aok", "versicherung", "pflege", "hilfsmittel", "erstattung"])) return T.krankenkasse;
-  if (hasAny(text, ["rechnung", "zahlung", "gebühr", "kosten", "betrag"])) return T.rechnung;
-  if (hasAny(text, ["termin", "einladung", "randevu", "appointment"])) return T.termin;
-
-  return T.default;
-}
-
-async function buildHelperCardsFromInfo(info, lang, sourceMode = "text") {
-  const langCode = getLanguageMeta(lang).code;
-  const L = simpleLabelDict(langCode);
-  const safe = getSafeCriticalMeta(info, sourceMode);
-  const mustReact = info.muss_handeln === "ja" ? "yes" : (info.muss_handeln === "nein" ? "no" : inferMustReact(info));
-  const moneyAffected = info.geld_betroffen === "ja" ? "yes" : (info.geld_betroffen === "nein" ? "no" : inferMoneyAffected(info));
-  const personValue = safe.personSafe && safe.personForOfficialText ? safe.personForOfficialText : L.check;
-  const senderValue = info.absender_kurz || info.absender_original || L.check;
-  const amountValue = info.betrag || L.check;
-  const deadlineValue = info.frist || info.termin || L.check;
-  const referenceValue = safe.referencesSafe && (info.referenzen || []).length ? (info.referenzen || []).join(", ") : L.check;
-  const nextSteps = buildDeterministicNextSteps(info, langCode);
-  const firstStep = nextSteps[0] || L.firstStepDefault;
-  const briefartLabel = simpleBriefartLabel(info, langCode);
-  const urgencyLabel = simpleUrgencyLabel(info, langCode);
-  const unsafeParts = [];
-  if (!safe.personSafe) unsafeParts.push(L.person);
-  if (!safe.referencesSafe) unsafeParts.push(L.reference);
-  if ((info.unsicherheiten || []).length) unsafeParts.push(L.check);
-  const unsafeNotice = unsafeParts.length ? L.unsafe : "";
-  const whatsappParts = [];
-  const H = helperTextDict(langCode);
-  if (info.absender_kurz || info.absender_original) whatsappParts.push(`${H.from} ${info.absender_kurz || info.absender_original}`);
-  if (info.betrag) whatsappParts.push(`${H.amount}: ${info.betrag}`);
-  if (info.frist) whatsappParts.push(`${H.deadline}: ${info.frist}`);
-  if (info.termin) whatsappParts.push(`${H.appointment}: ${info.termin}`);
-
-  return {
-    briefart_label: briefartLabel,
-    trust_label: unsafeNotice ? L.medium : L.good,
-    trust_note: unsafeNotice || "",
-    urgency_label: urgencyLabel,
-    urgency_reason: info.frist || info.termin || info.folge_wenn_nichts || "",
-    must_react_label: mustReact === "yes" ? L.yes : (mustReact === "no" ? L.no : L.check),
-    money_label: moneyAffected === "yes" ? L.yes : (moneyAffected === "no" ? L.no : L.check),
-    first_step: firstStep,
-    help_tip: buildHelpTip(info, langCode),
-    next_steps: nextSteps,
-    unsafe_notice: unsafeNotice,
-    data_rows: buildRoleAwareDataRows(info, L, safe, {
-      personValue,
-      senderValue,
-      amountValue,
-      deadlineValue,
-      referenceValue
-    }),
-    suggested_actions: buildSuggestedActions(info, langCode),
-    whatsapp_summary: `${L.whatsappStart}${briefartLabel}${whatsappParts.length ? " – " + whatsappParts.join("; ") : ""}. ${firstStep}`,
-    phone_script: ""
-  };
-}
-
-
-function isHighRiskLetter(info) {
-  const text = [
-    info.briefart,
-    info.worum_geht_es,
-    info.kurz_gesagt,
-    info.frist,
-    info.termin,
-    info.folge_wenn_nichts,
-    info.naechster_schritt,
-    info.betrag,
-    (info.wichtigste_punkte || []).join(" "),
-    (info.was_ist_zu_tun || []).join(" "),
-    (info.passende_aktionen || []).join(" "),
-    (info.referenzen || []).join(" ")
-  ].join(" ").toLowerCase();
-
-  return Boolean(
-    info.dringlichkeit === "hoch" ||
-    hasAny(text, [
-      "inkasso",
-      "vollstreckung",
-      "vollstreckungstitel",
-      "gerichtsvollzieher",
-      "pfändung",
-      "mahnbescheid",
-      "gericht",
-      "polizei",
-      "staatsanwaltschaft",
-      "kündigung",
-      "widerspruch",
-      "rechtsbehelf",
-      "rückforderung",
-      "aufrechnung",
-      "jobcenter",
-      "bürgergeld",
-      "sanktion",
-      "minderung",
-      "krankenkasse",
-      "ablehnung",
-      "frist",
-      "mahnung"
-    ])
-  );
-}
-
-function buildQualityModeType(info) {
-  const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
-  if (hasAny(text, ["inkasso", "vollstreckung", "vollstreckungstitel", "pfändung", "gerichtsvollzieher"])) return "inkasso_vollstreckung";
-  if (hasAny(text, ["jobcenter", "bürgergeld", "rückforderung", "aufrechnung", "sanktion", "minderung"])) return "jobcenter_bescheid";
-  if (hasAny(text, ["gericht", "polizei", "staatsanwaltschaft", "ladung", "straf"] )) return "gericht_polizei";
-  if (hasAny(text, ["krankenkasse", "aok", "pflege", "ablehnung", "hilfsmittel", "zuzahlung"])) return "krankenkasse";
-  if (hasAny(text, ["rechnung", "mahnung", "forderung", "zahlung"])) return "rechnung_mahnung";
-  return "wichtiger_brief";
-}
-
-function clampShortExplanation(text, lang) {
-  const clean = cleanText(text).replace(/\n{3,}/g, "\n\n").trim();
-  if (!clean) return "";
-
-  const lines = clean
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (lines.length > 1) {
-    return lines.slice(0, 5).join("\n").trim();
-  }
-
-  const parts = clean
-    .replace(/\s+/g, " ")
-    .split(/(?<=[.!?؟])\s+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-  let result = parts.slice(0, 4).join(" ").trim();
-
-  const maxChars = lang === "ar" ? 620 : 520;
-  if (result.length > maxChars) {
-    result = result.slice(0, maxChars).trim();
-    const lastEnd = Math.max(result.lastIndexOf("."), result.lastIndexOf("!"), result.lastIndexOf("?"), result.lastIndexOf("؟"));
-    if (lastEnd > 180) result = result.slice(0, lastEnd + 1).trim();
-  }
-
-  return result || clean.slice(0, maxChars).trim();
-}
-
-
-
-function clampBalancedExplanation(text, lang, mode = "wichtiger_brief") {
-  const clean = cleanText(text).replace(/\n{3,}/g, "\n\n").trim();
-  if (!clean) return "";
-
-  const lines = clean
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/^#{1,6}\s*/.test(line));
-
-  const maxLines = mode === "inkasso_vollstreckung" || mode === "jobcenter_bescheid" || mode === "gericht_polizei" ? 9 : 7;
-  const maxChars = lang === "ar" ? 1250 : 1050;
-
-  let result = lines.length > 1 ? lines.slice(0, maxLines).join("\n") : clean;
-
-  if (result.length > maxChars) {
-    result = result.slice(0, maxChars).trim();
-    const lastEnd = Math.max(result.lastIndexOf("."), result.lastIndexOf("!"), result.lastIndexOf("?"), result.lastIndexOf("؟"));
-    if (lastEnd > 300) result = result.slice(0, lastEnd + 1).trim();
-  }
-
-  return result.trim();
-}
-
-function limitDetailText(text, lang, mode = "wichtiger_brief") {
-  const clean = cleanText(text).replace(/\n{3,}/g, "\n\n").trim();
-  if (!clean) return "";
-
-  const blocks = clean
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  const maxBlocks = mode === "wichtiger_brief" ? 4 : 5;
-  const maxCharsPerBlock = lang === "ar" ? 360 : 300;
-
-  const out = [];
-  for (const block of blocks) {
-    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
-    const title = lines.length > 1 && lines[0].length < 60 ? lines[0] : "";
-    const body = (title ? lines.slice(1).join(" ") : lines.join(" ")).replace(/\s+/g, " ").trim();
-    let shortBody = body;
-    if (shortBody.length > maxCharsPerBlock) {
-      shortBody = shortBody.slice(0, maxCharsPerBlock).trim();
-      const last = Math.max(shortBody.lastIndexOf("."), shortBody.lastIndexOf("!"), shortBody.lastIndexOf("?"), shortBody.lastIndexOf("؟"));
-      if (last > 90) shortBody = shortBody.slice(0, last + 1).trim();
-    }
-    out.push(title ? `${title}\n${shortBody}`.trim() : shortBody);
-    if (out.length >= maxBlocks) break;
-  }
-
-  return out.join("\n\n").trim();
-}
-
-async function improveQualityTextsIfNeeded(info, translated, helper, lang, sourceMode = "text") {
-  const langMeta = getLanguageMeta(lang);
-  const langCode = langMeta.code;
-
-  if (!isHighRiskLetter(info)) {
-    return {
-      translated,
-      helper
-    };
-  }
-
-  const mode = buildQualityModeType(info);
-  const safe = getSafeCriticalMeta(info, sourceMode);
-
-  const raw = await callGemini([
-    {
-      text: `
-Du bist Hilfe24 Qualitätsmodus V8: Universal Letter Understanding.
-
-${buildHilfe24TextSystemRules()}
-
-Ziel:
-Erstelle einen einzigen guten Erklärblock zum Brief. Nicht zu kurz, nicht zu lang. Der Nutzer soll verstehen, was im Brief steht und was jetzt zu tun ist.
-
-Ausgabesprache: ${langMeta.label}
-Briefmodus: ${mode}
-
-WICHTIGE REGELN:
-- Keine neuen Daten erfinden.
-- Name nur nennen, wenn person_sicher = true.
-- Wenn person_sicher = false, keinen Namen verwenden und keine persönliche Anrede schreiben.
-- Fristen nicht als abgelaufen behaupten, wenn Zugang/Bekanntgabe nicht sicher bekannt ist.
-- Beträge, Daten, Aktenzeichen nur aus den erkannten Daten übernehmen.
-- Bei Inkasso/Vollstreckung: nicht automatisch Zahlungszusage empfehlen. Erst Forderung, Titel, Betrag und Gläubiger prüfen, dann Ratenzahlung nur als Möglichkeit.
-- Bei Inkasso/Vollstreckung nicht sicher schreiben: "Ein Gericht hat die Forderung bestätigt". Besser: "Im Schreiben wird ein Vollstreckungstitel erwähnt. Bitte prüfen, ob Titel, Forderung und Betrag wirklich stimmen."
-- Bei Jobcenter/Bescheid: Widerspruchsfrist, Rückforderung, Aufrechnung und Beratung klar nennen.
-- Bei Gericht/Polizei: keine Rechtsberatung, Termin/Frist ernst nehmen, bei Unsicherheit Beratung/Anwalt erwähnen.
-- Keine langen Textwände.
-- Es gibt nur eine Erklärung, keinen getrennten Kurztext und Langtext.
-- Die Erklärung darf bei wichtigen Briefen länger sein, aber nur mit kurzen Sätzen und klarer Struktur.
-- Erkläre so viel wie nötig und so wenig wie möglich.
-- Bei ernsten Briefen darfst du 6 bis 9 kurze Zeilen nutzen. Bei einfachen Briefen reichen weniger Zeilen.
-
-STIL:
-Human + EL5 + DLTR + Listify
-- menschlich
-- sehr einfach
-- keine Romane
-- Listen statt Textwand
-
-ERKANNTE DATEN:
-${JSON.stringify({
-  briefart: info.briefart,
-  absender: info.absender_kurz || info.absender_original,
-  person: safe.personForOfficialText,
-  person_sicher: safe.personSafe,
-  betrag: info.betrag,
-  frist: info.frist,
-  termin: info.termin,
-  referenzen: safe.referencesSafe ? info.referenzen : [],
-  referenzen_sicher: safe.referencesSafe,
-  roh_referenzen: info.referenzen,
-  dringlichkeit: info.dringlichkeit,
-  pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
-  brief_schwierigkeit: info.brief_schwierigkeit,
-  was_will_der_absender: info.was_will_der_absender,
-  muss_handeln: info.muss_handeln,
-  geld_betroffen: info.geld_betroffen,
-  risiko_kurz: info.risiko_kurz,
-  erster_sicherer_schritt: info.erster_sicherer_schritt,
-  daten_unsicher: info.daten_unsicher,
-  folge_wenn_nichts: info.folge_wenn_nichts,
-  wichtigste_punkte: info.wichtigste_punkte,
-  was_ist_zu_tun: info.was_ist_zu_tun,
-  naechster_schritt: info.naechster_schritt,
-  unsicherheiten: info.unsicherheiten
-}, null, 2)}
-
-AKTUELLE ERKLÄRUNG:
-${translated.kurz}
-
-Antworte nur mit gültigem JSON:
-{
-  "kurz": "",
-  "first_step": "",
-  "next_steps": [],
-  "suggested_actions": ["kurze Aktion als Text", "zweite Aktion als Text"],
-  "whatsapp_summary": ""
-}
-`
-    }
-  ]);
-
-  let parsed;
-
-  try {
-    parsed = extractJson(raw);
-  } catch (error) {
-    console.error("Qualitätsmodus konnte nicht als JSON gelesen werden:", error.message || error);
-    parsed = {};
-  }
-
-  const kurz = clampBalancedExplanation(parsed.kurz || translated.kurz, langCode, mode);
-  const details = "";
-  const nextSteps = normalizeArray(parsed.next_steps).slice(0, 4);
-  const suggestedActions = normalizeActionArray(parsed.suggested_actions).slice(0, 5);
-  const firstStep = normalizeString(parsed.first_step) || helper.first_step;
-  const whatsappSummary = normalizeString(parsed.whatsapp_summary) || helper.whatsapp_summary;
-
-  return {
-    translated: {
-      kurz,
-      details
-    },
-    helper: {
-      ...helper,
-      quality_mode: true,
-      quality_type: mode,
-      first_step: firstStep,
-      next_steps: nextSteps.length ? nextSteps : helper.next_steps,
-      suggested_actions: suggestedActions.length ? suggestedActions : helper.suggested_actions,
-      whatsapp_summary: whatsappSummary
-    }
-  };
-}
-
-async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
-  const langCode = getLanguageMeta(lang).code;
-  const safe = getSafeCriticalMeta(info, sourceMode);
-
-  // Für die grüne Kurz-Erklärung bei Fotos keinen unsicheren Namen verwenden.
-  const safeInfoForShort = {
-    ...info,
-    betroffene_person: safe.personForOfficialText,
-    referenzen: safe.referencesSafe ? info.referenzen : info.referenzen
-  };
-
-  const shortDe = cleanText(renderBalancedExplanationGerman(safeInfoForShort));
-  const detailTemplateDe = "";
-
-  let translated = await translateFinalTextsIfNeeded(shortDe, detailTemplateDe, langCode);
-  let helper = await buildHelperCardsFromInfo(info, langCode, sourceMode);
-
-  const qualityResult = await improveQualityTextsIfNeeded(info, translated, helper, langCode, sourceMode);
-  translated = qualityResult.translated;
-  helper = qualityResult.helper;
-
-  return {
-    ok: true,
-    quality_ok: true,
-    hinweis: "",
-    kurz: translated.kurz,
-    details: "",
-    helper,
-    meta: {
-      briefart: info.briefart,
-      absender: info.absender_kurz || info.absender_original,
-      email_adresse: info.email_adresse,
-      person: safe.personForOfficialText,
-      person_sicher: safe.personSafe,
-      termin: info.termin,
-      frist: info.frist,
-      betrag: info.betrag,
-      unterlagen: info.unterlagen,
-      referenzen: safe.referencesSafe ? info.referenzen : [],
-      referenzen_erkannt_roh: info.referenzen,
-      referenzen_sicher: safe.referencesSafe,
-      dringlichkeit: info.dringlichkeit,
-      pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
-      naechster_schritt: info.naechster_schritt,
-      antwort_sprache: info.antwort_sprache,
-      passende_aktionen: info.passende_aktionen,
-      unsicherheiten: info.unsicherheiten,
-      sourceMode,
-      must_react: info.muss_handeln === "ja" ? "yes" : (info.muss_handeln === "nein" ? "no" : inferMustReact(info)),
-      money_affected: info.geld_betroffen === "ja" ? "yes" : (info.geld_betroffen === "nein" ? "no" : inferMoneyAffected(info)),
-      brief_schwierigkeit: info.brief_schwierigkeit,
-      was_will_der_absender: info.was_will_der_absender,
-      risiko_kurz: info.risiko_kurz,
-      erster_sicherer_schritt: info.erster_sicherer_schritt,
-      daten_unsicher: info.daten_unsicher
-    }
-  };
-}
-
-async function buildFinalAnswerFromText(text, lang) {
-  const info = await buildInfoFromText(text);
-  return await buildFinalPayloadFromInfo(info, lang, "text");
-}
-
-async function buildFinalAnswerFromImages(bilder, lang) {
-  if (!Array.isArray(bilder) || bilder.length === 0) {
-    return {
-      ok: false,
-      error: "Kein Bild gesendet"
-    };
-  }
-
-  if (bilder.length > 3) {
-    return {
-      ok: false,
-      error: "In der kostenlosen Version kannst du maximal 3 Bilder hochladen."
-    };
-  }
-
-  for (const bild of bilder) {
-    if (!bild || typeof bild.imageData !== "string" || typeof bild.mimeType !== "string") {
-      return {
-        ok: false,
-        error: "Ein Bild ist ungültig."
-      };
-    }
-
-    if (bild.imageData.length > 23000000) {
-      return {
-        ok: false,
-        error: "Ein Bild ist zu groß. Bitte fotografiere die Seite klar, aber nicht zu nah, oder lade weniger Fotos hoch."
-      };
-    }
-  }
-
-  const info = await buildInfoFromImages(bilder);
-  return await buildFinalPayloadFromInfo(info, lang, "image");
-}
-
-function looksGermanHeavyForAudio(text, lang) {
-  const langCode = getLanguageMeta(lang).code;
-  if (langCode === "de") return false;
-
-  const clean = String(text || "").toLowerCase();
-  if (!clean) return false;
-
-  const germanMarkers = [
-    "der brief", "die frist", "betrag", "forderung", "widerspruch",
-    "jobcenter", "inkasso", "rechnung", "mah nung", "mahnung",
-    "was du", "wenn du", "prüfe", "muss", "müssen", "unterlagen",
-    "erkannt", "daten", "dringlichkeit", "geld betroffen", "antwort schreiben"
-  ];
-
-  let hits = 0;
-  for (const marker of germanMarkers) {
-    if (clean.includes(marker)) hits++;
-  }
-
-  return hits >= 2;
-}
-
-async function translateAudioTextIfNeeded(text, lang) {
-  const langMeta = getLanguageMeta(lang);
-  const clean = cleanText(text);
-
-  if (!clean || langMeta.code === "de") return clean;
-  if (!looksGermanHeavyForAudio(clean, langMeta.code)) return clean;
-
-  const raw = await callGemini([
-    {
-      text: `
-Übersetze diesen Vorlesetext vollständig in ${langMeta.label}.
-
-Regeln:
-- Keine deutschen Sätze behalten, außer offizielle Eigennamen wie Jobcenter, AOK, HFG Inkasso.
-- Beträge, Daten, Aktenzeichen und Namen exakt erhalten.
-- Kurz, natürlich und einfach schreiben.
-- Keine zusätzlichen Informationen hinzufügen.
-- Gib nur den übersetzten Text zurück, kein JSON, kein Markdown.
-
-TEXT:
-${clean.slice(0, 2500)}
-`
-    }
-  ]);
-
-  return cleanText(raw);
-}
-
-async function buildAudioText(text, lang) {
-  return await translateAudioTextIfNeeded(text, lang);
-}
-
-async function synthesizeMp3(text, lang) {
-  const langMeta = getLanguageMeta(lang);
-
-  const request = {
-    input: {
-      text
-    },
-    voice: {
-      languageCode: langMeta.ttsLanguageCode,
-      ssmlGender: langMeta.ttsGender
-    },
-    audioConfig: {
-      audioEncoding: "MP3",
-      speakingRate: 0.92,
-      pitch: 0
-    }
-  };
-
-  if (langMeta.ttsVoiceName) {
-    request.voice.name = langMeta.ttsVoiceName;
-  }
-
-  const [response] = await ttsClient.synthesizeSpeech(request);
-
-  if (!response.audioContent) {
-    throw new Error("Keine TTS-Audioantwort erhalten");
-  }
-
-  return Buffer.isBuffer(response.audioContent)
-    ? response.audioContent.toString("base64")
-    : Buffer.from(response.audioContent, "binary").toString("base64");
-}
-
-app.post("/api/brief", async (req, res) => {
-  try {
-    const text = String(req.body.text || "");
-    const lang = (req.body.lang || "de").toLowerCase();
-
-    if (!text || !text.trim()) {
-      return res.status(400).json({
-        ok: false,
-        error: "Kein Text gesendet"
-      });
-    }
-
-    if (text.length > 12000) {
-      return res.status(400).json({
-        ok: false,
-        error: "Der Text ist zu lang. Bitte kürze ihn oder lade nur die wichtigsten Seiten hoch."
-      });
-    }
-
-    const result = await buildFinalAnswerFromText(text, lang);
-
-    return res.json(result);
-  } catch (error) {
-    console.error("Fehler /api/brief:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
-});
-
-app.post("/api/brief-bild", async (req, res) => {
-  try {
-    const bilder = req.body.bilder || [];
-    const lang = (req.body.lang || "de").toLowerCase();
-
-    const result = await buildFinalAnswerFromImages(bilder, lang);
-
-    return res.json(result);
-  } catch (error) {
-    console.error("Fehler /api/brief-bild:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Serverfehler"
-    });
-  }
-});
-
-
-function postProcessQuestionAnswer(answer, meta = {}) {
-  let out = cleanText(answer);
-
-  // In normalen Hilfe-Antworten keine lockere Namens-Anrede verwenden.
-  // Das verhindert falsche Begrüßungen wie "Hallo Krassa," oder "Hallo Ksenia,".
-  // Offizielle Antwortvorlagen mit "Sehr geehrte Damen und Herren" bleiben erhalten.
-  out = out.replace(/^\s*(Hallo|Hi|Hey|Merhaba|Selam|Здравейте|Здравей|Bună|Salut|Hello|مرحبا|أهلاً)\s+[^,\n]{0,80},?\s*\n+/i, "");
-  out = out.replace(/^\s*(Hallo|Hi|Hey|Merhaba|Selam|Здравейте|Здравей|Bună|Salut|Hello|مرحبا|أهلاً)\s+[^,\n]{0,80},?\s*/i, "");
-
-  // Frist nicht als sicher abgelaufen behaupten, wenn kein Zugang/Bekanntgabe-Datum sicher bekannt ist.
-  out = out.replace(/Die Widerspruchsfrist ist leider schon abgelaufen\.?/gi, "Die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
-  out = out.replace(/Die Widerspruchsfrist ist schon abgelaufen\.?/gi, "Die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
-  out = out.replace(/Die Frist ist leider schon abgelaufen\.?/gi, "Bitte prüfe die Frist im Brief und wann der Brief angekommen ist.");
-  out = out.replace(/Die Frist ist schon abgelaufen\.?/gi, "Bitte prüfe die Frist im Brief und wann der Brief angekommen ist.");
-  out = out.replace(/die Widerspruchsfrist[^.\n]{0,80}abgelaufen\.?/gi, "die Widerspruchsfrist beträgt laut Schreiben 1 Monat nach Bekanntgabe. Bitte prüfe, wann der Brief angekommen ist.");
-  out = out.replace(/die Frist[^.\n]{0,80}abgelaufen\.?/gi, "die Frist muss anhand des Briefes und des Zugangsdatums geprüft werden.");
-
-  return cleanText(out);
-}
-
-
-function normalizeQuestionText(text) {
-  return String(text || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[.!?؟،,;:]+$/g, "")
-    .replace(/\s+/g, " ");
-}
-
-function isPoliteSmallTalkQuestion(text) {
-  const clean = normalizeQuestionText(text);
-
-  const politeTexts = new Set([
-    "danke", "dankeschön", "danke schön", "vielen dank", "ok", "okay", "alles klar", "super", "top", "ja", "passt", "gut", "perfekt",
-    "teşekkürler", "teşekkür ederim", "sağ ol", "sagol", "tamam", "okey", "oldu", "evet", "iyi", "süper",
-    "благодаря", "мерси", "добре", "ок", "да", "супер",
-    "mulțumesc", "mersi", "bine", "da", "ok",
-    "thanks", "thank you", "ok", "okay", "yes", "great", "perfect",
-    "شكرا", "شكرًا", "تمام", "حسنا", "نعم"
-  ]);
-
-  return politeTexts.has(clean);
-}
-
-function politeSmallTalkReply(lang) {
-  const code = getLanguageMeta(lang).code;
-  const replies = {
-    de: "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.",
-    tr: "Rica ederim. Başka bir şey öğrenmek istersen sorunu yazabilirsin.",
-    bg: "Моля. Ако искаш да знаеш още нещо, напиши въпроса си.",
-    ar: "على الرحب والسعة. إذا أردت معرفة شيء آخر، اكتب سؤالك.",
-    ro: "Cu plăcere. Dacă mai vrei să știi ceva, scrie întrebarea ta.",
-    en: "You are welcome. If you want to know anything else, write your question."
-  };
-  return replies[code] || replies.de;
-}
-
-function buildQuestionFallbackAnswer(frageMode, meta, lang) {
-  const code = getLanguageMeta(lang).code;
-  const sender = normalizeString(meta.absender || meta.absender_kurz || "");
-  const amount = normalizeString(meta.betrag || "");
-  const deadline = normalizeString(meta.frist || meta.termin || "");
-
-  if (code === "tr") {
-    if (frageMode === "reply") {
-      return "Şu anda hazır cevap metni oluşturulamadı. Lütfen tekrar dene.\n\nİpucu: Resmi bir kuruma yazacaksan metin Almanca hazırlanmalıdır.";
-    }
-    return [
-      sender ? `Bu yazı ${sender} tarafından gönderilmiş.` : "Bu yazı önemli olabilir.",
-      amount ? `Tutar: ${amount}.` : "Tutar varsa lütfen mektuptan kontrol et.",
-      deadline ? `Süre/termin: ${deadline}.` : "Süre varsa lütfen mektuptan kontrol et.",
-      "İlk adım: bilgileri mektuptan kontrol et ve emin değilsen ilgili kuruma yaz."
-    ].join("\n");
-  }
-
-  if (code === "bg") {
-    if (frageMode === "reply") {
-      return "В момента готовият текст за отговор не можа да бъде създаден. Моля, опитай отново.\n\nСъвет: Ако пишеш до германска институция, текстът трябва да бъде на немски.";
-    }
-    return [
-      sender ? `Писмото е изпратено от ${sender}.` : "Това писмо може да е важно.",
-      amount ? `Сума: ${amount}.` : "Ако има сума, провери я в писмото.",
-      deadline ? `Срок/термин: ${deadline}.` : "Ако има срок, провери го в писмото.",
-      "Първа стъпка: провери данните в писмото и ако не си сигурен, пиши до съответната институция."
-    ].join("\n");
-  }
-
-  if (code === "ro") {
-    return [
-      sender ? `Scrisoarea este de la ${sender}.` : "Această scrisoare poate fi importantă.",
-      amount ? `Sumă: ${amount}.` : "Dacă există o sumă, verific-o în scrisoare.",
-      deadline ? `Termen/programare: ${deadline}.` : "Dacă există un termen, verifică-l în scrisoare.",
-      "Primul pas: verifică datele din scrisoare și, dacă nu ești sigur, scrie instituției responsabile."
-    ].join("\n");
-  }
-
-  if (code === "ar") {
-    return [
-      sender ? `هذه الرسالة من ${sender}.` : "قد تكون هذه الرسالة مهمة.",
-      amount ? `المبلغ: ${amount}.` : "إذا كان هناك مبلغ، يرجى التحقق منه في الرسالة.",
-      deadline ? `الموعد/المهلة: ${deadline}.` : "إذا كانت هناك مهلة، يرجى التحقق منها في الرسالة.",
-      "الخطوة الأولى: تحقق من البيانات في الرسالة، وإذا كنت غير متأكد فاكتب إلى الجهة المسؤولة."
-    ].join("\n");
-  }
-
-  if (code === "en") {
-    return [
-      sender ? `This letter is from ${sender}.` : "This letter may be important.",
-      amount ? `Amount: ${amount}.` : "If there is an amount, check it in the letter.",
-      deadline ? `Deadline/appointment: ${deadline}.` : "If there is a deadline, check it in the letter.",
-      "First step: check the details in the letter and, if you are unsure, write to the responsible office."
-    ].join("\n");
-  }
-
-  if (frageMode === "reply") {
-    return "Die Antwortvorlage konnte gerade nicht erstellt werden. Bitte versuche es nochmal.\n\nWichtig: Wenn es um eine deutsche Behörde, ein Gericht, Inkasso oder eine Krankenkasse geht, sollte die fertige Antwort auf Deutsch geschrieben werden.";
-  }
-
-  return [
-    sender ? `Der Brief ist von ${sender}.` : "Dieser Brief kann wichtig sein.",
-    amount ? `Betrag: ${amount}.` : "Wenn ein Betrag genannt wird, prüfe ihn im Brief.",
-    deadline ? `Frist/Termin: ${deadline}.` : "Wenn eine Frist genannt wird, prüfe sie im Brief.",
-    "Erster Schritt: Prüfe die Daten im Brief und schreibe bei Unsicherheit an die zuständige Stelle."
-  ].join("\n");
-}
-
-
-app.post("/api/daten-pruefen", async (req, res) => {
-  try {
-    const bilder = req.body.bilder || [];
-    const lang = (req.body.lang || "de").toLowerCase();
-    const langMeta = getLanguageMeta(lang);
-
-    if (!Array.isArray(bilder) || bilder.length === 0) {
-      return res.status(400).json({ ok: false, error: "Keine Bilder gesendet" });
-    }
-
-    if (bilder.length > 3) {
-      return res.status(400).json({ ok: false, error: "Maximal 3 Bilder möglich." });
-    }
-
-    const parts = [
-      {
-        text: `
-Du bist Hilfe24. Prüfe NUR die kritischen Daten aus den hochgeladenen Brief-Fotos.
-
-Sprache für die Antwort: ${langMeta.label}
-
-ZIEL:
-Der Nutzer will Name, Aktenzeichen, Datum, Frist und Betrag genauer prüfen.
-Du sollst nicht den ganzen Brief neu erklären.
-
-WICHTIGE REGELN:
-- Nichts erfinden.
-- Wenn ein Wert klar lesbar ist: anzeigen.
-- Wenn ein Wert wahrscheinlich ist, aber nicht 100% sicher: schreibe "vermutlich ... – bitte prüfen" in der Sprache des Nutzers.
-- Wenn ein Wert nicht sicher lesbar ist: schreibe "nicht sicher erkannt" in der Sprache des Nutzers.
-- Bei mehreren Personen: nach Rollen trennen, z. B. Empfänger, betroffene Person, Zeuge, Angeklagter/Beschuldigter, weitere genannte Personen.
-- Aktenzeichen/Nummern exakt mit Punkten, Schrägstrichen und Bindestrichen übernehmen, wenn sicher lesbar.
-- Wenn mehrere Aktenzeichen da sind, getrennt nennen.
-- Antwort kurz und listenartig.
-
-Prüfe diese Daten:
-- Empfänger / Adressat
-- betroffene Person
-- weitere Personen und Rollen
-- Absender
-- Datum des Schreibens
-- Aktenzeichen / Geschäftszeichen / Kundennummer / Rechnungsnummer
-- Betrag / Forderung / Kosten
-- Frist / Termin
-
-Antworte als kurzer Text in ${langMeta.label}.
-Keine Markdown-Tabelle.
-Keine lange Erklärung.
-`
-      }
+      .toLowerCase()
+      .replace(/[.!?؟،,;:]+$/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function isPoliteSmallTalk(text) {
+    const clean = normalizeForIntent(text);
+    const politeTexts = [
+      "danke", "dankeschön", "danke schön", "vielen dank", "ok", "okay", "alles klar", "super", "top", "ja", "passt", "gut", "perfekt",
+      "teşekkürler", "teşekkür ederim", "sağ ol", "sagol", "tamam", "okey", "oldu", "evet", "iyi", "süper",
+      "благодаря", "мерси", "добре", "ок", "да", "супер",
+      "mulțumesc", "mersi", "bine", "da", "ok",
+      "thanks", "thank you", "yes", "great", "perfect",
+      "شكرا", "شكرًا", "تمام", "حسنا", "نعم"
     ];
-
-    let pageIndex = 1;
-    for (const bild of bilder) {
-      if (!bild || !bild.imageData || !bild.mimeType) continue;
-      if (String(bild.imageData).length > 15000000) {
-        return res.status(400).json({ ok: false, error: "Ein Bild ist zu groß." });
-      }
-      parts.push({ text: `\nFOTO ${pageIndex}: Ganzseite oder Nahaufnahme. Nutze Nahaufnahmen besonders für Name, Datum, Aktenzeichen, Betrag und Frist.\n` });
-      parts.push({ inline_data: { mime_type: bild.mimeType, data: bild.imageData } });
-      pageIndex++;
-    }
-
-    const raw = await callGemini(parts);
-    const text = cleanText(raw)
-      .replace(/```[a-z]*\n?/gi, "")
-      .replace(/```/g, "")
-      .trim();
-
-    return res.json({ ok: true, text });
-  } catch (error) {
-    console.error("Fehler /api/daten-pruefen:", error);
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "Fehler bei der Datenprüfung"
-    });
+    return politeTexts.includes(clean);
   }
-});
 
-// V8.6: echter Hilfe-Chat mit Verlauf und freundlichen Folgeantworten
-app.post("/api/frage", async (req, res) => {
+  function detectQuestionMode(text) {
+    const clean = normalizeForIntent(text);
+    if (["was muss ich tun", "was soll ich tun", "was muss ich jetzt tun", "ne yapmam gerekiyor", "şimdi ne yapmalıyım", "ne yapmalıyım", "какво трябва да направя", "ce trebuie să fac", "what do i have to do", "ماذا يجب أن أفعل"].includes(clean)) return "next_steps";
+    if (["bis wann", "wann ist die frist", "son tarih ne zaman", "ne zamana kadar", "до кога", "până când", "by when", "إلى متى"].includes(clean)) return "deadline";
+    if (["was passiert wenn ich nichts mache", "was passiert, wenn ich nichts mache", "hiçbir şey yapmazsam ne olur", "bir şey yapmazsam ne olur", "какво ще стане ако не направя нищо", "какво ще стане, ако не направя нищо", "ce se întâmplă dacă nu fac nimic", "what happens if i do nothing", "ماذا يحدث إذا لم أفعل شيئًا"].includes(clean)) return "consequence";
+    if (["schreib mir eine antwort", "schreibe mir eine antwort", "antwort schreiben", "benim için cevap yaz", "bana bir cevap yaz", "напиши ми отговор", "scrie-mi un răspuns", "write me a reply", "اكتب لي ردًا"].includes(clean)) return "reply";
+    return window.frageMode || "free";
+  }
+
+  if (!frage) {
+    if (frageErrorEl) { frageErrorEl.textContent = getUiText().questionMissing; show(frageErrorEl); }
+    return;
+  }
+
+  if (!currentKurzText && !currentDetailText) {
+    if (frageErrorEl) { frageErrorEl.textContent = getUiText().explainFirst; show(frageErrorEl); }
+    return;
+  }
+
+  const historyForServer = chatHistory.slice(-10);
+  appendChatMessage("user", frage, { noSuggestions: true });
+  if (frageTextEl) frageTextEl.value = "";
+
+  if (isPoliteSmallTalk(frage)) {
+    const reply = getUiText().politeReply || "Gerne. Wenn du noch etwas wissen möchtest, schreib einfach deine Frage.";
+    appendChatMessage("assistant", reply);
+    if (frageAntwortEl) frageAntwortEl.textContent = reply;
+    hide(frageAntwortBoxEl);
+    return;
+  }
+
+  const detectedMode = detectQuestionMode(frage);
+  if (frageBtn) frageBtn.disabled = true;
+  if (frageStatusEl) { frageStatusEl.textContent = getUiText().questionLoading; show(frageStatusEl); }
+  if (frageErrorEl) { frageErrorEl.textContent = ""; hide(frageErrorEl); }
+  hide(frageAntwortBoxEl);
+
   try {
-    const briefText = cleanText(req.body.briefText || "");
-    const erklaerungKurz = cleanText(req.body.kurz || "");
-    const erklaerungDetails = cleanText(req.body.details || "");
-  const frage = cleanText(req.body.frage || "");
-const frageMode = cleanText(req.body.frageMode || "free");
-const lang = (req.body.lang || "de").toLowerCase();
-    const langMeta = getLanguageMeta(lang);
-
-    const meta = req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
-    const metaText = JSON.stringify(meta, null, 2);
-    const chatHistory = Array.isArray(req.body.chatHistory) ? req.body.chatHistory.slice(-10) : [];
-    const chatHistoryText = chatHistory
-      .map((entry) => {
-        const role = entry && entry.role === "user" ? "Nutzer" : "Hilfe24";
-        const text = cleanText(entry && entry.text ? entry.text : "").slice(0, 1200);
-        return text ? `${role}: ${text}` : "";
+    const response = await fetch("/api/frage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lang,
+        frage,
+        frageMode: detectedMode,
+        briefText: currentBriefText,
+        kurz: currentKurzText,
+        details: currentDetailText,
+        meta: currentMeta,
+        chatHistory: historyForServer
       })
-      .filter(Boolean)
-      .join("\n");
-
-    const heute = getTodayGerman();
-
-    if (!frage) {
-      return res.status(400).json({
-        ok: false,
-        error: "Keine Frage gesendet"
-      });
-    }
-
-    if (!briefText && !erklaerungKurz && !erklaerungDetails) {
-      return res.status(400).json({
-        ok: false,
-        error: "Kein Kontext vorhanden"
-      });
-    }
-
-    if (frage.length > 1500) {
-      return res.status(400).json({
-        ok: false,
-        error: "Die Frage ist zu lang. Bitte kürzer formulieren."
-      });
-    }
-
-    if (isPoliteSmallTalkQuestion(frage)) {
-      return res.json({
-        ok: true,
-        antwort: politeSmallTalkReply(lang)
-      });
-    }
-
- const raw = await callGemini([
-  {
-    text: `
-Du bist Hilfe24. Du bist ein einfacher, praktischer Alltagshelfer.
-
-${buildHilfe24TextSystemRules()}
-
-Du hilfst Menschen, Briefe, Nachrichten, Formulare, Bescheide, Gerichtsschreiben, Inkasso, Krankenkasse, Jobcenter, Schule, Arbeit, Pflege, Verträge, Produkte, Screenshots und Alltagssituationen zu verstehen und den nächsten Schritt zu finden.
-
-Ausgewählte Sprache des Nutzers: ${langMeta.label}
-Heutiges Datum: ${heute}
-
-Antworte an den Nutzer immer in ${langMeta.label}.
-Wenn du eine offizielle Antwort, E-Mail, einen Brief oder PDF-Text an eine deutsche Stelle formulierst, schreibe diesen fertigen Text auf Deutsch.
-
-KONTEXT AUS DEM SCHREIBEN:
-Erkannte Daten:
-${metaText}
-
-Kurz-Erklärung:
-${erklaerungKurz}
-
-Details:
-${erklaerungDetails}
-
-Original-Text:
-${briefText.slice(0, 12000)}
-
-BISHERIGER CHAT ZU DIESEM BRIEF:
-${chatHistoryText || "Noch kein vorheriger Chat."}
-
-Frage des Nutzers:
-${frage}
-Frage-Modus:
-${frageMode}
-
-QUALITÄTSMODUS V7:
-Bei wichtigen Briefen wie Inkasso, Vollstreckung, Gericht, Polizei, Jobcenter, Rückforderung, Aufrechnung, Krankenkasse, Kündigung, Mahnung oder Bescheid musst du besonders vorsichtig sein.
-- Keine Namen erfinden.
-- Keine lockere Anrede wie "Hallo Krassa" oder "Hallo Ksenia" verwenden.
-- Wenn meta.person fehlt, schreibe keine persönliche Anrede und unterschreibe mit [Name].
-- Keine Frist als abgelaufen behaupten, wenn das tatsächliche Zugangsdatum/Bekanntgabedatum nicht sicher bekannt ist.
-- Bei Inkasso/Vollstreckung: erst Forderung/Titel prüfen; Ratenzahlung nur als Möglichkeit, keine Zahlungszusage erfinden.
-- Bei fertigen Schreiben an Inkasso: fordere eine Forderungsaufstellung an und bitte um Aussetzung weiterer Maßnahmen bis zur Klärung, wenn passend.
-- Bei Bescheid/Widerspruch: Frist nennen, aber nicht rechtlich abschließend bewerten.
-- Schreibe Human + EL5 + DLTR + Listify: menschlich, sehr einfach, kurz, listenartig.
-
-AUFGABE:
-Beantworte die Frage konkret anhand des Schreibens, der Erklärung, der erkannten Daten, des bisherigen Chats und der Nutzerfrage.
-Hilf nicht nur beim Verstehen, sondern auch beim nächsten praktischen Schritt.
-Denke allgemein mit: Antwort schreiben, Antrag prüfen, Erstattung prüfen, Unterlagenliste, Frist prüfen, Beratung suchen, Ratenzahlung, Widerspruch, Termin verschieben oder Daten genauer prüfen.
-Biete solche Hilfe nur passend und kurz an. Nicht überladen.
-
-OBERSTE REGEL:
-Der Nutzer braucht eine klare Alltagshilfe. Nicht labern. Nicht dramatisieren. Nicht wie ein langer KI-Aufsatz schreiben. Keine Einleitung wie „Okay“ oder „Hier ist deine Hilfe“. Direkt mit der Antwort starten.
-
-CHAT-REGEL V8.6:
-Du antwortest wie in einem echten laufenden Chat zu genau diesem Brief.
-Nutze den bisherigen Chat aktiv. Der Nutzer muss nicht alles wiederholen.
-Wenn der Nutzer schreibt „und dann?“, „was ist damit?“, „noch eine Frage“, „kann ich das?“, beziehe dich auf den aktuellen Brief und die vorherigen Chatnachrichten.
-Wiederhole nicht jedes Mal die komplette Brief-Erklärung.
-Antworte freundlich, hilfsbereit und beruhigend, aber ohne zu labern.
-Klinge wie ein guter Alltagshelfer: „Ich erkläre es dir einfach“, aber nur wenn es natürlich passt.
-Gib nach einer Antwort höchstens einen kurzen Hilfe-Hinweis, z. B.:
-- Ich kann dir auch eine kurze Antwort schreiben.
-- Ich kann dir eine Unterlagenliste machen.
-- Ich kann prüfen, ob ein Antrag, eine Erstattung oder Beratung sinnvoll sein könnte.
-- Ich kann dir helfen, die nächsten Schritte zu sortieren.
-Mache keine falschen Versprechen. Schreibe „könnte möglich sein“, „prüfen lassen“ oder „bei der zuständigen Stelle nachfragen“, wenn etwas unsicher ist.
-Wenn der Nutzer nach Name, Aktenzeichen, Betrag, Datum oder Frist fragt und die Daten unsicher sind, sage, dass er „Daten genauer prüfen“ nutzen oder das Original prüfen soll.
-Wenn der Nutzer eine Antwortvorlage verlangt, schreibe direkt den fertigen Text, aber nutze keine unsicheren Namen oder Aktenzeichen.
-
-ANTWORT-STIL FÜR HILFE24:
-Nutze immer diese 4 Regeln:
-- Human: menschlich, ruhig, direkt, nicht wie Amtssprache.
-- EL5: so einfach erklären, dass auch jemand ohne Behördenwissen es versteht.
-- DLTR: keine langen Textblöcke, keine Romane, keine unnötigen Details.
-- Listify: wenn mehrere Schritte nötig sind, als kurze Liste schreiben.
-
-DATEN-SICHERHEIT:
-- Namen, Beträge, Fristen, Termine, Aktenzeichen und Rechnungsnummern sind kritische Daten.
-- Wenn meta.person_sicher nicht true ist, nenne KEINEN Namen und beginne fertige Texte neutral mit "Sehr geehrte Damen und Herren," oder passend neutral in der Nutzersprache.
-- Erfinde niemals eine Anrede wie "Hallo [Name]", wenn der Name nicht sicher ist.
-- Wenn meta.referenzen_sicher nicht true ist, übernimm kein Aktenzeichen in fertige Texte; schreibe stattdessen "Aktenzeichen bitte aus dem Brief übernehmen".
-- Wenn eine Frist "nach Bekanntgabe" oder "nach Erhalt" lautet, behaupte nicht, sie sei abgelaufen. Sage: "Bitte prüfe, wann der Brief angekommen ist."
-- Nutze bei Namen nur meta.person. Rate keinen neuen Namen aus dem Text.
-- Wenn meta.person fehlt, schreibe keinen Namen.
-- Wenn ein Name unsicher wirkt oder in unsicherheiten steht, schreibe: "Bitte Namen im Brief prüfen."
-- Beträge, Fristen und Aktenzeichen nur nennen, wenn sie in den erkannten Daten oder im Kontext klar stehen.
-- Keine Daten erfinden, auch nicht zur besseren Formulierung.
-- Behaupte NICHT, dass eine Frist abgelaufen ist, wenn das Zugangsdatum/Bekanntgabedatum nicht sicher bekannt ist. Schreibe stattdessen: "Frist laut Schreiben: ... Bitte prüfen, wann der Brief angekommen ist."
-- Keine lockere Namensanrede wie "Hallo [Name]", außer der Name steht sicher in meta.person. Wenn kein sicherer Name vorhanden ist, beginne direkt mit der Antwort.
-
-SPRACHE:
-- Erklärung an den Nutzer immer vollständig in ${langMeta.label}.
-- Keine deutschen Erklärsätze mischen, wenn die Nutzersprache nicht Deutsch ist.
-- Nur offizielle Namen wie Jobcenter, AOK, HFG Inkasso, Bürgergeld, Aktenzeichen dürfen unverändert bleiben.
-- Fertige offizielle Antworttexte an deutsche Behörden, Gerichte, Jobcenter, Krankenkassen, Inkasso, Schulen oder Ämter immer auf Deutsch.
-- Wenn unklar ist, welche Sprache die offizielle Stelle nutzt, nimm die Sprache des Schreibens.
-
-ERKANNTE DATEN NUTZEN:
-Wenn vorhanden, nutze diese Daten:
-- person
-- absender
-- frist
-- termin
-- betrag
-- unterlagen
-- email_adresse
-- referenzen
-- antwort_sprache
-
-WICHTIG ZUR PERSON:
-Nenne die betroffene Person nur, wenn "person" in den erkannten Daten vorhanden ist und nicht in den Unsicherheiten steht.
-Nutze ausschließlich diesen erkannten Wert. Rate keinen anderen Namen aus dem Originaltext.
-Wenn kein sicherer Name erkannt wurde, keinen Namen erfinden.
-Wenn du unsicher bist, schreibe nur: "Bitte Namen im Brief prüfen."
-
-GRUNDREGELN:
-SPEZIALREGEL FÜR GERICHT / POLIZEI / STAATSANWALTSCHAFT / STRAFSACHE:
-
-Wenn es um Gericht, Polizei, Staatsanwaltschaft, Strafsache, Ermittlungsverfahren, Vernehmung, Strafantrag, Aktenzeichen, Ladung oder Termin geht:
-
-- Keine rechtliche Sicherheit behaupten.
-- Nicht schreiben, dass etwas endgültig erledigt ist, wenn das Schreiben das nicht klar sagt.
-- Wenn der Brief nur informiert und keine Handlung verlangt, sage klar: Im Moment ist keine Antwort nötig.
-- Wenn ein Termin genannt ist, nenne Termin, Uhrzeit, Ort und Risiko bei Nichterscheinen.
-- Wenn eine Frist genannt ist, nenne die Frist klar.
-- Wenn ein Aktenzeichen genannt ist, nenne es klar und sage, dass es aufbewahrt werden soll.
-- Wenn eine Aussage, Stellungnahme oder ein Erscheinen verlangt wird, sage klar, was verlangt wird.
-- Bei Strafsachen oder Unsicherheit kurz Anwalt/Beratungsstelle empfehlen.
-- Keine Vorlage schreiben, wenn keine Antwort oder Handlung nötig ist.
-- Wenn der Nutzer trotzdem eine Antwort will, schreibe eine kurze sachliche Antwort ohne Schuldeingeständnis.
-
-SPEZIALREGEL FÜR JOBCENTER / BEHÖRDE / INKASSO / MAHNUNG / RÜCKFORDERUNG:
-
-Wenn es um Geldforderung, Rückforderung, Inkasso, Mahnung, Erstattung, Vollstreckung, Bescheid oder Jobcenter geht:
-
-- Schreibe nicht so, als wäre die Forderung automatisch richtig.
-- Nutze Wörter wie "fordert", "verlangt", "möchte zurückhaben" oder "macht geltend".
-- Vermeide harte Formulierungen wie "du schuldest", "du musst zahlen", "deine Schuld ist sicher".
-- Sage klar: Erst prüfen, ob die Forderung stimmt.
-- Wenn eine Frist genannt ist, nenne sie klar.
-- Wenn ein Betrag genannt ist, nenne ihn klar.
-- Wenn Referenzen vorhanden sind, übernimm sie in Antworttexte.
-- Wenn die Forderung unklar ist, soll eine Forderungsaufstellung / Berechnung / Begründung verlangt werden.
-- Bei Jobcenter oder Behörde: Wenn es ernst ist, erwähne kurz Beratung, Sozialberatung oder Anwalt.
-- Bei drohender Vollstreckung: Bitte um Aussetzung bis zur Klärung erwähnen.
-- Ratenzahlung nur vorschlagen, wenn der Nutzer zahlen will oder ausdrücklich danach fragt.
-
-Bei fertigen Antworttexten an Jobcenter, Behörde oder Inkasso:
-- Schreibe immer sachlich und höflich.
-- Bitte um Prüfung der Forderung.
-- Bitte um genaue Aufstellung / Berechnung.
-- Bitte um Zusendung fehlender Unterlagen, wenn nötig.
-- Falls Frist läuft, formuliere vorsorglich: "Hiermit lege ich vorsorglich Widerspruch ein, soweit dies fristwahrend erforderlich ist."
-- Bitte darum, bis zur Klärung keine Vollstreckung oder weiteren Maßnahmen einzuleiten.
-- Keine Zahlungszusage machen, außer der Nutzer verlangt ausdrücklich Ratenzahlung oder Zahlung.
-SPEZIALREGEL FÜR GERICHT / POLIZEI / STAATSANWALTSCHAFT / STRAFSACHE:
-
-Wenn es um Gericht, Polizei, Staatsanwaltschaft, Strafsache, Ermittlungsverfahren, Vernehmung, Strafantrag, Aktenzeichen, Ladung oder Termin geht:
-
-- Keine rechtliche Sicherheit behaupten.
-- Nicht schreiben, dass etwas endgültig erledigt ist, wenn das Schreiben das nicht klar sagt.
-- Wenn der Brief nur informiert und keine Handlung verlangt, sage klar: Im Moment ist keine Antwort nötig.
-- Wenn ein Termin genannt ist, nenne Termin, Uhrzeit, Ort und Risiko bei Nichterscheinen.
-- Wenn eine Frist genannt ist, nenne die Frist klar.
-- Wenn ein Aktenzeichen genannt ist, nenne es klar und sage, dass es aufbewahrt werden soll.
-- Wenn eine Aussage, Stellungnahme oder ein Erscheinen verlangt wird, sage klar, was verlangt wird.
-- Bei Strafsachen oder Unsicherheit kurz Anwalt/Beratungsstelle empfehlen.
-- Keine Vorlage schreiben, wenn keine Antwort oder Handlung nötig ist.
-- Wenn der Nutzer trotzdem eine Antwort will, schreibe eine kurze sachliche Antwort ohne Schuldeingeständnis.
-- Keine Daten erfinden.
-- Keine Fristen erfinden.
-- Keine Beträge erfinden.
-- Keine Namen erfinden.
-- Keine Aktenzeichen erfinden.
-- Wenn etwas fehlt, sage kurz, was fehlt.
-- Wenn Frist, Termin, Betrag, Risiko oder Aktenzeichen vorhanden sind, nenne sie klar.
-- Keine Panik machen.
-- Keine falsche Sicherheit geben.
-- Bei rechtlichen Themen keine Rechtsberatung behaupten. Nur verständlich erklären und bei Bedarf Anwalt/Beratungsstelle empfehlen.
-- Bei Gesundheit keine Diagnose und keine Dosierung erfinden.
-
-FRAGE-MODUS:
-
-NEUE HILFE24-REGEL:
-Der Nutzer will nicht nur eine Zusammenfassung.
-Er will wissen, wie er praktisch mit dem Schreiben umgehen soll.
-
-Antworte deshalb immer mit:
-1. Was ist das Schreiben?
-2. Was muss der Nutzer jetzt tun?
-3. Was muss er zusätzlich prüfen?
-
-Denke allgemein:
-- Muss etwas bezahlt werden?
-- Muss etwas eingereicht werden?
-- Gibt es eine Frist oder einen Termin?
-- Muss ein Beleg gespeichert werden?
-- Kann eine Erstattung bei Krankenkasse, Versicherung, Jobcenter oder anderer Stelle möglich sein?
-- Kann Ratenzahlung sinnvoll sein?
-- Kann Widerspruch oder Prüfung sinnvoll sein?
-- Muss Beratung/Anwalt/Arzt/Apotheke empfohlen werden?
-
-Wichtig:
-Keine Erstattung erfinden.
-Keine Ansprüche versprechen.
-Keine Fristen erfinden.
-Keine Rechtsberatung geben.
-Keine Diagnose geben.
-Wenn etwas möglich ist, schreibe: "prüfen lassen" oder "bei der zuständigen Stelle nachfragen".
-Wenn frageMode = "deadline":
-Der Nutzer will die Frist wissen.
-Antworte kurz mit:
-- Frist / Termin
-- Was bedeutet das?
-- Was passiert, wenn die Frist verpasst wird?
-Wenn keine sichere Frist erkannt wurde, sage klar: "Ich sehe keine sichere Frist. Bitte im Schreiben prüfen lassen."
-Keine lange allgemeine Erklärung.
-
-Wenn frageMode = "consequence":
-Der Nutzer will wissen, was passiert, wenn er nichts macht.
-Antworte mit:
-- mögliche Folgen
-- wie dringend es ist
-- was er jetzt tun sollte
-Keine fertige Vorlage schreiben, außer der Nutzer bittet darum.
-Keine Panik machen, aber Risiko klar nennen.
-
-Wenn frageMode = "reply":
-Der Nutzer will eine Antwort schreiben.
-WICHTIG: Beginne nie mit Hallo + Name. Nutze bei offiziellen Schreiben immer "Sehr geehrte Damen und Herren,". Wenn keine E-Mail/Brief nötig ist, sage kurz warum.
-
-Erkläre maximal mit einem kurzen Satz.
-Dann direkt einen fertigen Text zum Kopieren schreiben.
-Bei deutschen Stellen immer Deutsch schreiben.
-Wenn "person" vorhanden ist, mit diesem Namen unterschreiben.
-Wenn "person" fehlt, mit [Name] unterschreiben.
-Wenn email_adresse vorhanden ist, als Empfänger nutzen.
-Wenn keine email_adresse vorhanden ist, schreibe:
-Empfänger: Bitte E-Mail-Adresse aus dem Brief übernehmen.
-
-Wenn frageMode = "free":
-Beantworte die eigene Frage des Nutzers normal.
-Nicht zu kurz, nicht zu lang, aber vollständig.
-Wenn die Frage einfach ist, kurz antworten.
-Wenn es um Gericht, Polizei, Frist, Geld, Inkasso, Gesundheit oder wichtige Folgen geht, darf die Antwort ausführlicher sein, aber trotzdem klar gegliedert.
-
-BEREICH STILL ERKENNEN:
-- Gericht / Polizei / Strafsache
-- Behörde / Amt / Jobcenter / Krankenkasse / Rente / Schule
-- Inkasso / Mahnung / Rechnung / Forderung
-- Wohnung / Vermieter / Vertrag / Kündigung
-- Arbeit / Pflege / Dokumentation
-- Gesundheit / Medikamente
-- Produkt / Technik / Screenshot / Betrug
-- sonstiger Alltag
-
-SPEZIALREGELN:
-
-BEI INKASSO / MAHNUNG / FORDERUNG:
-- Nicht automatisch Zahlung empfehlen.
-- Forderung prüfen.
-- Betrag und Frist nennen, wenn vorhanden.
-- Wenn unklar: Nachweis oder Forderungsaufstellung verlangen.
-- Ratenzahlung nur vorschlagen, wenn der Nutzer zahlen will oder danach fragt.
-- Bei Druck, Drohung oder unklarer Forderung vorsichtig formulieren.
-
-BEI GERICHT / POLIZEI / STRAFSACHE:
-- Ernst nehmen.
-- Nicht ignorieren.
-- Keine Rechtsberatung behaupten.
-- Frist, Termin und mögliche Folgen klar nennen.
-- Bei Unsicherheit Anwalt oder Beratungsstelle empfehlen.
-
-BEI BEHÖRDE / JOBCENTER / KRANKENKASSE / RENTE / SCHULE:
-- Frist, Unterlagen, Termin und Folgen klar nennen.
-- Sagen, was der Nutzer einreichen, unterschreiben, beantworten oder mitbringen muss.
-- Wenn eine Antwort sinnvoll ist, kurz anbieten oder direkt vorbereiten, wenn der Nutzer das will.
-
-BEI GESUNDHEIT / MEDIKAMENTEN:
-- Keine Diagnose stellen.
-- Keine Dosierung erfinden.
-- Einfach erklären.
-- Bei Risiko, Unsicherheit oder starken Beschwerden Arzt oder Apotheke empfehlen.
-
-BEI PFLEGE-DOKUMENTATION:
-- Sachlich, beobachtend und professionell formulieren.
-- Keine Diagnose erfinden.
-- Nur beschreiben, was beobachtet wurde.
-- Keine Patientendaten erfinden.
-
-BEI SCREENSHOT / BETRUG / PRODUKT / TECHNIK:
-- Erkläre, was zu sehen ist.
-- Nenne Warnzeichen, wenn vorhanden.
-- Gib einfache nächste Schritte.
-- Bei Betrugsverdacht: nicht klicken, nichts zahlen, keine Daten senden, Beweise sichern.
-
-WENN DER NUTZER EINE E-MAIL, ANTWORT, VORLAGE, WHATSAPP, EINEN BRIEF ODER PDF-TEXT WILL:
-- Maximal ein kurzer Satz davor.
-- Dann direkt den fertigen Text schreiben.
-- Der Text muss sofort kopierbar sein.
-- Höflich, sachlich, klar.
-- Keine Drohungen.
-- Keine emotionalen Sätze.
-- Keine erfundenen Daten.
-
-REFERENZEN:
-Referenzen wie Aktenzeichen, Kundennummer, BG-Nummer, Versicherungsnummer, Rechnungsnummer, Mahnnummer, "Mein Zeichen" oder "Ihr Zeichen" müssen in offiziellen Antworten übernommen werden, wenn sie vorhanden sind.
-Keine Referenzen erfinden.
-
-DEUTSCHE E-MAIL-FORM:
-Wenn eine deutsche E-Mail erstellt wird, nutze dieses Format:
-
-Empfänger: [E-Mail-Adresse oder Hinweis]
-
-Betreff: [passender Betreff mit Termin/Referenz, wenn vorhanden]
-
-Sehr geehrte Damen und Herren,
-
-[Text]
-
-Mit freundlichen Grüßen
-
-[erkannte Person, sonst Name-Platzhalter]
-
-NAMENSREGEL FÜR FERTIGE TEXTE:
-Wenn "person" vorhanden ist, muss dieser Name unter "Mit freundlichen Grüßen" stehen.
-Schreibe niemals nur "Mit freundlichen Grüßen" ohne Namen darunter.
-Schreibe niemals [Name], wenn "person" vorhanden ist.
-Wenn kein Name sicher erkannt wurde, schreibe:
-
-Mit freundlichen Grüßen
-
-[Name]
-
-QUALITÄT:
-Die Antwort soll sich wie Hilfe24 anfühlen:
-einfach, klar, vollständig, ruhig, praktisch.
-Nicht wie Amtssprache.
-Nicht wie Werbung.
-Nicht wie ein langer KI-Aufsatz.
-    Nicht wie ein langer KI-Aufsatz.
-`
+    });
+
+    const rawText = await response.text();
+    let data = null;
+    try { data = rawText ? JSON.parse(rawText) : null; } catch (parseError) { throw new Error(getUiText().questionNetworkError || getUiText().questionError); }
+    if (!response.ok || !data || !data.ok) throw new Error((data && data.error) || getUiText().questionError);
+
+    const answer = data.antwort || "";
+    appendChatMessage("assistant", answer);
+    if (frageAntwortEl) frageAntwortEl.textContent = answer;
+    hide(frageAntwortBoxEl);
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : "");
+    const safeMsg = msg && msg !== "Load failed" ? msg : (getUiText().questionNetworkError || getUiText().questionError);
+    if (frageErrorEl) { frageErrorEl.textContent = safeMsg; show(frageErrorEl); }
+    appendChatMessage("assistant", safeMsg);
+  } finally {
+    if (frageStatusEl) { frageStatusEl.textContent = ""; hide(frageStatusEl); }
+    if (frageBtn) frageBtn.disabled = false;
+  }
+}
+
+
+  function toggleDetails() {
+      if (!detailCardEl || !toggleDetailsBtn) return;
+
+      const hidden = detailCardEl.classList.contains("hidden");
+
+      if (hidden) {
+        show(detailCardEl);
+        toggleDetailsBtn.textContent = getUiText().detailsHide;
+      } else {
+        hide(detailCardEl);
+        toggleDetailsBtn.textContent = getUiText().detailsShow;
       }
-    ]);
-
-    let antwort = cleanText(raw)
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-
-    antwort = postProcessQuestionAnswer(antwort, meta);
-
-    if (frageMode === "next_steps") {
-      antwort = shortenNextStepsAnswer(antwort, lang);
-      antwort = postProcessQuestionAnswer(antwort, meta);
     }
 
-    return res.json({
-      ok: true,
-      antwort
-    });
-
-
-  } catch (error) {
-    console.error("Fehler /api/frage:", error);
-
-    try {
-      const meta = req.body && req.body.meta && typeof req.body.meta === "object" ? req.body.meta : {};
-      const frageModeFallback = cleanText((req.body && req.body.frageMode) || "free");
-      const langFallback = ((req.body && req.body.lang) || "de").toLowerCase();
-
-      return res.json({
-        ok: true,
-        fallback: true,
-        antwort: buildQuestionFallbackAnswer(frageModeFallback, meta, langFallback)
-      });
-    } catch (fallbackError) {
-      return res.status(500).json({
-        ok: false,
-        error: "Die Frage konnte gerade nicht beantwortet werden. Bitte versuche es nochmal."
-      });
-    }
-  }
-});
-
- 
-
- 
-
-app.post("/api/tts", async (req, res) => {
-  try {
-    const text = cleanText(req.body.text || "");
-    const lang = (req.body.lang || "de").toLowerCase();
-
-    if (!text) {
-      return res.status(400).json({
-        ok: false,
-        error: "Kein Text für Audio gesendet"
-      });
+    function showComingSoon() {
+      alert(getUiText().comingSoon || "Dieser Bereich kommt später.");
     }
 
-    if (text.length > 3000) {
-      return res.status(400).json({
-        ok: false,
-        error: "Der Text ist zu lang zum Vorlesen. Bitte lies nur den wichtigsten Teil vor."
-      });
+    function h24SetQuestionMode(mode) {
+      const lang = getSelectedLang();
+      const t = questionTexts[lang] || questionTexts.de;
+
+      const map = {
+        next_steps: t.what,
+        deadline: t.deadline,
+        consequence: t.consequence,
+        reply: t.reply
+      };
+
+      if (frageTextEl) {
+        frageTextEl.value = map[mode] || "";
+        frageTextEl.focus();
+      }
+
+      window.frageMode = mode || "free";
+      frageMode = mode || "free";
     }
 
-    const audioText = await buildAudioText(text, lang);
-    const audioBase64 = await synthesizeMp3(audioText, lang);
+    function h24OwnQuestion() {
+      if (frageTextEl) {
+        frageTextEl.value = "";
+        frageTextEl.focus();
+        frageTextEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
 
-    return res.json({
-      ok: true,
-      mimeType: "audio/mpeg",
-      audioBase64,
-      debugAudioText: audioText
-    });
-  } catch (error) {
-    console.error("Fehler /api/tts:", error);
+      window.frageMode = "free";
+      frageMode = "free";
+    }
 
-    return res.status(500).json({
-      ok: false,
-      error: error.message || "TTS-Fehler"
-    });
-  }
-});
+    function setupEvents() {
+      if (homeLangEl) {
+        homeLangEl.onchange = function () {
+          currentLang = homeLangEl.value || "de";
 
-app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
-});
+          if (langEl) {
+            langEl.value = currentLang;
+          }
+
+          updateHomeLanguage();
+          updateBriefLanguage();
+          updateQuestionLanguage();
+        };
+      }
+
+      if (langEl) {
+        langEl.onchange = function () {
+          currentLang = langEl.value || "de";
+          updateBriefLanguage();
+          updateQuestionLanguage();
+        };
+      }
+
+      if (openBriefBtn) {
+        openBriefBtn.onclick = openBriefArea;
+      }
+
+      if (resetBtn) {
+        resetBtn.onclick = goBackHome;
+      }
+
+      if (cameraInputEl) {
+        cameraInputEl.onchange = function () {
+          addSelectedImages(cameraInputEl.files || []);
+          cameraInputEl.value = "";
+        };
+      }
+
+      if (bilderEl) {
+        bilderEl.onchange = function () {
+          addSelectedImages(bilderEl.files || []);
+          bilderEl.value = "";
+        };
+      }
+
+      if (uploadClearBtnEl) {
+        uploadClearBtnEl.onclick = clearSelectedImages;
+      }
+
+      if (analyzeBtn) {
+        analyzeBtn.onclick = explainLetter;
+      }
+
+      if (toggleDetailsBtn) {
+        toggleDetailsBtn.onclick = toggleDetails;
+      }
+
+      if (frageBtn) {
+        frageBtn.onclick = askQuestionAboutLetter;
+      }
+
+      if (dataCheckBtn) {
+        dataCheckBtn.onclick = runDataCheck;
+      }
+
+      if (readShortBtn) {
+        readShortBtn.onclick = function () {
+          playServerAudio(currentKurzText);
+        };
+      }
+
+      if (readAllBtn) {
+        readAllBtn.onclick = function () {
+          playServerAudio(currentDetailText);
+        };
+      }
+
+      if (readFrageAntwortBtn) {
+        readFrageAntwortBtn.onclick = function () {
+          const text = frageAntwortEl ? frageAntwortEl.textContent : "";
+          playServerAudio(text);
+        };
+      }
+
+      if (stopBtn) {
+        stopBtn.onclick = stopAudio;
+      }
+
+      if (stopDetailsBtn) {
+        stopDetailsBtn.onclick = stopAudio;
+      }
+
+      if (stopAnswerBtn) {
+        stopAnswerBtn.onclick = stopAudio;
+      }
+
+      if (quickWhatBtn) {
+        quickWhatBtn.onclick = function () {
+          h24SetQuestionMode("next_steps");
+        };
+      }
+
+      if (quickDeadlineBtn) {
+        quickDeadlineBtn.onclick = function () {
+          h24SetQuestionMode("deadline");
+        };
+      }
+
+      if (quickConsequenceBtn) {
+        quickConsequenceBtn.onclick = function () {
+          h24SetQuestionMode("consequence");
+        };
+      }
+
+      if (quickReplyBtn) {
+        quickReplyBtn.onclick = function () {
+          h24SetQuestionMode("reply");
+        };
+      }
+
+      if (ownQuestionBtn) {
+        ownQuestionBtn.onclick = h24OwnQuestion;
+      }
+    }
+
+    updateHomeLanguage();
+    updateBriefLanguage();
+    updateQuestionLanguage();
+    setupEvents();
+
+    window.h24UpdateHome = updateHomeLanguage;
+    window.h24OpenBrief = openBriefArea;
+    window.openBriefArea = openBriefArea;
+    window.showComingSoon = showComingSoon;
+    window.h24SetQuestionMode = h24SetQuestionMode;
+    window.h24OwnQuestion = h24OwnQuestion;
+    window.explainLetter = explainLetter;
+    window.askQuestionAboutLetter = askQuestionAboutLetter;
+    window.stopAudio = stopAudio;
+    window.h24FillChatSuggestion = fillChatSuggestion;
+  
+</script>
+</body>
+</html>
