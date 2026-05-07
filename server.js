@@ -644,11 +644,12 @@ Außen soll Hilfe24 leicht bleiben. Kein langer Roman. Der Server soll innen meh
 
 
 
-V8.6.5 FEINE BRIEFARTEN:
+V8.6.6 FEINE BRIEFARTEN:
 Sortiere Briefe genauer. Nutze nicht zu schnell "Inkasso/Forderung".
 - Stadt / Kommune / öffentlich-rechtliche Mahnung: wenn Stadt, Stadtkasse, Kassenzeichen, Gebühren, Verwaltungsgebühr oder kommunale Forderung vorkommen.
 - Rundfunkbeitrag / Beitragsservice / Vollstreckungsankündigung: wenn Beitragsservice, Rundfunkbeitrag, Beitragskonto oder ARD ZDF Deutschlandradio vorkommen.
-- Finanzamt / Steuerbescheid / Zahlungsaufforderung: wenn Finanzamt, Einkommensteuer, Steuernummer, Säumniszuschlag, Vollstreckungsstelle oder Steuerforderung vorkommen.
+- Finanzamt / Steuerschuld / Mahnung / Vollstreckungsankündigung: wenn Finanzamt, Einkommensteuer, Steuernummer, Säumniszuschlag, Mahnung, sofort fällig, Vollstreckungsstelle oder Vollstreckungsankündigung vorkommen.
+- Staatsanwaltschaft / Geldauflage / Zahlungsaufforderung: wenn Staatsanwaltschaft, Geldauflage, Strafsache, Zahlungsaufforderung, Frist zur Zahlung, Einstellung gegen Auflage oder Verfahren kann weitergehen vorkommen.
 - Anklageschrift / Strafsache / Amtsgericht: wenn Anklageschrift, Angeschuldigter, Staatsanwaltschaft, Hauptverfahren, Zulassung der Anklage, Beweismittel oder Fahren ohne Fahrerlaubnis vorkommen.
 - Zahnarztrechnung / DZR / zahnärztliche Behandlung: wenn DZR, Zahnarzt, Zahnarztrechnung, GOZ, BEMA, Leistungsposition, Zahnnummer, Faktor, Labor oder Materialkosten vorkommen.
 - Arbeitsvertrag / Änderungsvereinbarung: wenn Arbeitgeber, Arbeitsvertrag, Änderungsvereinbarung, befristet, unbefristet, Arbeitszeit, Gehalt oder Anstellung vorkommen.
@@ -661,6 +662,13 @@ Beispiele:
 - Arbeitsvertrag: Seite/Abschnitt mit Änderung, Datum, Befristung, Unterschrift.
 - Finanzamt: Seite mit Berechnung, Steuerjahr, Fälligkeit, Steuernummer, Rechtsbehelf.
 - Gericht/Anklage: Seite mit Tatvorwurf, Frist, Aktenzeichen, Beweismitteln.
+
+FACHLICHE SORTIERUNG V8.6.6:
+- Staatsanwaltschaft/Geldauflage: nicht als Inkasso/Rechnung behandeln. Erkläre: Geldauflage in einer Strafsache; fristgerecht zahlen oder sofort Ratenzahlung/Stundung beantragen; bei Nichtzahlung kann Verfahren/weitere Maßnahme folgen.
+- Finanzamt/Mahnung: nicht als normale Rechnung behandeln. Erkläre: offene Steuer, sofort fällig, Säumniszuschlag möglich, Vollstreckung möglich; bei Zahlungsproblem Stundung/Ratenzahlung und Aussetzung der Vollstreckung beantragen.
+- Rundfunkbeitrag: nicht als privates Inkasso behandeln. Erkläre: öffentlich-rechtliche Beitragsforderung; Beitragsnummer wichtig; bei Jobcenter/Bürgergeld Bescheid erneut senden und Befreiung/rückwirkende Befreiung prüfen.
+- Anklageschrift: nicht nur "Gericht/Polizei". Erkläre: Gericht hat Anklageschrift übersandt, Zulassung/Hauptverfahren wird geprüft, 1-Woche-Frist für Einwände/Beweise/Zeugen, normale E-Mail reicht oft nicht.
+- Zahnarztrechnung/DZR: aktiv nach Behandlung/Positionen suchen. Wenn nicht sichtbar: genaue Seite mit GOZ/BEMA/Leistungsbeschreibung verlangen.
 
 REFERENZEN / NUMMERN:
 Suche wichtige Identifikationsdaten im Schreiben und trage sie bei "referenzen" ein.
@@ -2284,18 +2292,20 @@ function simpleBriefartLabel(info, lang = "de") {
   const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
 
   const fineLabels = {
+    prosecutorPayment: { de: "Staatsanwaltschaft / Geldauflage / Zahlungsaufforderung", tr: "Savcılık / para yükümlülüğü / ödeme yazısı", bg: "Прокуратура / парична вноска / искане за плащане", ro: "Parchet / obligație de plată / somație", ar: "النيابة / غرامة أو مبلغ في قضية / طلب دفع", en: "Prosecution / payment order / criminal case" },
     indictment: { de: "Anklageschrift / Strafsache / Amtsgericht", tr: "İddianame / Ceza davası / Mahkeme", bg: "Обвинителен акт / наказателно дело / съд", ro: "Rechizitoriu / cauză penală / instanță", ar: "لائحة اتهام / قضية جنائية / محكمة", en: "Indictment / criminal case / court" },
-    broadcast: { de: "Rundfunkbeitrag / Beitragsservice / Vollstreckung", tr: "Rundfunkbeitrag / Beitragsservice / icra", bg: "Радио-телевизионна такса / принудително събиране", ro: "Taxă radio-TV / Beitragsservice / executare", ar: "رسوم البث / خدمة الاشتراك / تنفيذ", en: "Broadcast fee / collection / enforcement" },
-    tax: { de: "Finanzamt / Steuerforderung", tr: "Maliye / vergi borcu", bg: "Данъчна служба / данъчно задължение", ro: "Finanțe / datorie fiscală", ar: "مصلحة الضرائب / مطالبة ضريبية", en: "Tax office / tax claim" },
+    broadcast: { de: "Rundfunkbeitrag / Beitragsservice / Vollstreckungsankündigung", tr: "Rundfunkbeitrag / Beitragsservice / icra uyarısı", bg: "Радио-телевизионна такса / принудително събиране", ro: "Taxă radio-TV / Beitragsservice / executare", ar: "رسوم البث / خدمة الاشتراك / تنفيذ", en: "Broadcast fee / collection / enforcement" },
+    tax: { de: "Finanzamt / Steuerschuld / Mahnung / Vollstreckungsankündigung", tr: "Maliye / vergi borcu / ödeme uyarısı", bg: "Данъчна служба / данъчно задължение / предупреждение", ro: "Finanțe / datorie fiscală / somație", ar: "مصلحة الضرائب / دين ضريبي / إنذار", en: "Tax office / tax debt / enforcement warning" },
     dental: { de: "Zahnarztrechnung / DZR", tr: "Diş hekimi faturası / DZR", bg: "Зъболекарска фактура / DZR", ro: "Factură dentist / DZR", ar: "فاتورة طبيب أسنان / DZR", en: "Dental invoice / DZR" },
     work: { de: "Arbeitsvertrag / Änderungsvereinbarung", tr: "İş sözleşmesi / değişiklik", bg: "Трудов договор / изменение", ro: "Contract de muncă / modificare", ar: "عقد عمل / تعديل", en: "Employment contract / amendment" },
     publicClaim: { de: "Stadt / öffentliche Mahnung", tr: "Belediye / resmi ödeme uyarısı", bg: "Община / публично вземане", ro: "Primărie / somație publică", ar: "بلدية / مطالبة رسمية", en: "City / public claim" },
     bank: { de: "Bank / Pfändung / P-Konto", tr: "Banka / Haciz / P-Konto", bg: "Банка / Запор / P-Konto", ro: "Bancă / poprire / P-Konto", ar: "بنك / حجز / حساب P-Konto", en: "Bank / garnishment / P-Konto" }
   };
 
-  if (hasAny(text, ["anklageschrift", "hauptverfahren", "zulassung der anklage", "angeschuldig", "strafverfahren", "strafgericht", "fahren ohne fahrerlaubnis"])) return (fineLabels.indictment[lang] || fineLabels.indictment.de);
+  if (hasAny(text, ["geldauflage", "zahlungsaufforderung", "staatsanwaltschaft", "auflage", "strafverfahren", "verfahren weiter", "einstellung gegen auflage"])) return (fineLabels.prosecutorPayment[lang] || fineLabels.prosecutorPayment.de);
+  if (hasAny(text, ["anklageschrift", "hauptverfahren", "zulassung der anklage", "angeschuldig", "strafgericht", "fahren ohne fahrerlaubnis"])) return (fineLabels.indictment[lang] || fineLabels.indictment.de);
   if (hasAny(text, ["rundfunkbeitrag", "beitragsservice", "beitragskonto", "ard zdf", "deutschlandradio", "rundfunkgebühr"])) return (fineLabels.broadcast[lang] || fineLabels.broadcast.de);
-  if (hasAny(text, ["finanzamt", "einkommensteuer", "steuerbescheid", "steuernummer", "säumniszuschlag", "vollstreckungsstelle", "steuerforderung"])) return (fineLabels.tax[lang] || fineLabels.tax.de);
+  if (hasAny(text, ["finanzamt", "einkommensteuer", "steuerbescheid", "steuernummer", "säumniszuschlag", "vollstreckungsstelle", "steuerforderung", "steuerart", "sofort fällig"])) return (fineLabels.tax[lang] || fineLabels.tax.de);
   if (hasAny(text, ["dzr", "zahnarzt", "zahnärzt", "goz", "bema", "zahnnummer", "labor", "materialkosten", "zahnersatz"])) return (fineLabels.dental[lang] || fineLabels.dental.de);
   if (hasAny(text, ["änderungsvereinbarung", "arbeitsvertrag", "arbeitgeber", "anstellung", "unbefristet", "befristet", "arbeitszeit", "gehalt"])) return (fineLabels.work[lang] || fineLabels.work.de);
   if (hasAny(text, ["stadt", "stadtkasse", "kassenzeichen", "verwaltungsgebühr", "gebührenbescheid", "öffentliche forderung"])) return (fineLabels.publicClaim[lang] || fineLabels.publicClaim.de);
@@ -2401,8 +2411,76 @@ function listValue(items) {
   return arr.join(", ");
 }
 
+function inferSpecialDataKind(info) {
+  const text = buildLetterContext(info || {});
+  if (hasAny(text, ["finanzamt", "steuernummer", "einkommensteuer", "säumniszuschlag", "vollstreckungsankündigung", "steuerforderung"])) return "tax";
+  if (hasAny(text, ["rundfunkbeitrag", "beitragsservice", "beitragskonto", "ard zdf", "deutschlandradio"])) return "broadcast";
+  if (hasAny(text, ["geldauflage", "staatsanwaltschaft", "zahlungsaufforderung", "strafverfahren"])) return "prosecutor_payment";
+  if (hasAny(text, ["anklageschrift", "hauptverfahren", "zulassung der anklage", "angeschuldig", "fahren ohne fahrerlaubnis"])) return "indictment";
+  if (hasAny(text, ["dzr", "zahnarzt", "zahnärzt", "goz", "bema", "zahnnummer", "labor", "materialkosten", "zahnersatz"])) return "dental";
+  if (hasAny(text, ["änderungsvereinbarung", "arbeitsvertrag", "arbeitgeber", "befristet", "unbefristet", "arbeitszeit", "gehalt"])) return "work";
+  return "default";
+}
+
+function firstReferenceLike(info, words) {
+  const refs = dedupe(info.referenzen || []);
+  const lowerWords = (words || []).map((x) => String(x).toLowerCase());
+  const hit = refs.find((ref) => {
+    const r = String(ref || "").toLowerCase();
+    return lowerWords.some((w) => r.includes(w));
+  });
+  return hit || refs[0] || "";
+}
+
+function pushDataRow(rows, key, label, value, fallbackStatus = "check") {
+  const v = normalizeString(value);
+  if (!v) return;
+  rows.push({ key, label, value: v, status: fallbackStatus });
+}
+
 function buildRoleAwareDataRows(info, L, safe, values) {
   const rows = [];
+  const kind = inferSpecialDataKind(info);
+  const sender = values.senderValue;
+  const amount = values.amountValue;
+  const deadline = values.deadlineValue;
+  const reference = values.referenceValue;
+
+  if (kind === "tax") {
+    pushDataRow(rows, "sender", L.sender || "Absender", sender, sender === L.check ? "check" : "safe");
+    pushDataRow(rows, "tax_reference", "Steuernummer/Aktenzeichen", firstReferenceLike(info, ["steuer", "nummer", "zeichen"]) || reference, "check");
+    pushDataRow(rows, "tax_type", "Steuerart/Jahr", hasAny(buildLetterContext(info), ["einkommensteuer"]) ? "Einkommensteuer" : "Bitte prüfen", "check");
+    pushDataRow(rows, "amount", "Gesamtbetrag", amount, amount === L.check ? "check" : "safe");
+    pushDataRow(rows, "deadline", "Fällig/Frist", deadline, deadline === L.check ? "check" : "safe");
+    return rows.filter((row) => row.value && row.value !== "").slice(0, 7);
+  }
+
+  if (kind === "broadcast") {
+    pushDataRow(rows, "sender", L.sender || "Absender", sender, sender === L.check ? "check" : "safe");
+    pushDataRow(rows, "broadcast_reference", "Beitragsnummer", firstReferenceLike(info, ["beitrag", "konto", "nummer"]) || reference, "check");
+    pushDataRow(rows, "amount", L.amount || "Betrag", amount, amount === L.check ? "check" : "safe");
+    pushDataRow(rows, "deadline", L.deadline || "Frist/Termin", deadline, deadline === L.check ? "check" : "safe");
+    if (info.risiko_kurz) pushDataRow(rows, "risk", L.risk || "Risiko", info.risiko_kurz, "check");
+    return rows.filter((row) => row.value && row.value !== "").slice(0, 6);
+  }
+
+  if (kind === "prosecutor_payment") {
+    pushDataRow(rows, "sender", L.sender || "Absender", sender, sender === L.check ? "check" : "safe");
+    pushDataRow(rows, "type", "Art", "Geldauflage / Zahlungsaufforderung", "safe");
+    pushDataRow(rows, "amount", L.amount || "Betrag", amount, amount === L.check ? "check" : "safe");
+    pushDataRow(rows, "deadline", L.deadline || "Frist/Termin", deadline, deadline === L.check ? "check" : "safe");
+    pushDataRow(rows, "reference", L.reference || "Aktenzeichen", reference, "check");
+    return rows.filter((row) => row.value && row.value !== "").slice(0, 7);
+  }
+
+  if (kind === "dental") {
+    pushDataRow(rows, "sender", "Rechnungssteller", sender, sender === L.check ? "check" : "safe");
+    pushDataRow(rows, "person", L.person || "Patient", values.personValue, safe.personSafe ? "safe" : "check");
+    pushDataRow(rows, "amount", L.amount || "Betrag", amount, amount === L.check ? "check" : "safe");
+    pushDataRow(rows, "reference", "Rechnungsnummer/Referenz", reference, "check");
+    pushDataRow(rows, "deadline", L.deadline || "Frist/Termin", deadline, deadline === L.check ? "check" : "safe");
+    return rows.filter((row) => row.value && row.value !== "").slice(0, 6);
+  }
 
   const recipient = normalizeString(info.empfaenger);
   const affected = listValue(info.betroffene_personen);
@@ -2854,16 +2932,23 @@ function isHighRiskLetter(info) {
       "krankenkasse",
       "ablehnung",
       "frist",
-      "mahnung"
+      "mahnung",
+      "geldauflage",
+      "rundfunkbeitrag",
+      "beitragsservice",
+      "finanzamt",
+      "säumniszuschlag",
+      "anklageschrift"
     ])
   );
 }
 
 function buildQualityModeType(info) {
   const text = [info.briefart, info.worum_geht_es, info.kurz_gesagt, info.folge_wenn_nichts, (info.wichtigste_punkte || []).join(" ")].join(" ").toLowerCase();
+  if (hasAny(text, ["geldauflage", "zahlungsaufforderung", "staatsanwaltschaft", "auflage", "einstellung gegen auflage", "strafverfahren weiter"])) return "staatsanwaltschaft_geldauflage";
   if (hasAny(text, ["anklageschrift", "hauptverfahren", "zulassung der anklage", "angeschuldig", "strafverfahren", "fahren ohne fahrerlaubnis"])) return "anklageschrift_strafsache";
   if (hasAny(text, ["rundfunkbeitrag", "beitragsservice", "beitragskonto", "ard zdf", "deutschlandradio"])) return "rundfunkbeitrag_vollstreckung";
-  if (hasAny(text, ["finanzamt", "einkommensteuer", "steuerbescheid", "steuernummer", "säumniszuschlag", "steuerforderung"])) return "finanzamt_steuer";
+  if (hasAny(text, ["finanzamt", "einkommensteuer", "steuerbescheid", "steuernummer", "säumniszuschlag", "steuerforderung", "vollstreckungsankündigung", "sofort fällig"])) return "finanzamt_steuer";
   if (hasAny(text, ["dzr", "zahnarzt", "zahnärzt", "goz", "bema", "zahnnummer", "labor", "materialkosten", "zahnersatz"])) return "zahnarztrechnung_dzr";
   if (hasAny(text, ["änderungsvereinbarung", "arbeitsvertrag", "arbeitgeber", "unbefristet", "befristet", "arbeitszeit", "gehalt"])) return "arbeitsvertrag_aenderung";
   if (hasAny(text, ["stadt", "stadtkasse", "kassenzeichen", "verwaltungsgebühr", "gebührenbescheid"])) return "stadt_oeffentliche_mahnung";
@@ -2919,7 +3004,7 @@ function clampBalancedExplanation(text, lang, mode = "wichtiger_brief") {
     .filter(Boolean)
     .filter((line) => !/^#{1,6}\s*/.test(line));
 
-  const maxLines = mode === "bank_pfaendung_pkonto" ? 7 : (mode === "inkasso_vollstreckung" || mode === "jobcenter_bescheid" || mode === "gericht_polizei" ? 8 : 6);
+  const maxLines = mode === "bank_pfaendung_pkonto" ? 7 : (["staatsanwaltschaft_geldauflage", "anklageschrift_strafsache", "rundfunkbeitrag_vollstreckung", "finanzamt_steuer", "inkasso_vollstreckung", "jobcenter_bescheid", "gericht_polizei"].includes(mode) ? 8 : 6);
   const maxChars = lang === "ar" ? 980 : 780;
 
   let result = lines.length > 1 ? lines.slice(0, maxLines).join("\n") : clean;
@@ -3393,7 +3478,7 @@ function isPoliteSmallTalkQuestion(text) {
   const clean = normalizeQuestionText(text);
 
   const politeTexts = new Set([
-    "danke", "dankeschön", "danke schön", "vielen dank", "ok", "okay", "alles klar", "super", "top", "ja", "passt", "gut", "perfekt",
+    "danke", "dankeschön", "danke schön", "vielen dank", "ok", "okay", "alles klar", "verstanden", "habe verstanden", "super", "top", "ja", "passt", "gut", "perfekt",
     "teşekkürler", "teşekkür ederim", "sağ ol", "sagol", "tamam", "okey", "oldu", "evet", "iyi", "süper",
     "благодаря", "мерси", "добре", "ок", "да", "супер",
     "mulțumesc", "mersi", "bine", "da", "ok",
@@ -3855,7 +3940,7 @@ Mache keine falschen Versprechen. Schreibe „könnte möglich sein“, „prüf
 Wenn der Nutzer nach Name, Aktenzeichen, Betrag, Datum oder Frist fragt und die Daten unsicher sind, sage, dass er „Daten genauer prüfen“ nutzen oder das Original prüfen soll.
 Wenn der Nutzer eine Antwortvorlage verlangt, schreibe direkt den fertigen Text, aber nutze keine unsicheren Namen oder Aktenzeichen.
 
-CHAT-REGEL V8.6.5 – PRAKTISCH, ABER NICHT DUMM KURZ:
+CHAT-REGEL V8.6.6 – PRAKTISCH, JE NACH FRAGE:
 - Grundsatz: so kurz wie möglich, so ausführlich wie nötig.
 - Smalltalk wie Hallo, Danke, Ok: 1 kurzer Satz.
 - "Was soll ich tun?": maximal 3 klare Schritte.
@@ -3865,7 +3950,7 @@ CHAT-REGEL V8.6.5 – PRAKTISCH, ABER NICHT DUMM KURZ:
 - Wenn das Detail nicht sicher erkennbar ist: nicht "prüfe selbst" schreiben. Sage genau, welche Seite oder welchen Ausschnitt der Nutzer hochladen soll.
 - Schreibe gut vorlesbar: kurze Sätze, keine Markdown-Sterne, keine unnötigen Sonderzeichen.
 
-BRIEFARTEN V8.6.5 FEIN SORTIEREN:
+BRIEFARTEN V8.6.6 FEIN SORTIEREN:
 - Stadt/Behörde Mahnung ≠ privates Inkasso.
 - Rundfunkbeitrag/Beitragsservice ≠ normales Inkasso.
 - Staatsanwaltschaft/Anklageschrift ≠ Inkasso/Forderung.
@@ -3873,7 +3958,16 @@ BRIEFARTEN V8.6.5 FEIN SORTIEREN:
 - Zahnarztrechnung/DZR hat eigene Logik: Praxis, Patient, Behandlungstag, GOZ/BEMA, Leistungspositionen, Eigenanteil, Erstattung prüfen.
 - Arbeitsvertrag/Änderungsvereinbarung hat eigene Logik: was ändert sich, ab wann, befristet/unbefristet, Unterschrift nötig.
 
-FEHLENDE-DATEN-REGEL V8.6.5:
+CHAT-FÜHRUNG V8.6.6:
+- Wenn der Nutzer schreibt "verstanden?", "ok?", "hast du verstanden?": kurz bestätigen und den Kern in 2-3 Sätzen sagen.
+- Wenn der Nutzer sagt "Ich kann nicht alles zahlen" oder "Ich kann den Betrag nicht auf einmal zahlen": direkt Ratenzahlung/Stundung erklären, relevante Nummer/Betrag nennen und nach realistischer Rate fragen oder kurzen Antrag anbieten.
+- Bei Finanzamt: Stundung oder Ratenzahlung beantragen, Steuernummer/Betrag nennen, um Aussetzung der Vollstreckung bis zur Entscheidung bitten.
+- Bei Rundfunkbeitrag + Jobcenter/Bürgergeld: Bescheid erneut senden, Beitragsnummer nennen, Befreiung/rückwirkende Befreiung prüfen und um Aussetzung der Vollstreckung bitten.
+- Bei Staatsanwaltschaft/Geldauflage: fristgerecht zahlen oder sofort schriftlich Ratenzahlung/Stundung beantragen. Nicht als normales Inkasso behandeln.
+- Bei Anklageschrift: Frist 1 Woche ernst nehmen, keine Aussage/Schuldeingeständnis ohne Beratung, Einwände/Beweise/Zeugen nur sauber einreichen; normale E-Mail reicht nicht, wenn das Schreiben das sagt.
+- Bei Zahnarzt/DZR: wenn Behandlung/Positionen nicht sichtbar sind, nicht abwimmeln. Genau sagen: lade die Seite mit GOZ/BEMA, Leistungsbeschreibung, Zahnnummer, Faktor, Material/Labor hoch.
+
+FEHLENDE-DATEN-REGEL V8.6.6:
 Wenn der Nutzer eine E-Mail, Antwort oder einen Brief will, prüfe zuerst:
 - sicherer Name für die Unterschrift
 - sichere Referenz/Aktenzeichen/Beitragsnummer/Steuernummer/Kassenzeichen
@@ -4107,6 +4201,23 @@ BEI BANK / P-KONTO / KONTOPFÄNDUNG:
 - Bei Unsicherheit Schuldnerberatung, Verbraucherzentrale oder Sozialberatung empfehlen.
 - Ratenzahlung nur nennen, wenn der Nutzer danach fragt oder zahlen will.
 - Bei Antwortvorlage an die Bank: Status, Freibetrag, gesperrte/freigegebene Beträge und Bescheinigung erfragen. Keine Zahlungszusage.
+
+BEI STAATSANWALTSCHAFT / GELDAUFLAGE:
+- Nicht als Inkasso oder normale Rechnung behandeln.
+- Kurz sagen: Es ist eine Geldauflage/Zahlungsaufforderung in einer Strafsache.
+- Wenn Zahlung nicht möglich ist: sofort schriftlich Ratenzahlung oder Stundung beantragen.
+- Bei Unsicherheit Anwalt/Beratungsstelle empfehlen.
+
+BEI FINANZAMT / STEUERSCHULD / VOLLSTRECKUNG:
+- Nicht als normale Rechnung behandeln.
+- Nenne Steuernummer, Steuerart/Jahr, Betrag, Säumniszuschlag und Fälligkeit, wenn erkannt.
+- Bei Zahlungsproblem: Stundung oder Ratenzahlung beantragen und um Aussetzung der Vollstreckung bitten.
+- Frage nach realistischer Rate, wenn eine konkrete Vorlage gebraucht wird.
+
+BEI RUNDFUNKBEITRAG / BEITRAGSSERVICE:
+- Nicht als privates Inkasso behandeln.
+- Beitragsnummer ist wichtig.
+- Wenn Jobcenter/Bürgergeld/Bescheid genannt wird: Bescheid erneut senden, Befreiung/rückwirkende Befreiung prüfen und Vollstreckung aussetzen lassen.
 
 BEI INKASSO / MAHNUNG / FORDERUNG:
 - Nicht automatisch Zahlung empfehlen.
