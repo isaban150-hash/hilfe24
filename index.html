@@ -242,19 +242,23 @@
   .audio-status { color:var(--muted); font-size:13px; margin:0; }
   audio { width:100%; margin-top:6px; }
   .audio-dock {
-    position:fixed; left:14px; right:14px; bottom:12px; z-index:20; max-width:720px; margin:0 auto;
-    background:rgba(255,255,255,.92); color:var(--text); border:1px solid rgba(221,232,228,.95);
-    box-shadow:0 16px 46px rgba(16,42,67,.18); border-radius:999px; padding:8px;
-    display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; backdrop-filter: blur(16px);
+    position:fixed; right:14px; bottom:calc(env(safe-area-inset-bottom, 0px) + 12px); z-index:20;
+    width:auto; max-width:220px; margin:0; background:transparent; border:none; box-shadow:none;
+    display:flex; justify-content:flex-end; align-items:center; pointer-events:none;
   }
-  .audio-dock-inner { display:flex; align-items:center; gap:8px; min-width:0; }
-  .audio-mini-label { font-size:12px; font-weight:900; color:#0f766e; white-space:nowrap; padding-left:8px; }
-  .audio-dock .audio-status { color:var(--muted); font-size:12px; padding-left:0; }
-  .audio-dock audio { margin:0; height:30px; min-width:0; }
+  .audio-dock-inner { display:none; }
+  .audio-mini-label { display:none; }
+  .audio-dock .audio-status { display:none; }
+  .audio-dock audio { display:none; }
   .audio-dock .btn-danger {
-    white-space:nowrap; padding:10px 15px; border-radius:999px; background:#fff1f2; color:#be123c; border:1px solid #fecdd3;
-    box-shadow:none; font-size:14px;
+    pointer-events:auto; white-space:nowrap; padding:9px 14px; border-radius:999px; background:#fff1f2; color:#be123c;
+    border:1px solid #fecdd3; box-shadow:0 10px 26px rgba(190,18,60,.12); font-size:14px;
   }
+  .manual-text-toggle {
+    width:100%; margin-top:10px; border-radius:16px; border:1px solid #ccfbf1; background:#f0fdfa; color:#0f766e;
+    padding:11px 12px; font-weight:950; box-shadow:none;
+  }
+  .manual-text-panel.hidden { display:none !important; }
   .backline { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
   @media (max-width: 760px) {
     .wrap { padding:14px; }
@@ -270,9 +274,9 @@
     h1 { font-size:26px; }
     .short-box { font-size:17px; }
     button, select, textarea { font-size:16px; }
-    .audio-dock { grid-template-columns:1fr auto; left:10px; right:10px; border-radius:24px; }
+    .audio-dock { right:12px; left:auto; bottom:calc(env(safe-area-inset-bottom, 0px) + 10px); }
     .audio-mini-label { display:none; }
-    .audio-dock audio { max-width:100%; }
+    .audio-dock audio { display:none; }
   }
 </style>
 </head>
@@ -363,10 +367,11 @@
               <div id="previewGrid" class="preview-grid"></div>
             </div>
           </div>
-          <div class="input-panel">
+          <div class="input-panel manual-text-panel hidden" id="manualTextPanel">
             <label id="briefTextLabel" for="briefText">Brief als Text</label>
             <textarea id="briefText" placeholder="Text hier einfügen, wenn du keinen Foto-Upload benutzen willst"></textarea>
           </div>
+          <button id="manualTextToggleBtn" class="manual-text-toggle" type="button">Text manuell einfügen</button>
         </div>
         <div class="button-row">
           <button id="analyzeBtn" class="btn-primary" type="button">Brief erklären</button>
@@ -431,7 +436,7 @@
     </div>
   </div>
 
-  <div class="audio-dock">
+  <div class="audio-dock hidden">
     <div class="audio-dock-inner">
       <span id="audioDockLabel" class="audio-mini-label">Audio</span>
       <div id="audioStatus" class="audio-status hidden"></div>
@@ -626,6 +631,8 @@
   de: {
     sub: "Briefe einfach verstehen. Klar erklärt und mit dem nächsten Schritt.",
     textLabel: "Brief als Text",
+    manualTextShow: "Text manuell einfügen",
+    manualTextHide: "Textfeld ausblenden",
     photoLabel: "Datei oder Foto hochladen",
     placeholder: "Text hier einfügen, wenn du keinen Foto-Upload benutzen willst",
     hint: "Du kannst ein Foto machen oder ein Foto aus der Galerie hochladen. Wichtig: ganze Seite, scharf, ohne Schatten. Bei kleiner Schrift zusätzlich einen nahen Ausschnitt hochladen.",
@@ -647,6 +654,8 @@
   tr: {
     sub: "Mektupları kolayca anla. Net açıklama ve sonraki adım.",
     textLabel: "Mektup metni",
+    manualTextShow: "Metni elle gir",
+    manualTextHide: "Metin alanını gizle",
     photoLabel: "Mektup fotoğrafları yükle",
     placeholder: "Fotoğraf yüklemek istemiyorsan metni buraya yaz veya yapıştır",
     hint: "Toplam 3 fotoğraf ekleyebilirsin. Her sayfayı ayrı çek: düz, net, gölgesiz. Küçük yazılar varsa biraz daha yakından çek.",
@@ -668,6 +677,8 @@
   bg: {
     sub: "Разбери писмата лесно. Ясно обяснение и следваща стъпка.",
     textLabel: "Текст на писмото",
+    manualTextShow: "Въведи текст ръчно",
+    manualTextHide: "Скрий текстовото поле",
     photoLabel: "Качи снимки на писмото",
     placeholder: "Постави текста тук, ако не искаш да качваш снимка",
     hint: "Можеш да добавиш до 3 снимки. Снимай всяка страница отделно: право отгоре, ясно и без сянка. Малък текст снимай малко по-отблизо.",
@@ -689,6 +700,8 @@
   ar: {
     sub: "افهم الرسائل بسهولة. شرح واضح والخطوة التالية.",
     textLabel: "نص الرسالة",
+    manualTextShow: "إدخال النص يدويًا",
+    manualTextHide: "إخفاء حقل النص",
     photoLabel: "ارفع صور الرسالة",
     placeholder: "الصق النص هنا إذا كنت لا تريد رفع صورة",
     hint: "يمكنك إضافة حتى 3 صور. صوّر كل صفحة وحدها بوضوح ومن الأعلى وبدون ظل. إذا كان الخط صغيرًا، اقترب قليلًا.",
@@ -710,6 +723,8 @@
   ro: {
     sub: "Înțelege scrisorile ușor. Explicație clară și pasul următor.",
     textLabel: "Textul scrisorii",
+    manualTextShow: "Introdu textul manual",
+    manualTextHide: "Ascunde câmpul de text",
     photoLabel: "Încarcă poze cu scrisoarea",
     placeholder: "Lipește textul aici dacă nu vrei să încarci o poză",
     hint: "Poți adăuga până la 3 poze din aceeași scrisoare. Pe telefon poți face poze de mai multe ori sau poți alege din galerie.",
@@ -731,6 +746,8 @@
   en: {
     sub: "Understand letters easily. Clear explanation and next step.",
     textLabel: "Letter text",
+    manualTextShow: "Enter text manually",
+    manualTextHide: "Hide text field",
     photoLabel: "Upload letter photos",
     placeholder: "Paste the text here if you do not want to upload a photo",
     hint: "You can add up to 3 photos from the same letter. On a smartphone, you can take photos more than once or choose them from your gallery.",
@@ -1122,6 +1139,9 @@ en: {
  const stopBtn = document.getElementById("stopBtn");
     const stopDetailsBtn = document.getElementById("stopDetailsBtn");
     const stopAnswerBtn = document.getElementById("stopAnswerBtn");
+    const audioDockEl = document.querySelector(".audio-dock");
+    const manualTextPanelEl = document.getElementById("manualTextPanel");
+    const manualTextToggleBtn = document.getElementById("manualTextToggleBtn");
     const audioPlayerEl = document.getElementById("audioPlayer");
     const audioStatusEl = document.getElementById("audioStatus");
     const audioDockLabelEl = document.getElementById("audioDockLabel");
@@ -1282,6 +1302,10 @@ window.frageMode = "free";
       if (briefTextEl) briefTextEl.placeholder = t.placeholder;
       if (analyzeBtn) analyzeBtn.textContent = t.analyze;
       if (resetBtn) resetBtn.textContent = t.back;
+      if (manualTextToggleBtn) {
+        const isOpen = manualTextPanelEl && !manualTextPanelEl.classList.contains("hidden");
+        manualTextToggleBtn.textContent = isOpen ? (t.manualTextHide || "Textfeld ausblenden") : (t.manualTextShow || "Text manuell einfügen");
+      }
 
       const shortTitleEl = document.getElementById("shortTitle");
       const detailTitleEl = document.getElementById("detailTitle");
@@ -1410,15 +1434,19 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
     function clearAudioStatus() {
-      if (!audioStatusEl) return;
-      audioStatusEl.textContent = "";
-      hide(audioStatusEl);
+      if (audioStatusEl) {
+        audioStatusEl.textContent = "";
+        hide(audioStatusEl);
+      }
+      hide(audioDockEl);
     }
 
     function setAudioStatus(text) {
-      if (!audioStatusEl) return;
-      audioStatusEl.textContent = text;
-      show(audioStatusEl);
+      if (audioStatusEl) {
+        audioStatusEl.textContent = text;
+        show(audioStatusEl);
+      }
+      show(audioDockEl);
     }
 
     function revokeAudioUrl() {
@@ -2405,6 +2433,19 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         readFrageAntwortBtn.onclick = function () {
           const text = frageAntwortEl ? frageAntwortEl.textContent : "";
           playServerAudio(text);
+        };
+      }
+
+      if (manualTextToggleBtn && manualTextPanelEl) {
+        manualTextToggleBtn.onclick = function () {
+          const isHidden = manualTextPanelEl.classList.contains("hidden");
+          if (isHidden) {
+            show(manualTextPanelEl);
+            if (briefTextEl) briefTextEl.focus();
+          } else {
+            hide(manualTextPanelEl);
+          }
+          updateBriefLanguage();
         };
       }
 
