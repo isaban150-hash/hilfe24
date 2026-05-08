@@ -3432,7 +3432,26 @@ app.post("/api/brief-bild", async (req, res) => {
 });
 
 
-function postProcessQuestionAnswer(answer, meta = {}) {
+
+
+function postProcessQuestionAnswer(answer = "", meta = {}) {
+  let out = cleanText(answer || "");
+
+  const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
+  out = out.replace(new RegExp("Ich bestätige die offene Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("Ich bestätige die Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("ich bestätige[^.?!]*Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+
+  out = out.replace(new RegExp("monatlich\\s+monatlich", "gi"), "monatlich");
+  out = out.replace(new RegExp("Aktenzeichen\\/Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+  out = out.replace(new RegExp("Aktenzeichen\\/zur Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+
+  const detectedName = getDetectedPersonNameUniversal(meta);
+  if (detectedName) out = out.replace(/\[Name\]/g, detectedName);
+
+  return cleanText(out);
+}
+function sanitizeFinalAnswerText(answer = "", meta = {}) {
   let out = cleanText(answer);
 
   // In normalen Hilfe-Antworten keine lockere Namens-Anrede verwenden.
@@ -4814,9 +4833,7 @@ ${name || "[Name]"}`;
 Betreff: ${subject}
 
 ${body}`)
-    .replace(/Ich bestätige[^
-]+/gi, "")
-    .replace(/monatlich\s+monatlich/gi, "monatlich")
+        .replace(/monatlich\s+monatlich/gi, "monatlich")
     .trim();
 }
 
@@ -5095,9 +5112,7 @@ ${name || "[Name]"}`;
 Betreff: ${subject}
 
 ${body}`)
-    .replace(/Ich bestätige[^\n]+/gi, "")
-    .replace(/monatlich\s+monatlich/gi, "monatlich")
-    .trim();
+        .trim();
 }
 
 function buildUniversalReplyQuestionOrTemplate({ frage = "", meta = {}, context = "", historyText = "" }) {
@@ -5151,12 +5166,24 @@ function buildUniversalNameFollowup({ frage = "", meta = {}, context = "", histo
   return buildUniversalPaymentTemplate({ meta, context, name, rate });
 }
 
+
 function postProcessQuestionAnswer(answer = "", meta = {}) {
   let out = cleanText(answer || "");
-  out = out.replace(/Ich bestätige die offene Forderung[^.]*\./gi, "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.");
-  out = out.replace(/Ich bestätige die Forderung[^.]*\./gi, "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.");
-  out = out.replace(/ich bestätige[^.]*Forderung[^.]*\./gi, "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.");
-  out = out.replace(/monatlich\s+monatlich/gi, "monatlich");
-  out = out.replace(/\[Name\]/g, getDetectedPersonNameUniversal(meta) || "[Name]");
+
+  const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
+  out = out.replace(new RegExp("Ich bestätige die offene Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("Ich bestätige die Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("ich bestätige[^.?!]*Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+
+  out = out.replace(new RegExp("monatlich\\s+monatlich", "gi"), "monatlich");
+  out = out.replace(new RegExp("Aktenzeichen\\/Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+  out = out.replace(new RegExp("Aktenzeichen\\/zur Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+
+  const detectedName = getDetectedPersonNameUniversal(meta);
+  if (detectedName) out = out.replace(/\[Name\]/g, detectedName);
+
   return cleanText(out);
 }
+app.listen(PORT, () => {
+  console.log(`Hilfe24 Server läuft auf Port ${PORT}`);
+});
