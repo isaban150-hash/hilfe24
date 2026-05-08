@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v9.4-clean-router" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v9.5-email-pdf-quality" });
 });
 
 function getTodayGerman() {
@@ -373,18 +373,19 @@ function isStrictBankPkontoContext(context = "") {
 function detectDomain(context = "") {
   const t = String(context || "").toLowerCase();
 
+  // P-Konto nur bei echter Bank/Kontopfändung. IBAN allein reicht nie.
   if (isStrictBankPkontoContext(t)) return "bank_pkonto";
 
+  // Arbeit zuerst prüfen, damit "Arbeitsvertrag" nicht als allgemeiner Vertrag landet.
   if (hasAny(t, [
-    "finanz-schutzbrief", "versicherungsschein", "versicherungsscheinnummer", "versicherungsbeginn", "versicherungsablauf",
-    "versicherung", "sepa-lastschrift", "lastschrift", "kündigung", "kuendigung", "widerruf", "online", "kredit", "vertrag", "abo"
-  ])) return "vertrag_versicherung";
-
-  if (hasAny(t, ["arbeitgeber", "arbeitnehmer", "überzahlung", "ueberzahlung", "rückzahlung", "rueckzahlung", "schuldanerkenntnis", "lohnabtretung", "gehalt", "lohn", "personalmanagement", "arbeitsvertrag", "abmahnung"])) return "arbeit";
+    "arbeitgeber", "arbeitnehmer", "überzahlung", "ueberzahlung", "rückzahlung", "rueckzahlung",
+    "schuldanerkenntnis", "lohnabtretung", "gehalt", "lohn", "personalmanagement",
+    "arbeitsvertrag", "abmahnung", "aufhebungsvertrag", "arbeitsentgelt"
+  ])) return "arbeit";
 
   if (hasAny(t, ["finanzamt", "steuer", "steuernummer", "einkommensteuer", "säumniszuschlag", "saeumniszuschlag", "vollstreckungsstelle"])) return "finanzamt";
 
-  if (hasAny(t, ["inkasso", "gläubiger", "glaeubiger", "forderung", "mahnung", "mahnbescheid", "gerichtsvollzieher", "vollstreckung", "forderungsaufstellung"])) return "inkasso";
+  if (hasAny(t, ["inkasso", "gläubiger", "glaeubiger", "forderung", "mahnbescheid", "gerichtsvollzieher", "vollstreckung", "forderungsaufstellung"])) return "inkasso";
 
   if (hasAny(t, ["jobcenter", "bürgergeld", "buergergeld", "sozialamt", "familienkasse", "rente", "bescheid", "rückforderung", "rueckforderung", "aufrechnung", "widerspruch", "rechtsbehelf", "mitwirkung"])) return "behoerde";
 
@@ -396,9 +397,20 @@ function detectDomain(context = "") {
 
   if (hasAny(t, ["vermieter", "miete", "wohnung", "nebenkosten", "kaution", "räumung", "raeumung", "hausverwaltung"])) return "wohnung";
 
-  if (hasAny(t, ["rechnung", "zahlungserinnerung", "zahlungsfrist", "betrag"])) return "zahlung";
+  if (hasAny(t, [
+    "finanz-schutzbrief", "versicherungsschein", "versicherungsscheinnummer", "versicherungsbeginn", "versicherungsablauf",
+    "versicherung", "sepa-lastschrift", "lastschrift", "widerruf", "online", "kredit", "abo", "anbieter",
+    "strom", "gas", "internet", "handyvertrag", "fitnessstudio", "vertrag kündigen", "vertrag kuendigen"
+  ])) return "vertrag_versicherung";
+
+  if (hasAny(t, ["rechnung", "zahlungserinnerung", "zahlungsfrist", "offener betrag"])) return "zahlung";
 
   return "allgemein";
+}
+
+function wantsWrittenOutput(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+  return hasAny(q, ["schreib", "schreibe", "antwort", "professionelle antwort", "e-mail", "email", "mail", "brief", "vorlage", "fertig", "formuliere", "pdf", "text", "mach mir"]);
 }
 
 function detectIntent(frage = "", frageMode = "", historyText = "") {
@@ -406,14 +418,17 @@ function detectIntent(frage = "", frageMode = "", historyText = "") {
 
   if (/^(ok|okay|danke|alles klar|verstanden|passt|ja)$/i.test(normalizeString(frage))) return "smalltalk";
 
-  if (hasAny(q, ["pdf", "als pdf", "pdf-brief", "brief als pdf"])) return "pdf";
-  if (hasAny(q, ["schreib", "schreibe", "antwort", "professionelle antwort", "e-mail", "email", "mail", "brief", "vorlage", "fertig", "formuliere", "text", "mach mir"])) return "reply";
+  // Spezifische Nutzerlage zuerst erkennen. Danach entscheidet buildForcedChatAnswer,
+  // ob kurze Hilfe oder fertige E-Mail/PDF gebraucht wird.
   if (hasAny(q, ["kündigen", "kuendigen", "kündigung", "kuendigung", "widerrufen", "widerruf", "vertrag raus", "abbuchen stoppen", "lastschrift stoppen"])) return "cancel";
   if (hasAny(q, ["kein geld", "kann nicht zahlen", "nicht bezahlen", "nicht zahlen", "nicht auf einmal", "zahlungsaufschub", "stundung"])) return "no_money";
   if (hasAny(q, ["ratenzahlung", "rate", "raten", "monatlich zahlen", "in raten"])) return "installments";
   if (hasAny(q, ["schon bezahlt", "bereits bezahlt", "habe bezahlt", "überwiesen", "ueberwiesen", "zahlungsnachweis"])) return "paid";
   if (hasAny(q, ["schon geschickt", "bereits geschickt", "nachweis geschickt", "unterlagen geschickt", "bescheid geschickt", "befreiung geschickt"])) return "sent_proof";
   if (hasAny(q, ["stimmt nicht", "forderung falsch", "kenne ich nicht", "nicht richtig", "bestreiten", "widersprechen", "widerspruch", "einspruch"])) return "dispute";
+
+  if (hasAny(q, ["pdf", "als pdf", "pdf-brief", "brief als pdf"])) return "pdf";
+  if (wantsWrittenOutput(frage, frageMode)) return "reply";
   if (hasAny(q, ["was soll ich tun", "was muss ich tun", "was jetzt", "nächster schritt", "naechster schritt", "wie weiter"])) return "next_steps";
   if (hasAny(q, ["welche unterlagen", "unterlagen", "anhängen", "anhaengen", "mitschicken", "dokumente"])) return "documents";
   if (hasAny(q, ["termin verschieben", "neuer termin", "absagen", "krank", "kann nicht kommen"])) return "appointment";
@@ -430,10 +445,53 @@ function getRecipientLine(meta = {}, context = "") {
   return "E-Mail oder Anschrift aus dem Schreiben übernehmen";
 }
 
-function buildSubject(meta = {}, domain = "allgemein", intent = "reply") {
-  const ref = getPrimaryReference(meta);
+function cleanReferenceLabel(ref = "") {
+  return normalizeString(ref)
+    .replace(/^(aktenzeichen|az|kundennummer|kunden-nr\.?|bg-nummer|steuernummer|beitragsnummer|rechnungsnummer|versicherungsscheinnummer|versicherungsnummer|nummer)\s*[:#-]?\s*/i, "")
+    .trim();
+}
+
+function referenceLabelForDomain(ref = "", domain = "allgemein") {
+  const clean = cleanReferenceLabel(ref);
+  if (!clean) return "";
+  if (domain === "vertrag_versicherung") return `Versicherungsscheinnummer ${clean}`;
+  if (domain === "finanzamt") return `Steuernummer ${clean}`;
+  if (domain === "behoerde") return `Nummer ${clean}`;
+  if (domain === "inkasso") return `Aktenzeichen/Nummer ${clean}`;
+  return clean;
+}
+
+function hasCreditRejectedContext(context = "") {
+  const t = String(context || "").toLowerCase();
+  return hasAny(t, ["kredit"])
+    && hasAny(t, ["abgelehnt", "nicht bewilligt", "nicht genehmigt", "nicht bekommen", "keinen kredit", "kredit wurde abgelehnt"]);
+}
+
+function isFinanzSchutzbriefContext(context = "") {
+  return hasAny(context, ["finanz-schutzbrief", "finanzschutzbrief", "finanz schutzbrief"]);
+}
+
+function findPersonNameInContext(context = "") {
+  const text = String(context || "");
+  const patterns = [
+    /(?:Herr|Frau)\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40})?)/,
+    /(?:Versicherungsnehmer|Kunde|Arbeitnehmer|Patient|Name)\s*[:\-]?\s*([A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40})?)/i
+  ];
+  for (const pattern of patterns) {
+    const m = text.match(pattern);
+    if (m && looksLikePersonName(m[1])) return normalizeString(m[1]);
+  }
+  return "";
+}
+
+function getSafeSignatureName(meta = {}, context = "") {
+  return getDetectedPersonName(meta) || findPersonNameInContext(context) || "[Name]";
+}
+
+function buildSubject(meta = {}, domain = "allgemein", intent = "reply", context = "") {
+  const refRaw = getPrimaryReference(meta);
+  const ref = referenceLabelForDomain(refRaw, domain);
   const date = getDate(meta);
-  const sender = getSender(meta);
   const topic = normalizeString(meta.briefart || meta.worum_geht_es || "");
 
   let base = "Bitte um Prüfung Ihres Schreibens";
@@ -443,9 +501,13 @@ function buildSubject(meta = {}, domain = "allgemein", intent = "reply") {
   if (intent === "paid") base = "Zahlungsnachweis / Bitte um Prüfung";
   if (intent === "sent_proof") base = "Nachweis erneut eingereicht";
   if (intent === "dispute") base = "Bitte um Prüfung und Klärung";
-  if (intent === "cancel") base = "Widerruf / Kündigung";
+  if (intent === "cancel") base = "Widerruf und hilfsweise Kündigung";
 
-  if (domain === "vertrag_versicherung") base = intent === "no_money" ? "Bitte um Klärung und Zahlungsaufschub" : "Widerruf / Kündigung des Vertrags";
+  if (domain === "vertrag_versicherung") {
+    base = isFinanzSchutzbriefContext(context)
+      ? "Widerruf und hilfsweise Kündigung des Finanz-Schutzbriefs"
+      : "Widerruf und hilfsweise Kündigung des Vertrags";
+  }
   if (domain === "arbeit") base = "Bitte um Prüfung der Rückzahlungsvereinbarung";
   if (domain === "bank_pkonto") base = "Bitte um Klärung zur Kontopfändung / P-Konto";
   if (domain === "finanzamt") base = intent === "no_money" ? "Antrag auf Stundung / Zahlungsaufschub" : "Bitte um Prüfung des Steuerbescheids";
@@ -455,29 +517,35 @@ function buildSubject(meta = {}, domain = "allgemein", intent = "reply") {
   const parts = [base];
   if (ref) parts.push(ref);
   else if (date) parts.push(`Schreiben vom ${date}`);
-  else if (topic && topic.length < 60) parts.push(topic);
-  else if (sender && sender.length < 60) parts.push(sender);
+  else if (topic && topic.length < 60 && !/iban|bic|telefon|adresse/i.test(topic)) parts.push(topic);
 
   return parts.join(" – ").replace(/\s+/g, " ").trim();
 }
 
-function buildReferenceSentence(meta = {}, domain = "allgemein") {
-  const ref = getPrimaryReference(meta);
+function buildReferenceSentence(meta = {}, domain = "allgemein", context = "") {
+  const refRaw = getPrimaryReference(meta);
+  const ref = cleanReferenceLabel(refRaw);
   const date = getDate(meta);
   const amount = getAmount(meta);
   const topic = normalizeString(meta.briefart || meta.worum_geht_es || "");
+
+  if (domain === "vertrag_versicherung") {
+    if (isFinanzSchutzbriefContext(context) && ref) return `ich beziehe mich auf den Finanz-Schutzbrief mit der Versicherungsscheinnummer ${ref}.`;
+    if (ref) return `ich beziehe mich auf den Vertrag mit der Nummer ${ref}.`;
+    if (date) return `ich beziehe mich auf Ihr Schreiben vom ${date}.`;
+    return "ich beziehe mich auf den Vertrag bzw. Ihr Schreiben.";
+  }
+
+  if (domain === "arbeit") {
+    if (hasAny(context, ["ratenzahlung", "schuldanerkenntnis"]) && date) return `ich beziehe mich auf die Vereinbarung zur Ratenzahlung und zum Schuldanerkenntnis vom ${date}.`;
+    if (date) return `ich beziehe mich auf Ihr Schreiben vom ${date}.`;
+    return `ich beziehe mich auf Ihr Schreiben bzw. die Vereinbarung${amount ? " über " + amount : ""}.`;
+  }
 
   const bits = [];
   if (date) bits.push(`vom ${date}`);
   if (ref) bits.push(`zur Nummer ${ref}`);
   if (amount) bits.push(`über ${amount}`);
-
-  if (domain === "vertrag_versicherung") {
-    if (ref) return `ich beziehe mich auf den Vertrag / Versicherungsschein zur Nummer ${ref}${amount ? " über " + amount : ""}.`;
-    return `ich beziehe mich auf den Vertrag bzw. das Schreiben${amount ? " über " + amount : ""}.`;
-  }
-
-  if (domain === "arbeit") return `ich beziehe mich auf Ihr Schreiben bzw. die Vereinbarung${amount ? " über " + amount : ""}${date ? " vom " + date : ""}.`;
 
   if (bits.length) return `ich beziehe mich auf Ihr Schreiben ${bits.join(" ")}.`;
   if (topic) return `ich beziehe mich auf Ihr Schreiben zum Thema ${topic}.`;
@@ -485,15 +553,19 @@ function buildReferenceSentence(meta = {}, domain = "allgemein") {
 }
 
 function buildEmailBody(meta = {}, context = "", domain = "allgemein", intent = "reply") {
-  const name = getDetectedPersonName(meta) || "[Name]";
+  const name = getSafeSignatureName(meta, context);
   const amount = getAmount(meta);
 
   if (domain === "vertrag_versicherung" || intent === "cancel") {
+    const creditLine = hasCreditRejectedContext(context)
+      ? "Der Vertrag ist im Zusammenhang mit einer Online-Kreditanfrage entstanden. Der beantragte Kredit wurde nach meiner Kenntnis nicht bewilligt."
+      : "Der Vertrag ist nach meiner Kenntnis im Zusammenhang mit einer Online-Anfrage entstanden.";
+
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
-Der Vertrag ist nach meiner Kenntnis im Zusammenhang mit einer Online-Anfrage entstanden. Ich bitte um Prüfung, ob der Vertrag wirksam zustande gekommen ist.
+${creditLine} Ich bitte um Prüfung, ob der Vertrag wirksam zustande gekommen ist.
 
 Vorsorglich widerrufe ich den Vertrag, soweit dies noch möglich ist. Hilfsweise kündige ich den Vertrag zum nächstmöglichen Zeitpunkt.
 
@@ -513,7 +585,7 @@ ${name}`;
   if (domain === "bank_pkonto") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit:
 - ob das betroffene Konto bereits als Pfändungsschutzkonto (P-Konto) geführt wird,
@@ -532,7 +604,7 @@ ${name}`;
   if (domain === "arbeit") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Bitte senden Sie mir eine nachvollziehbare schriftliche Aufstellung, aus der hervorgeht, wodurch die Überzahlung entstanden ist und wie sich der Betrag zusammensetzt.
 
@@ -548,7 +620,7 @@ ${name}`;
   if (intent === "no_money") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Ich kann den genannten Betrag aktuell nicht auf einmal zahlen.
 
@@ -564,7 +636,7 @@ ${name}`;
   if (intent === "installments") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Bitte senden Sie mir eine aktuelle Aufstellung der Forderung zu.
 
@@ -580,7 +652,7 @@ ${name}`;
   if (intent === "paid") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Nach meiner Kenntnis wurde der Betrag bereits bezahlt. Den Zahlungsnachweis füge ich bei bzw. reiche ich nach.
 
@@ -594,7 +666,7 @@ ${name}`;
   if (intent === "sent_proof") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Der angeforderte Nachweis wurde bereits eingereicht. Vorsorglich reiche ich ihn erneut ein.
 
@@ -610,7 +682,7 @@ ${name}`;
   if (intent === "dispute") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Ich bitte um Prüfung des Vorgangs. Die Forderung bzw. der Inhalt des Schreibens ist für mich nicht nachvollziehbar.
 
@@ -626,7 +698,7 @@ ${name}`;
   if (domain === "inkasso") {
     return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Bitte senden Sie mir eine aktuelle Forderungsaufstellung sowie Nachweise zur geltend gemachten Forderung zu.
 
@@ -641,7 +713,7 @@ ${name}`;
 
   return `Sehr geehrte Damen und Herren,
 
-${buildReferenceSentence(meta, domain)}
+${buildReferenceSentence(meta, domain, context)}
 
 Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.
 
@@ -654,11 +726,11 @@ ${name}`;
 
 function buildProfessionalOutput(meta = {}, context = "", domain = "allgemein", intent = "reply") {
   const recipient = getRecipientLine(meta, context);
-  const subject = buildSubject(meta, domain, intent);
+  const subject = buildSubject(meta, domain, intent, context);
   const body = buildEmailBody(meta, context, domain, intent);
 
   if (intent === "pdf") {
-    const name = getDetectedPersonName(meta) || "[Name]";
+    const name = getSafeSignatureName(meta, context);
     const date = getTodayGerman();
     return cleanText(`${name}
 [Adresse eintragen]
@@ -709,7 +781,10 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
 
   if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
   if (intent === "reply" || intent === "pdf" || intent === "cancel") return buildProfessionalOutput(meta, context, domain, intent === "cancel" ? "reply" : intent);
-  if (intent === "no_money") return buildNoMoneyShort(meta, domain);
+  if (intent === "no_money") {
+    if (wantsWrittenOutput(frage, frageMode)) return buildProfessionalOutput(meta, context, domain, "no_money");
+    return buildNoMoneyShort(meta, domain);
+  }
   if (intent === "installments") return buildProfessionalOutput(meta, context, domain, "installments");
   if (intent === "paid") return buildProfessionalOutput(meta, context, domain, "paid");
   if (intent === "sent_proof") return buildProfessionalOutput(meta, context, domain, "sent_proof");
@@ -917,7 +992,7 @@ app.post("/api/frage", async (req, res) => {
     if (!briefText && !erklaerungKurz && !erklaerungDetails && !Object.keys(meta).length) return res.status(400).json({ ok: false, error: "Kein Kontext vorhanden" });
     if (frage.length > 1500) return res.status(400).json({ ok: false, error: "Die Frage ist zu lang. Bitte kürzer formulieren." });
 
-    // V9.4: Der saubere Router läuft bewusst VOR Gemini.
+    // V9.5: Qualitäts-Router läuft bewusst VOR Gemini.
     // Alte Testbrief-Sonderfälle dominieren nicht mehr.
     const forcedAnswer = buildForcedChatAnswer({
       frage,
@@ -1017,5 +1092,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.4 clean router");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.5 email/pdf quality");
 });
