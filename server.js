@@ -3434,7 +3434,27 @@ app.post("/api/brief-bild", async (req, res) => {
 
 
 
-function postProcessQuestionAnswer(answer = "", meta = {}) {
+
+) {
+  let out = cleanText(answer || "");
+
+  const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
+  out = out.replace(new RegExp("Ich bestätige die offene Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("Ich bestätige die Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("ich bestätige[^.?!]*Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+
+  out = out.replace(new RegExp("monatlich\\s+monatlich", "gi"), "monatlich");
+  out = out.replace(new RegExp("Aktenzeichen\\/Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+  out = out.replace(new RegExp("Aktenzeichen\\/zur Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+
+  const detectedName = typeof getDetectedPersonNameUniversal === "function"
+    ? getDetectedPersonNameUniversal(meta)
+    : "";
+  if (detectedName) out = out.replace(/\[Name\]/g, detectedName);
+
+  return cleanText(out);
+}
+) {
   let out = cleanText(answer || "");
 
   const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
@@ -4981,13 +5001,6 @@ app.post("/api/tts", async (req, res) => {
     });
   }
 });
-
-app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT);
-});
-
-
-
 // V8.7.1 Universal Chat Final: stärkere allgemeine Absichtslogik.
 // Ziel: nicht einzelne Briefe, sondern Nutzerproblem -> fehlende Daten -> fertige Lösung.
 function getDetectedPersonNameUniversal(meta = {}) {
@@ -5167,7 +5180,27 @@ function buildUniversalNameFollowup({ frage = "", meta = {}, context = "", histo
 }
 
 
-function postProcessQuestionAnswer(answer = "", meta = {}) {
+
+) {
+  let out = cleanText(answer || "");
+
+  const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
+  out = out.replace(new RegExp("Ich bestätige die offene Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("Ich bestätige die Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("ich bestätige[^.?!]*Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+
+  out = out.replace(new RegExp("monatlich\\s+monatlich", "gi"), "monatlich");
+  out = out.replace(new RegExp("Aktenzeichen\\/Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+  out = out.replace(new RegExp("Aktenzeichen\\/zur Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+
+  const detectedName = typeof getDetectedPersonNameUniversal === "function"
+    ? getDetectedPersonNameUniversal(meta)
+    : "";
+  if (detectedName) out = out.replace(/\[Name\]/g, detectedName);
+
+  return cleanText(out);
+}
+) {
   let out = cleanText(answer || "");
 
   const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
@@ -5184,6 +5217,27 @@ function postProcessQuestionAnswer(answer = "", meta = {}) {
 
   return cleanText(out);
 }
+
+function postProcessQuestionAnswer(answer = "", meta = {}) {
+  let out = cleanText(answer || "");
+
+  const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
+  out = out.replace(new RegExp("Ich bestätige die offene Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("Ich bestätige die Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("ich bestätige[^.?!]*Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+
+  out = out.replace(new RegExp("monatlich\\s+monatlich", "gi"), "monatlich");
+  out = out.replace(new RegExp("Aktenzeichen\\/Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+  out = out.replace(new RegExp("Aktenzeichen\\/zur Nummer\\s+Aktenzeichen:", "gi"), "Aktenzeichen:");
+
+  const detectedName = typeof getDetectedPersonNameUniversal === "function"
+    ? getDetectedPersonNameUniversal(meta)
+    : "";
+  if (detectedName) out = out.replace(/\[Name\]/g, detectedName);
+
+  return cleanText(out);
+}
+
 app.listen(PORT, () => {
-  console.log(`Hilfe24 Server läuft auf Port ${PORT}`);
+  console.log("Hilfe24 Server laeuft auf Port " + PORT);
 });
