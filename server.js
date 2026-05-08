@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v9.5-email-pdf-quality" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v9.6-email-pdf-download" });
 });
 
 function getTodayGerman() {
@@ -138,6 +138,107 @@ function looksLikeAddress(value) {
   return /\b(str\.|straße|strasse|weg|platz|allee|gasse|\d{5}\s+[a-zäöüß])/i.test(String(value || ""));
 }
 
+function normalizePostalAddress(value) {
+  const raw = String(value || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => normalizeString(line))
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+
+  if (!raw) return "";
+  if (/iban|bic|telefon|tel\.|fax|e-mail|email|www\.|http/i.test(raw)) return "";
+  if (!looksLikeAddress(raw)) return "";
+  return raw;
+}
+
+function cleanAddressLines(lines = []) {
+  const cleaned = [];
+  for (const line of lines) {
+    const l = normalizeString(line);
+    if (!l) continue;
+    if (/iban|bic|telefon|tel\.|fax|e-mail|email|www\.|http|öffnungszeiten|oeffnungszeiten/i.test(l)) continue;
+    cleaned.push(l);
+  }
+  const block = cleaned.join("\n").trim();
+  return normalizePostalAddress(block) || "";
+}
+
+function splitContextLines(context = "") {
+  return String(context || "")
+    .replace(/\r/g, "")
+    .split(/\n+/)
+    .map((line) => normalizeString(line))
+    .filter(Boolean);
+}
+
+function findAddressBlockAfterLine(context = "", target = "") {
+  const lines = splitContextLines(context);
+  const needle = normalizeString(target).toLowerCase();
+  if (!needle) return "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].toLowerCase();
+    if (!line.includes(needle) && !needle.includes(line)) continue;
+    const block = cleanAddressLines(lines.slice(i, i + 4));
+    if (block && looksLikeAddress(block)) return block;
+  }
+  return "";
+}
+
+function findAnyPostalBlock(context = "") {
+  const lines = splitContextLines(context);
+  for (let i = 0; i < lines.length; i++) {
+    const block = cleanAddressLines(lines.slice(i, i + 4));
+    if (block && looksLikeAddress(block)) return block;
+  }
+  return "";
+}
+
+function getUserPostalAddress(meta = {}, context = "") {
+  const fromMeta = normalizePostalAddress(meta.absender_adresse || meta.user_adresse || meta.adresse);
+  if (fromMeta) return fromMeta;
+
+  const name = getSafeSignatureName(meta, context);
+  if (name && name !== "[Name]") {
+    const fromContext = findAddressBlockAfterLine(context, name);
+    if (fromContext) return fromContext;
+  }
+
+  return name && name !== "[Name]" ? `${name}\n[Adresse bitte prüfen/eintragen]` : "[Name]\n[Adresse bitte eintragen]";
+}
+
+function getRecipientPostalAddress(meta = {}, context = "") {
+  const fromMeta = normalizePostalAddress(meta.empfaenger_adresse || meta.absender_adresse_empfaenger || meta.postanschrift);
+  if (fromMeta) return fromMeta;
+
+  const sender = getSender(meta);
+  if (sender) {
+    const fromContext = findAddressBlockAfterLine(context, sender);
+    if (fromContext) return fromContext;
+  }
+
+  const any = findAnyPostalBlock(context);
+  if (any && sender && !any.toLowerCase().includes(String(getSafeSignatureName(meta, context)).toLowerCase())) return any;
+
+  return sender ? `${sender}\n[Anschrift aus dem Schreiben übernehmen]` : "[Empfängeranschrift aus dem Schreiben übernehmen]";
+}
+
+function wantsPdfOutput(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+  return hasAny(q, ["pdf", "pdf-brief", "brief als pdf", "als pdf", "download", "herunterladen", "ausdrucken"]);
+}
+
+function wantsEmailOutput(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+  return hasAny(q, ["e-mail", "email", "mail", "per mail"]);
+}
+
+function wantsBothEmailAndPdf(frage = "", frageMode = "") {
+  return wantsPdfOutput(frage, frageMode) && wantsEmailOutput(frage, frageMode);
+}
+
 function isUnsafeReference(value) {
   const v = normalizeString(value);
   if (!v) return true;
@@ -204,6 +305,8 @@ function normalizeInfo(info = {}) {
     absender_original: normalizeString(info.absender_original),
     absender_kurz: normalizeString(info.absender_kurz),
     email_adresse: looksLikeEmail(email) ? email : "",
+    absender_adresse: normalizePostalAddress(info.absender_adresse),
+    empfaenger_adresse: normalizePostalAddress(info.empfaenger_adresse),
     briefart: normalizeString(info.briefart),
     betroffene_person: normalizeString(info.betroffene_person),
     empfaenger: normalizeString(info.empfaenger),
@@ -249,6 +352,8 @@ WICHTIG:
 - Unterscheide Absender/Firma und betroffene Person. Absender/Firma niemals als betroffene Person eintragen.
 - Eine IBAN, BIC, Telefonnummer, Adresse, Webseite oder E-Mail ist keine Aktenzeichen-Referenz.
 - E-Mail-Adresse des Absenders separat bei email_adresse eintragen, falls sichtbar.
+- Postanschrift der betroffenen Person bei absender_adresse eintragen, wenn sicher sichtbar.
+- Postanschrift des Empfängers/Absenders der Stelle bei empfaenger_adresse eintragen, wenn sicher sichtbar.
 - Bei Online-Vertrag/Versicherung/Kredit-Anfrage: als Vertrag/Versicherung/Widerruf/Kündigung einordnen, nicht als Bank/P-Konto.
 - Bank/P-Konto nur wenn wirklich Pfändung, P-Konto, Pfändungsschutzkonto, Freibetrag oder Kontopfändung vorkommt.
 - Gib nur gültiges JSON zurück. Keine Markdown-Codeblöcke.
@@ -258,6 +363,8 @@ Gib genau dieses JSON zurück:
   "absender_original": "",
   "absender_kurz": "",
   "email_adresse": "",
+  "absender_adresse": "",
+  "empfaenger_adresse": "",
   "briefart": "",
   "betroffene_person": "",
   "empfaenger": "",
@@ -341,6 +448,8 @@ function buildContext(meta = {}, briefText = "", kurz = "", details = "", frage 
     meta.absender_kurz,
     meta.absender_original,
     meta.email_adresse,
+    meta.absender_adresse,
+    meta.empfaenger_adresse,
     meta.betroffene_person,
     meta.empfaenger,
     meta.worum_geht_es,
@@ -724,24 +833,31 @@ Mit freundlichen Grüßen
 ${name}`;
 }
 
-function buildProfessionalOutput(meta = {}, context = "", domain = "allgemein", intent = "reply") {
-  const recipient = getRecipientLine(meta, context);
-  const subject = buildSubject(meta, domain, intent, context);
-  const body = buildEmailBody(meta, context, domain, intent);
+function buildPdfLetterText(meta = {}, context = "", domain = "allgemein", intent = "pdf") {
+  const senderAddress = getUserPostalAddress(meta, context);
+  const recipientAddress = getRecipientPostalAddress(meta, context);
+  const subject = buildSubject(meta, domain, intent === "cancel" ? "cancel" : intent, context);
+  const body = buildEmailBody(meta, context, domain, intent === "pdf" ? "reply" : intent);
+  const date = getTodayGerman();
 
-  if (intent === "pdf") {
-    const name = getSafeSignatureName(meta, context);
-    const date = getTodayGerman();
-    return cleanText(`${name}
-[Adresse eintragen]
+  return cleanText(`${senderAddress}
 
-${recipient}
+${recipientAddress}
 
 [Ort], ${date}
 
 Betreff: ${subject}
 
 ${body}`);
+}
+
+function buildProfessionalOutput(meta = {}, context = "", domain = "allgemein", intent = "reply") {
+  const recipient = getRecipientLine(meta, context);
+  const subject = buildSubject(meta, domain, intent, context);
+  const body = buildEmailBody(meta, context, domain, intent);
+
+  if (intent === "pdf") {
+    return buildPdfLetterText(meta, context, domain, intent);
   }
 
   return cleanText(`Empfänger: ${recipient}
@@ -750,6 +866,21 @@ Betreff: ${subject}
 
 ${body}`);
 }
+
+function buildEmailAndPdfOutput(meta = {}, context = "", domain = "allgemein", intent = "reply") {
+  const emailText = buildProfessionalOutput(meta, context, domain, intent);
+  const pdfText = buildPdfLetterText(meta, context, domain, "pdf");
+  return cleanText(`E-MAIL:
+
+${emailText}
+
+PDF-BRIEF:
+
+${pdfText}
+
+Hinweis: Bitte prüfe vor dem Senden Name, Adresse, Datum, Nummer und Empfänger.`);
+}
+
 
 function buildNextSteps(meta = {}, domain = "allgemein") {
   if (domain === "vertrag_versicherung") {
@@ -778,9 +909,26 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
   const intent = detectIntent(frage, frageMode, historyText);
+  const wantsPdf = wantsPdfOutput(frage, frageMode);
+  const wantsEmail = wantsEmailOutput(frage, frageMode);
+  const wantsBoth = wantsBothEmailAndPdf(frage, frageMode);
 
   if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
-  if (intent === "reply" || intent === "pdf" || intent === "cancel") return buildProfessionalOutput(meta, context, domain, intent === "cancel" ? "reply" : intent);
+
+  // V9.6: Nutzerwunsch gewinnt. Kündigen/Widerrufen darf nicht zur Forderungsprüfung werden.
+  if (wantsBoth) {
+    const finalIntent = intent === "cancel" ? "cancel" : (intent || "reply");
+    return buildEmailAndPdfOutput(meta, context, domain, finalIntent === "pdf" ? "reply" : finalIntent);
+  }
+
+  if (intent === "cancel") {
+    if (wantsPdf) return buildProfessionalOutput(meta, context, domain, "pdf");
+    return buildProfessionalOutput(meta, context, domain, "cancel");
+  }
+
+  if (intent === "pdf") return buildProfessionalOutput(meta, context, domain, "pdf");
+  if (intent === "reply") return buildProfessionalOutput(meta, context, domain, "reply");
+
   if (intent === "no_money") {
     if (wantsWrittenOutput(frage, frageMode)) return buildProfessionalOutput(meta, context, domain, "no_money");
     return buildNoMoneyShort(meta, domain);
@@ -794,6 +942,7 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   if (intent === "deadline") return meta.frist || meta.termin ? `Frist/Termin: ${meta.frist || meta.termin}. Bitte im Originalbrief prüfen und rechtzeitig reagieren.` : "Ich sehe keine sichere Frist. Bitte prüfe das Originalschreiben oder nutze Daten genauer prüfen.";
   return "";
 }
+
 
 function shortGermanExplanation(info = {}) {
   const lines = [];
@@ -877,6 +1026,8 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
       absender_kurz: info.absender_kurz,
       absender_original: info.absender_original,
       email_adresse: info.email_adresse,
+      absender_adresse: info.absender_adresse,
+      empfaenger_adresse: info.empfaenger_adresse,
       person: name,
       person_sicher: Boolean(name),
       betroffene_person: info.betroffene_person,
@@ -992,7 +1143,7 @@ app.post("/api/frage", async (req, res) => {
     if (!briefText && !erklaerungKurz && !erklaerungDetails && !Object.keys(meta).length) return res.status(400).json({ ok: false, error: "Kein Kontext vorhanden" });
     if (frage.length > 1500) return res.status(400).json({ ok: false, error: "Die Frage ist zu lang. Bitte kürzer formulieren." });
 
-    // V9.5: Qualitäts-Router läuft bewusst VOR Gemini.
+    // V9.6: Qualitäts-Router läuft bewusst VOR Gemini.
     // Alte Testbrief-Sonderfälle dominieren nicht mehr.
     const forcedAnswer = buildForcedChatAnswer({
       frage,
@@ -1047,6 +1198,113 @@ ${frage}
   }
 });
 
+
+function pdfEscapeText(value = "") {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/–|—/g, "-")
+    .replace(/€/g, "EUR");
+}
+
+function wrapPdfLine(line = "", maxLen = 88) {
+  const words = String(line || "").split(/\s+/).filter(Boolean);
+  const out = [];
+  let current = "";
+  for (const word of words) {
+    if ((current + " " + word).trim().length > maxLen) {
+      if (current) out.push(current);
+      current = word;
+    } else {
+      current = (current + " " + word).trim();
+    }
+  }
+  if (current) out.push(current);
+  return out.length ? out : [""];
+}
+
+function buildSimplePdfBuffer(text = "") {
+  const clean = cleanText(text).slice(0, 10000);
+  const rawLines = clean.split("\n");
+  const lines = [];
+  for (const line of rawLines) {
+    if (!line.trim()) {
+      lines.push("");
+      continue;
+    }
+    lines.push(...wrapPdfLine(line, 88));
+  }
+
+  const pages = [];
+  const linesPerPage = 46;
+  for (let i = 0; i < lines.length; i += linesPerPage) {
+    pages.push(lines.slice(i, i + linesPerPage));
+  }
+  if (!pages.length) pages.push([""]);
+
+  const objects = [];
+  function addObject(content) {
+    objects.push(content);
+    return objects.length;
+  }
+
+  const catalogId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
+  const pagesId = addObject("PAGES_PLACEHOLDER");
+  const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+  const pageIds = [];
+
+  for (const pageLines of pages) {
+    let stream = "BT\n/F1 11 Tf\n50 790 Td\n14 TL\n";
+    for (const line of pageLines) {
+      stream += `(${pdfEscapeText(line)}) Tj\nT*\n`;
+    }
+    stream += "ET";
+    const contentId = addObject(`<< /Length ${Buffer.byteLength(stream, "binary")} >>\nstream\n${stream}\nendstream`);
+    const pageId = addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    pageIds.push(pageId);
+  }
+
+  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((obj, idx) => {
+    offsets.push(Buffer.byteLength(pdf, "binary"));
+    pdf += `${idx + 1} 0 obj\n${obj}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(pdf, "binary");
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let i = 1; i < offsets.length; i++) {
+    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(pdf, "binary");
+}
+
+app.post("/api/pdf", async (req, res) => {
+  try {
+    const text = cleanText(req.body.text || req.body.briefText || "");
+    if (!text) return res.status(400).json({ ok: false, error: "Kein PDF-Text gesendet" });
+    if (text.length > 10000) return res.status(400).json({ ok: false, error: "Der PDF-Text ist zu lang." });
+
+    const filenameRaw = normalizeString(req.body.filename || `hilfe24-brief-${new Date().toISOString().slice(0, 10)}.pdf`);
+    const filename = filenameRaw.replace(/[^a-zA-Z0-9_.-]/g, "-").replace(/-+/g, "-").slice(0, 80) || "hilfe24-brief.pdf";
+    const pdf = buildSimplePdfBuffer(text);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename.endsWith(".pdf") ? filename : filename + ".pdf"}"`);
+    res.setHeader("Content-Length", pdf.length);
+    return res.send(pdf);
+  } catch (error) {
+    console.error("Fehler /api/pdf:", error);
+    return res.status(500).json({ ok: false, error: error.message || "PDF konnte nicht erstellt werden" });
+  }
+});
+
 function looksGermanHeavyForAudio(text, lang) {
   const code = getLanguageMeta(lang).code;
   if (code === "de") return false;
@@ -1092,5 +1350,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.5 email/pdf quality");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.6 email/pdf download");
 });
