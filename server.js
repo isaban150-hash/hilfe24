@@ -4663,6 +4663,260 @@ Nicht wie ein langer KI-Aufsatz.
 
  
 
+
+
+// V8.7 Universal-Chat: echte Absichtslogik statt Brief-Wiederholung.
+// Diese Funktionen überschreiben die älteren Universal-Funktionen weiter oben.
+function extractUniversalRate(text = "") {
+  const s = String(text || "").toLowerCase().replace(/,/g, ".");
+  const m = s.match(/(\d{1,5}(?:\.\d{1,2})?)\s*(?:€|eur|euro)?\s*(?:monatlich|im monat|pro monat|rate|raten|monthly)?/i);
+  if (!m) return "";
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  if (!hasAny(s, ["€", "eur", "euro", "monat", "rate", "zahlen", "ratenzahlung"])) return "";
+  return `${String(n).replace(".", ",")} € monatlich`;
+}
+
+function looksLikePersonNameUniversal(text = "") {
+  const raw = cleanText(String(text || "")).trim();
+  if (!raw || raw.length > 80) return false;
+  const low = raw.toLowerCase();
+  if (hasAny(low, ["ich ", "kann", "nicht", "zahlen", "antwort", "brief", "email", "e-mail", "rate", "euro", "€", "unterlagen", "was", "wie", "warum", "frist", "termin"])) return false;
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length < 2 || parts.length > 4) return false;
+  return parts.every((p) => /^[A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû-]{2,}$/.test(p));
+}
+
+function lastAssistantAskedUniversal(historyText = "", kind = "") {
+  const h = String(historyText || "").toLowerCase();
+  if (kind === "name") return hasAny(h, ["vollständiger name", "namen eintragen", "name für die unterschrift", "wie soll ich den namen"]);
+  if (kind === "rate") return hasAny(h, ["welche monatliche rate", "welche rate", "realistische rate", "rate kannst", "monatlich zahlen"]);
+  if (kind === "reason") return hasAny(h, ["welchen grund", "warum", "grund eintragen"]);
+  return false;
+}
+
+function historyIndicatesReplyUniversal(historyText = "") {
+  return hasAny(String(historyText || "").toLowerCase(), ["schreib", "antwort", "e-mail", "email", "brief", "text schreiben", "vorlage"]);
+}
+
+function historyIndicatesPaymentUniversal(historyText = "", context = "") {
+  const h = `${historyText || ""} ${context || ""}`.toLowerCase();
+  return hasAny(h, ["nicht zahlen", "nicht bezahlen", "ratenzahlung", "rate", "stundung", "zahlungsaufschub", "forderung", "mahnung", "rechnung", "betrag", "vollstreck"]);
+}
+
+function extractLikelyNameFromUniversalHistory(historyText = "") {
+  const lines = String(historyText || "").split(/\n+/).reverse();
+  for (const line of lines) {
+    const m = line.match(/Nutzer:\s*(.+)$/i);
+    if (!m) continue;
+    const val = cleanText(m[1] || "").trim();
+    if (looksLikePersonNameUniversal(val)) return val;
+  }
+  return "";
+}
+
+function extractUniversalEmail(context = "", meta = {}) {
+  const possible = [meta.email, meta.empfaenger_email, meta.absender_email, meta.kontakt_email].filter(Boolean).join(" ");
+  const source = `${possible} ${context || ""}`;
+  const m = source.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return m ? m[0] : "";
+}
+
+function getUniversalRecipientLine(meta = {}, context = "") {
+  const email = extractUniversalEmail(context, meta);
+  if (email) return email;
+  const abs = normalizeString(meta.absender || meta.absender_kurz || "");
+  if (abs) return `${abs} – E-Mail/Adresse aus dem Brief übernehmen`;
+  return "E-Mail/Adresse aus dem Brief übernehmen";
+}
+
+function safeUniversalRef(meta = {}) {
+  const ref = normalizeString(getPrimaryReference(meta, ""));
+  if (!ref || /bitte/i.test(ref)) return "";
+  return ref;
+}
+
+function getUniversalAmount(meta = {}) {
+  return normalizeString(meta.betrag || meta.geldbetrag || meta.gesamtbetrag || "");
+}
+
+function buildUniversalCannotPay(meta = {}, domain = "allgemein") {
+  const ref = safeUniversalRef(meta);
+  const amount = getUniversalAmount(meta);
+  const lines = [
+    "Dann brauchen wir eine Lösung mit Ratenzahlung, Stundung oder Zahlungsaufschub.",
+    "",
+    "1. Prüfe kurz, ob der Betrag stimmt.",
+    ref ? `2. Nummer/Aktenzeichen nennen: ${ref}.` : "2. Nummer/Aktenzeichen aus dem Brief nennen.",
+    amount ? `3. Betrag nennen: ${amount}.` : "3. Betrag aus dem Brief nennen.",
+    "4. Um schriftliche Bestätigung bitten.",
+    "",
+    "Welche monatliche Rate kannst du realistisch zahlen?"
+  ];
+  return cleanText(lines.join("\n"));
+}
+
+function buildUniversalProofSent(meta = {}, domain = "allgemein") {
+  const ref = safeUniversalRef(meta);
+  return cleanText(`Dann den Nachweis nochmal senden und Prüfung verlangen.
+
+1. ${ref ? "Nummer/Aktenzeichen nennen: " + ref + "." : "Nummer/Aktenzeichen aus dem Brief nennen."}
+2. Nachweis erneut anhängen.
+3. Um erneute Prüfung bitten.
+4. Bis zur Prüfung um Stopp weiterer Maßnahmen bitten.
+
+Soll ich dir eine kurze Nachricht dafür schreiben?`);
+}
+
+function buildUniversalPaymentTemplate({ meta = {}, context = "", name = "", rate = "" }) {
+  const recipient = getUniversalRecipientLine(meta, context);
+  const ref = safeUniversalRef(meta);
+  const amount = getUniversalAmount(meta);
+  const sender = normalizeString(meta.absender || meta.absender_kurz || "");
+  const subjectParts = [];
+  if (rate) subjectParts.push("Ratenzahlung");
+  subjectParts.push("Klärung zum Schreiben");
+  if (ref) subjectParts.push(`Aktenzeichen/Nummer ${ref}`);
+  const subject = subjectParts.join(" / ");
+
+  const body = rate
+    ? `Sehr geehrte Damen und Herren,
+
+ich beziehe mich auf Ihr Schreiben${ref ? " zum Aktenzeichen/zur Nummer " + ref : ""}${amount ? " über " + amount : ""}.
+
+Bitte senden Sie mir eine aktuelle Aufstellung und prüfen Sie die Forderung.
+
+Ohne Anerkennung einer Rechtspflicht schlage ich, falls die Forderung berechtigt ist, eine monatliche Ratenzahlung von ${rate} vor.
+
+Bitte bestätigen Sie mir schriftlich, ob Sie mit dieser Ratenzahlung einverstanden sind.
+
+Mit freundlichen Grüßen
+
+${name || "[Name]"}`
+    : `Sehr geehrte Damen und Herren,
+
+ich beziehe mich auf Ihr Schreiben${ref ? " zum Aktenzeichen/zur Nummer " + ref : ""}.
+
+Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.
+
+Mit freundlichen Grüßen
+
+${name || "[Name]"}`;
+
+  return cleanText(`Empfänger: ${recipient}
+
+Betreff: ${subject}
+
+${body}`);
+}
+
+function buildUniversalProofTemplate({ meta = {}, context = "", name = "" }) {
+  const recipient = getUniversalRecipientLine(meta, context);
+  const ref = safeUniversalRef(meta);
+  const subject = ref ? `Nachweis erneut eingereicht – ${ref}` : "Nachweis erneut eingereicht";
+  return cleanText(`Empfänger: ${recipient}
+
+Betreff: ${subject}
+
+Sehr geehrte Damen und Herren,
+
+ich beziehe mich auf Ihr Schreiben${ref ? " zum Aktenzeichen/zur Nummer " + ref : ""}.
+
+Der erforderliche Nachweis wurde bereits eingereicht. Vorsorglich reiche ich ihn erneut ein.
+
+Bitte prüfen Sie den Vorgang erneut und setzen Sie weitere Maßnahmen bis zur Prüfung aus.
+
+Bitte bestätigen Sie mir den Eingang schriftlich.
+
+Mit freundlichen Grüßen
+
+${name || "[Name]"}`);
+}
+
+function buildUniversalReplyQuestionOrTemplate({ frage = "", meta = {}, context = "", historyText = "" }) {
+  const q = normalizeQuestionText(frage);
+  const historyName = extractLikelyNameFromUniversalHistory(historyText);
+  const metaName = normalizeString(meta.person || meta.name || "");
+  const name = looksLikePersonNameUniversal(frage) ? cleanText(frage).trim() : (historyName || metaName || "");
+  const rate = extractUniversalRate(frage) || extractUniversalRate(historyText);
+  const payment = historyIndicatesPaymentUniversal(historyText, context) || Boolean(rate) || hasAny(q, ["ratenzahlung", "rate", "stundung", "nicht zahlen", "nicht bezahlen"]);
+  const proof = hasAny(`${q} ${historyText}`.toLowerCase(), ["nachweis", "bescheid", "schon geschickt", "bereits geschickt", "befreiung", "unterlagen"]);
+
+  if (!name) {
+    return "Ich kann den Text schreiben. Mir fehlt nur der vollständige Name für die Unterschrift.\n\nWie soll ich den Namen eintragen?";
+  }
+
+  if (payment && !rate) {
+    return "Welche monatliche Rate soll ich eintragen?\n\nSchreib zum Beispiel: 20 € monatlich.";
+  }
+
+  if (proof && !payment) {
+    return buildUniversalProofTemplate({ meta, context, name });
+  }
+
+  return buildUniversalPaymentTemplate({ meta, context, name, rate });
+}
+
+function buildUniversalRateFollowup({ frage = "", meta = {}, context = "", historyText = "" }) {
+  const rate = extractUniversalRate(frage);
+  if (!rate) return "";
+  const name = extractLikelyNameFromUniversalHistory(historyText) || normalizeString(meta.person || meta.name || "");
+  if (!historyIndicatesPaymentUniversal(historyText, context) && !lastAssistantAskedUniversal(historyText, "rate")) return "";
+  if (!name) return "Ich trage die Rate ein. Mir fehlt nur noch der vollständige Name für die Unterschrift.";
+  return buildUniversalPaymentTemplate({ meta, context, name, rate });
+}
+
+function buildUniversalNameFollowup({ frage = "", meta = {}, context = "", historyText = "" }) {
+  if (!looksLikePersonNameUniversal(frage)) return "";
+  if (!lastAssistantAskedUniversal(historyText, "name")) return "";
+  const name = cleanText(frage).trim();
+  const rate = extractUniversalRate(historyText);
+  const payment = historyIndicatesPaymentUniversal(historyText, context) || Boolean(rate);
+  if (payment && !rate) return "Welche monatliche Rate soll ich eintragen?\n\nSchreib zum Beispiel: 20 € monatlich.";
+  if (hasAny(historyText.toLowerCase(), ["nachweis", "bescheid", "befreiung", "unterlagen"]) && !payment) {
+    return buildUniversalProofTemplate({ meta, context, name });
+  }
+  return buildUniversalPaymentTemplate({ meta, context, name, rate });
+}
+
+function buildUniversalNextStepsAnswer(meta = {}, domain = "allgemein") {
+  const steps = buildUniversalNextSteps(meta, domain).slice(0, 3);
+  return "Das sind die nächsten Schritte:\n" + steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
+}
+
+function buildUniversalDeterministicChat({ frage, frageMode, meta, briefText, kurz, details, historyText, lang }) {
+  const context = chatContextText(meta, briefText, kurz, details, frage, historyText);
+  const domain = detectUniversalDocumentDomain(context);
+  const intent = detectUniversalChatIntent(frage, frageMode);
+
+  if (intent === "smalltalk") return politeSmallTalkReply(lang);
+
+  const nameFollowup = buildUniversalNameFollowup({ frage, meta, context, historyText });
+  if (nameFollowup) return nameFollowup;
+
+  const rateFollowup = buildUniversalRateFollowup({ frage, meta, context, historyText });
+  if (rateFollowup) return rateFollowup;
+
+  if (intent === "cannot_pay") return buildUniversalCannotPay(meta, domain);
+  if (intent === "proof_sent") return buildUniversalProofSent(meta, domain);
+  if (intent === "reply") return buildUniversalReplyQuestionOrTemplate({ frage, meta, context, historyText });
+
+  if (intent === "understood") return buildUniversalUnderstood(meta, domain);
+  if (intent === "simplify") return buildUniversalShorter(meta, domain);
+  if (intent === "next_steps") return buildUniversalNextStepsAnswer(meta, domain);
+  if (intent === "attachments") return buildUniversalAttachments(meta, domain);
+  if (intent === "phone_script") return buildUniversalPhoneScript(meta, domain);
+  if (intent === "detail") return buildUniversalDetailRequest(meta, domain);
+  if (intent === "consequence") return buildUniversalConsequence(meta, domain);
+  if (intent === "must_react") return buildUniversalMustReact(meta, domain);
+  if (intent === "objection") return buildUniversalObjection(meta, domain);
+  if (intent === "reimbursement") return buildUniversalReimbursement(meta, domain);
+  if (intent === "check_claim") return buildUniversalCheckClaim(meta, domain);
+
+  return "";
+}
+
+
 app.post("/api/tts", async (req, res) => {
   try {
     const text = cleanText(req.body.text || "");
