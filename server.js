@@ -4140,6 +4140,19 @@ const lang = (req.body.lang || "de").toLowerCase();
       });
     }
 
+    // V8.8: Bank/P-Konto muss vor dem generischen Shortcut kommen.
+    // Sonst wird "Freibetrag"/"Kontopfändung" zu schnell als normale Zahlungs-/Inkasso-Frage behandelt.
+    if (frageMode === "reply" && (meta.bank_pkonto || isBankPkontoLetter(meta, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`))) {
+      const template = buildPkontoReplyTemplate(meta, lang, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`);
+      const hint = explainOnlineBankingSimple(lang);
+      return res.json({
+        ok: true,
+        antwort: cleanText(`${hint}
+
+${template}`)
+      });
+    }
+
     const deterministicShortcut = buildUniversalDeterministicChat({
       frage,
       frageMode,
@@ -4163,17 +4176,6 @@ const lang = (req.body.lang || "de").toLowerCase();
       return res.json({
         ok: true,
         antwort: buildMissingOfficialDataQuestion(missingOfficialData.reason, meta, lang)
-      });
-    }
-
-    if (frageMode === "reply" && (meta.bank_pkonto || isBankPkontoLetter(meta, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`))) {
-      const template = buildPkontoReplyTemplate(meta, lang, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`);
-      const hint = explainOnlineBankingSimple(lang);
-      return res.json({
-        ok: true,
-        antwort: cleanText(`${hint}
-
-${template}`)
       });
     }
 
@@ -5163,6 +5165,193 @@ function postProcessQuestionAnswer(answer = "", meta = {}) {
   if (detectedName) out = out.replace(/\[Name\]/g, detectedName);
 
   return cleanText(out);
+}
+
+
+
+// =========================================================
+// V8.8 UNIVERSAL ROUTER FIX
+// Ziel: Hilfe24 bleibt universal. Zahlungs-/Inkasso-Shortcuts greifen nur noch, wenn sie wirklich passen.
+// =========================================================
+function escapeRegexV88(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasAnyWordV88(text, words) {
+  const lower = String(text || "").toLowerCase();
+  return (words || []).some((word) => {
+    const pattern = `(^|[^\\p{L}\\p{N}])${escapeRegexV88(String(word).toLowerCase())}([^\\p{L}\\p{N}]|$)`;
+    return new RegExp(pattern, "u").test(lower);
+  });
+}
+
+function isPaymentLikeDomainV88(domain, context = "") {
+  const c = String(context || "").toLowerCase();
+
+  if (["zahlung", "steuer", "beitrag"].includes(domain)) return true;
+
+  if (domain === "bank") {
+    return hasAny(c, [
+      "ratenzahlung",
+      "stundung",
+      "zahlungsaufschub",
+      "nicht zahlen",
+      "nicht bezahlen",
+      "kann nicht zahlen",
+      "forderung prüfen",
+      "stimmt die forderung"
+    ]);
+  }
+
+  if (domain === "behoerde") {
+    return hasAny(c, [
+      "rückforderung",
+      "aufrechnung",
+      "zahlungsaufforderung",
+      "mahnung",
+      "offene forderung",
+      "forderung"
+    ]);
+  }
+
+  if (domain === "gesundheit") {
+    return hasAny(c, ["rechnung", "zuzahlung", "eigenanteil", "forderung", "mahnung"]);
+  }
+
+  return false;
+}
+
+function detectUniversalDocumentDomain(context = "") {
+  const text = String(context || "").toLowerCase();
+
+  // Reihenfolge ist wichtig: Spezialfälle zuerst, generische Zahlung/Behörde zuletzt.
+  if (hasAny(text, ["gericht", "amtsgericht", "landgericht", "staatsanwaltschaft", "polizei", "straf", "anklage", "ladung", "zeuge", "beschuldig", "angeklagt", "geldauflage", "strafbefehl"])) return "justiz";
+  if (hasAny(text, ["bank", "konto", "p-konto", "pfändungsschutz", "kontopfändung", "freibetrag", "kontosperre", "konto gesperrt", "kredit", "dispo", "rücklastschrift"])) return "bank";
+  if (hasAny(text, ["finanzamt", "steuer", "steuernummer", "säumnis", "einkommensteuer", "umsatzsteuer", "steuerforderung", "vollstreckungsstelle"])) return "steuer";
+  if (hasAny(text, ["rundfunk", "beitragsservice", "beitragsnummer", "beitragskonto", "ard zdf", "deutschlandradio"])) return "beitrag";
+  if (hasAny(text, ["zahnarzt", "zahnärzt", "dzr", "goz", "bema", "labor", "materialkosten", "zahnersatz", "behandlung", "rechnungsnummer"])) return "rechnung_detail";
+  if (hasAny(text, ["krankenkasse", "pflegekasse", "aok", "barmer", "dak", "pflegegrad", "krankengeld", "hilfsmittel", "arztbrief", "befund", "krankenhaus", "apotheke"]) || hasAnyWordV88(text, ["tk", "md"])) return "gesundheit";
+  if (hasAny(text, ["miete", "vermieter", "wohnung", "nebenkosten", "kaution", "räumung", "mieterhöhung", "betriebskosten"])) return "wohnung";
+  if (hasAny(text, ["arbeitgeber", "arbeitsvertrag", "änderungsvereinbarung", "kündigung", "abmahnung", "lohn", "gehalt", "arbeitszeit", "urlaub", "krankmeldung", "schuldanerkenntnis", "lohnabtretung"])) return "arbeit";
+  if (hasAny(text, ["versicherung", "haftpflicht", "kfz", "hausrat", "rechtsschutz", "schaden", "police", "versicherungsnummer"])) return "versicherung";
+  if (hasAny(text, ["schule", "kita", "eltern", "kind", "klassenfahrt", "fehlzeiten", "unterhalt"])) return "familie_schule";
+  if (hasAny(text, ["bußgeld", "blitzer", "anhörungsbogen", "fahrverbot", "punkte", "kennzeichen", "verkehr", "zulassung", "tüv"])) return "verkehr";
+  if (hasAny(text, ["vertrag", "kündigung", "widerruf", "abo", "strom", "gas", "internet", "handyvertrag", "fitness", "anbieter", "preiserhöhung"])) return "vertrag";
+  if (hasAny(text, ["phishing", "fake", "betrug", "gewinnspiel", "paket-sms", "link klicken", "daten eingeben"])) return "betrug";
+  if (hasAny(text, ["inkasso", "zahlungserinnerung", "vollstreckung", "gerichtsvollzieher", "ratenzahlung", "schuld", "gläubiger", "mahnbescheid"])) return "zahlung";
+  if (hasAny(text, ["jobcenter", "bürgergeld", "sozialamt", "wohngeld", "familienkasse", "kindergeld", "rente", "rentenversicherung", "jugendamt", "ausländerbehörde", "stadt", "gemeinde", "kreis", "behörde"]) || hasAnyWordV88(text, ["amt"])) return "behoerde";
+  if (hasAny(text, ["forderung", "mahnung", "rechnung", "zahlung"] )) return "zahlung";
+
+  return "allgemein";
+}
+
+function detectUniversalChatIntent(frage = "", frageMode = "free") {
+  const mode = String(frageMode || "free").toLowerCase();
+  const q = normalizeQuestionText(frage);
+
+  if (isPoliteSmallTalkQuestion(frage)) return "smalltalk";
+  if (hasAny(q, ["verstanden", "hast du verstanden", "ok verstanden", "understood", "anladın", "разбра", "ai înțeles", "فهمت"])) return "understood";
+  if (hasAny(q, ["noch kürzer", "kürzer", "kurz", "einfacher", "einfach erklären", "verstehe nicht", "shorter", "simpler", "daha kısa", "по-кратко", "mai scurt", "أقصر"])) return "simplify";
+
+  // Nachweis/Befreiung/Unterlagen schon geschickt muss vor Antwort-Schreiben kommen.
+  if (hasAny(q, [
+    "schon geschickt", "bereits geschickt", "nachweis geschickt", "bescheid geschickt", "befreit", "befreiung", "nachweis wurde", "unterlagen geschickt", "unterlagen gesendet", "habe ich geschickt", "habe es geschickt",
+    "gönderdim", "изпратено", "trimis", "already sent", "exemption", "أرسلت", "إعفاء"
+  ])) return "proof_sent";
+
+  // Zahlungsproblem nur bei klarer Aussage. Das nackte Wort "Rate" reicht nicht mehr.
+  if (hasAny(q, [
+    "kann nicht zahlen", "kann das nicht zahlen", "ich kann das nicht zahlen", "ich kann nicht zahlen", "kann das nicht bezahlen", "ich kann das nicht bezahlen", "nicht auf einmal zahlen", "nicht alles zahlen", "nicht komplett zahlen", "kein geld", "habe kein geld", "ratenzahlung", "in raten zahlen", "monatlich zahlen", "stundung", "zahlungsaufschub",
+    "ödeyemem", "taksit", "не мога да платя", "nu pot plăti", "cannot pay", "installment", "تقسيط"
+  ])) return "cannot_pay";
+
+  // Reply nur bei echter Schreibabsicht. "Brief" allein ist keine Schreibabsicht.
+  if (mode === "reply" || hasAny(q, [
+    "schreib mir eine antwort", "schreib mir einen brief", "schreib mir eine e-mail", "schreib mir eine email", "mach mir eine antwort", "formuliere mir eine antwort", "formuliere eine antwort", "antwort formulieren", "e-mail schreiben", "email schreiben", "brief schreiben", "text schreiben", "vorlage schreiben",
+    "write a reply", "write an email", "cevap yaz", "mail yaz", "scrie un răspuns", "scrie email", "напиши отговор", "اكتب رد", "اكتب رسالة"
+  ])) return "reply";
+
+  if (mode === "next_steps" || hasAny(q, ["was soll ich tun", "was muss ich tun", "was jetzt", "nächster schritt", "wie weiter", "ne yap", "какво да направя", "ce fac", "what should i do", "ماذا أفعل"])) return "next_steps";
+  if (mode === "deadline" || hasAny(q, ["bis wann", "frist", "termin", "deadline", "son tarih", "срок", "termen", "مهلة"])) return "deadline";
+  if (mode === "consequence" || hasAny(q, ["wenn ich nichts", "passiert wenn", "folge", "ignorieren", "nichts mache", "ne olur", "какво ще стане", "ce se întâmplă", "what happens", "ماذا يحدث"])) return "consequence";
+  if (hasAny(q, ["unterlagen", "anlagen", "anhängen", "mitschicken", "welche dokumente", "was brauche ich", "documents", "belge", "документи", "atașez", "مستندات"])) return "attachments";
+  if (hasAny(q, ["telefon", "anrufen", "am telefon", "was soll ich sagen", "rufen", "call", "phone", "telefon aç", "обадя", "sun", "اتصال"])) return "phone_script";
+  if (hasAny(q, ["welche behandlung", "was wurde gemacht", "wofür", "positionen", "leistungsposition", "goz", "bema", "rechnungsposition", "was ändert sich", "was wurde geändert", "vorwurf", "wer ist zeuge", "berechnung", "details", "hangi", "какво", "ce", "what exactly"])) return "detail";
+  if (hasAny(q, ["muss ich reagieren", "muss ich was machen", "muss ich überhaupt", "nichts tun", "brauche ich reagieren", "do i have to", "zorunda", "трябва ли", "trebuie", "هل يجب"])) return "must_react";
+  if (hasAny(q, ["widerspruch", "einspruch", "ablehnung", "bescheid falsch", "nicht einverstanden", "objection", "contest", "itiraz", "възражение", "contestație", "اعتراض"])) return "objection";
+  if (hasAny(q, ["erstattung", "zurückbekommen", "krankenkasse zahlt", "übernimmt", "refund", "reimbursement", "geri ödeme", "възстановяване", "rambursare", "استرداد"])) return "reimbursement";
+  if (hasAny(q, ["forderung prüfen", "stimmt die forderung", "ist das richtig", "schon bezahlt", "zahlungsnachweis", "check claim", "borç", "дълг", "creanță"])) return "check_claim";
+
+  return "free";
+}
+
+function isOfficialReplyMode(frageMode, frage) {
+  const mode = String(frageMode || "").toLowerCase();
+  const q = normalizeQuestionText(frage);
+  if (mode === "reply") return true;
+  return hasAny(q, [
+    "schreib mir eine antwort", "schreib mir einen brief", "schreib mir eine e-mail", "schreib mir eine email", "mach mir eine antwort", "formuliere mir eine antwort", "e-mail schreiben", "email schreiben", "brief schreiben", "text schreiben", "vorlage schreiben",
+    "cevap yaz", "mail yaz", "писмо напиши", "отговор напиши", "scrie un răspuns", "اكتب رد", "اكتب رسالة"
+  ]);
+}
+
+function historyIndicatesReplyUniversal(historyText = "") {
+  const h = String(historyText || "").toLowerCase();
+  return hasAny(h, ["vollständiger name", "name für die unterschrift", "welchen namen", "wie soll ich den namen", "empfänger:", "betreff:", "sehr geehrte damen und herren"]);
+}
+
+function historyIndicatesPaymentUniversal(historyText = "", context = "") {
+  const h = `${historyText || ""} ${context || ""}`.toLowerCase();
+
+  // P-Konto/Freibetrag ist Bank-Schutzlogik, nicht automatisch Ratenzahlung.
+  if (hasAny(h, ["freibetrag", "p-konto", "pfändungsschutzkonto", "kontopfändung"]) && !hasAny(h, ["ratenzahlung", "stundung", "nicht zahlen", "nicht bezahlen", "in raten", "monatlich zahlen"])) {
+    return false;
+  }
+
+  return hasAny(h, [
+    "kann nicht zahlen", "nicht bezahlen", "nicht zahlen", "ratenzahlung", "in raten", "stundung", "zahlungsaufschub", "offene forderung", "inkasso", "mahnung", "vollstreckung", "gerichtsvollzieher", "mahnbescheid"
+  ]);
+}
+
+function buildUniversalDeterministicChat({ frage, frageMode, meta, briefText, kurz, details, historyText, lang }) {
+  const context = chatContextText(meta, briefText, kurz, details, frage, historyText);
+  const domain = detectUniversalDocumentDomain(context);
+  const intent = detectUniversalChatIntent(frage, frageMode);
+  const paymentLike = isPaymentLikeDomainV88(domain, context);
+
+  if (intent === "smalltalk") return politeSmallTalkReply(lang);
+  if (intent === "understood") return buildUniversalUnderstood(meta, domain);
+  if (intent === "simplify") return buildUniversalShorter(meta, domain);
+  if (intent === "proof_sent") return buildUniversalProofSent(meta, domain);
+
+  // Zahlungs-/Ratenlogik nur bei echten Zahlungsdomänen oder klarer Zahlungsfrage.
+  if (paymentLike) {
+    const nameFollowup = buildUniversalNameFollowup({ frage, meta, context, historyText });
+    if (nameFollowup) return nameFollowup;
+
+    const rateFollowup = buildUniversalRateFollowup({ frage, meta, context, historyText });
+    if (rateFollowup) return rateFollowup;
+
+    if (intent === "cannot_pay") return buildUniversalCannotPay(meta, domain);
+  }
+
+  // Reply darf nicht mehr automatisch in Zahlungs-/Ratenvorlage kippen.
+  // Nur paymentLike nutzt die feste Vorlage. Sonst lässt der Gemini-Fallback den Brief fachlich beantworten.
+  if (intent === "reply" && paymentLike) {
+    return buildUniversalReplyQuestionOrTemplate({ frage, meta, context, historyText });
+  }
+
+  if (intent === "next_steps") return buildUniversalNextStepsAnswer(meta, domain);
+  if (intent === "attachments") return buildUniversalAttachments(meta, domain);
+  if (intent === "phone_script") return buildUniversalPhoneScript(meta, domain);
+  if (intent === "detail") return buildUniversalDetailRequest(meta, domain);
+  if (intent === "consequence") return buildUniversalConsequence(meta, domain);
+  if (intent === "must_react") return buildUniversalMustReact(meta, domain);
+  if (intent === "objection") return buildUniversalObjection(meta, domain);
+  if (intent === "reimbursement") return buildUniversalReimbursement(meta, domain);
+  if (intent === "check_claim") return buildUniversalCheckClaim(meta, domain);
+
+  return "";
 }
 
 app.listen(PORT, () => {
