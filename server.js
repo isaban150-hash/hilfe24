@@ -4090,9 +4090,10 @@ Keine lange Erklärung.
 // V8.6.4: kurzer Universal-Chat mit fehlenden Daten und Audio-freundlichen Antworten
 
 
-// ====================================================== // HILFE24 V9.2 FORCED CHAT ROUTER
+// ====================================================== // HILFE24 V9.3 UNIVERSAL MESSAGE ROUTER
+// E-Mail / Brief / PDF-Text aus ALLGEMEINEN Briefsituationen.
 // Muss VOR Gemini und VOR alten Fallbacks laufen.
-// Zweck: "Schreib mir ..." darf nie wieder nur Zusammenfassung liefern.
+// Kern: Nutzerziel erkennen -> sichere Daten filtern -> professionelle Antwort bauen.
 // ======================================================
 
 function h92Clean(value = "") {
@@ -4135,17 +4136,87 @@ function h92Context({ frage = "", frageMode = "", meta = {}, briefText = "", kur
   ].join("\n");
 }
 
-function h92FirstSafe(items) {
+function h92Unique(items = []) {
+  const out = [];
+  for (const item of items) {
+    const v = h92Clean(item);
+    if (!v) continue;
+    if (!out.some((x) => x.toLowerCase() === v.toLowerCase())) out.push(v);
+  }
+  return out;
+}
+
+function h92IsIban(value = "") {
+  const v = String(value || "").replace(/\s+/g, "").toUpperCase();
+  return /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v);
+}
+
+function h92IsBic(value = "") {
+  const v = String(value || "").replace(/\s+/g, "").toUpperCase();
+  return /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(v);
+}
+
+function h92LooksLikePhone(value = "") {
+  const v = String(value || "").trim();
+  const digits = v.replace(/\D/g, "");
+  return digits.length >= 7 && /^[+\d\s()./-]+$/.test(v);
+}
+
+function h92LooksLikeAddress(value = "") {
+  const v = h92Norm(value);
+  return /\b(strasse|straße|weg|platz|allee|gasse|ring|ufer)\b/.test(v) || /\b\d{5}\b/.test(v);
+}
+
+function h92BadReference(value = "") {
+  const v = h92Clean(value);
+  if (!v) return true;
+  const n = h92Norm(v);
+  if (/bitte|pruefen|prüfen|unklar|nicht sicher|unbekannt|telefon|fax|webseite|homepage|www|http|mail|e-mail|email|iban|bic|swift|konto|kontoinhaber|bankverbindung|oeffnungszeiten|öffnungszeiten/i.test(v)) return true;
+  if (h92IsIban(v) || h92IsBic(v) || h92LooksLikePhone(v) || h92LooksLikeAddress(v)) return true;
+  if (v.includes("@")) return true;
+  if (n.length < 3) return true;
+  return false;
+}
+
+function h92FirstSafeReference(items) {
   if (!Array.isArray(items)) return "";
-  return items.map(h92Clean).find((x) => x && !/bitte|pruefen|prüfen|unklar|nicht sicher|unbekannt/i.test(x)) || "";
+  for (const raw of items) {
+    let v = h92Clean(raw);
+    if (!v) continue;
+    // Falls Labels mitgegeben werden, Label behalten nur wenn es eine echte Nummer ist.
+    v = v.replace(/^(aktenzeichen|az|kundennummer|kunden-nr\.?|bg-nummer|steuernummer|beitragsnummer|versicherungsnummer|rechnungsnummer|vertragsnummer|kassenzeichen|geschäftszeichen|geschaeftszeichen|vorgangsnummer)\s*[:#-]?\s*/i, "").trim();
+    if (!h92BadReference(v)) return v;
+  }
+  return "";
 }
 
-function h92Ref(meta = {}) {
-  return h92FirstSafe(meta.referenzen) || h92FirstSafe(meta.referenzen_erkannt_roh) || "";
+function h92Ref(meta = {}, context = "") {
+  const fromMeta = h92FirstSafeReference(meta.referenzen) || h92FirstSafeReference(meta.referenzen_erkannt_roh);
+  if (fromMeta) return fromMeta;
+
+  const text = String(context || "");
+  const patterns = [
+    /(?:Aktenzeichen|Az\.?|Geschäftszeichen|Geschaeftszeichen)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 ._\-/]{2,40})/i,
+    /(?:Kundennummer|Kunden-Nr\.?|Kdnr\.?)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 ._\-/]{2,35})/i,
+    /(?:BG-Nummer|Bedarfsgemeinschaftsnummer)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 ._\-/]{2,35})/i,
+    /(?:Steuernummer|Steuer-Nr\.?)\s*[:#-]?\s*([0-9][0-9 ._\-/]{4,35})/i,
+    /(?:Beitragsnummer|Beitragskonto)\s*[:#-]?\s*([0-9][0-9 ._\-/]{4,35})/i,
+    /(?:Rechnungsnummer|Rechnungs-Nr\.?)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 ._\-/]{2,35})/i,
+    /(?:Versicherungsnummer|Versicherungs-Nr\.?)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 ._\-/]{2,35})/i,
+    /(?:Kassenzeichen)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 ._\-/]{2,35})/i
+  ];
+  for (const pattern of patterns) {
+    const m = text.match(pattern);
+    if (m && !h92BadReference(m[1])) return h92Clean(m[1]);
+  }
+  return "";
 }
 
-function h92Amount(meta = {}) {
-  return h92Clean(meta.betrag || meta.gesamtbetrag || meta.forderung || meta.amount || "");
+function h92Amount(meta = {}, context = "") {
+  const fromMeta = h92Clean(meta.betrag || meta.gesamtbetrag || meta.forderung || meta.amount || "");
+  if (fromMeta) return fromMeta;
+  const m = String(context || "").match(/\b\d{1,3}(?:\.\d{3})*,\d{2}\s*(?:€|EUR|Euro)\b/i);
+  return m ? h92Clean(m[0]) : "";
 }
 
 function h92Deadline(meta = {}) {
@@ -4156,7 +4227,30 @@ function h92Sender(meta = {}) {
   return h92Clean(meta.absender || meta.absender_kurz || meta.absender_original || "");
 }
 
-function h92Name(meta = {}) {
+function h92ExtractDates(context = "") {
+  return h92Unique((String(context || "").match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/g) || []));
+}
+
+function h92LetterDate(meta = {}, context = "") {
+  const fields = [meta.datum, meta.briefdatum, meta.schreibdatum, meta.date].map(h92Clean).filter(Boolean);
+  for (const f of fields) {
+    const m = f.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/);
+    if (m) return m[0];
+  }
+  const dates = h92ExtractDates(context);
+  return dates[0] || "";
+}
+
+function h92LooksLikeName(value = "") {
+  const v = h92Clean(value).replace(/^(herr|frau)\s+/i, "").replace(/[,;].*$/, "").trim();
+  if (!v || v.length < 5 || v.length > 80) return false;
+  if (/bitte|pruefen|prüfen|unbekannt|unklar|nicht sicher|firma|gmbh|ag|kg|amt|gericht|bank|center|service|straße|strasse|weg|platz|telefon|iban|bic|kundennummer|aktenzeichen/i.test(v)) return false;
+  const parts = v.split(/\s+/).filter(Boolean);
+  if (parts.length < 2 || parts.length > 4) return false;
+  return parts.every((p) => /^[A-ZÄÖÜÇĞİŞ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû'-]{1,}$/.test(p));
+}
+
+function h92Name(meta = {}, context = "") {
   const candidates = [
     meta.person,
     meta.betroffene_person,
@@ -4170,10 +4264,18 @@ function h92Name(meta = {}) {
 
   for (const c of candidates) {
     const v = h92Clean(c || "");
-    if (!v) continue;
-    if (/bitte|pruefen|prüfen|unbekannt|nicht sicher|unklar/i.test(v)) continue;
-    if (v.length < 4 || v.length > 90) continue;
-    return v;
+    if (h92LooksLikeName(v)) return v.replace(/^(herr|frau)\s+/i, "").trim();
+  }
+
+  const text = String(context || "");
+  const patterns = [
+    /(?:Herrn|Herr|Frau)\s+([A-ZÄÖÜÇĞİŞ][\p{L}'-]+\s+[A-ZÄÖÜÇĞİŞ][\p{L}'-]+(?:\s+[A-ZÄÖÜÇĞİŞ][\p{L}'-]+)?)/u,
+    /(?:Arbeitnehmer|Kunde|Patient|Versicherte Person|Betroffene Person)\s*[:#-]?\s*([A-ZÄÖÜÇĞİŞ][\p{L}'-]+\s+[A-ZÄÖÜÇĞİŞ][\p{L}'-]+(?:\s+[A-ZÄÖÜÇĞİŞ][\p{L}'-]+)?)/iu,
+    /\b([A-ZÄÖÜÇĞİŞ][a-zäöüßçğışéèêáàâóòôúùû'-]+\s+[A-ZÄÖÜÇĞİŞ][a-zäöüßçğışéèêáàâóòôúùû'-]+)\b/u
+  ];
+  for (const pattern of patterns) {
+    const m = text.match(pattern);
+    if (m && h92LooksLikeName(m[1])) return h92Clean(m[1]);
   }
 
   return "[Name]";
@@ -4200,7 +4302,7 @@ function h92DetectDomain(context = "", meta = {}) {
     "arbeitgeber", "arbeitnehmer", "lohn", "gehalt", "arbeitsentgelt", "lohnabrechnung",
     "ueberzahlung", "überzahlung", "rueckzahlung", "rückzahlung", "schuldanerkenntnis",
     "lohnabtretung", "abtretung", "aufhebungsvertrag", "abmahnung", "arbeitsvertrag",
-    "urlaubsanspruch", "pluss personalmanagement"
+    "urlaubsanspruch"
   ])) return "arbeit";
 
   if (h92HasAny(t, [
@@ -4264,7 +4366,14 @@ function h92Intent(frage = "", frageMode = "", historyText = "") {
   return "";
 }
 
-function h92Subject(domain = "allgemein", intent = "reply") {
+function h92OutputMode(frage = "", frageMode = "") {
+  const q = h92Norm(frage + " " + frageMode);
+  if (h92HasAny(q, ["pdf", "als pdf", "pdf erstellen", "pdf text"])) return "pdf";
+  if (h92HasAny(q, ["brief", "per post", "anschreiben", "formeller brief"])) return "letter";
+  return "email";
+}
+
+function h92IntentSubject(intent = "reply", domain = "allgemein") {
   if (intent === "need_more_time") return "Bitte um Fristverlängerung";
   if (intent === "appointment_change") return "Bitte um neuen Termin";
   if (intent === "already_paid") return "Bitte um Prüfung meiner Zahlung";
@@ -4277,109 +4386,225 @@ function h92Subject(domain = "allgemein", intent = "reply") {
   if (domain === "finanzamt") return "Bitte um Prüfung / Stundung";
   if (domain === "inkasso") return "Bitte um Prüfung der Forderung";
   if (domain === "gericht" || domain === "staatsanwaltschaft") return "Bitte um Klärung des Schreibens";
+  if (domain === "wohnung") return "Bitte um Prüfung des Schreibens zur Wohnung";
+  if (domain === "gesundheit") return "Bitte um Prüfung meines Anliegens";
+  if (domain === "versicherung") return "Bitte um Prüfung des Vorgangs";
   return "Bitte um Prüfung meines Vorgangs";
 }
 
-function h92Intro(meta = {}) {
-  const ref = h92Ref(meta);
-  const amount = h92Amount(meta);
+function h92Subject({ domain = "allgemein", intent = "reply", meta = {}, context = "" }) {
+  const base = h92IntentSubject(intent, domain);
+  const ref = h92Ref(meta, context);
+  const date = h92LetterDate(meta, context);
+  if (ref) return `${base} – ${ref}`;
+  if (date) return `${base} vom ${date}`;
+  return base;
+}
+
+function h92Intro(meta = {}, context = "") {
+  const date = h92LetterDate(meta, context);
+  const amount = h92Amount(meta, context);
+  const ref = h92Ref(meta, context);
   const parts = ["ich beziehe mich auf Ihr Schreiben"];
+  if (date) parts.push(`vom ${date}`);
   if (ref) parts.push(`zum Aktenzeichen / zur Nummer ${ref}`);
   if (amount) parts.push(`über ${amount}`);
   return parts.join(" ") + ".";
 }
 
-function h92ProfessionalMessage({ domain, intent, meta = {}, context = "", frage = "" }) {
-  const recipient = h92Recipient(meta, context);
-  const subject = h92Subject(domain, intent);
-  const name = h92Name(meta);
-  const amount = h92Amount(meta);
-  const ref = h92Ref(meta);
+function h92RiskStopLine(domain = "allgemein", intent = "reply") {
+  if (["inkasso", "rechnung", "finanzamt", "bank", "behoerde", "rundfunk", "arbeit"].includes(domain) || ["no_money", "cannot_pay", "claim_wrong", "proof_sent", "already_paid"].includes(intent)) {
+    return "Bis zur Klärung bitte ich darum, keine weiteren Maßnahmen einzuleiten oder fortzuführen.";
+  }
+  return "";
+}
+
+function h92MessageBody({ domain, intent, meta = {}, context = "" }) {
+  const amount = h92Amount(meta, context);
   const lines = [];
 
-  lines.push(`Empfänger: ${recipient}`);
-  lines.push("");
-  lines.push(`Betreff: ${subject}${ref ? " – " + ref : ""}`);
-  lines.push("");
-  lines.push("Sehr geehrte Damen und Herren,");
-  lines.push("");
-  lines.push(h92Intro(meta));
-  lines.push("");
+  if (intent === "no_money") {
+    lines.push("Ich kann den geforderten Betrag derzeit nicht zahlen.");
+    lines.push("Ich bitte daher um Stundung beziehungsweise Zahlungsaufschub.");
+    lines.push("Bitte teilen Sie mir schriftlich mit, welche Unterlagen Sie für die Prüfung benötigen.");
+    return lines;
+  }
+
+  if (intent === "cannot_pay") {
+    lines.push("Ich kann den geforderten Betrag derzeit nicht auf einmal zahlen.");
+    lines.push("Bitte prüfen Sie, ob eine Ratenzahlung, Stundung oder ein Zahlungsaufschub möglich ist.");
+    lines.push("Bitte bestätigen Sie mir Ihre Entscheidung schriftlich.");
+    return lines;
+  }
+
+  if (intent === "already_paid") {
+    lines.push("Der Betrag wurde bereits bezahlt. Den Zahlungsnachweis füge ich bei beziehungsweise reiche ich nach.");
+    lines.push("Bitte prüfen Sie den Vorgang und bestätigen Sie mir schriftlich, dass keine offene Forderung mehr besteht.");
+    return lines;
+  }
+
+  if (intent === "proof_sent") {
+    lines.push("Der angeforderte Nachweis wurde bereits eingereicht. Vorsorglich reiche ich ihn erneut ein.");
+    lines.push("Bitte prüfen Sie den Vorgang erneut und bestätigen Sie mir den Eingang schriftlich.");
+    return lines;
+  }
+
+  if (intent === "claim_wrong") {
+    lines.push("Ich kann die Forderung derzeit nicht nachvollziehen.");
+    lines.push("Bitte senden Sie mir eine nachvollziehbare Aufstellung sowie die Grundlage der Forderung zu.");
+    lines.push("Bis zur Klärung erkenne ich die Forderung nicht an.");
+    return lines;
+  }
+
+  if (intent === "need_more_time") {
+    lines.push("Die angeforderten Unterlagen beziehungsweise die gewünschte Rückmeldung kann ich derzeit nicht vollständig innerhalb der Frist einreichen.");
+    lines.push("Ich bitte daher um eine angemessene Fristverlängerung.");
+    lines.push("Bitte bestätigen Sie mir die Fristverlängerung schriftlich.");
+    return lines;
+  }
+
+  if (intent === "appointment_change") {
+    lines.push("Ich kann den genannten Termin leider nicht wahrnehmen.");
+    lines.push("Ich bitte daher um einen neuen Termin.");
+    lines.push("Falls ein Nachweis erforderlich ist, reiche ich diesen nach beziehungsweise füge ihn bei.");
+    return lines;
+  }
 
   if (domain === "arbeit") {
     lines.push("Bitte senden Sie mir eine nachvollziehbare schriftliche Aufstellung, aus der hervorgeht, wodurch die Überzahlung entstanden ist und wie sich der Betrag zusammensetzt.");
-    lines.push("");
-    lines.push("Bitte teilen Sie mir außerdem mit, welcher Betrag aktuell noch offen ist und ob bereits weitere Schritte eingeleitet wurden.");
-    lines.push("");
-    lines.push("Bis zur Klärung bitte ich darum, keine weiteren Maßnahmen einzuleiten.");
-  } else if (domain === "bank") {
-    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, ob das Konto aktuell als Pfändungsschutzkonto geführt wird, welcher Freibetrag geschützt ist und welche Beträge gesperrt oder freigegeben sind.");
-    lines.push("");
-    lines.push("Bitte teilen Sie mir außerdem mit, ob eine zusätzliche P-Konto-Bescheinigung erforderlich ist und welche weiteren Schritte jetzt notwendig sind.");
-  } else if (intent === "no_money") {
-    lines.push("Ich kann den geforderten Betrag derzeit nicht zahlen.");
-    lines.push("");
-    lines.push("Ich bitte daher um Stundung beziehungsweise Zahlungsaufschub. Bis zur Entscheidung über meinen Antrag bitte ich darum, keine weiteren Maßnahmen einzuleiten oder fortzuführen.");
-    lines.push("");
-    lines.push("Bitte teilen Sie mir schriftlich mit, welche Unterlagen Sie für die Prüfung benötigen.");
-  } else if (intent === "cannot_pay") {
-    lines.push("Ich kann den geforderten Betrag derzeit nicht auf einmal zahlen.");
-    lines.push("");
-    lines.push("Bitte prüfen Sie, ob eine Ratenzahlung, Stundung oder ein Zahlungsaufschub möglich ist.");
-    lines.push("");
-    lines.push("Bitte bestätigen Sie mir Ihre Entscheidung schriftlich.");
-  } else if (intent === "already_paid") {
-    lines.push("Der Betrag wurde bereits bezahlt. Den Zahlungsnachweis füge ich bei beziehungsweise reiche ich nach.");
-    lines.push("");
-    lines.push("Bitte prüfen Sie den Vorgang und bestätigen Sie mir schriftlich, dass keine offene Forderung mehr besteht.");
-  } else if (intent === "proof_sent") {
-    lines.push("Der angeforderte Nachweis wurde bereits eingereicht. Vorsorglich reiche ich ihn erneut ein.");
-    lines.push("");
-    lines.push("Bitte prüfen Sie den Vorgang erneut und setzen Sie weitere Maßnahmen bis zur Prüfung aus.");
-    lines.push("");
-    lines.push("Bitte bestätigen Sie mir den Eingang schriftlich.");
-  } else if (intent === "claim_wrong") {
-    lines.push("Ich kann die Forderung derzeit nicht nachvollziehen.");
-    lines.push("");
-    lines.push("Bitte senden Sie mir eine nachvollziehbare Aufstellung sowie die Grundlage der Forderung zu.");
-    lines.push("");
-    lines.push("Bis zur Klärung erkenne ich die Forderung nicht an und bitte darum, keine weiteren Maßnahmen einzuleiten.");
-  } else if (domain === "finanzamt") {
-    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir mit, welcher Betrag aktuell offen ist.");
-    lines.push("");
-    lines.push("Falls eine Zahlung sofort nicht möglich ist, bitte ich um Prüfung einer Stundung oder Ratenzahlung und um Aussetzung weiterer Vollstreckungsmaßnahmen bis zur Entscheidung.");
-  } else if (domain === "inkasso" || domain === "rechnung") {
-    lines.push("Bitte senden Sie mir eine aktuelle und nachvollziehbare Forderungsaufstellung zu.");
-    lines.push("");
-    lines.push("Bis zur Klärung erkenne ich die Forderung nicht an und bitte darum, keine weiteren Maßnahmen einzuleiten.");
-  } else {
-    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.");
-    lines.push("");
-    lines.push("Falls weitere Unterlagen benötigt werden, bitte ich um kurze Mitteilung.");
+    if (amount) lines.push(`Bitte teilen Sie mir außerdem mit, welcher Betrag von ${amount} aktuell noch offen ist und ob bereits weitere Schritte eingeleitet wurden.`);
+    else lines.push("Bitte teilen Sie mir außerdem mit, welcher Betrag aktuell noch offen ist und ob bereits weitere Schritte eingeleitet wurden.");
+    lines.push("Ich bitte um schriftliche Rückmeldung, welche Möglichkeiten zur Klärung oder Anpassung der Zahlung bestehen.");
+    return lines;
   }
 
+  if (domain === "bank") {
+    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, ob das Konto aktuell als Pfändungsschutzkonto geführt wird, welcher Freibetrag geschützt ist und welche Beträge gesperrt oder freigegeben sind.");
+    lines.push("Bitte teilen Sie mir außerdem mit, ob eine zusätzliche P-Konto-Bescheinigung erforderlich ist und welche weiteren Schritte notwendig sind.");
+    return lines;
+  }
+
+  if (domain === "finanzamt") {
+    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welcher Betrag aktuell offen ist.");
+    lines.push("Falls eine Zahlung sofort nicht möglich ist, bitte ich um Prüfung einer Stundung oder Ratenzahlung.");
+    lines.push("Bis zur Entscheidung bitte ich darum, keine weiteren Vollstreckungsmaßnahmen einzuleiten oder fortzuführen.");
+    return lines;
+  }
+
+  if (domain === "inkasso" || domain === "rechnung") {
+    lines.push("Bitte senden Sie mir eine aktuelle und nachvollziehbare Forderungsaufstellung zu.");
+    lines.push("Bitte teilen Sie mir außerdem mit, woraus sich die Forderung genau zusammensetzt.");
+    lines.push("Diese Nachricht erfolgt ohne Anerkennung einer Rechtspflicht.");
+    return lines;
+  }
+
+  if (domain === "wohnung") {
+    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche konkrete Forderung oder Handlung von mir erwartet wird.");
+    lines.push("Falls Fristen laufen, bitte ich um kurzfristige schriftliche Rückmeldung.");
+    return lines;
+  }
+
+  if (domain === "gesundheit") {
+    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche Unterlagen oder Nachweise noch benötigt werden.");
+    lines.push("Falls eine Entscheidung getroffen wurde, bitte ich um nachvollziehbare Begründung.");
+    return lines;
+  }
+
+  if (domain === "gericht" || domain === "staatsanwaltschaft") {
+    lines.push("Bitte ordnen Sie meine Nachricht dem genannten Vorgang zu und teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.");
+    lines.push("Diese Nachricht enthält kein Schuldeingeständnis und dient zunächst der Klärung.");
+    return lines;
+  }
+
+  lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.");
+  lines.push("Falls weitere Unterlagen benötigt werden, bitte ich um kurze Mitteilung.");
+  return lines;
+}
+
+function h92BuildEmail({ domain, intent, meta = {}, context = "" }) {
+  const recipient = h92Recipient(meta, context);
+  const subject = h92Subject({ domain, intent, meta, context });
+  const name = h92Name(meta, context);
+  const body = h92MessageBody({ domain, intent, meta, context });
+  const risk = h92RiskStopLine(domain, intent);
+  const lines = [];
+  lines.push(`Empfänger: ${recipient}`);
+  lines.push("");
+  lines.push(`Betreff: ${subject}`);
+  lines.push("");
+  lines.push("Sehr geehrte Damen und Herren,");
+  lines.push("");
+  lines.push(h92Intro(meta, context));
+  lines.push("");
+  lines.push(...body);
+  if (risk && !body.some((line) => h92Norm(line).includes(h92Norm(risk).slice(0, 30)))) {
+    lines.push("");
+    lines.push(risk);
+  }
   lines.push("");
   lines.push("Mit freundlichen Grüßen");
   lines.push("");
   lines.push(name);
-
   return h92Clean(lines.join("\n"));
 }
 
-function h92NextSteps(meta = {}, domain = "allgemein") {
+function h92BuildLetter({ domain, intent, meta = {}, context = "", pdf = false }) {
+  const recipient = h92Recipient(meta, context).replace(/\s+–\s+E-Mail oder Anschrift aus dem Schreiben übernehmen$/i, "");
+  const subject = h92Subject({ domain, intent, meta, context });
+  const name = h92Name(meta, context);
+  const body = h92MessageBody({ domain, intent, meta, context });
+  const risk = h92RiskStopLine(domain, intent);
+  const today = typeof getTodayGerman === "function" ? getTodayGerman() : "[Datum]";
+  const lines = [];
+  if (pdf) lines.push("PDF-Brieftext:");
+  lines.push(name === "[Name]" ? "[Name]" : name);
+  lines.push("[Adresse des Absenders, falls nötig]");
+  lines.push("");
+  lines.push(recipient || "[Empfänger aus dem Schreiben]");
+  lines.push("[Anschrift des Empfängers aus dem Schreiben]");
+  lines.push("");
+  lines.push(`[Ort], ${today}`);
+  lines.push("");
+  lines.push(`Betreff: ${subject}`);
+  lines.push("");
+  lines.push("Sehr geehrte Damen und Herren,");
+  lines.push("");
+  lines.push(h92Intro(meta, context));
+  lines.push("");
+  lines.push(...body);
+  if (risk && !body.some((line) => h92Norm(line).includes(h92Norm(risk).slice(0, 30)))) {
+    lines.push("");
+    lines.push(risk);
+  }
+  lines.push("");
+  lines.push("Mit freundlichen Grüßen");
+  lines.push("");
+  lines.push(name);
+  return h92Clean(lines.join("\n"));
+}
+
+function h92ProfessionalMessage({ domain, intent, meta = {}, context = "", frage = "", frageMode = "" }) {
+  const mode = h92OutputMode(frage, frageMode);
+  if (mode === "pdf") return h92BuildLetter({ domain, intent, meta, context, pdf: true });
+  if (mode === "letter") return h92BuildLetter({ domain, intent, meta, context, pdf: false });
+  return h92BuildEmail({ domain, intent, meta, context });
+}
+
+function h92NextSteps(meta = {}, domain = "allgemein", context = "") {
   const steps = [];
-  const amount = h92Amount(meta);
+  const amount = h92Amount(meta, context);
   const deadline = h92Deadline(meta);
-  const ref = h92Ref(meta);
+  const ref = h92Ref(meta, context);
 
   if (domain === "arbeit") steps.push("Nichts Neues unterschreiben, bevor Betrag, Grund und Folgen klar sind.");
   if (domain === "bank") steps.push("Bank schriftlich um P-Konto-Status, Freibetrag und Freigabe bitten.");
+  if (domain === "gericht" || domain === "staatsanwaltschaft") steps.push("Frist/Termin prüfen und keine Schuld oder Forderung vorschnell bestätigen.");
   if (amount) steps.push(`Betrag prüfen: ${amount}.`);
   if (deadline) steps.push(`Frist/Termin prüfen: ${deadline}.`);
   if (ref) steps.push(`Nummer/Aktenzeichen bereithalten: ${ref}.`);
   if (!steps.length) steps.push("Brief aufbewahren und prüfen, ob Frist, Termin, Geld oder Unterlagen betroffen sind.");
 
-  return "Das sind die nächsten Schritte:\n" + [...new Set(steps)].slice(0, 4).map((s, i) => `${i + 1}. ${s}`).join("\n");
+  return "Das sind die nächsten Schritte:\n" + h92Unique(steps).slice(0, 4).map((s, i) => `${i + 1}. ${s}`).join("\n");
 }
 
 function h92NoMoney(meta = {}, domain = "allgemein") {
@@ -4409,8 +4634,11 @@ function h92ForcedAnswer({ frage, frageMode, meta, briefText, kurz, details, his
   if (!intent) return "";
   if (intent === "smalltalk") return "Gerne. Schreib einfach deine nächste Frage.";
 
-  if (intent === "reply") return h92ProfessionalMessage({ domain, intent, meta, context, frage });
-  if (intent === "next_steps") return h92NextSteps(meta, domain);
+  if (intent === "reply") return h92ProfessionalMessage({ domain, intent, meta, context, frage, frageMode });
+  if (["no_money", "cannot_pay", "already_paid", "proof_sent", "claim_wrong", "need_more_time", "appointment_change"].includes(intent) && h92HasAny(frage, ["schreib", "antwort", "e-mail", "email", "brief", "pdf", "vorlage", "professionell"])) {
+    return h92ProfessionalMessage({ domain, intent, meta, context, frage, frageMode });
+  }
+  if (intent === "next_steps") return h92NextSteps(meta, domain, context);
   if (intent === "no_money") return h92NoMoney(meta, domain);
   if (intent === "cannot_pay") return "Dann nicht ignorieren. Prüfe zuerst, ob Betrag und Forderung stimmen.\n\nWenn du nicht alles auf einmal zahlen kannst, ist Ratenzahlung, Stundung oder Zahlungsaufschub der nächste Schritt. Welche monatliche Rate wäre realistisch?";
   if (intent === "already_paid") return "Dann keine Ratenzahlung anbieten. Sende den Zahlungsnachweis und bitte um Prüfung.\n\nWichtig: Kontoauszug, Quittung oder Überweisungsbeleg bereithalten.";
@@ -4421,19 +4649,20 @@ function h92ForcedAnswer({ frage, frageMode, meta, briefText, kurz, details, his
   if (intent === "sign_warning") return "Nicht sofort unterschreiben. Erst prüfen, was du damit bestätigst, anerkennst oder aufgibst.\n\nBesonders vorsichtig bei Aufhebungsvertrag, Schuldanerkenntnis, Lohnabtretung, Vergleich oder Verzicht.";
   if (intent === "attachments") return h92Attachments(domain);
   if (intent === "consequence") return "Wenn du nichts machst, können je nach Brief Fristen, Geld, Konto, Arbeit, Wohnung oder Leistungen betroffen sein.\n\nNächster sicherer Schritt: Frist, Betrag und Absender prüfen und schriftlich klären.";
-  if (intent === "phone_script") return `Sag am Telefon kurz:\n\nGuten Tag, mein Name ist ...\nIch rufe wegen Ihres Schreibens an.\nMeine Nummer / mein Aktenzeichen ist: ${h92Ref(meta) || "Nummer aus dem Schreiben"}.\nIch möchte wissen, was ich jetzt konkret tun muss.\nKönnen Sie mir das bitte auch schriftlich bestätigen?`;
-  if (intent === "must_react") return (h92Deadline(meta) || h92Amount(meta)) ? "Ja, wahrscheinlich solltest du reagieren. Prüfe Frist, Termin, Betrag oder Risiko und kläre es schriftlich." : "Unklar. Wenn keine Frist, kein Termin, kein Geld und keine Pflicht genannt wird, kann es auch nur eine Information sein. Bewahre den Brief trotzdem auf.";
+  if (intent === "phone_script") return `Sag am Telefon kurz:\n\nGuten Tag, mein Name ist ...\nIch rufe wegen Ihres Schreibens an.\nMeine Nummer / mein Aktenzeichen ist: ${h92Ref(meta, context) || "Nummer aus dem Schreiben"}.\nIch möchte wissen, was ich jetzt konkret tun muss.\nKönnen Sie mir das bitte auch schriftlich bestätigen?`;
+  if (intent === "must_react") return (h92Deadline(meta) || h92Amount(meta, context)) ? "Ja, wahrscheinlich solltest du reagieren. Prüfe Frist, Termin, Betrag oder Risiko und kläre es schriftlich." : "Unklar. Wenn keine Frist, kein Termin, kein Geld und keine Pflicht genannt wird, kann es auch nur eine Information sein. Bewahre den Brief trotzdem auf.";
   if (intent === "objection") return "Dann zuerst Frist und Grund prüfen. Wenn du nicht einverstanden bist, kann ein Widerspruch sinnvoll sein. Bei wichtigen Bescheiden: lieber kurz fristwahrend reagieren und Begründung nachreichen.";
   if (intent === "detail") return "Lade bitte die Seite oder den Ausschnitt mit den Details hoch. Dann lese ich genau heraus, worum es geht, ohne etwas zu erfinden.";
   if (intent === "reimbursement") return "Eine Erstattung kann möglich sein, aber nicht versprechen. Prüfe Rechnung/Bescheid und frage schriftlich bei Krankenkasse, Versicherung oder zuständiger Stelle nach.";
-  if (intent === "explain_simple") return `Kurz gesagt: Es geht um einen Brief aus dem Bereich ${domain}.\n\nDer sichere nächste Schritt ist: ${h92NextSteps(meta, domain).split("\n").slice(1, 2).join(" ") || "schriftlich klären."}`;
+  if (intent === "explain_simple") return `Kurz gesagt: Es geht um einen Brief aus dem Bereich ${domain}.\n\nDer sichere nächste Schritt ist: ${h92NextSteps(meta, domain, context).split("\n").slice(1, 2).join(" ") || "schriftlich klären."}`;
 
   return "";
 }
 
 // ======================================================
-// ENDE HILFE24 V9.2 FORCED CHAT ROUTER
+// ENDE HILFE24 V9.3 UNIVERSAL MESSAGE ROUTER
 // ======================================================
+
 
 app.post("/api/frage", async (req, res) => {
   try {
