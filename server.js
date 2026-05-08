@@ -4088,6 +4088,353 @@ Keine lange Erklärung.
 });
 
 // V8.6.4: kurzer Universal-Chat mit fehlenden Daten und Audio-freundlichen Antworten
+
+
+// ====================================================== // HILFE24 V9.2 FORCED CHAT ROUTER
+// Muss VOR Gemini und VOR alten Fallbacks laufen.
+// Zweck: "Schreib mir ..." darf nie wieder nur Zusammenfassung liefern.
+// ======================================================
+
+function h92Clean(value = "") {
+  if (typeof cleanText === "function") return cleanText(value);
+  return String(value || "").replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
+}
+
+function h92Norm(value = "") {
+  return h92Clean(value)
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[„“”]/g, '"')
+    .replace(/[’‘]/g, "'")
+    .replace(/[^\p{L}\p{N}€@._+\-/\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function h92HasAny(text = "", words = []) {
+  const t = h92Norm(text);
+  return words.some((word) => t.includes(h92Norm(word)));
+}
+
+function h92Meta(meta = {}) {
+  try { return JSON.stringify(meta || {}); } catch (_) { return ""; }
+}
+
+function h92Context({ frage = "", frageMode = "", meta = {}, briefText = "", kurz = "", details = "", historyText = "" }) {
+  return [
+    frage,
+    frageMode,
+    h92Meta(meta),
+    briefText,
+    kurz,
+    details,
+    historyText
+  ].join("\n");
+}
+
+function h92FirstSafe(items) {
+  if (!Array.isArray(items)) return "";
+  return items.map(h92Clean).find((x) => x && !/bitte|pruefen|prüfen|unklar|nicht sicher|unbekannt/i.test(x)) || "";
+}
+
+function h92Ref(meta = {}) {
+  return h92FirstSafe(meta.referenzen) || h92FirstSafe(meta.referenzen_erkannt_roh) || "";
+}
+
+function h92Amount(meta = {}) {
+  return h92Clean(meta.betrag || meta.gesamtbetrag || meta.forderung || meta.amount || "");
+}
+
+function h92Deadline(meta = {}) {
+  return h92Clean(meta.frist || meta.termin || meta.deadline || "");
+}
+
+function h92Sender(meta = {}) {
+  return h92Clean(meta.absender || meta.absender_kurz || meta.absender_original || "");
+}
+
+function h92Name(meta = {}) {
+  const candidates = [
+    meta.person,
+    meta.betroffene_person,
+    meta.empfaenger,
+    meta.empfänger,
+    meta.name,
+    meta.kunde,
+    meta.patient,
+    meta.arbeitnehmer
+  ];
+
+  for (const c of candidates) {
+    const v = h92Clean(c || "");
+    if (!v) continue;
+    if (/bitte|pruefen|prüfen|unbekannt|nicht sicher|unklar/i.test(v)) continue;
+    if (v.length < 4 || v.length > 90) continue;
+    return v;
+  }
+
+  return "[Name]";
+}
+
+function h92ExtractEmail(text = "") {
+  const m = String(text || "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return m ? m[0] : "";
+}
+
+function h92Recipient(meta = {}, context = "") {
+  const email = h92ExtractEmail(h92Meta(meta) + "\n" + context);
+  if (email) return email;
+  const sender = h92Sender(meta);
+  if (sender) return `${sender} – E-Mail oder Anschrift aus dem Schreiben übernehmen`;
+  return "E-Mail oder Anschrift aus dem Schreiben übernehmen";
+}
+
+function h92DetectDomain(context = "", meta = {}) {
+  const t = h92Norm(context + "\n" + h92Meta(meta));
+
+  // IBAN/BIC/Kontonummer allein ist kein Bankbrief. Arbeitgeber/Rechnung/Inkasso haben oft IBANs.
+  if (h92HasAny(t, [
+    "arbeitgeber", "arbeitnehmer", "lohn", "gehalt", "arbeitsentgelt", "lohnabrechnung",
+    "ueberzahlung", "überzahlung", "rueckzahlung", "rückzahlung", "schuldanerkenntnis",
+    "lohnabtretung", "abtretung", "aufhebungsvertrag", "abmahnung", "arbeitsvertrag",
+    "urlaubsanspruch", "pluss personalmanagement"
+  ])) return "arbeit";
+
+  if (h92HasAny(t, [
+    "p-konto", "p konto", "pkonto", "pfändungsschutzkonto", "pfaendungsschutzkonto",
+    "kontopfändung", "kontopfaendung", "konto gepfändet", "konto gesperrt",
+    "gesperrtes guthaben", "freibetrag", "drittschuldner", "pfändungsbeschluss",
+    "pfaendungsbeschluss", "postbank", "sparkasse", "volksbank", "bank schreibt",
+    "bank informiert", "kreditinstitut"
+  ])) return "bank";
+
+  if (h92HasAny(t, ["finanzamt", "steuer", "steuernummer", "einkommensteuer", "umsatzsteuer", "saeumniszuschlag", "säumniszuschlag", "steuerbescheid", "vollstreckungsstelle"])) return "finanzamt";
+  if (h92HasAny(t, ["jobcenter", "buergergeld", "bürgergeld", "bedarfsgemeinschaft", "bg nummer", "bg-nummer", "aufrechnung", "rueckforderung", "rückforderung", "mitwirkung", "sozialamt", "wohngeld", "rentenversicherung", "rente", "bescheid", "rechtsbehelf"])) return "behoerde";
+  if (h92HasAny(t, ["rundfunkbeitrag", "beitragsservice", "beitragskonto", "ard zdf", "deutschlandradio"])) return "rundfunk";
+  if (h92HasAny(t, ["staatsanwaltschaft", "geldauflage", "strafverfahren", "einstellung gegen auflage", "auflage zahlen"])) return "staatsanwaltschaft";
+  if (h92HasAny(t, ["gericht", "amtsgericht", "landgericht", "anklageschrift", "ladung", "hauptverhandlung", "strafbefehl", "zeuge", "beschuldigter", "angeklagter", "polizei", "anhoerung", "anhörung", "bussgeld", "bußgeld", "ordnungswidrigkeit", "vorladung"])) return "gericht";
+  if (h92HasAny(t, ["vermieter", "miete", "mietrueckstand", "mietrückstand", "nebenkosten", "kaution", "raeumung", "räumung", "wohnungskuendigung", "wohnungskündigung", "mieterhoehung", "mieterhöhung", "hausverwaltung"])) return "wohnung";
+  if (h92HasAny(t, ["krankenkasse", "pflegekasse", "pflegegrad", "krankengeld", "hilfsmittel", "reha", "arztbrief", "arztbericht", "krankenhaus", "medizinischer dienst", "mdk"])) return "gesundheit";
+  if (h92HasAny(t, ["auslaenderbehoerde", "ausländerbehörde", "aufenthaltstitel", "fiktionsbescheinigung", "abschiebung", "duldung", "visum", "aufenthaltsstatus", "aufenthaltserlaubnis"])) return "aufenthalt";
+  if (h92HasAny(t, ["jugendamt", "schule", "kita", "kindergarten", "kindergeld", "familienkasse", "unterhalt", "sorgerecht", "klassenfahrt", "fehlzeiten"])) return "familie";
+  if (h92HasAny(t, ["versicherung", "schaden", "schadennummer", "police", "haftpflicht", "kfz versicherung", "hausrat", "ablehnung des schadens"])) return "versicherung";
+  if (h92HasAny(t, ["inkasso", "glaeubiger", "gläubiger", "schuldner", "forderungsaufstellung", "mahnbescheid", "vollstreckungsbescheid", "gerichtsvollzieher", "vollstreckung"])) return "inkasso";
+  if (h92HasAny(t, ["forderung", "mahnung", "rechnung", "zahlungserinnerung", "zahlungsfrist", "offener betrag"])) return "rechnung";
+  if (h92HasAny(t, ["vertrag", "abo", "kuendigung", "kündigung", "widerruf", "strom", "gas", "internet", "handyvertrag", "fitnessstudio", "preiserhoehung", "preiserhöhung"])) return "vertrag";
+  if (h92HasAny(t, ["phishing", "fake", "betrug", "gewinnspiel", "link klicken", "daten eingeben", "paket sms", "paket-sms", "abo falle", "abo-falle"])) return "betrug";
+
+  return "allgemein";
+}
+
+function h92Intent(frage = "", frageMode = "", historyText = "") {
+  const qOnly = h92Norm(frage);
+  const q = h92Norm(frage + "\n" + frageMode);
+
+  if (["ok", "okay", "danke", "dankeschoen", "danke schoen", "alles klar", "verstanden", "passt", "gut"].includes(qOnly)) return "smalltalk";
+
+  // ABSOLUTE PRIORITÄT: Schreib-/Antwort-Befehl.
+  if (String(frageMode || "").toLowerCase() === "reply" || h92HasAny(q, [
+    "schreib", "schreibe", "formuliere", "antwort", "professionelle antwort",
+    "e-mail", "email", "mail", "brief", "vorlage", "fertig", "mach mir",
+    "zum kopieren", "direkt senden", "pdf", "text erstellen"
+  ])) return "reply";
+
+  if (h92HasAny(q, ["gar kein geld", "ich habe kein geld", "habe kein geld", "0 euro", "null euro", "kann gar nichts zahlen", "kann nichts zahlen"])) return "no_money";
+  if (h92HasAny(q, ["nicht auf einmal", "nicht alles zahlen", "kann nicht zahlen", "kann das nicht zahlen", "nicht bezahlen", "ratenzahlung", "in raten", "rate zahlen", "stundung", "zahlungsaufschub"])) return "cannot_pay";
+  if (h92HasAny(q, ["schon bezahlt", "bereits bezahlt", "habe bezahlt", "zahlungsnachweis", "überwiesen", "ueberwiesen", "quittung"])) return "already_paid";
+  if (h92HasAny(q, ["stimmt nicht", "forderung falsch", "kenne die forderung nicht", "nie bestellt", "kein vertrag", "nicht meine schuld", "bestreiten", "widerspreche der forderung"])) return "claim_wrong";
+  if (h92HasAny(q, ["schon geschickt", "bereits geschickt", "nachweis geschickt", "bescheid geschickt", "unterlagen geschickt", "befreiung geschickt", "habe es geschickt", "ist schon erledigt", "schon erledigt"])) return "proof_sent";
+  if (h92HasAny(q, ["mehr zeit", "frist verlaengern", "frist verlängern", "fristverlaengerung", "fristverlängerung", "schaffe das nicht", "nicht rechtzeitig", "spaeter nachreichen", "später nachreichen"])) return "need_more_time";
+  if (h92HasAny(q, ["termin verschieben", "termin absagen", "kann nicht kommen", "kann nicht hingehen", "neuer termin", "krank", "krankgeschrieben", "attest"])) return "appointment_change";
+  if (h92HasAny(q, ["unterschreiben", "soll ich unterschreiben", "aufhebungsvertrag", "schuldanerkenntnis", "lohnabtretung", "vergleich", "vollmacht", "verzicht"])) return "sign_warning";
+  if (String(frageMode || "").toLowerCase() === "next_steps" || h92HasAny(q, ["was soll ich tun", "was muss ich tun", "was jetzt", "naechster schritt", "nächster schritt", "wie weiter", "was mache ich"])) return "next_steps";
+  if (String(frageMode || "").toLowerCase() === "deadline" || h92HasAny(q, ["frist", "bis wann", "termin", "deadline", "datum"])) return "deadline";
+  if (String(frageMode || "").toLowerCase() === "consequence" || h92HasAny(q, ["was passiert", "wenn ich nichts", "ignorieren", "nicht mache", "folge", "schlimmste"])) return "consequence";
+  if (h92HasAny(q, ["unterlagen", "dokumente", "was brauche ich", "anhaengen", "anhängen", "mitschicken", "nachreichen"])) return "attachments";
+  if (h92HasAny(q, ["telefon", "anrufen", "was soll ich sagen", "telefonieren", "call"])) return "phone_script";
+  if (h92HasAny(q, ["einfach erklaeren", "einfach erklären", "verstehe nicht", "kurz erklaeren", "kurz erklären", "was bedeutet", "was ist das"])) return "explain_simple";
+  if (h92HasAny(q, ["darf ich ignorieren", "muss ich reagieren", "muss ich was machen", "muss ich ueberhaupt", "muss ich überhaupt", "nichts tun"])) return "must_react";
+  if (h92HasAny(q, ["widerspruch", "einspruch", "ablehnung", "nicht einverstanden", "bescheid falsch"])) return "objection";
+  if (h92HasAny(q, ["erstattung", "zurueckbekommen", "zurückbekommen", "uebernimmt", "übernimmt", "krankenkasse zahlt", "versicherung zahlt"])) return "reimbursement";
+  if (h92HasAny(q, ["details", "welche behandlung", "wofuer", "wofür", "positionen", "was wurde gemacht", "was genau"])) return "detail";
+
+  return "";
+}
+
+function h92Subject(domain = "allgemein", intent = "reply") {
+  if (intent === "need_more_time") return "Bitte um Fristverlängerung";
+  if (intent === "appointment_change") return "Bitte um neuen Termin";
+  if (intent === "already_paid") return "Bitte um Prüfung meiner Zahlung";
+  if (intent === "proof_sent") return "Nachweis erneut eingereicht";
+  if (intent === "claim_wrong") return "Bitte um Prüfung und Nachweis der Forderung";
+  if (intent === "no_money") return "Bitte um Stundung / Zahlungsaufschub";
+  if (intent === "cannot_pay") return "Bitte um Prüfung einer Ratenzahlung";
+  if (domain === "bank") return "Bitte um Prüfung des P-Konto-Status / der Kontopfändung";
+  if (domain === "arbeit") return "Bitte um Prüfung der Rückzahlungsvereinbarung";
+  if (domain === "finanzamt") return "Bitte um Prüfung / Stundung";
+  if (domain === "inkasso") return "Bitte um Prüfung der Forderung";
+  if (domain === "gericht" || domain === "staatsanwaltschaft") return "Bitte um Klärung des Schreibens";
+  return "Bitte um Prüfung meines Vorgangs";
+}
+
+function h92Intro(meta = {}) {
+  const ref = h92Ref(meta);
+  const amount = h92Amount(meta);
+  const parts = ["ich beziehe mich auf Ihr Schreiben"];
+  if (ref) parts.push(`zum Aktenzeichen / zur Nummer ${ref}`);
+  if (amount) parts.push(`über ${amount}`);
+  return parts.join(" ") + ".";
+}
+
+function h92ProfessionalMessage({ domain, intent, meta = {}, context = "", frage = "" }) {
+  const recipient = h92Recipient(meta, context);
+  const subject = h92Subject(domain, intent);
+  const name = h92Name(meta);
+  const amount = h92Amount(meta);
+  const ref = h92Ref(meta);
+  const lines = [];
+
+  lines.push(`Empfänger: ${recipient}`);
+  lines.push("");
+  lines.push(`Betreff: ${subject}${ref ? " – " + ref : ""}`);
+  lines.push("");
+  lines.push("Sehr geehrte Damen und Herren,");
+  lines.push("");
+  lines.push(h92Intro(meta));
+  lines.push("");
+
+  if (domain === "arbeit") {
+    lines.push("Bitte senden Sie mir eine nachvollziehbare schriftliche Aufstellung, aus der hervorgeht, wodurch die Überzahlung entstanden ist und wie sich der Betrag zusammensetzt.");
+    lines.push("");
+    lines.push("Bitte teilen Sie mir außerdem mit, welcher Betrag aktuell noch offen ist und ob bereits weitere Schritte eingeleitet wurden.");
+    lines.push("");
+    lines.push("Bis zur Klärung bitte ich darum, keine weiteren Maßnahmen einzuleiten.");
+  } else if (domain === "bank") {
+    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, ob das Konto aktuell als Pfändungsschutzkonto geführt wird, welcher Freibetrag geschützt ist und welche Beträge gesperrt oder freigegeben sind.");
+    lines.push("");
+    lines.push("Bitte teilen Sie mir außerdem mit, ob eine zusätzliche P-Konto-Bescheinigung erforderlich ist und welche weiteren Schritte jetzt notwendig sind.");
+  } else if (intent === "no_money") {
+    lines.push("Ich kann den geforderten Betrag derzeit nicht zahlen.");
+    lines.push("");
+    lines.push("Ich bitte daher um Stundung beziehungsweise Zahlungsaufschub. Bis zur Entscheidung über meinen Antrag bitte ich darum, keine weiteren Maßnahmen einzuleiten oder fortzuführen.");
+    lines.push("");
+    lines.push("Bitte teilen Sie mir schriftlich mit, welche Unterlagen Sie für die Prüfung benötigen.");
+  } else if (intent === "cannot_pay") {
+    lines.push("Ich kann den geforderten Betrag derzeit nicht auf einmal zahlen.");
+    lines.push("");
+    lines.push("Bitte prüfen Sie, ob eine Ratenzahlung, Stundung oder ein Zahlungsaufschub möglich ist.");
+    lines.push("");
+    lines.push("Bitte bestätigen Sie mir Ihre Entscheidung schriftlich.");
+  } else if (intent === "already_paid") {
+    lines.push("Der Betrag wurde bereits bezahlt. Den Zahlungsnachweis füge ich bei beziehungsweise reiche ich nach.");
+    lines.push("");
+    lines.push("Bitte prüfen Sie den Vorgang und bestätigen Sie mir schriftlich, dass keine offene Forderung mehr besteht.");
+  } else if (intent === "proof_sent") {
+    lines.push("Der angeforderte Nachweis wurde bereits eingereicht. Vorsorglich reiche ich ihn erneut ein.");
+    lines.push("");
+    lines.push("Bitte prüfen Sie den Vorgang erneut und setzen Sie weitere Maßnahmen bis zur Prüfung aus.");
+    lines.push("");
+    lines.push("Bitte bestätigen Sie mir den Eingang schriftlich.");
+  } else if (intent === "claim_wrong") {
+    lines.push("Ich kann die Forderung derzeit nicht nachvollziehen.");
+    lines.push("");
+    lines.push("Bitte senden Sie mir eine nachvollziehbare Aufstellung sowie die Grundlage der Forderung zu.");
+    lines.push("");
+    lines.push("Bis zur Klärung erkenne ich die Forderung nicht an und bitte darum, keine weiteren Maßnahmen einzuleiten.");
+  } else if (domain === "finanzamt") {
+    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir mit, welcher Betrag aktuell offen ist.");
+    lines.push("");
+    lines.push("Falls eine Zahlung sofort nicht möglich ist, bitte ich um Prüfung einer Stundung oder Ratenzahlung und um Aussetzung weiterer Vollstreckungsmaßnahmen bis zur Entscheidung.");
+  } else if (domain === "inkasso" || domain === "rechnung") {
+    lines.push("Bitte senden Sie mir eine aktuelle und nachvollziehbare Forderungsaufstellung zu.");
+    lines.push("");
+    lines.push("Bis zur Klärung erkenne ich die Forderung nicht an und bitte darum, keine weiteren Maßnahmen einzuleiten.");
+  } else {
+    lines.push("Bitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.");
+    lines.push("");
+    lines.push("Falls weitere Unterlagen benötigt werden, bitte ich um kurze Mitteilung.");
+  }
+
+  lines.push("");
+  lines.push("Mit freundlichen Grüßen");
+  lines.push("");
+  lines.push(name);
+
+  return h92Clean(lines.join("\n"));
+}
+
+function h92NextSteps(meta = {}, domain = "allgemein") {
+  const steps = [];
+  const amount = h92Amount(meta);
+  const deadline = h92Deadline(meta);
+  const ref = h92Ref(meta);
+
+  if (domain === "arbeit") steps.push("Nichts Neues unterschreiben, bevor Betrag, Grund und Folgen klar sind.");
+  if (domain === "bank") steps.push("Bank schriftlich um P-Konto-Status, Freibetrag und Freigabe bitten.");
+  if (amount) steps.push(`Betrag prüfen: ${amount}.`);
+  if (deadline) steps.push(`Frist/Termin prüfen: ${deadline}.`);
+  if (ref) steps.push(`Nummer/Aktenzeichen bereithalten: ${ref}.`);
+  if (!steps.length) steps.push("Brief aufbewahren und prüfen, ob Frist, Termin, Geld oder Unterlagen betroffen sind.");
+
+  return "Das sind die nächsten Schritte:\n" + [...new Set(steps)].slice(0, 4).map((s, i) => `${i + 1}. ${s}`).join("\n");
+}
+
+function h92NoMoney(meta = {}, domain = "allgemein") {
+  if (domain === "arbeit") {
+    return "Dann nicht ignorieren. Schreibe dem Arbeitgeber sofort, dass du aktuell nicht zahlen kannst, und bitte um Zahlungsaufschub oder eine kleinere Rate.\n\nWichtig: Nichts Neues unterschreiben, bevor Betrag, Grund und mögliche Lohnabtretung klar sind.";
+  }
+  return "Dann nicht sofort eine Rate vorschlagen. Der sichere Schritt ist Stundung oder Zahlungsaufschub.\n\nSchreibe der Stelle, dass du aktuell nicht zahlen kannst, und bitte um Aussetzung weiterer Maßnahmen bis zur Entscheidung.";
+}
+
+function h92Attachments(domain = "allgemein") {
+  const map = {
+    arbeit: ["Schreiben vom Arbeitgeber", "Arbeitsvertrag", "Lohnabrechnungen", "Zahlungsnachweise, falls schon gezahlt"],
+    bank: ["Schreiben der Bank", "Kontodaten/Kundennummer", "P-Konto-Bescheinigung, falls vorhanden", "Nachweise für höheren Freibetrag, falls nötig"],
+    finanzamt: ["Steuernummer", "Mahnung/Bescheid", "Nachweis über Einkommen/Ausgaben, falls Stundung beantragt wird"],
+    inkasso: ["Forderungsschreiben", "Zahlungsnachweise", "Vertrag/Rechnung, falls vorhanden", "Aktenzeichen/Kundennummer"],
+    gericht: ["Gerichtsschreiben", "Aktenzeichen", "Nachweise", "Termindaten"]
+  };
+  const items = map[domain] || ["Schreiben selbst", "Aktenzeichen/Kundennummer", "Nachweise", "deine Kontaktdaten"];
+  return "Wahrscheinlich brauchst du:\n" + items.map((x) => `- ${x}`).join("\n");
+}
+
+function h92ForcedAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText, lang }) {
+  const context = h92Context({ frage, frageMode, meta, briefText, kurz, details, historyText });
+  const domain = h92DetectDomain(context, meta);
+  const intent = h92Intent(frage, frageMode, historyText);
+
+  if (!intent) return "";
+  if (intent === "smalltalk") return "Gerne. Schreib einfach deine nächste Frage.";
+
+  if (intent === "reply") return h92ProfessionalMessage({ domain, intent, meta, context, frage });
+  if (intent === "next_steps") return h92NextSteps(meta, domain);
+  if (intent === "no_money") return h92NoMoney(meta, domain);
+  if (intent === "cannot_pay") return "Dann nicht ignorieren. Prüfe zuerst, ob Betrag und Forderung stimmen.\n\nWenn du nicht alles auf einmal zahlen kannst, ist Ratenzahlung, Stundung oder Zahlungsaufschub der nächste Schritt. Welche monatliche Rate wäre realistisch?";
+  if (intent === "already_paid") return "Dann keine Ratenzahlung anbieten. Sende den Zahlungsnachweis und bitte um Prüfung.\n\nWichtig: Kontoauszug, Quittung oder Überweisungsbeleg bereithalten.";
+  if (intent === "proof_sent") return "Dann den Nachweis vorsorglich erneut senden.\n\nKurz schreiben: Der Nachweis wurde bereits eingereicht. Ich füge ihn erneut bei und bitte um Prüfung. Bis zur Prüfung bitte keine weiteren Maßnahmen.";
+  if (intent === "claim_wrong") return "Dann die Forderung nicht anerkennen. Verlange eine nachvollziehbare Aufstellung und Nachweise.\n\nBis zur Klärung keine Zahlung zusagen.";
+  if (intent === "need_more_time") return "Dann vor Ablauf der Frist schriftlich Fristverlängerung beantragen.\n\nSag kurz, dass Unterlagen fehlen oder du mehr Zeit brauchst, und bitte um schriftliche Bestätigung.";
+  if (intent === "appointment_change") return "Dann den Termin sofort schriftlich absagen oder verschieben.\n\nWenn Krankheit der Grund ist, Attest/Krankmeldung anhängen oder Nachreichung ankündigen.";
+  if (intent === "sign_warning") return "Nicht sofort unterschreiben. Erst prüfen, was du damit bestätigst, anerkennst oder aufgibst.\n\nBesonders vorsichtig bei Aufhebungsvertrag, Schuldanerkenntnis, Lohnabtretung, Vergleich oder Verzicht.";
+  if (intent === "attachments") return h92Attachments(domain);
+  if (intent === "consequence") return "Wenn du nichts machst, können je nach Brief Fristen, Geld, Konto, Arbeit, Wohnung oder Leistungen betroffen sein.\n\nNächster sicherer Schritt: Frist, Betrag und Absender prüfen und schriftlich klären.";
+  if (intent === "phone_script") return `Sag am Telefon kurz:\n\nGuten Tag, mein Name ist ...\nIch rufe wegen Ihres Schreibens an.\nMeine Nummer / mein Aktenzeichen ist: ${h92Ref(meta) || "Nummer aus dem Schreiben"}.\nIch möchte wissen, was ich jetzt konkret tun muss.\nKönnen Sie mir das bitte auch schriftlich bestätigen?`;
+  if (intent === "must_react") return (h92Deadline(meta) || h92Amount(meta)) ? "Ja, wahrscheinlich solltest du reagieren. Prüfe Frist, Termin, Betrag oder Risiko und kläre es schriftlich." : "Unklar. Wenn keine Frist, kein Termin, kein Geld und keine Pflicht genannt wird, kann es auch nur eine Information sein. Bewahre den Brief trotzdem auf.";
+  if (intent === "objection") return "Dann zuerst Frist und Grund prüfen. Wenn du nicht einverstanden bist, kann ein Widerspruch sinnvoll sein. Bei wichtigen Bescheiden: lieber kurz fristwahrend reagieren und Begründung nachreichen.";
+  if (intent === "detail") return "Lade bitte die Seite oder den Ausschnitt mit den Details hoch. Dann lese ich genau heraus, worum es geht, ohne etwas zu erfinden.";
+  if (intent === "reimbursement") return "Eine Erstattung kann möglich sein, aber nicht versprechen. Prüfe Rechnung/Bescheid und frage schriftlich bei Krankenkasse, Versicherung oder zuständiger Stelle nach.";
+  if (intent === "explain_simple") return `Kurz gesagt: Es geht um einen Brief aus dem Bereich ${domain}.\n\nDer sichere nächste Schritt ist: ${h92NextSteps(meta, domain).split("\n").slice(1, 2).join(" ") || "schriftlich klären."}`;
+
+  return "";
+}
+
+// ======================================================
+// ENDE HILFE24 V9.2 FORCED CHAT ROUTER
+// ======================================================
+
 app.post("/api/frage", async (req, res) => {
   try {
     const briefText = cleanText(req.body.briefText || "");
@@ -4130,6 +4477,26 @@ const lang = (req.body.lang || "de").toLowerCase();
       return res.status(400).json({
         ok: false,
         error: "Die Frage ist zu lang. Bitte kürzer formulieren."
+      });
+    }
+
+    // V9.2: harter Chat-Zwang direkt am Anfang.
+    // Wenn der Nutzer "Schreib mir..." sagt, kommt sofort eine Vorlage.
+    const forcedV92 = h92ForcedAnswer({
+      frage,
+      frageMode,
+      meta,
+      briefText,
+      kurz: erklaerungKurz,
+      details: erklaerungDetails,
+      historyText: chatHistoryText,
+      lang
+    });
+
+    if (forcedV92) {
+      return res.json({
+        ok: true,
+        antwort: forcedV92
       });
     }
 
