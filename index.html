@@ -278,6 +278,36 @@
     .audio-mini-label { display:none; }
     .audio-dock audio { display:none; }
   }
+
+  /* HILFE24 PDF DOWNLOAD FIX */
+  .h24-pdf-download-row {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .h24-pdf-download-btn {
+    border: 1px solid #bbf7d0;
+    background: linear-gradient(135deg, #15803d, #16a34a);
+    color: #fff;
+    padding: 10px 13px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 950;
+    box-shadow: 0 8px 18px rgba(21,128,61,.16);
+  }
+  .h24-pdf-download-btn:disabled {
+    opacity: .65;
+    cursor: wait;
+  }
+  .h24-pdf-download-hint {
+    width: 100%;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
 </style>
 </head>
 
@@ -1549,6 +1579,210 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
 
+
+
+    /* HILFE24 PDF DOWNLOAD FIX */
+    function h24GetPdfButtonLabel() {
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const labels = {
+        de: "📄 PDF herunterladen",
+        tr: "📄 PDF indir",
+        bg: "📄 Изтегли PDF",
+        ro: "📄 Descarcă PDF",
+        ar: "📄 تحميل PDF",
+        en: "📄 Download PDF"
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function h24GetPdfCreatingLabel() {
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const labels = {
+        de: "PDF wird erstellt...",
+        tr: "PDF hazırlanıyor...",
+        bg: "PDF се създава...",
+        ro: "PDF se creează...",
+        ar: "يتم إنشاء PDF...",
+        en: "Creating PDF..."
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function h24GetPdfErrorText() {
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const labels = {
+        de: "PDF konnte nicht erstellt werden.",
+        tr: "PDF oluşturulamadı.",
+        bg: "PDF не можа да бъде създаден.",
+        ro: "PDF nu a putut fi creat.",
+        ar: "تعذر إنشاء ملف PDF.",
+        en: "PDF could not be created."
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function h24CleanPdfText(text) {
+      return String(text || "")
+        .replace(/\r/g, "")
+        .replace(/\u00a0/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    }
+
+    function h24AnswerContainsPdf(text) {
+      const t = String(text || "").toLowerCase();
+      return (
+        t.includes("pdf-brief") ||
+        t.includes("brief als pdf") ||
+        t.includes("pdf:") ||
+        t.includes("pdf brief") ||
+        t.includes("[ort],")
+      );
+    }
+
+    function h24ExtractPdfTextFromAnswer(answer) {
+      const raw = String(answer || "");
+      if (!raw.trim()) return "";
+
+      const markerPatterns = [
+        /pdf\s*-\s*brief\s*:/i,
+        /pdf\s*-\s*brief/i,
+        /brief\s+als\s+pdf\s*:/i,
+        /brief\s+als\s+pdf/i,
+        /pdf\s*:/i
+      ];
+
+      let bestIndex = -1;
+      let bestLength = 0;
+
+      for (const pattern of markerPatterns) {
+        const matches = Array.from(raw.matchAll(new RegExp(pattern.source, pattern.flags + (pattern.flags.includes("g") ? "" : "g"))));
+        for (const match of matches) {
+          if (match.index >= bestIndex) {
+            bestIndex = match.index;
+            bestLength = match[0].length;
+          }
+        }
+      }
+
+      let pdfText = bestIndex >= 0 ? raw.slice(bestIndex + bestLength).trim() : raw.trim();
+
+      const stopPatterns = [
+        /\n\s*E\s*-?\s*MAIL\s*:/i,
+        /\n\s*E-MAIL-TEXT\s*:/i,
+        /\n\s*Bitte\s+prüfe\s+vor\s+dem\s+Senden/i,
+        /\n\s*Bitte\s+prüfen\s+Sie\s+vor\s+dem\s+Senden/i,
+        /\n\s*Prüfe\s+vor\s+dem\s+Senden/i,
+        /\n\s*Hinweis\s*:/i
+      ];
+
+      for (const pattern of stopPatterns) {
+        const match = pdfText.match(pattern);
+        if (match && match.index > 80) {
+          pdfText = pdfText.slice(0, match.index).trim();
+        }
+      }
+
+      pdfText = pdfText
+        .replace(/^[:\-\s]+/, "")
+        .replace(/📄\s*PDF herunterladen/gi, "")
+        .replace(/PDF wird erstellt\.\.\./gi, "")
+        .trim();
+
+      return h24CleanPdfText(pdfText);
+    }
+
+    function h24PdfFilenameFromText(text) {
+      const today = new Date().toISOString().slice(0, 10);
+      const lower = String(text || "").toLowerCase();
+      let type = "brief";
+      if (lower.includes("kündigung") || lower.includes("kuendigung")) type = "kuendigung";
+      if (lower.includes("widerruf")) type = "widerruf";
+      if (lower.includes("ratenzahlung")) type = "ratenzahlung";
+      if (lower.includes("widerspruch")) type = "widerspruch";
+      return "hilfe24-" + type + "-" + today + ".pdf";
+    }
+
+    async function h24DownloadPdfFromText(pdfText, button) {
+      const cleanPdfText = h24ExtractPdfTextFromAnswer(pdfText);
+
+      if (!cleanPdfText || cleanPdfText.length < 30) {
+        alert("Ich finde gerade keinen fertigen PDF-Brieftext.");
+        return;
+      }
+
+      const oldText = button ? button.textContent : "";
+
+      try {
+        if (button) {
+          button.disabled = true;
+          button.textContent = h24GetPdfCreatingLabel();
+        }
+
+        const filename = h24PdfFilenameFromText(cleanPdfText);
+        const response = await fetch("/api/pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: cleanPdfText,
+            filename
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "");
+          console.error("PDF Fehler:", errorText);
+          alert(h24GetPdfErrorText());
+          return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("PDF Download Fehler:", error);
+        alert(h24GetPdfErrorText());
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = oldText || h24GetPdfButtonLabel();
+        }
+      }
+    }
+
+    function h24AddPdfDownloadButton(bubble, answerText) {
+      if (!bubble || !h24AnswerContainsPdf(answerText)) return;
+
+      const pdfText = h24ExtractPdfTextFromAnswer(answerText);
+      if (!pdfText || pdfText.length < 30) return;
+
+      const row = document.createElement("div");
+      row.className = "h24-pdf-download-row";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "h24-pdf-download-btn";
+      btn.textContent = h24GetPdfButtonLabel();
+      btn.onclick = function () {
+        h24DownloadPdfFromText(pdfText, btn);
+      };
+
+      const hint = document.createElement("div");
+      hint.className = "h24-pdf-download-hint";
+      hint.textContent = "Vor dem Senden bitte Name, Adresse, Datum, Nummer und Empfänger prüfen.";
+
+      row.appendChild(btn);
+      row.appendChild(hint);
+      bubble.appendChild(row);
+    }
+
+
     function appendChatMessage(role, text, options = {}) {
       if (!chatMessagesEl) return;
       const clean = String(text || "").trim();
@@ -1564,6 +1798,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       bubble.appendChild(meta);
       bubble.appendChild(body);
       if (role !== "user") {
+        h24AddPdfDownloadButton(bubble, clean);
         addChatAudioButton(bubble, clean);
       }
       chatMessagesEl.appendChild(bubble);
