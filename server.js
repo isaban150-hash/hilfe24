@@ -4140,16 +4140,13 @@ const lang = (req.body.lang || "de").toLowerCase();
       });
     }
 
-    // V8.8: Bank/P-Konto muss vor dem generischen Shortcut kommen.
-    // Sonst wird "Freibetrag"/"Kontopfändung" zu schnell als normale Zahlungs-/Inkasso-Frage behandelt.
-    if (frageMode === "reply" && (meta.bank_pkonto || isBankPkontoLetter(meta, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`))) {
-      const template = buildPkontoReplyTemplate(meta, lang, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage}`);
-      const hint = explainOnlineBankingSimple(lang);
+    // V9: Bank/P-Konto wird hart vor dem allgemeinen Chat abgefangen.
+    // Keine Online-Banking-Erklärung davor, wenn der Nutzer eine fertige E-Mail will.
+    if (isReplyRequestV9(frage, frageMode) && isBankPkontoContextV9(`${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage} ${chatHistoryText}`, meta)) {
+      const template = buildPkontoReplyTemplate(meta, lang, `${briefText} ${erklaerungKurz} ${erklaerungDetails} ${frage} ${chatHistoryText}`);
       return res.json({
         ok: true,
-        antwort: cleanText(`${hint}
-
-${template}`)
+        antwort: cleanText(template)
       });
     }
 
@@ -5353,6 +5350,391 @@ function buildUniversalDeterministicChat({ frage, frageMode, meta, briefText, ku
 
   return "";
 }
+
+
+// =====================================================
+// HILFE24 V9 CHAT-ROUTER + PROFESSIONAL MESSAGE BUILDER
+// Ziel: Alltagshilfe-App statt Einzelbrief-Flickerei.
+// Diese Funktionen überschreiben ältere Chat-Funktionen.
+// =====================================================
+
+function cleanV9(value = "") {
+  if (typeof cleanText === "function") return cleanText(value);
+  return String(value || "").replace(/\*\*/g, "").trim();
+}
+
+function normV9(value = "") {
+  return cleanV9(value)
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[„“”]/g, '"')
+    .replace(/[’‘]/g, "'")
+    .replace(/[^\p{L}\p{N}€@._+\-/\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function includesAnyV9(text = "", words = []) {
+  const s = normV9(text);
+  return words.some((word) => s.includes(normV9(word)));
+}
+
+function metaTextV9(meta = {}) {
+  try { return JSON.stringify(meta || {}); } catch (_) { return ""; }
+}
+
+function buildContextV9({ frage = "", meta = {}, briefText = "", kurz = "", details = "", historyText = "" }) {
+  return [frage, metaTextV9(meta), briefText, kurz, details, historyText].join("\n");
+}
+
+function isSmalltalkV9(frage = "") {
+  if (typeof isPoliteSmallTalkQuestion === "function" && isPoliteSmallTalkQuestion(frage)) return true;
+  const q = normV9(frage);
+  return ["ok", "okay", "danke", "dankeschoen", "alles klar", "verstanden", "super", "perfekt", "gut", "ja"].includes(q);
+}
+
+function smalltalkReplyV9(lang = "de") {
+  const code = typeof getLanguageMeta === "function" ? getLanguageMeta(lang).code : "de";
+  const replies = {
+    de: "Gerne. Schreib einfach deine nächste Frage.",
+    tr: "Rica ederim. Sonraki sorunu yazabilirsin.",
+    bg: "Моля. Напиши следващия си въпрос.",
+    ro: "Cu plăcere. Scrie următoarea întrebare.",
+    ar: "على الرحب والسعة. اكتب سؤالك التالي.",
+    en: "You’re welcome. Write your next question."
+  };
+  return replies[code] || replies.de;
+}
+
+function isReplyRequestV9(frage = "", frageMode = "free") {
+  const mode = String(frageMode || "free").toLowerCase();
+  if (mode === "reply") return true;
+  return includesAnyV9(frage, [
+    "schreib mir", "schreibe mir", "mach mir", "formuliere", "antwort", "e-mail", "email", "brief", "vorlage", "pdf", "text fertig", "fertigen text", "professionell", "zum kopieren", "direkt senden", "direkt schicken",
+    "cevap yaz", "mail yaz", "e posta", "писмо", "отговор", "scrie", "răspuns", "email", "اكتب", "رسالة", "رد"
+  ]);
+}
+
+function wantsNoPlaceholdersV9(text = "") {
+  return includesAnyV9(text, [
+    "ohne platzhalter", "ohne dass ich was einsetzen muss", "nichts einsetzen", "ohne einsetzen", "mach komplett fertig", "alles fertig", "keine platzhalter", "nicht [name]", "ohne [name]", "ohne daten eintragen"
+  ]);
+}
+
+function userSaysAlreadyPkontoV9(text = "") {
+  return includesAnyV9(text, [
+    "schon ein p konto", "schon ein p-konto", "bereits ein p konto", "bereits ein p-konto", "hat ein p konto", "hat ein p-konto", "haben ein p konto", "haben schon ein p konto", "ist p konto", "ist ein p-konto", "laeuft als p konto", "laeuft bereits als p konto", "pfaendungsschutzkonto vorhanden", "pfändungsschutzkonto vorhanden", "pay konto", "peh konto"
+  ]);
+}
+
+function isBankPkontoContextV9(context = "", meta = {}) {
+  const all = `${context || ""}\n${metaTextV9(meta)}`;
+  return includesAnyV9(all, ["p-konto", "p konto", "pkonto", "pay konto", "pfändungsschutzkonto", "pfaendungsschutzkonto", "kontopfändung", "kontopfaendung", "konto gepfändet", "freibetrag", "postbank", "bank", "pfändungsbeschluss", "drittschuldner"]);
+}
+
+function detectUserIntentV9(frage = "", frageMode = "free", historyText = "") {
+  const q = `${frage}\n${historyText || ""}`;
+  if (isSmalltalkV9(frage)) return "smalltalk";
+  if (includesAnyV9(frage, ["gar kein geld", "habe kein geld", "kein geld", "0 euro", "null euro", "kann gar nichts zahlen", "kann nichts zahlen"])) return "no_money";
+  if (includesAnyV9(frage, ["nicht auf einmal", "nicht alles zahlen", "kann nicht zahlen", "kann das nicht zahlen", "nicht bezahlen", "ratenzahlung", "in raten", "rate zahlen", "stundung", "zahlungsaufschub"])) return "cannot_pay";
+  if (extractRateV9(frage)) return "rate_given";
+  if (includesAnyV9(frage, ["schon bezahlt", "bereits bezahlt", "habe bezahlt", "zahlungsnachweis", "überwiesen", "ueberwiesen", "quittung"])) return "already_paid";
+  if (includesAnyV9(frage, ["stimmt nicht", "forderung falsch", "kenne die forderung nicht", "nie bestellt", "kein vertrag", "nicht meine schuld", "bestreiten", "widerspreche der forderung"])) return "claim_wrong";
+  if (includesAnyV9(frage, ["schon geschickt", "bereits geschickt", "nachweis geschickt", "bescheid geschickt", "unterlagen geschickt", "befreiung geschickt", "habe es geschickt", "ist schon erledigt", "schon erledigt"])) return "proof_sent";
+  if (includesAnyV9(frage, ["mehr zeit", "frist verlängern", "fristverlaengerung", "schaffe das nicht", "nicht rechtzeitig", "unterlagen spaeter", "später nachreichen", "spaeter nachreichen"])) return "need_more_time";
+  if (includesAnyV9(frage, ["termin verschieben", "termin absagen", "kann nicht kommen", "kann nicht hingehen", "neuer termin", "krank", "krankgeschrieben", "attest"])) return "appointment_change";
+  if (includesAnyV9(frage, ["unterschreiben", "soll ich unterschreiben", "aufhebungsvertrag", "schuldanerkenntnis", "lohnabtretung", "vergleich", "vollmacht", "verzicht"])) return "sign_warning";
+  if (isReplyRequestV9(frage, frageMode)) return "reply";
+  if (String(frageMode || "").toLowerCase() === "next_steps" || includesAnyV9(frage, ["was soll ich tun", "was muss ich tun", "was jetzt", "nächster schritt", "naechster schritt", "wie weiter", "was mache ich", "helfen"])) return "next_steps";
+  if (String(frageMode || "").toLowerCase() === "deadline" || includesAnyV9(frage, ["frist", "bis wann", "termin", "deadline", "datum"])) return "deadline";
+  if (String(frageMode || "").toLowerCase() === "consequence" || includesAnyV9(frage, ["was passiert", "wenn ich nichts", "ignorieren", "nicht mache", "folge", "schlimmste"])) return "consequence";
+  if (includesAnyV9(frage, ["unterlagen", "dokumente", "was brauche ich", "anhängen", "anhaengen", "mitschicken", "nachreichen"])) return "attachments";
+  if (includesAnyV9(frage, ["telefon", "anrufen", "was soll ich sagen", "telefonieren", "call"])) return "phone_script";
+  if (includesAnyV9(frage, ["einfach erklären", "einfach erklaeren", "verstehe nicht", "kurz erklären", "kurz erklaeren", "was bedeutet", "was ist das"])) return "explain_simple";
+  if (includesAnyV9(frage, ["darf ich ignorieren", "muss ich reagieren", "muss ich was machen", "muss ich überhaupt", "muss ich ueberhaupt", "nichts tun"])) return "must_react";
+  if (includesAnyV9(frage, ["widerspruch", "einspruch", "ablehnung", "nicht einverstanden", "bescheid falsch"])) return "objection";
+  if (includesAnyV9(frage, ["erstattung", "zurückbekommen", "zurueckbekommen", "übernimmt", "uebernimmt", "krankenkasse zahlt", "versicherung zahlt"])) return "reimbursement";
+  if (includesAnyV9(frage, ["details", "wofür", "wofuer", "welche behandlung", "was wurde gemacht", "positionen", "berechnung", "vorwurf", "zeuge", "goz", "bema"])) return "detail";
+  return "free";
+}
+
+function detectLetterDomainV9(context = "", meta = {}) {
+  const text = `${context || ""}\n${metaTextV9(meta)}`;
+  if (isBankPkontoContextV9(text, meta)) return "bank_konto";
+  if (includesAnyV9(text, ["ausländerbehörde", "auslaenderbehoerde", "aufenthaltstitel", "fiktionsbescheinigung", "abschiebung", "duldung", "visum", "migration", "bamf"])) return "aufenthalt";
+  if (includesAnyV9(text, ["mieterhöhung", "mieterhoehung", "räumung", "raeumung", "kündigung wohnung", "kuendigung wohnung", "vermieter", "hausverwaltung", "nebenkosten", "kaution", "schimmel", "miete"])) return "wohnung";
+  if (includesAnyV9(text, ["arbeitgeber", "arbeitsvertrag", "aufhebungsvertrag", "abmahnung", "kündigung arbeit", "kuendigung arbeit", "lohn", "gehalt", "lohnabtretung", "schuldanerkenntnis", "arbeitszeit"])) return "arbeit";
+  if (includesAnyV9(text, ["gericht", "amtsgericht", "landgericht", "staatsanwaltschaft", "polizei", "anklageschrift", "strafbefehl", "ladung", "zeuge", "beschuldigter", "angeklagter", "geldauflage", "bußgeld", "bussgeld", "anhörung", "anhoerung"])) return "gericht_polizei";
+  if (includesAnyV9(text, ["jugendamt", "sorgerecht", "unterhalt", "familienkasse", "kindergeld", "elterngeld", "kind", "kita", "schule", "klassenfahrt", "fehlzeiten"])) return "familie_schule";
+  if (includesAnyV9(text, ["jobcenter", "bürgergeld", "buergergeld", "sozialamt", "wohngeld", "leistungsbescheid", "aufrechnung", "rückforderung", "rueckforderung", "sanktion", "minderung", "bg-nummer"])) return "sozialleistung";
+  if (includesAnyV9(text, ["krankenkasse", "pflegekasse", "pflegegrad", "md", "medizinischer dienst", "krankengeld", "reha", "hilfsmittel", "arztbrief", "befund", "krankenhaus", "zuzahlung", "aok", "tk", "barmer", "dak"])) return "gesundheit_pflege";
+  if (includesAnyV9(text, ["finanzamt", "steuer", "steuernummer", "einkommensteuer", "umsatzsteuer", "säumniszuschlag", "saeumniszuschlag", "vollstreckungsstelle"])) return "steuer";
+  if (includesAnyV9(text, ["rundfunkbeitrag", "beitragsservice", "beitragskonto", "ard zdf", "deutschlandradio"])) return "rundfunk";
+  if (includesAnyV9(text, ["inkasso", "gläubiger", "glaeubiger", "forderung", "mahnung", "vollstreckung", "gerichtsvollzieher", "mahnbescheid", "vollstreckungsbescheid", "ratenzahlung", "schuld"])) return "geld_schulden";
+  if (includesAnyV9(text, ["zahnarzt", "zahnärzt", "zahnaerzt", "dzr", "goz", "bema", "zahnersatz", "labor", "materialkosten"])) return "rechnung_gesundheit";
+  if (includesAnyV9(text, ["versicherung", "haftpflicht", "kfz", "schaden", "police", "versicherungsnummer", "rechtsschutz", "hausrat"])) return "versicherung";
+  if (includesAnyV9(text, ["strom", "gas", "internet", "handyvertrag", "abo", "fitnessstudio", "kündigung", "kuendigung", "widerruf", "vertrag", "preiserhöhung", "preiserhoehung"])) return "vertrag";
+  if (includesAnyV9(text, ["phishing", "fake", "betrug", "link", "paket-sms", "gewinnspiel", "daten eingeben", "paypal", "bankdaten"])) return "betrug";
+  if (includesAnyV9(text, ["rechnung", "zahlungsziel", "zahlungserinnerung", "betrag", "gebühr", "gebuehr"])) return "rechnung_mahnung";
+  return "alltag_allgemein";
+}
+
+function getPrimaryRefV9(meta = {}) {
+  const refs = [];
+  if (Array.isArray(meta.referenzen)) refs.push(...meta.referenzen);
+  if (Array.isArray(meta.referenzen_erkannt_roh)) refs.push(...meta.referenzen_erkannt_roh);
+  [meta.aktenzeichen, meta.aktenzeichen_gericht, meta.aktenzeichen_staatsanwaltschaft, meta.kundennummer, meta.beitragsnummer, meta.steuernummer, meta.versicherungsnummer, meta.rechnungsnummer, meta.bg_nummer].forEach((x) => { if (x) refs.push(x); });
+  return refs.map((x) => cleanV9(x)).find((x) => x && !/bitte|prüfen|pruefen|unbekannt/i.test(x)) || "";
+}
+
+function getAmountV9(meta = {}) {
+  return cleanV9(meta.betrag || meta.gesamtbetrag || meta.forderung || "");
+}
+
+function getDeadlineV9(meta = {}) {
+  return cleanV9(meta.frist || meta.termin || meta.deadline || "");
+}
+
+function getRecipientV9(meta = {}, context = "") {
+  const all = `${metaTextV9(meta)}\n${context || ""}`;
+  const mail = all.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if (mail && mail[0]) return mail[0];
+  return cleanV9(meta.absender || meta.absender_kurz || meta.absender_original || "zuständige Stelle laut Schreiben");
+}
+
+function getNameV9(meta = {}) {
+  const candidates = [meta.person, meta.name, meta.betroffene_person, meta.empfaenger, meta.empfänger, meta.kunde, meta.patient, meta.antragsteller];
+  return candidates.map((x) => cleanV9(x || "")).find((x) => x && !/bitte|prüfen|pruefen|unbekannt/i.test(x) && x.length >= 3 && x.length <= 80) || "";
+}
+
+function extractRateV9(text = "") {
+  const s = normV9(text).replace(/,/g, ".");
+  if (!includesAnyV9(s, ["€", "eur", "euro", "monat", "rate", "raten", "zahlen"])) return "";
+  const m = s.match(/(\d{1,5}(?:\.\d{1,2})?)\s*(?:€|eur|euro)?/i);
+  if (!m) return "";
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return `${m[1].replace(".", ",")} € monatlich`;
+}
+
+function closingNameV9(meta = {}, noPlaceholders = false) {
+  const name = getNameV9(meta);
+  if (name) return `\n\n${name}`;
+  return noPlaceholders ? "" : "\n\n[Name]";
+}
+
+function subjectByIntentV9(domain, intent, meta = {}) {
+  const ref = getPrimaryRefV9(meta);
+  const base = (() => {
+    if (intent === "no_money") return "Bitte um Stundung / Zahlungsaufschub";
+    if (intent === "cannot_pay" || intent === "rate_given") return "Bitte um Ratenzahlung / Zahlungsaufschub";
+    if (intent === "proof_sent") return "Nachweis erneut eingereicht";
+    if (intent === "already_paid") return "Zahlung bereits erfolgt";
+    if (intent === "claim_wrong") return "Bitte um Prüfung des Vorgangs";
+    if (intent === "need_more_time") return "Bitte um Fristverlängerung";
+    if (intent === "appointment_change") return "Bitte um neuen Termin";
+    if (domain === "bank_konto") return "Bitte um Prüfung der Kontopfändung / P-Konto";
+    if (domain === "vertrag") return "Bitte um Prüfung / Bestätigung";
+    if (domain === "wohnung") return "Bitte um Prüfung Ihres Schreibens";
+    return "Bitte um Prüfung Ihres Schreibens";
+  })();
+  return ref ? `${base} – ${ref}` : base;
+}
+
+function emailHeaderV9(domain, intent, meta = {}, context = "", noPlaceholders = false) {
+  const recipient = getRecipientV9(meta, context);
+  return `Empfänger: ${recipient}\n\nBetreff: ${subjectByIntentV9(domain, intent, meta)}\n\nSehr geehrte Damen und Herren,`;
+}
+
+function buildProfessionalMessageV9({ domain, intent, meta = {}, context = "", frage = "", noPlaceholders = false }) {
+  const amount = getAmountV9(meta);
+  const ref = getPrimaryRefV9(meta);
+  const refLine = ref ? `\n\nZuordnung: ${ref}` : "";
+  const close = `\n\nMit freundlichen Grüßen${closingNameV9(meta, noPlaceholders)}`;
+  const header = emailHeaderV9(domain, intent, meta, context, noPlaceholders);
+  const rate = extractRateV9(frage) || extractRateV9(context);
+
+  if (domain === "bank_konto") return buildPkontoReplyTemplate(meta, "de", context);
+
+  if (intent === "no_money") {
+    return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}\n\nIch kann den geforderten Betrag derzeit nicht zahlen.\n\nIch bitte daher um Stundung beziehungsweise Zahlungsaufschub. Bitte prüfen Sie außerdem, ob bis zur Entscheidung über meinen Antrag keine weiteren Maßnahmen eingeleitet oder fortgeführt werden.\n\nBitte teilen Sie mir schriftlich mit, welche Unterlagen Sie dafür benötigen.${close}`);
+  }
+
+  if (intent === "cannot_pay" || intent === "rate_given") {
+    const rateText = rate ? `Ich schlage eine monatliche Zahlung von ${rate} vor.` : "Bitte prüfen Sie, ob eine Ratenzahlung oder ein Zahlungsaufschub möglich ist.";
+    const caution = domain === "geld_schulden" ? "\n\nDiese Nachricht erfolgt ohne Anerkennung einer Rechtspflicht." : "";
+    return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}${amount ? `\n\nEs geht um den Betrag von ${amount}.` : ""}\n\n${rateText}\n\nBitte bestätigen Sie mir schriftlich, ob Sie damit einverstanden sind oder welche weitere Lösung möglich ist.${caution}${close}`);
+  }
+
+  if (intent === "proof_sent") {
+    return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}\n\nDer angeforderte Nachweis wurde bereits eingereicht. Vorsorglich reiche ich ihn erneut ein beziehungsweise bitte um erneute Prüfung.\n\nBitte setzen Sie weitere Maßnahmen bis zur Prüfung aus und bestätigen Sie mir den Eingang schriftlich.${close}`);
+  }
+
+  if (intent === "already_paid") {
+    return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}\n\nDer Betrag wurde nach meinem Kenntnisstand bereits bezahlt. Einen Zahlungsnachweis kann ich bei Bedarf vorlegen beziehungsweise füge ich bei.\n\nBitte prüfen Sie den Vorgang und bestätigen Sie mir schriftlich, dass keine weitere Forderung besteht.${close}`);
+  }
+
+  if (intent === "claim_wrong") {
+    return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}\n\nIch kann die geltend gemachte Forderung derzeit nicht nachvollziehen.\n\nBitte senden Sie mir eine nachvollziehbare Aufstellung, die Grundlage der Forderung sowie vorhandene Nachweise zu.\n\nBis zur Klärung bitte ich darum, keine weiteren Maßnahmen einzuleiten.\n\nDiese Nachricht erfolgt ohne Anerkennung einer Rechtspflicht.${close}`);
+  }
+
+  if (intent === "need_more_time") {
+    return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}\n\nDie angeforderten Unterlagen beziehungsweise die erforderliche Rückmeldung kann ich nicht vollständig innerhalb der gesetzten Frist einreichen.\n\nIch bitte daher um eine angemessene Fristverlängerung. Fehlende Unterlagen reiche ich schnellstmöglich nach.\n\nBitte bestätigen Sie mir die Fristverlängerung schriftlich.${close}`);
+  }
+
+  if (intent === "appointment_change") {
+    const sick = includesAnyV9(frage, ["krank", "krankgeschrieben", "attest"]);
+    return cleanV9(`${header}\n\nich beziehe mich auf den genannten Termin.${refLine}\n\n${sick ? "Ich kann den Termin aus gesundheitlichen Gründen nicht wahrnehmen." : "Ich kann den Termin leider nicht wahrnehmen."}\n\nIch bitte um einen neuen Termin und um kurze schriftliche Bestätigung.\n\nFalls Unterlagen benötigt werden, teilen Sie mir dies bitte mit.${close}`);
+  }
+
+  if (intent === "objection") {
+    return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}\n\nIch bitte um erneute Prüfung der Entscheidung. Soweit erforderlich, lege ich vorsorglich Widerspruch ein.\n\nBitte senden Sie mir eine nachvollziehbare Begründung und teilen Sie mir mit, welche Unterlagen noch benötigt werden.${close}`);
+  }
+
+  return cleanV9(`${header}\n\nich beziehe mich auf Ihr Schreiben.${refLine}\n\nBitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.\n\nFalls weitere Unterlagen benötigt werden, bitte ich um kurze Mitteilung.${close}`);
+}
+
+function buildPkontoReplyTemplate(meta = {}, lang = "de", context = "") {
+  const noPlaceholders = wantsNoPlaceholdersV9(context);
+  const recipient = getRecipientV9(meta, context);
+  const ref = getPrimaryRefV9(meta);
+  const subject = ref ? `Bitte um Prüfung der Kontopfändung / P-Konto – ${ref}` : "Bitte um Prüfung der Kontopfändung / P-Konto";
+  const personClose = closingNameV9(meta, noPlaceholders);
+  const already = userSaysAlreadyPkontoV9(context) || Boolean(meta.pkonto_already_possible) || Boolean(meta.bank_pkonto);
+
+  if (already) {
+    return cleanV9(`Ja. Hier ist eine professionelle E-Mail an die Bank:\n\nEmpfänger: ${recipient}\n\nBetreff: ${subject}\n\nSehr geehrte Damen und Herren,\n\nich beziehe mich auf Ihr Schreiben zur Kontopfändung.\n\nDas betroffene Konto wird nach meinem Kenntnisstand bereits als Pfändungsschutzkonto (P-Konto) geführt.\n\nBitte prüfen Sie den Vorgang und bestätigen Sie mir schriftlich:\n\n- ob das Konto aktuell als P-Konto geführt wird,\n- welcher Freibetrag derzeit geschützt ist,\n- ob eine zusätzliche P-Konto-Bescheinigung erforderlich ist,\n- welche Beträge aktuell gesperrt oder freigegeben sind,\n- welche weiteren Schritte jetzt notwendig sind.\n\nBitte teilen Sie mir außerdem mit, ob und wann eine Auszahlung im Rahmen des geschützten Freibetrags möglich ist.\n\nBis zur Klärung bitte ich darum, keine unnötigen weiteren Maßnahmen zu veranlassen.\n\nMit freundlichen Grüßen${personClose}`);
+  }
+
+  return cleanV9(`Ja. Hier ist eine professionelle E-Mail an die Bank:\n\nEmpfänger: ${recipient}\n\nBetreff: ${subject}\n\nSehr geehrte Damen und Herren,\n\nich beziehe mich auf Ihr Schreiben zur Kontopfändung.\n\nBitte prüfen Sie den Vorgang und teilen Sie mir schriftlich mit:\n\n- ob das betroffene Konto bereits als Pfändungsschutzkonto (P-Konto) geführt wird,\n- welcher Freibetrag derzeit geschützt ist,\n- ob eine zusätzliche P-Konto-Bescheinigung erforderlich ist,\n- welche Beträge aktuell gesperrt oder freigegeben sind,\n- welche weiteren Schritte jetzt notwendig sind.\n\nFalls das Konto noch nicht als P-Konto geführt wird, bitte ich um Mitteilung, wie die Umstellung schnellstmöglich erfolgen kann.\n\nMit freundlichen Grüßen${personClose}`);
+}
+
+function firstSafeActionV9(domain, intent, meta = {}) {
+  const deadline = getDeadlineV9(meta);
+  const amount = getAmountV9(meta);
+  if (intent === "sign_warning") return "Nicht sofort unterschreiben. Erst prüfen, was du damit bestätigst oder aufgibst.";
+  if (domain === "bank_konto") return "Bank schriftlich kontaktieren und P-Konto-Status, Freibetrag und Freigabe klären.";
+  if (domain === "aufenthalt") return "Frist prüfen und fehlende Unterlagen oder Termin sofort schriftlich klären.";
+  if (domain === "wohnung") return "Nicht ignorieren. Kündigungs-, Frist- oder Zahlungsdaten prüfen und Mieterberatung erwägen.";
+  if (domain === "arbeit") return "Nichts vorschnell unterschreiben und schriftlich um Prüfung oder Bedenkzeit bitten.";
+  if (domain === "gericht_polizei") return "Frist oder Termin ernst nehmen und keine Schuld oder Forderung vorschnell anerkennen.";
+  if (domain === "gesundheit_pflege") return "Bescheid, Frist und fehlende Unterlagen prüfen; bei Ablehnung Widerspruchsfrist beachten.";
+  if (domain === "geld_schulden") return "Forderung zuerst prüfen und bei Unklarheit eine Aufstellung verlangen.";
+  if (deadline) return `Frist/Termin prüfen: ${deadline}.`;
+  if (amount) return `Betrag prüfen: ${amount}.`;
+  return "Brief aufbewahren und prüfen, ob Frist, Termin, Geld oder Unterlagen betroffen sind.";
+}
+
+function nextStepsV9(domain, intent, meta = {}) {
+  const steps = [];
+  const amount = getAmountV9(meta);
+  const deadline = getDeadlineV9(meta);
+  const ref = getPrimaryRefV9(meta);
+  if (amount) steps.push(`Betrag prüfen: ${amount}.`);
+  if (deadline) steps.push(`Frist/Termin prüfen: ${deadline}.`);
+  if (ref) steps.push(`Nummer/Aktenzeichen bereithalten: ${ref}.`);
+  steps.push(firstSafeActionV9(domain, intent, meta));
+  return "Das sind die nächsten Schritte:\n" + [...new Set(steps)].slice(0, 4).map((s, i) => `${i + 1}. ${s}`).join("\n");
+}
+
+function attachmentsV9(domain) {
+  const map = {
+    bank_konto: ["Schreiben der Bank", "Kontodaten/Kundennummer", "P-Konto-Bescheinigung, falls vorhanden", "Nachweise für höheren Freibetrag, falls nötig"],
+    aufenthalt: ["Schreiben der Ausländerbehörde", "Pass/Ausweis", "Aufenthaltstitel/Fiktionsbescheinigung", "geforderte Nachweise"],
+    wohnung: ["Mietvertrag", "Schreiben vom Vermieter", "Zahlungsnachweise", "Fotos/Nachweise bei Mängeln"],
+    arbeit: ["Arbeitsvertrag", "Schreiben vom Arbeitgeber", "Lohnabrechnungen", "Krankmeldung/Attest, falls relevant"],
+    gesundheit_pflege: ["Bescheid/Rechnung", "Versichertennummer", "ärztliche Unterlagen", "Verordnung/Attest, falls vorhanden"],
+    geld_schulden: ["Forderungsschreiben", "Zahlungsnachweise", "Vertrag/Rechnung", "Aktenzeichen/Kundennummer"],
+    gericht_polizei: ["Gerichtsschreiben", "Aktenzeichen", "Nachweise", "Termindaten"],
+    sozialleistung: ["Bescheid", "BG-Nummer/Kundennummer", "Nachweise", "Kontoauszüge nur wenn verlangt"]
+  };
+  const items = map[domain] || ["Schreiben selbst", "Aktenzeichen/Kundennummer", "Nachweise", "deine Kontaktdaten"];
+  return "Wahrscheinlich brauchst du:\n" + items.map((x) => `- ${x}`).join("\n");
+}
+
+function consequenceV9(domain, meta = {}) {
+  const risk = cleanV9(meta.risiko_kurz || meta.folge_wenn_nichts || "");
+  if (risk) return `Mögliche Folge: ${risk}\n\nNächster sicherer Schritt: ${firstSafeActionV9(domain, "consequence", meta)}`;
+  const map = {
+    bank_konto: "Geld über dem geschützten Freibetrag kann gesperrt oder abgeführt werden.",
+    wohnung: "Bei Wohnungsthemen können Kündigung, Kosten oder weitere Schritte drohen.",
+    arbeit: "Bei Arbeitsthemen können Fristen, Lohn oder Kündigungsschutz betroffen sein.",
+    aufenthalt: "Bei Aufenthaltsthemen können wichtige Fristen oder der Aufenthaltsstatus betroffen sein.",
+    gericht_polizei: "Bei Gericht/Polizei können Fristen, Termine oder weitere Maßnahmen folgen.",
+    geld_schulden: "Weitere Mahnungen, Kosten oder Vollstreckung können folgen.",
+    steuer: "Mahnkosten, Säumniszuschläge oder Vollstreckung können folgen.",
+    gesundheit_pflege: "Leistungen, Erstattung oder Fristen können betroffen sein."
+  };
+  return `${map[domain] || "Je nach Brief können Nachteile entstehen."}\n\nNächster sicherer Schritt: ${firstSafeActionV9(domain, "consequence", meta)}`;
+}
+
+function phoneScriptV9(meta = {}) {
+  const ref = getPrimaryRefV9(meta) || "Nummer aus dem Schreiben";
+  return cleanV9(`Sag am Telefon kurz:\n\nGuten Tag, mein Name ist ...\nIch rufe wegen Ihres Schreibens an.\nMeine Nummer / mein Aktenzeichen ist: ${ref}.\nIch möchte wissen, was ich jetzt konkret tun muss.\nKönnen Sie mir das bitte auch schriftlich bestätigen?`);
+}
+
+function buildUniversalDeterministicChat({ frage, frageMode, meta, briefText, kurz, details, historyText, lang }) {
+  const context = buildContextV9({ frage, meta, briefText, kurz, details, historyText });
+  const domain = detectLetterDomainV9(context, meta);
+  const intent = detectUserIntentV9(frage, frageMode, historyText);
+  const noPlaceholders = wantsNoPlaceholdersV9(`${frage}\n${historyText}`);
+
+  if (intent === "smalltalk") return smalltalkReplyV9(lang);
+
+  // Nutzer-Korrektur gewinnt gegen alte Briefanalyse.
+  if (domain === "bank_konto" && userSaysAlreadyPkontoV9(`${frage}\n${historyText}`) && intent !== "reply") {
+    return "Verstanden. Dann geht es nicht darum, ein neues P-Konto zu beantragen.\n\nJetzt muss die Bank schriftlich bestätigen, dass das Konto als P-Konto geführt wird, welcher Freibetrag gilt und welche Beträge gesperrt oder freigegeben sind.";
+  }
+
+  if (intent === "reply") {
+    return buildProfessionalMessageV9({ domain, intent, meta, context, frage, noPlaceholders });
+  }
+
+  if (["no_money", "cannot_pay", "rate_given", "proof_sent", "already_paid", "claim_wrong", "need_more_time", "appointment_change", "objection"].includes(intent)) {
+    // Erst kurz führen. Wenn der Nutzer ausdrücklich eine E-Mail wollte, wäre intent reply.
+    if (intent === "no_money") return "Dann nicht sofort eine Rate vorschlagen. Der sichere Schritt ist Stundung oder Zahlungsaufschub.\n\nSchreibe der Stelle, dass du aktuell nicht zahlen kannst, und bitte um Aussetzung weiterer Maßnahmen bis zur Entscheidung.";
+    if (intent === "cannot_pay") return "Dann nicht ignorieren. Prüfe zuerst, ob Betrag und Forderung stimmen.\n\nWenn du nicht alles auf einmal zahlen kannst, ist Ratenzahlung oder Stundung der nächste Schritt. Welche monatliche Rate wäre realistisch?";
+    if (intent === "rate_given") return buildProfessionalMessageV9({ domain, intent, meta, context, frage, noPlaceholders });
+    if (intent === "proof_sent") return "Dann den Nachweis vorsorglich erneut senden.\n\nKurz schreiben: Der Nachweis wurde bereits eingereicht. Ich füge ihn erneut bei und bitte um Prüfung. Bis zur Prüfung bitte keine weiteren Maßnahmen.";
+    if (intent === "already_paid") return "Dann keine Ratenzahlung anbieten. Sende den Zahlungsnachweis und bitte um Prüfung.\n\nWichtig: Kontoauszug, Quittung oder Überweisungsbeleg bereithalten.";
+    if (intent === "claim_wrong") return "Dann die Forderung nicht anerkennen. Verlange eine nachvollziehbare Aufstellung und Nachweise.\n\nBis zur Klärung keine Zahlung zusagen.";
+    if (intent === "need_more_time") return "Dann vor Ablauf der Frist schriftlich Fristverlängerung beantragen.\n\nSag kurz, dass Unterlagen fehlen oder du mehr Zeit brauchst, und bitte um schriftliche Bestätigung.";
+    if (intent === "appointment_change") return "Dann den Termin sofort schriftlich absagen oder verschieben.\n\nWenn Krankheit der Grund ist, Attest/Krankmeldung anhängen oder Nachreichung ankündigen.";
+    if (intent === "objection") return "Dann zuerst Frist und Grund prüfen. Wenn du nicht einverstanden bist, kann ein Widerspruch sinnvoll sein.\n\nBei wichtigen Bescheiden: lieber kurz fristwahrend reagieren und Begründung nachreichen.";
+  }
+
+  if (intent === "sign_warning") return "Nicht sofort unterschreiben. Erst prüfen, was du damit bestätigst, anerkennst oder aufgibst.\n\nBesonders vorsichtig bei Aufhebungsvertrag, Schuldanerkenntnis, Lohnabtretung, Vergleich oder Verzicht.";
+  if (intent === "next_steps") return nextStepsV9(domain, intent, meta);
+  if (intent === "attachments") return attachmentsV9(domain);
+  if (intent === "consequence") return consequenceV9(domain, meta);
+  if (intent === "phone_script") return phoneScriptV9(meta);
+  if (intent === "must_react") return (getDeadlineV9(meta) || getAmountV9(meta) || ["bank_konto", "gericht_polizei", "wohnung", "arbeit", "aufenthalt"].includes(domain)) ? "Ja, wahrscheinlich solltest du reagieren. Prüfe Frist, Termin, Betrag oder Risiko und kläre es schriftlich." : "Unklar. Wenn keine Frist, kein Termin, kein Geld und keine Pflicht genannt wird, kann es auch nur eine Information sein. Bewahre den Brief trotzdem auf.";
+  if (intent === "detail") return "Lade bitte die Seite oder den Ausschnitt mit den Details hoch. Dann lese ich genau heraus, worum es geht, ohne etwas zu erfinden.";
+  if (intent === "explain_simple") return `Kurz gesagt: Es geht um einen Brief aus dem Bereich ${domain.replace(/_/g, " ")}.\n\nDer sichere nächste Schritt ist: ${firstSafeActionV9(domain, intent, meta)}`;
+  if (intent === "reimbursement") return "Eine Erstattung kann möglich sein, aber nicht versprechen. Prüfe Rechnung/Bescheid und frage schriftlich bei Krankenkasse, Versicherung oder zuständiger Stelle nach.";
+
+  return "";
+}
+
+function postProcessQuestionAnswer(answer = "", meta = {}) {
+  let out = cleanV9(answer || "");
+  const safeReplacement = "Bitte senden Sie mir eine aktuelle Forderungsaufstellung zu.";
+  out = out.replace(new RegExp("Ich bestätige die offene Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("Ich bestätige die Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("ich bestätige[^.?!]*Forderung[^.?!]*(?:[.?!]|$)", "gi"), safeReplacement);
+  out = out.replace(new RegExp("monatlich\\s+monatlich", "gi"), "monatlich");
+  out = out.replace(/P-Konto beantragen/gi, "P-Konto-Status prüfen");
+  out = out.replace(/Konto in ein P-Konto umwandeln/gi, "P-Konto-Status prüfen lassen");
+  out = out.replace(/Umwandlung in ein P-Konto/gi, "Prüfung des P-Konto-Status");
+  return cleanV9(out);
+}
+
+// =====================================================
+// ENDE HILFE24 V9 CHAT-ROUTER
+// =====================================================
 
 app.listen(PORT, () => {
   console.log("Hilfe24 Server laeuft auf Port " + PORT);
