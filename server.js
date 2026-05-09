@@ -705,6 +705,35 @@ function getSender(meta = {}) {
   return normalizeString(meta.absender_kurz || meta.absender_original || meta.absender || "");
 }
 
+// V15.0.1 Fix: Helper wurde in buildFinalPayloadFromInfo/buildFallbackPayloadFromInfo genutzt,
+// war aber nicht definiert. Ohne diese Funktion bricht /api/erkennen mit
+// "labelForBrief is not defined" ab.
+function labelForBrief(meta = {}) {
+  const raw = normalizeString(meta.briefart || meta.briefart_label || meta.art || "");
+  const ctx = buildContext(meta);
+  const domain = detectDomain(ctx);
+
+  if (raw && !/^(unklar|nicht erkennbar|unknown)$/i.test(raw)) return raw;
+
+  const labels = {
+    jobcenter: "Jobcenter / Behörde",
+    court: "Gericht / Ladung",
+    staatsanwaltschaft: "Staatsanwaltschaft / Justiz",
+    inkasso: "Inkasso / Forderung",
+    beitragsservice: "Rundfunkbeitrag / Beitragsservice",
+    finanzamt: "Finanzamt / Steuer",
+    krankenkasse: "Krankenkasse / Gesundheit",
+    pflegekasse: "Pflegekasse / Pflege",
+    rentenversicherung: "Rentenversicherung",
+    vertrag: "Vertrag / Versicherung / Abo",
+    versicherung: "Versicherung / Vertrag",
+    arbeitgeber: "Arbeitgeber / Arbeit",
+    vermieter: "Vermieter / Wohnen"
+  };
+
+  return labels[domain] || "Schreiben / Brief";
+}
+
 function getAmount(meta = {}) {
   return normalizeString(meta.betrag || meta.gesamtbetrag || meta.forderung || "");
 }
