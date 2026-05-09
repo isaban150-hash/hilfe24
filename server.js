@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v12.3-complex-case-intent" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v13-meta-chat-logic" });
 });
 
 function getTodayGerman() {
@@ -1677,26 +1677,10 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
   if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(inferIntentFromHistory(historyText || context));
 
-  // Advice Mode: normale Fragen zuerst beantworten. Keine E-Mail/PDF-Frage am Anfang.
-  if (intent === "komplexer_verfahrensfall") return buildComplexCaseAdvice(meta);
-  if (intent === "erstattung_kostenuebernahme") return buildReimbursementAdvice(meta);
-  if (intent === "schon_bezahlt") return buildPaidAdvice(meta);
-  if (intent === "schon_geschickt") return buildSentProofAdvice(meta);
-  if (intent === "zahlungsproblem" || intent === "ratenzahlung") return buildPaymentAdvice(meta);
-  if (intent === "detailfrage") return buildDetailAdvice(meta, context);
-  if (intent === "sozialleistung") return buildSocialAdvice(meta);
-  if (intent === "fristfrage") return buildDeadlineAdvice(meta);
-  if (intent === "folgenfrage") return buildConsequenceAdvice(meta);
-  if (intent === "handlungsfrage") return buildCoreNextSteps(meta);
-  if (intent === "verstaendnisfrage") return buildUnderstandingAnswer(meta);
-  if (intent === "rechtshandlung") {
-    return cleanText(`Prüfe zuerst, ob im Brief eine Frist oder bestimmte Form genannt ist.
-
-Wenn du kündigen, widerrufen oder widersprechen willst, sollte der Text vorsichtig formuliert werden und keine unnötige Schuld oder Forderung anerkennen.
-
-Wenn du möchtest, schreibe ich dir daraus eine E-Mail oder einen PDF-Brief.`);
-  }
-
+  // V13: Normale Beratungsfragen NICHT mehr hart per Stichwort-Router beantworten.
+  // Der alte Router hat bei komplexen Sätzen zu oft nur Einzelwörter erkannt
+  // (z. B. Jobcenter, bezahlt, Frist) und dadurch die echte Nutzerabsicht verfehlt.
+  // Ab hier übernimmt der Meta-Chat-Prompt die Antwort mit Ziel + Zielstelle + Kontext + Risiko.
   return "";
 }
 
@@ -1865,8 +1849,8 @@ app.post("/api/frage", async (req, res) => {
     if (!briefText && !erklaerungKurz && !erklaerungDetails && !Object.keys(meta).length) return res.status(400).json({ ok: false, error: "Kein Kontext vorhanden" });
     if (frage.length > 1500) return res.status(400).json({ ok: false, error: "Die Frage ist zu lang. Bitte kürzer formulieren." });
 
-    // V9.6: Qualitäts-Router läuft bewusst VOR Gemini.
-    // Alte Testbrief-Sonderfälle dominieren nicht mehr.
+    // V13: Nur Write-/Format-Router läuft vor Gemini.
+    // Normale Chatfragen gehen in die Meta-Chat-Logik, damit nicht einzelne Stichwörter dominieren.
     const forcedAnswer = buildForcedChatAnswer({
       frage,
       frageMode,
@@ -1880,25 +1864,97 @@ app.post("/api/frage", async (req, res) => {
     if (forcedAnswer) return res.json({ ok: true, antwort: forcedAnswer });
 
     const raw = await callGemini([{ text: `
-Du bist Hilfe24, ein einfacher Alltagshelfer für Briefe.
+Du bist Hilfe24, ein einfacher Fall-Chat für schwierige Briefe.
 
 Sprache des Nutzers: ${langMeta.label}
 Heutiges Datum: ${getTodayGerman()}
 
 ${buildHilfe24CoreRules(langMeta.label)}
 
-Regeln:
-- Beantworte zuerst die echte Frage des Nutzers.
-- Erkenne die Absicht, nicht nur einzelne Wörter.
-- Zielwörter schlagen Statuswörter: Wenn Nutzer nach Krankenkasse, Versicherung, Geld zurück, Erstattung, Kostenübernahme oder Teil-Erstattung fragt, ist das eine Erstattungsfrage – auch wenn er zusätzlich "bezahlt" schreibt.
-- Bei Erstattung/Kostenübernahme: Rechnung + Zahlungsnachweis + ggf. Leistungsaufstellung an Krankenkasse/Versicherung empfehlen. Nicht zuerst Zahlungsnachweis an die fordernde Stelle erklären.
-- Antworte kurz, praktisch und menschlich.
-- Nicht auf alte Testbriefe fixieren.
-- P-Konto nur erwähnen, wenn wirklich P-Konto/Kontopfändung/Freibetrag im Kontext steht.
-- Wenn es um Versicherung/Online-Vertrag/Kredit-Anfrage geht: Widerruf/Kündigung/Vertragsprüfung erklären.
+META-CHAT-LOGIK V13:
+Du beantwortest NICHT einzelne Stichwörter. Du verstehst zuerst die echte Absicht.
+Arbeite immer in dieser Reihenfolge:
+
+1. Nutzerziel erkennen
+   Frage dich: Was will der Nutzer wirklich erreichen?
+   Beispiele: verstehen, zahlen, nicht zahlen, Geld zurückbekommen, Anwalt/Hilfe finden, Frist wissen, Verwechslung klären, Unterlagen nachreichen, Antwort schreiben lassen.
+
+2. Zielstelle erkennen
+   Frage dich: Wer ist für dieses Ziel zuständig?
+   Beispiele: fordernde Stelle, Krankenkasse, Versicherung, Amtsgericht, Staatsanwaltschaft, Anwalt, Jobcenter, Zahnarzt/DZR, Arbeitgeber, Vermieter, Schule, Behörde.
+
+3. Neue Nutzerinfo höher gewichten als den Brief
+   Wenn der Nutzer neue Informationen nennt, musst du sie ernst nehmen.
+   Beispiel: „Ich habe schon bezahlt“, „Ich war Geschädigter“, „Ich habe mit der Staatsanwaltschaft gesprochen“, „Franka bekommt Jobcenter“.
+   Diese Info kann wichtiger sein als die Standarddaten aus dem Brief.
+
+4. Rolle des Briefes bestimmen
+   Der aktuelle Brief kann Hauptquelle, Hintergrund, Beweis, Auslöser oder unvollständig sein.
+   Wiederhole den Brief nicht blind. Nutze ihn nur für sichere Daten: Betrag, Frist, Aktenzeichen, Absender, Person.
+
+5. Risiko prüfen
+   Wenn es rechtlich, medizinisch, finanziell oder verfahrensmäßig heikel ist, keine Garantie geben.
+   Sag klar, was unsicher ist und was geprüft werden muss.
+
+PRIORITÄT:
+Nutzerziel > Zielstelle > neue Nutzerinfo > aktueller Brief > einzelne Stichwörter.
+
+WICHTIGE BEISPIELE:
+- „Ich habe bezahlt. Wie bekomme ich Geld von der Krankenkasse zurück?“
+  Ziel = Erstattung. Zielstelle = Krankenkasse/Versicherung. „bezahlt“ ist nur Hintergrund.
+  Antwort: Rechnung + Zahlungsnachweis + ggf. Leistungsaufstellung bei Krankenkasse einreichen. Erstattung nicht garantieren.
+
+- „Woher bekomme ich einen Anwalt? Franka bekommt Jobcenter.“
+  Ziel = Anwalt/rechtliche Hilfe finden. Zielstelle = Amtsgericht/Rechtsantragstelle oder Anwalt.
+  „Jobcenter“ bedeutet hier: wenig Geld / Beratungshilfe prüfen. Nicht automatisch Befreiung/Nachweis an die Briefstelle.
+  Antwort: Beratungshilfeschein beim Amtsgericht/Rechtsantragstelle prüfen, Jobcenter-Bescheid, Ausweis und Briefe/Aktenzeichen mitnehmen. Bei Strafsache Pflichtverteidiger prüfen lassen.
+
+- „Mehrere Aktenzeichen, mehrere Personen, ich war Geschädigter, Staatsanwaltschaft/Amtsgericht kümmern sich.“
+  Ziel = Verwechslung/Zuständigkeit klären. Zielstelle = Gericht/Staatsanwaltschaft.
+  Antwort: schriftliche Klärung verlangen, welches Aktenzeichen zu welcher Person gehört, wer zahlen muss und warum. Nicht blind zahlen.
+
+- „Ich habe schon bezahlt, warum kommt Mahnung?“
+  Ziel = Zahlungszuordnung klären. Zielstelle = fordernde Stelle.
+  Antwort: nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen, Zuordnung prüfen lassen, Mahnungen stoppen lassen.
+
+- „Welche Behandlung war das?“
+  Ziel = Detail verstehen. Wenn es nicht sichtbar ist, sage klar: Das steht im sichtbaren Schreiben nicht. Detaillierte Rechnung/Leistungsaufstellung anfordern.
+
+- „Ich kann nicht zahlen.“
+  Ziel = Zahlungsproblem lösen. Forderung zuerst prüfen. Wenn plausibel: Ratenzahlung/Stundung vorsichtig anfragen, keine Schuld blind anerkennen.
+
+- „Schreib mir eine Antwort / E-Mail / PDF.“
+  Ziel = Text erstellen. Nur dann E-Mail/PDF-Modus. Wenn Format unklar: E-Mail, PDF-Brief oder beides fragen.
+
+LANGE NUTZERFRAGEN:
+Wenn der Nutzer lang schreibt, fasse zuerst in einem kurzen Satz zusammen, was du verstanden hast.
+Dann gib konkrete Hilfe. Greife nicht nur ein einzelnes Wort heraus.
+
+ANTWORTSTIL:
+- Erste Zeile: direkte Antwort auf die echte Frage.
+- Danach 1 bis 3 kurze Sätze Einordnung.
+- Dann maximal 3 bis 5 konkrete Schritte.
+- Danach optional: „Wenn du möchtest, schreibe ich dir daraus eine E-Mail oder einen PDF-Brief.“
+- Keine langen Romane.
+- Kein falsches Selbstbewusstsein.
+
+HARTE VERBOTE:
+- Keine erfundene Frist.
+- Keine erfundene Behandlung.
+- Keine erfundene Diagnose.
+- Kein sicherer Anspruch, wenn es nur geprüft werden kann.
+- Keine rechtliche Entscheidung ersetzen.
+- Keine alte Briefe oder alte Namen vermischen.
+- Keine falsche Zielstelle.
+- P-Konto nur erwähnen, wenn wirklich P-Konto/Kontopfändung/Freibetrag im aktuellen Kontext steht.
 - Firma/Absender niemals als Unterschrift verwenden.
 - IBAN/BIC/Telefon/Adresse niemals als Aktenzeichen verwenden.
 - Bei offiziellen Antworten an deutsche Stellen: Deutsch verwenden.
+
+WENN ZU KOMPLEX:
+Wenn mehrere Verfahren, Personen, Aktenzeichen, Strafsachen oder widersprüchliche Angaben vorkommen, gib keine endgültige Entscheidung.
+Sage: „Das ist zu komplex für eine sichere App-Antwort. Lass dir das schriftlich von der zuständigen Stelle oder von einem Anwalt/Beratungsstelle prüfen.“
+Gib trotzdem einen sicheren nächsten Schritt.
 
 ERKANNTE DATEN:
 ${JSON.stringify(meta, null, 2)}
