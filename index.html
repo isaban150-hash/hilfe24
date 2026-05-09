@@ -1976,15 +1976,13 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     }
 
     function h24AnswerContainsPdf(text) {
-      const t = String(text || "").toLowerCase();
+      const raw = String(text || "");
       return (
-        t.includes("pdf-brief") ||
-        t.includes("brief als pdf") ||
-        t.includes("pdf:") ||
-        t.includes("pdf brief") ||
-        t.includes("pdf mektup") ||
-        t.includes("pdf letter") ||
-        t.includes("[ort],")
+        /\bpdf\s*-\s*brief\s*:/i.test(raw) ||
+        /\bpdf\s+brief\s*:/i.test(raw) ||
+        /\bbrief\s+als\s+pdf\s*:/i.test(raw) ||
+        /(^|\n)\s*pdf\s*:\s*\n/i.test(raw) ||
+        (/\bsehr geehrte\s+damen\s+und\s+herren\b/i.test(raw) && /\bmit freundlichen\s+grüßen\b/i.test(raw) && /\bbetreff\s*:/i.test(raw))
       );
     }
 
