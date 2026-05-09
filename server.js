@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v14.4-cost-carrier-target-fix" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v14.5-current-goal-override-fix" });
 });
 
 function getTodayGerman() {
@@ -1636,7 +1636,25 @@ function hasCostCarrierCue(text = "") {
 
 function hasCreditorOnlyPaymentCue(text = "") {
   const q = String(text || "").toLowerCase();
-  return /(ratenzahlung|rate|raten|taksit|taksitli|taksitlendirme|stundung|zahlungsaufschub|zahlungsnachweis|schon bezahlt.*mahnung|an dzr|dzr için|an inkasso|an den gläubiger|an den glaeubiger)/i.test(q);
+  return /(ratenzahlung|rate|raten|taksit|taksitli|taksitlendirme|stundung|zahlungsaufschub|zahlungsnachweis|schon bezahlt.*mahnung|an dzr|dzr için|dzr icin|an inkasso|an den gläubiger|an den glaeubiger)/i.test(q);
+}
+
+function inferCurrentWriteIntentFromUserQuestion(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+
+  // V14.5: Die aktuelle Nutzerfrage schlägt die vorherige Chat-Historie.
+  // Beispiel: Vorher fragte der Nutzer nach Erstattung an Versicherung.
+  // Danach schreibt er: „Bana DZR için taksitli ödeme e-postası hazırla“.
+  // Dann muss der neue Entwurf an DZR/Ratenzahlung gehen, nicht weiter an Versicherung.
+  if (hasReimbursementIntent(frage, frageMode) || hasOfficialWriteToCostCarrierCue(q)) return "reimbursement";
+
+  if (/(ratenzahlung|rate|raten|monatlich zahlen|in raten|taksit|taksitli|taksitlendirme|ödeme planı|odeme plani|installments|payment plan|разсроч|rate lunare)/i.test(q)) return "installments";
+  if (/(stundung|zahlungsaufschub|aufschub|erteleme|ödeme erteleme|odeme erteleme)/i.test(q)) return "no_money";
+  if (/(zahlungsnachweis|überweisungsbeleg|ueberweisungsbeleg|schon bezahlt|bereits bezahlt|dekont|ödeme belgesi|odeme belgesi)/i.test(q)) return "paid";
+  if (/(widerruf|widerrufen|kündigung|kuendigung|kündigen|kuendigen|iptal|fesih|cancel|termination)/i.test(q)) return "cancel";
+  if (/(widerspruch|einspruch|bestreiten|stimmt nicht|itiraz|contest|objection)/i.test(q)) return "dispute";
+
+  return "";
 }
 
 function hasOfficialWriteToCostCarrierCue(text = "") {
@@ -1726,7 +1744,7 @@ function detectCoreIntent(frage = "", frageMode = "") {
   if (hasAny(q, ["schon geschickt", "bereits geschickt", "nachweis geschickt", "unterlagen geschickt", "bescheid geschickt", "befreiung geschickt", "habe das geschickt", "dahin geschickt"])) return "schon_geschickt";
   if (hasAny(q, ["jobcenter", "bürgergeld", "buergergeld", "sozialhilfe", "sozialamt", "grundsicherung", "arbeitslosengeld", "alg ii", "alg 2"])) return "sozialleistung";
   if (hasAny(q, ["kein geld", "kann nicht zahlen", "nicht bezahlen", "nicht zahlen", "nicht auf einmal", "zahlungsaufschub", "stundung"])) return "zahlungsproblem";
-  if (hasAny(q, ["ratenzahlung", "rate", "raten", "monatlich zahlen", "in raten"])) return "ratenzahlung";
+  if (hasAny(q, ["ratenzahlung", "rate", "raten", "monatlich zahlen", "in raten", "taksit", "taksitli", "taksitlendirme", "ödeme planı", "odeme plani", "разсроч", "rate", "rate lunare", "installments", "payment plan"])) return "ratenzahlung";
   if (hasAny(q, ["was passiert", "wenn ich nichts", "folge", "konsequenz"])) return "folgenfrage";
   if (hasAny(q, ["frist", "bis wann", "deadline", "termin"])) return "fristfrage";
   if (hasAny(q, ["was soll ich tun", "was muss ich tun", "was kann ich tun", "was jetzt", "nächster schritt", "naechster schritt", "wie weiter"])) return "handlungsfrage";
@@ -1866,10 +1884,13 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   // V14.3: Wenn die aktuelle Frage eine Erstattung/Kostenübernahme verlangt,
   // bleibt dieses Ziel auch im PDF-/E-Mail-Modus erhalten.
   const rememberedWriteIntent = inferIntentFromHistory(historyText || context);
-  const costCarrierWriteNow = hasReimbursementIntent(frage, frageMode) || hasOfficialWriteToCostCarrierCue(frage);
-  const effectiveWriteIntent = (intent === "erstattung_kostenuebernahme" || intent === "reimbursement" || costCarrierWriteNow)
-    ? "reimbursement"
-    : rememberedWriteIntent;
+  const currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+  const costCarrierWriteNow = currentWriteIntent === "reimbursement";
+
+  // V14.5: Aktuelle Nutzerfrage hat Vorrang vor alter Historie.
+  // Sonst bleibt die App nach einer Erstattungsfrage fälschlich auf Versicherung/Krankenkasse hängen.
+  const effectiveWriteIntent = currentWriteIntent
+    || ((intent === "erstattung_kostenuebernahme" || intent === "reimbursement" || costCarrierWriteNow) ? "reimbursement" : rememberedWriteIntent);
 
   if (wantsBoth) return buildEmailAndPdfOutput(meta, context, domain, effectiveWriteIntent);
   if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, effectiveWriteIntent);
