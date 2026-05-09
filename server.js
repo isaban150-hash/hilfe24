@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v9.9-pdf-trigger-name-fix" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v10.1-output-choice-ask" });
 });
 
 function getTodayGerman() {
@@ -1018,6 +1018,27 @@ ${pdfText}`);
 }
 
 
+
+function askOutputChoice(intent = "reply") {
+  const actionMap = {
+    cancel: "eine Kündigung oder einen Widerruf",
+    no_money: "eine Antwort wegen Zahlungsschwierigkeiten",
+    installments: "eine Ratenzahlungs-Anfrage",
+    paid: "eine Nachricht mit Zahlungsnachweis",
+    sent_proof: "eine Nachricht zum Nachweis/Nachreichen",
+    dispute: "eine Prüfungs- oder Widerspruchs-Nachricht",
+    reply: "eine passende Antwort"
+  };
+  const action = actionMap[intent] || actionMap.reply;
+  return cleanText(`Ich kann dir daraus ${action} vorbereiten.
+
+Wie möchtest du es haben?
+
+1. Als E-Mail
+2. Als PDF-Brief zum Herunterladen
+3. Beides`);
+}
+
 function buildNextSteps(meta = {}, domain = "allgemein") {
   if (domain === "vertrag_versicherung") {
     return "1. Prüfe, ob du den Vertrag wirklich wolltest.\n2. Wenn nicht: schriftlich widerrufen und hilfsweise kündigen.\n3. Lastschrift/Abbuchungen prüfen und Bestätigung verlangen.";
@@ -1051,47 +1072,32 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
 
   if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
 
-  // V9.6: Nutzerwunsch gewinnt. Kündigen/Widerrufen darf nicht zur Forderungsprüfung werden.
+  // V10.1: Ausgabeform sauber trennen.
+  // PDF nur bei PDF-Wunsch, E-Mail nur bei E-Mail-Wunsch, beides nur bei beidem.
+  // Wenn der Nutzer nur eine Antwort/Ratenzahlung/etc. möchte, fragt Hilfe24 nach der gewünschten Form.
   if (wantsBoth) {
-    const finalIntent = intent === "cancel" ? "cancel" : (intent || "reply");
-    return buildEmailAndPdfOutput(meta, context, domain, finalIntent === "pdf" ? "reply" : finalIntent);
-  }
-
-  if (intent === "cancel") {
-    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "cancel");
-    return buildProfessionalOutput(meta, context, domain, "cancel");
+    const finalIntent = intent && intent !== "pdf" ? intent : inferIntentFromHistory(historyText || context);
+    return buildEmailAndPdfOutput(meta, context, domain, finalIntent && finalIntent !== "pdf" ? finalIntent : "reply");
   }
 
   if (intent === "pdf") {
     const rememberedIntent = inferIntentFromHistory(historyText || context);
     return buildPdfOnlyOutput(meta, context, domain, rememberedIntent && rememberedIntent !== "reply" ? rememberedIntent : "pdf");
   }
-  if (intent === "reply") {
-    if (wantsPdf) return buildEmailAndPdfOutput(meta, context, domain, "reply");
-    return buildProfessionalOutput(meta, context, domain, "reply");
+
+  const formIntent = intent || "reply";
+
+  if (["cancel", "reply", "no_money", "installments", "paid", "sent_proof", "dispute"].includes(formIntent)) {
+    if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, formIntent === "reply" ? "pdf" : formIntent);
+    if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, formIntent);
+
+    if (formIntent === "no_money" && !wantsWrittenOutput(frage, frageMode)) {
+      return buildNoMoneyShort(meta, domain);
+    }
+
+    return askOutputChoice(formIntent);
   }
 
-  if (intent === "no_money") {
-    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "no_money");
-    if (wantsWrittenOutput(frage, frageMode)) return buildProfessionalOutput(meta, context, domain, "no_money");
-    return buildNoMoneyShort(meta, domain);
-  }
-  if (intent === "installments") {
-    if (wantsPdf) return buildEmailAndPdfOutput(meta, context, domain, "installments");
-    return buildProfessionalOutput(meta, context, domain, "installments");
-  }
-  if (intent === "paid") {
-    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "paid");
-    return buildProfessionalOutput(meta, context, domain, "paid");
-  }
-  if (intent === "sent_proof") {
-    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "sent_proof");
-    return buildProfessionalOutput(meta, context, domain, "sent_proof");
-  }
-  if (intent === "dispute") {
-    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "dispute");
-    return buildProfessionalOutput(meta, context, domain, "dispute");
-  }
   if (intent === "next_steps") return buildNextSteps(meta, domain);
   if (intent === "documents") return "Sende nur Unterlagen, die wirklich zum Schreiben passen. Wichtig sind meist: das Schreiben selbst, die genannte Nummer, Nachweise, Zahlungsbelege oder Bescheide. Wenn du willst, schreibe ich dir eine kurze Nachricht zum Nachreichen.";
   if (intent === "deadline") return meta.frist || meta.termin ? `Frist/Termin: ${meta.frist || meta.termin}. Bitte im Originalbrief prüfen und rechtzeitig reagieren.` : "Ich sehe keine sichere Frist. Bitte prüfe das Originalschreiben oder nutze Daten genauer prüfen.";
@@ -1505,5 +1511,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.9 pdf trigger + name fix");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v10.1 output choice ask");
 });
