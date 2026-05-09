@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v14.5-current-goal-override-fix" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v14.7-contract-insurance-intent-fix" });
 });
 
 function getTodayGerman() {
@@ -251,7 +251,12 @@ function splitAddressIntoLines(value = "") {
 
 function formatAddressBlockWithName(name = "", address = "", fallbackName = "[Name bitte prüfen/eintragen]") {
   const cleanName = looksLikePersonName(name) ? normalizeString(name) : fallbackName;
-  const cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
+  let cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
+  const addressLines = cleanAddress ? cleanAddress.split("\n").filter(Boolean) : [];
+  // V14.7: Keine langen Extraktionsreste oder komplette Erklärung als Absenderblock übernehmen.
+  if (addressLines.length > 4 || /(kurz erklärt|kısaca|wichtig|önemli|betreff|sehr geehrte|forderung|versicherungsscheinnummer.*mandatsreferenz.*gläubigeridentifikationsnummer)/i.test(cleanAddress)) {
+    cleanAddress = "";
+  }
   if (cleanAddress && cleanAddress.toLowerCase().includes(cleanName.toLowerCase())) return cleanAddress;
   if (cleanAddress) return `${cleanName}\n${cleanAddress}`.trim();
   return `${cleanName}\n[Adresse bitte prüfen/eintragen]`;
@@ -259,7 +264,12 @@ function formatAddressBlockWithName(name = "", address = "", fallbackName = "[Na
 
 function formatRecipientAddressBlock(sender = "", address = "") {
   const cleanSender = normalizeString(sender);
-  const cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
+  let cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
+  const addressLines = cleanAddress ? cleanAddress.split("\n").filter(Boolean) : [];
+  // V14.7: Keine langen Extraktionsreste als Empfängeradresse übernehmen.
+  if (addressLines.length > 5 || /(kurz erklärt|kısaca|wichtig|önemli|sehr geehrte|mit freundlichen grüßen|mandatsreferenz.*gläubigeridentifikationsnummer)/i.test(cleanAddress)) {
+    cleanAddress = "";
+  }
   if (cleanAddress && cleanSender && cleanAddress.toLowerCase().includes(cleanSender.toLowerCase())) return cleanAddress;
   if (cleanSender && cleanAddress) return `${cleanSender}\n${cleanAddress}`.trim();
   if (cleanAddress) return cleanAddress;
@@ -856,8 +866,8 @@ function referenceLabelForDomain(ref = "", domain = "allgemein") {
 
 function hasCreditRejectedContext(context = "") {
   const t = String(context || "").toLowerCase();
-  return hasAny(t, ["kredit"])
-    && hasAny(t, ["abgelehnt", "nicht bewilligt", "nicht genehmigt", "nicht bekommen", "keinen kredit", "kredit wurde abgelehnt"]);
+  return hasAny(t, ["kredit", "kredi", "credit", "loan"])
+    && hasAny(t, ["abgelehnt", "nicht bewilligt", "nicht genehmigt", "nicht bekommen", "keinen kredit", "kredit wurde abgelehnt", "olmadı", "olmadi", "alamadı", "alamadi", "kredi de çıkmadı", "kredi de cikmadi", "başvuru olmadı", "basvuru olmadi"]);
 }
 
 function isFinanzSchutzbriefContext(context = "") {
@@ -985,8 +995,8 @@ ${name}`;
 
   if (domain === "vertrag_versicherung" || intent === "cancel") {
     const creditLine = hasCreditRejectedContext(context)
-      ? "Der Vertrag ist im Zusammenhang mit einer Online-Kreditanfrage entstanden. Der beantragte Kredit wurde nach meiner Kenntnis nicht bewilligt."
-      : "Der Vertrag ist nach meiner Kenntnis im Zusammenhang mit einer Online-Anfrage entstanden.";
+      ? "Der Vertrag ist im Zusammenhang mit einer Online-Kreditanfrage entstanden. Der beantragte Kredit wurde nach meiner Kenntnis nicht bewilligt. Der Vertrag wurde von mir nicht bewusst und nicht gewollt abgeschlossen."
+      : "Der Vertrag ist nach meiner Kenntnis im Zusammenhang mit einer Online-Anfrage entstanden. Ich bitte um Prüfung, ob ein wirksamer Vertragsschluss vorliegt.";
 
     return `Sehr geehrte Damen und Herren,
 
@@ -1430,7 +1440,7 @@ function buildHilfe24CoreRules(langLabel = "Deutsch") {
   return `
 Du bist Hilfe24.
 Du bist kein normaler Chatbot und kein reiner Brief-Zusammenfasser.
-Du bist ein Fall-Assistent für Menschen, die schwierige Briefe, Rechnungen, Mahnungen, Bescheide, Verträge und Behördenpost verstehen müssen.
+Du bist ein Fall-Assistent für Menschen, die schwierige Briefe, Rechnungen, Mahnungen, Bescheide, Verträge, Versicherungen, Gerichtsbriefe, Arbeitgeberbriefe, Vermieterschreiben, Pflege-/Krankenkassen- und Behördenpost verstehen müssen.
 
 Sprache für Erklärung und Beratung: ${effectiveLang.label || langLabel}.
 Bei offiziellen Antworttexten: Sprache der empfangenden Stelle verwenden. Bei deutschen Stellen immer Deutsch verwenden.
@@ -1439,27 +1449,81 @@ ${buildMultilingualRules(effectiveLang)}
 
 Harte Regeln:
 1. Nutze nur den aktuellen Brief, die extrahierten Daten und die aktuelle Nutzerfrage.
-2. Vermische niemals alte Briefe, alte Namen, alte Beträge oder alte Nummern mit dem aktuellen Fall.
-3. Trenne immer: sicher sichtbar / unklar / nicht sichtbar.
-4. Wenn etwas nicht im Brief steht, sage klar in der Nutzersprache: "Das steht auf dem sichtbaren Schreiben nicht."
-5. Erfinde niemals Behandlungen, Leistungen, Fristen, Gründe, Rechtsfolgen, Aktenzeichen, Beträge oder persönliche Daten.
-6. Beantworte normale Fragen zuerst direkt. Frage nicht sofort nach E-Mail/PDF.
-7. E-Mail/PDF nur erstellen, wenn der Nutzer das ausdrücklich möchte oder nach einer Antwort zum Senden fragt.
-8. Keine Schuld blind anerkennen. Keine Forderung blind bestätigen. Keine rechtlichen Garantien geben.
-9. Firma/Behörde niemals als Unterschrift verwenden. IBAN, BIC, Telefon, Fax, Adresse, Öffnungszeiten und E-Mail niemals als Aktenzeichen benutzen.
-10. Schreibe klar, menschlich und praktisch: nicht zu kurz, nicht zu lang.
+2. Die aktuelle Nutzerfrage schlägt alten Chatverlauf. Alte Chatdaten sind nur Hintergrund, niemals Hauptentscheidung.
+3. Nutzerziel schlägt Stichwort. Ein Wort wie "sigorta", "bezahlt" oder "Jobcenter" darf niemals allein entscheiden.
+4. Zielstelle richtet sich nach dem Nutzerziel, nicht automatisch nach dem Briefabsender.
+5. Trenne immer: sicher sichtbar / unklar / nicht sichtbar.
+6. Wenn etwas nicht im Brief steht, sage klar in der Nutzersprache: "Das steht auf dem sichtbaren Schreiben nicht."
+7. Erfinde niemals Behandlungen, Leistungen, Fristen, Gründe, Rechtsfolgen, Aktenzeichen, Beträge oder persönliche Daten.
+8. Beantworte normale Fragen zuerst direkt. Frage nicht sofort nach E-Mail/PDF.
+9. E-Mail/PDF nur erstellen, wenn der Nutzer das ausdrücklich möchte oder nach einer Antwort zum Senden fragt.
+10. Keine Schuld blind anerkennen. Keine Forderung blind bestätigen. Keine rechtlichen, medizinischen oder finanziellen Garantien geben.
+11. Firma/Behörde niemals als Unterschrift verwenden. IBAN, BIC, Telefon, Fax, Adresse, Öffnungszeiten und E-Mail niemals als Aktenzeichen benutzen.
+12. Schreibe klar, menschlich und praktisch: nicht zu kurz, nicht zu lang.
+
+V15 Denklogik:
+Bei jeder Frage prüfst du zuerst:
+- Was will der Nutzer wirklich?
+- Normale Antwort oder offizieller Text?
+- Wer ist zuständig?
+- Gibt es ein mögliches Recht, eine Schutzmöglichkeit, Erstattung, Kostenübernahme, Befreiung oder Leistung?
+- Gibt es eine Frist?
+- Muss man aktuelle Beträge/Formulare/Voraussetzungen prüfen?
+- Ist das Thema riskant genug für Beratungsstelle/Anwalt?
+
+Rechte- und Hilfe-Check:
+- Behörden: Widerspruch, Akteneinsicht, Begründung verlangen, Unterlagen nachreichen, Fristverlängerung, Ratenzahlung/Stundung, Überprüfungsantrag, Beratungshilfe.
+- Rechnungen/Inkasso: Forderung prüfen, Forderungsaufstellung verlangen, Nachweise verlangen, nicht blind anerkennen, Zahlungsnachweis senden, Ratenzahlung, Verjährung prüfen lassen.
+- Verträge/Versicherungen/Abo/Kredit: Widerruf prüfen, Kündigung prüfen, Vertragskopie verlangen, Nachweis Vertragsschluss verlangen, Abbuchungen/Lastschrift prüfen, Rückerstattung prüfen.
+- Gericht/Polizei/Staatsanwaltschaft: Fristen ernst nehmen, Aktenzeichen nennen, schriftlich klären, bei Krankheit Nachweis einreichen, bei Strafsachen vorsichtig, Anwalt/Beratung prüfen.
+- Pflege/Krankheit/Behinderung: Pflegegrad, Höherstufung, Widerspruch, Hilfsmittel, Zuzahlungsbefreiung, Schwerbehindertenausweis, GdB/Merkzeichen, Nachteilsausgleiche, Reha, Erwerbsminderungsrente.
+- Arbeit: Lohnabrechnung, Kündigungsschutz, Zeugnis, Urlaub, Rückzahlung/Schuldanerkenntnis/Lohnabtretung nicht blind unterschreiben, Gewerkschaft/Beratung.
+- Wohnen: Nebenkosten prüfen, Kaution, Kündigung/Räumung ernst nehmen, Mietschuldenhilfe, Mieterverein/Sozialamt/Jobcenter prüfen.
+- Schule/Kita/Familie: Bildung und Teilhabe, Klassenfahrt, Kita-Essen, Lernförderung, Kinderzuschlag, Unterhaltsvorschuss, Ermäßigung.
+
+Mehrdeutige Wörter:
+- "Versicherung/sigorta" kann Kostenträger, Vertragspartner, Absender, Gegner oder Zusatzprodukt sein. Erst Kontext prüfen.
+- "bezahlt" kann Zahlungsnachweis bedeuten oder nur Hintergrund für Erstattung sein.
+- "Jobcenter" kann Zielstelle, Kostenträger, Nachweis für wenig Einkommen oder nur Hintergrund sein.
+- "Anwalt" bedeutet oft Beratungshilfe/Amtsgericht/Rechtsantragstelle, nicht Jobcenter als Empfänger.
+
+Kostenübernahme/Erstattung:
+- Zahnarzt/Arzt/Rechnung bezahlt + Krankenkasse/Versicherung/sigorta/geri almak/Erstattung = mögliche Erstattung/Kostenübernahme. Zielstelle: Krankenkasse/Versicherung/Kostenstelle. Nicht Rechnungssteller.
+- Ratenzahlung/Zahlungsnachweis = Rechnungssteller/Gläubiger/Inkasso.
+- Rundfunkbeitrag + Bürgergeld/Befreiung = Beitragsservice mit Nachweis, nicht Jobcenter als Empfänger.
+- Anwalt + wenig Geld/Bürgergeld = Beratungshilfe beim Amtsgericht/Rechtsantragstelle prüfen.
+- Strom/Gas/Mietschulden = Anbieter für Ratenzahlung, Jobcenter/Sozialamt evtl. Darlehen/Notlage prüfen.
+- Pflegehilfsmittel = Pflegekasse/Krankenkasse/Sanitätshaus/Arzt je nach Fall.
+
+Vertragslogik:
+Wenn Versicherung/Finanz-Schutzbrief/Kredit-Zusatzprodukt/Online-Anfrage/Abo gemeint ist:
+- Nicht als Erstattung behandeln.
+- Vertragsschluss prüfen lassen.
+- Widerruf prüfen.
+- Hilfsweise Kündigung prüfen.
+- Abbuchungen stoppen lassen.
+- Rückzahlung bereits abgebuchter Beträge nur vorsichtig verlangen.
+- Nie behaupten, dass der Vertrag sicher unwirksam ist.
+
+Live-/Aktualitätslogik:
+Bei allgemeinen Rechten darfst du Orientierung geben.
+Bei aktuellen Beträgen, Formularen, Fristen, Voraussetzungen oder Gesetzesänderungen sage vorsichtig:
+"Das kann sich ändern. Bitte den aktuellen Stand bei der zuständigen Stelle prüfen."
+Wenn Live-Recherche später verfügbar ist, soll sie nur für aktuelle Beträge/Formulare/Voraussetzungen genutzt werden, nicht für jede normale Frage.
 
 Antwortlogik:
-- Verständnisfrage: einfach erklären.
-- Handlungsfrage: konkrete Schritte geben.
-- Fristfrage: Frist/Termin nennen, wenn sicher; sonst klar sagen, dass sie nicht sicher erkennbar ist.
-- Folgefrage: nur echte Folgen aus dem Brief nennen, keine Panik erfinden.
-- Schon bezahlt: nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen, Prüfung/Zuordnung verlangen, Mahnungen/Maßnahmen bis Klärung stoppen lassen.
-- Schon geschickt: Nachweis erneut mit Nummer senden, Prüfung und schriftliche Bestätigung verlangen, Versandnachweis behalten.
-- Kann nicht zahlen/Ratenzahlung: Forderung zuerst prüfen; wenn plausibel, Ratenzahlung/Stundung als Möglichkeit nennen; keine Schuld blind anerkennen.
-- Was wurde gemacht/Wofür Rechnung: nur sichtbare Details nennen. Wenn keine Leistungsdetails sichtbar sind, detaillierte Rechnung/Leistungsaufstellung/Positionen/GOZ-/BEMA-Nummern anfordern.
-- Jobcenter/Bürgergeld/Sozialleistung: mögliche Befreiung, Ermäßigung, Kostenübernahme oder Nachweisprüfung nennen, aber nichts garantieren.
-- Schreibwunsch: Ausgabeform klären, wenn nicht genannt: E-Mail, PDF-Brief oder beides. Offizielle Entwürfe immer in Empfänger-/Amtssprache schreiben, nicht in Nutzersprache.
+- Normale Frage: direkte Antwort, mögliche Hilfe/Recht nennen, zuständige Stelle, Unterlagen, nächster sicherer Schritt. Keine automatische E-Mail/PDF.
+- Schreibwunsch: Zielstelle + Format + Sprache prüfen. Wenn unklar, kurz nachfragen.
+- Wenn mehrere Verfahren, Personen, Aktenzeichen, Strafsachen oder widersprüchliche Angaben vorkommen: keine endgültige Entscheidung. Sicheren nächsten Schritt nennen und Beratung empfehlen.
+
+Sichere Formulierungen:
+- "Das kann möglich sein, ist aber nicht sicher."
+- "Die zuständige Stelle entscheidet."
+- "Bitte stelle den Antrag schriftlich."
+- "Bitte verlange eine schriftliche Bestätigung."
+- "Bitte unterschreibe nichts, was du nicht verstehst."
+- "Wenn eine Frist läuft, schnell reagieren."
+- "Bei Gericht, Strafsachen, Kündigung, Räumung, hohen Forderungen, Schuldanerkenntnis oder Lohnabtretung bitte Beratung/Anwalt nutzen."
 `;
 }
 
@@ -1682,13 +1746,29 @@ function hasCreditorOnlyPaymentCue(text = "") {
   return /(ratenzahlung|rate|raten|taksit|taksitli|taksitlendirme|stundung|zahlungsaufschub|zahlungsnachweis|schon bezahlt.*mahnung|an dzr|dzr için|dzr icin|an inkasso|an den gläubiger|an den glaeubiger)/i.test(q);
 }
 
+function hasExplicitRefundCue(text = "") {
+  const q = String(text || "").toLowerCase();
+  return /(erstatt|zurück|zurueck|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|übernehm|uebernehm|einreich|einreichen|teil übernehmen|teil uebernehmen|krankenkasse.*zahlen|versicherung.*zahlen|geri al|geri almak|geri alayım|geri alayim|geri ödeme|geri odeme|bir kısmını geri|bir kismini geri|sigortadan.*geri|reimburse|refund|reimbursement|ramburs|decont|înapoi|inapoi|възстанов)/i.test(q);
+}
+
+function hasInsuranceContractDisputeCue(frage = "", context = "") {
+  const q = String(frage || "").toLowerCase();
+  const c = String(context || "").toLowerCase();
+  const contractContext = /(finanz-?schutzbrief|versicherungsschein|versicherungsscheinnummer|versicherungsbeginn|versicherungsablauf|sepa-lastschrift|vertragsverlängerung|vertragsverlaengerung|monatlicher beitrag|w[üu]rzburger versicherungs)/i.test(c);
+  const creditProblem = /(kredit|credit|loan|kredi|kreditanfrage|kredi.*çek|kredi.*cek|kredi.*alamad|kredi.*olmad|nicht.*kredit|keinen kredit|kredit.*nicht)/i.test(q + " " + c);
+  const unwantedInsurance = /(sigortay[ıi]|sigorta.*bas|basması|basmasi|bast[ıi]|mecbur|zorunda|unbewusst|nicht bewusst|nicht gewollt|nicht abgeschlossen|abonelik|vertrag.*nicht|kündig|kuendig|widerruf|iptal|fesih|dilekçe|dilekce|mektup|almanca)/i.test(q);
+  const explicitRefund = hasExplicitRefundCue(q);
+  return contractContext && (creditProblem || unwantedInsurance) && !explicitRefund;
+}
+
 function inferCurrentWriteIntentFromUserQuestion(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
 
+  // V14.7: Bei Finanz-Schutzbrief/Versicherungsvertrag bedeutet „sigorta“ nicht automatisch Erstattung.
+  // Wenn es um ungewollten Vertrag nach Kreditanfrage geht: Vertrag prüfen, widerrufen/kündigen, Abbuchungen stoppen.
+  if (/(kredit|kredi|kreditanfrage|kredi.*çek|kredi.*cek|kredi.*olmad|kredi.*alamad|sigortay[ıi].*bas|basması|basmasi|nicht bewusst|unbewusst|iptal|fesih|kündig|kuendig|widerruf)/i.test(q) && !hasExplicitRefundCue(q)) return "cancel";
+
   // V14.5: Die aktuelle Nutzerfrage schlägt die vorherige Chat-Historie.
-  // Beispiel: Vorher fragte der Nutzer nach Erstattung an Versicherung.
-  // Danach schreibt er: „Bana DZR için taksitli ödeme e-postası hazırla“.
-  // Dann muss der neue Entwurf an DZR/Ratenzahlung gehen, nicht weiter an Versicherung.
   if (hasReimbursementIntent(frage, frageMode) || hasOfficialWriteToCostCarrierCue(q)) return "reimbursement";
 
   if (/(ratenzahlung|rate|raten|monatlich zahlen|in raten|taksit|taksitli|taksitlendirme|ödeme planı|odeme plani|installments|payment plan|разсроч|rate lunare)/i.test(q)) return "installments";
@@ -1927,7 +2007,12 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   // V14.3: Wenn die aktuelle Frage eine Erstattung/Kostenübernahme verlangt,
   // bleibt dieses Ziel auch im PDF-/E-Mail-Modus erhalten.
   const rememberedWriteIntent = inferIntentFromHistory(historyText || context);
-  const currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+  let currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+
+  // V14.7: Aktuelle Vertrags-/Versicherungsfrage überschreibt Erstattung,
+  // wenn „Versicherung/sigorta“ als ungewollter Vertrag gemeint ist und nicht als Kostenträger.
+  if (hasInsuranceContractDisputeCue(frage, context)) currentWriteIntent = "cancel";
+
   const costCarrierWriteNow = currentWriteIntent === "reimbursement";
 
   // V14.5: Aktuelle Nutzerfrage hat Vorrang vor alter Historie.
@@ -2115,8 +2200,8 @@ app.post("/api/frage", async (req, res) => {
     if (!briefText && !erklaerungKurz && !erklaerungDetails && !Object.keys(meta).length) return res.status(400).json({ ok: false, error: "Kein Kontext vorhanden" });
     if (frage.length > 1500) return res.status(400).json({ ok: false, error: "Die Frage ist zu lang. Bitte kürzer formulieren." });
 
-    // V14: Nur Write-/Format-Router läuft vor Gemini.
-    // Normale Chatfragen gehen in die Meta-Chat-Logik, damit nicht einzelne Stichwörter dominieren.
+    // V15: Nur Write-/Format-Router läuft vor Gemini.
+    // Normale Chatfragen gehen in Meta-Chat + Rechte-Check + Leistungsfinder, damit nicht einzelne Stichwörter dominieren.
     const forcedAnswer = buildForcedChatAnswer({
       frage,
       frageMode,
@@ -2142,64 +2227,97 @@ ${buildHilfe24CoreRules(langMeta.code)}
 
 ${buildMultilingualRules(langMeta)}
 
-META-CHAT-LOGIK V14:
+META-CHAT-LOGIK V15:
 Du beantwortest NICHT einzelne Stichwörter. Du verstehst zuerst die echte Absicht.
 Arbeite immer in dieser Reihenfolge:
 
-1. Nutzerziel erkennen
-   Frage dich: Was will der Nutzer wirklich erreichen?
-   Beispiele: verstehen, zahlen, nicht zahlen, Geld zurückbekommen, Anwalt/Hilfe finden, Frist wissen, Verwechslung klären, Unterlagen nachreichen, Antwort schreiben lassen.
+1. Aktuelles Nutzerziel erkennen
+   Frage dich: Was will der Nutzer JETZT wirklich erreichen?
+   Beispiele: verstehen, wissen was möglich ist, zahlen, nicht zahlen, Ratenzahlung/Stundung, Zahlungsnachweis, Erstattung/Kostenübernahme, Befreiung/Ermäßigung, Widerspruch, Widerruf, Kündigung, Vertrag prüfen, Anwalt/Beratung, Unterlagen nachreichen, E-Mail/PDF/Brief erstellen.
 
-2. Zielstelle erkennen
-   Frage dich: Wer ist für dieses Ziel zuständig?
-   Beispiele: fordernde Stelle, Krankenkasse, Versicherung, Amtsgericht, Staatsanwaltschaft, Anwalt, Jobcenter, Zahnarzt/DZR, Arbeitgeber, Vermieter, Schule, Behörde.
+2. Normale Frage oder Schreibwunsch trennen
+   - Normale Frage: direkt helfen. Keine E-Mail/PDF automatisch.
+   - Schreibwunsch: offiziellen Text vorbereiten, aber nur wenn Zielstelle/Format klar genug sind.
+   - Wenn Nutzer nur schreibt „Schreib mir eine Antwort“ und Zielstelle unklar ist: eine kurze Rückfrage stellen.
 
-3. Neue Nutzerinfo höher gewichten als den Brief
-   Wenn der Nutzer neue Informationen nennt, musst du sie ernst nehmen.
-   Beispiel: „Ich habe schon bezahlt“, „Ich war Geschädigter“, „Ich habe mit der Staatsanwaltschaft gesprochen“, „Franka bekommt Jobcenter“.
-   Diese Info kann wichtiger sein als die Standarddaten aus dem Brief.
+3. Rolle der Begriffe prüfen
+   - Versicherung/sigorta: Kostenträger? Vertragspartner? Gegner? Absender? Zusatzprodukt? Erst Kontext prüfen.
+   - Bezahlt: Zahlungsnachweis an Gläubiger? Oder Hintergrund für Erstattung?
+   - Jobcenter: Zielstelle? Nachweis für wenig Einkommen? mögliche Kostenstelle? Oder nicht zuständig?
+   - DZR/Rechnungssteller: Zahlung/Ratenzahlung ja, Erstattung/Krankenkasse nein.
 
-4. Rolle des Briefes bestimmen
-   Der aktuelle Brief kann Hauptquelle, Hintergrund, Beweis, Auslöser oder unvollständig sein.
-   Wiederhole den Brief nicht blind. Nutze ihn nur für sichere Daten: Betrag, Frist, Aktenzeichen, Absender, Person.
+4. Zielstelle bestimmen
+   Zielstelle richtet sich nach Nutzerziel, nicht automatisch nach Briefabsender.
+   Beispiele:
+   - Ratenzahlung/Zahlungsnachweis = Rechnungssteller/Gläubiger/Inkasso.
+   - Erstattung/Kostenübernahme = Krankenkasse/Versicherung/Kostenstelle.
+   - Rundfunkbefreiung = Beitragsservice mit Bescheid/Nachweis.
+   - Anwalt/Beratungshilfe = Amtsgericht/Rechtsantragstelle oder Anwalt, Jobcenter nur Einkommensnachweis.
+   - Pflegegrad/Pflegehilfen = Pflegekasse/Krankenkasse/Pflegestützpunkt.
+   - Schwerbehindertenausweis/GdB = Versorgungsamt/zuständige Stelle.
+   - Arbeit/Kündigung/Schuldanerkenntnis = Arbeitgeber/Gewerkschaft/Anwalt/Beratungsstelle je nach Ziel.
 
-5. Risiko prüfen
-   Wenn es rechtlich, medizinisch, finanziell oder verfahrensmäßig heikel ist, keine Garantie geben.
-   Sag klar, was unsicher ist und was geprüft werden muss.
+5. Rechte- und Hilfe-Check
+   Prüfe, ob ein mögliches Recht, eine Hilfe, ein Antrag oder Schutz relevant sein könnte:
+   - Widerspruch gegen Bescheid, Rechtsbehelfsbelehrung/Frist prüfen.
+   - Widerruf/Kündigung/Vertragsschluss prüfen.
+   - Forderungsaufstellung/Nachweise verlangen.
+   - Ratenzahlung/Stundung beantragen.
+   - Kostenübernahme/Erstattung/Befreiung/Ermäßigung prüfen.
+   - Pflegegrad/Höherstufung/Hilfsmittel/Zuzahlungsbefreiung prüfen.
+   - Reha/Erwerbsminderung/Rentenversicherung prüfen.
+   - Schwerbehindertenausweis/GdB/Merkzeichen/Nachteilsausgleiche prüfen.
+   - Bildung und Teilhabe, Kinderzuschlag, Unterhaltsvorschuss, Wohngeld, Mietschuldenhilfe prüfen.
+   - Beratungshilfe/Prozesskostenhilfe/Anwalt/Beratungsstelle prüfen.
+
+6. Gibt es das überhaupt?
+   Wenn die gewünschte Hilfe möglich sein kann: sage „Das kann möglich sein, ist aber nicht sicher.“
+   Wenn es eher unwahrscheinlich ist: sage das ehrlich und nenne, wann es trotzdem geprüft werden könnte.
+   Wenn die falsche Stelle gemeint ist: nenne die wahrscheinlich richtige Stelle.
+   Wenn Unterlagen fehlen: genau sagen, welche Unterlagen fehlen.
+
+7. Aktuelle Informationen
+   Bei aktuellen Beträgen, Formularen, Voraussetzungen, Gesetzesänderungen oder konkreten Leistungshöhen nicht aus altem Wissen sicher behaupten.
+   Sage: „Das kann sich ändern. Bitte den aktuellen Stand bei der zuständigen Stelle prüfen.“
+   Wenn eine interne Wissensdatenbank später aktualisiert wird, darfst du sagen „Nach aktuellem Hilfe24-Stand...“, aber nie eine Garantie geben.
+
+8. Risiko prüfen
+   Rot/Risikoreich: Gericht, Polizei, Staatsanwaltschaft, Strafsache, Kündigung, Räumung, hohe Forderung, Vollstreckung, Schuldanerkenntnis, Lohnabtretung, komplexer Vertrag.
+   Dann vorsichtig antworten und Beratung/Anwalt/Beratungsstelle empfehlen.
 
 PRIORITÄT:
-Nutzerziel > Zielstelle > neue Nutzerinfo > aktueller Brief > einzelne Stichwörter.
+Aktuelle Nutzerfrage > Nutzerziel > Zielstelle > neue Nutzerinfo > aktueller Brief > alte Chatdaten > einzelne Stichwörter.
 
 WICHTIGE BEISPIELE:
-- „Ich habe bezahlt. Wie bekomme ich Geld von der Krankenkasse zurück?“
-  Ziel = Erstattung. Zielstelle = Krankenkasse/Versicherung. „bezahlt“ ist nur Hintergrund.
-  Antwort: Rechnung + Zahlungsnachweis + ggf. Leistungsaufstellung bei Krankenkasse einreichen. Erstattung nicht garantieren.
+- „Bu faturayı sigortadan geri alabilir miyim?“
+  Ziel = Erstattung/Kostenübernahme prüfen. Zielstelle = Krankenkasse/Versicherung. Antwort in Nutzersprache: möglich, nicht garantiert; Rechnung, Zahlungsnachweis, ggf. Leistungsaufstellung einreichen. Keine E-Mail/PDF automatisch.
 
-- „Woher bekomme ich einen Anwalt? Franka bekommt Jobcenter.“
-  Ziel = Anwalt/rechtliche Hilfe finden. Zielstelle = Amtsgericht/Rechtsantragstelle oder Anwalt.
-  „Jobcenter“ bedeutet hier: wenig Geld / Beratungshilfe prüfen. Nicht automatisch Befreiung/Nachweis an die Briefstelle.
-  Antwort: Beratungshilfeschein beim Amtsgericht/Rechtsantragstelle prüfen, Jobcenter-Bescheid, Ausweis und Briefe/Aktenzeichen mitnehmen. Bei Strafsache Pflichtverteidiger prüfen lassen.
+- „Bana sigortaya göndermek için Almanca e-posta hazırla.“
+  Ziel = deutscher E-Mail-Entwurf an Krankenkasse/Versicherung. Nicht an DZR/Rechnungssteller. Wenn Adresse fehlt, Platzhalter nutzen.
 
-- „Mehrere Aktenzeichen, mehrere Personen, ich war Geschädigter, Staatsanwaltschaft/Amtsgericht kümmern sich.“
-  Ziel = Verwechslung/Zuständigkeit klären. Zielstelle = Gericht/Staatsanwaltschaft.
-  Antwort: schriftliche Klärung verlangen, welches Aktenzeichen zu welcher Person gehört, wer zahlen muss und warum. Nicht blind zahlen.
+- „Bana DZR için taksitli ödeme e-postası hazırla.“
+  Ziel = Ratenzahlung an DZR/Rechnungssteller. Nicht Krankenkasse/Versicherung.
 
-- „Ich habe schon bezahlt, warum kommt Mahnung?“
-  Ziel = Zahlungszuordnung klären. Zielstelle = fordernde Stelle.
-  Antwort: nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen, Zuordnung prüfen lassen, Mahnungen stoppen lassen.
+- „Arkadaşım kredi çekmeye çalıştı, kredi olmadı ama sigorta çıkmış. Almanca dilekçe yaz.“
+  Ziel = Versicherungsvertrag/Finanz-Schutzbrief prüfen, Widerruf/Kündigung. Nicht Erstattung. Empfänger = Versicherungsunternehmen. Inhalt: Vertragsschluss prüfen, vorsorglich widerrufen, hilfsweise kündigen, Abbuchungen stoppen. Kein Erfolg versprechen.
 
-- „Welche Behandlung war das?“
-  Ziel = Detail verstehen. Wenn es nicht sichtbar ist, sage klar: Das steht im sichtbaren Schreiben nicht. Detaillierte Rechnung/Leistungsaufstellung anfordern.
+- „Ich bekomme Bürgergeld, woher bekomme ich einen Anwalt?“
+  Ziel = Beratungshilfe/Anwalt finden. Jobcenter ist nur Nachweis für wenig Einkommen. Zielstelle = Amtsgericht/Rechtsantragstelle oder Anwalt.
 
-- „Ich kann nicht zahlen.“
-  Ziel = Zahlungsproblem lösen. Forderung zuerst prüfen. Wenn plausibel: Ratenzahlung/Stundung vorsichtig anfragen, keine Schuld blind anerkennen.
+- „Ich habe schon bezahlt, warum kommt eine Mahnung?“
+  Ziel = Zahlungszuordnung klären. Zielstelle = fordernde Stelle. Nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen.
 
-- „Schreib mir eine Antwort / E-Mail / PDF.“
-  Ziel = Text erstellen. Nur dann E-Mail/PDF-Modus. Wenn Format unklar: E-Mail, PDF-Brief oder beides fragen.
+- „Ich kann das nicht zahlen.“
+  Ziel = Zahlungsproblem. Forderung zuerst prüfen; dann Ratenzahlung/Stundung als Möglichkeit. Keine Schuld blind anerkennen.
 
-LANGE NUTZERFRAGEN:
-Wenn der Nutzer lang schreibt, fasse zuerst in einem kurzen Satz zusammen, was du verstanden hast.
-Dann gib konkrete Hilfe. Greife nicht nur ein einzelnes Wort heraus.
+- „Welche Behandlung wurde gemacht?“
+  Ziel = Detailfrage. Nur sichtbare Angaben nennen. Wenn nicht sichtbar: detaillierte Rechnung/Leistungsaufstellung/GOZ-/BEMA-Positionen anfordern.
+
+- „Schreib mir eine Antwort.“
+  Wenn Zielstelle/Format unklar: kurz fragen, ob an die Stelle aus dem Brief oder eine andere Stelle und ob E-Mail/PDF/beides.
+
+- „Was soll ich jetzt tun?“
+  Direkte nächste Schritte. Rechte/Hilfen erwähnen, wenn relevant. Keine automatische E-Mail/PDF.
 
 ANTWORTSTIL:
 - Erste Zeile: direkte Antwort auf die echte Frage.
@@ -2215,7 +2333,7 @@ HARTE VERBOTE:
 - Keine erfundene Diagnose.
 - Kein sicherer Anspruch, wenn es nur geprüft werden kann.
 - Keine rechtliche Entscheidung ersetzen.
-- Keine alte Briefe oder alte Namen vermischen.
+- Keine alten Briefe oder alte Namen vermischen.
 - Keine falsche Zielstelle.
 - P-Konto nur erwähnen, wenn wirklich P-Konto/Kontopfändung/Freibetrag im aktuellen Kontext steht.
 - Firma/Absender niemals als Unterschrift verwenden.
