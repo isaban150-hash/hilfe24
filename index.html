@@ -348,12 +348,11 @@
         <div class="language-pill">
           <label id="homeLangLabel" for="homeLang">Sprache auswählen</label>
           <select id="homeLang">
-            <option value="de">🇩🇪 Deutsch</option>
-            <option value="tr">🇹🇷 Türkçe</option>
-            <option value="bg">🇧🇬 Български</option>
-            <option value="ar">🌍 العربية</option>
-            <option value="ro">🇷🇴 Română</option>
-            <option value="en">🇬🇧 English</option>
+            <option value="de">Deutsch</option>
+            <option value="tr">Türkçe</option>
+            <option value="bg">Български</option>
+            <option value="ro">Română</option>
+            <option value="en">English</option>
           </select>
         </div>
       </div>
@@ -400,12 +399,11 @@
       <div id="briefSubTitle" class="sub">Briefe einfach verstehen. Klar erklärt und mit dem nächsten Schritt.</div>
       <label id="briefLangLabel" for="lang">Sprache</label>
       <select id="lang">
-        <option value="de">🇩🇪 Deutsch</option>
-        <option value="tr">🇹🇷 Türkçe</option>
-        <option value="bg">🇧🇬 Български</option>
-        <option value="ar">🌍 العربية</option>
-        <option value="ro">🇷🇴 Română</option>
-        <option value="en">🇬🇧 English</option>
+        <option value="de">Deutsch</option>
+        <option value="tr">Türkçe</option>
+        <option value="bg">Български</option>
+        <option value="ro">Română</option>
+        <option value="en">English</option>
       </select>
       <div class="assistant-card">
         <div class="assistant-head"><div class="assistant-avatar">🤝</div><div><strong id="assistantTitle">Schick mir dein Schreiben.</strong><span id="assistantSub">Foto hochladen oder Text einfügen.</span></div></div>
@@ -1212,6 +1210,32 @@ function getSelectedLang() {
   return langSelect ? langSelect.value : "de";
 }
 
+function getLangMetaClient(lang) {
+  const map = {
+    de: { htmlLang: "de", dir: "ltr" },
+    tr: { htmlLang: "tr", dir: "ltr" },
+    bg: { htmlLang: "bg", dir: "ltr" },
+    ro: { htmlLang: "ro", dir: "ltr" },
+    en: { htmlLang: "en", dir: "ltr" },
+    ar: { htmlLang: "ar", dir: "rtl" }
+  };
+  return map[lang] || map.de;
+}
+
+function applyDocumentLanguage(lang) {
+  const meta = getLangMetaClient(lang || "de");
+  document.documentElement.lang = meta.htmlLang;
+  document.documentElement.dir = meta.dir;
+}
+
+function savePreferredLanguage(lang) {
+  try { localStorage.setItem("hilfe24_lang", lang || "de"); } catch (e) {}
+}
+
+function loadPreferredLanguage() {
+  try { return localStorage.getItem("hilfe24_lang") || "de"; } catch (e) { return "de"; }
+}
+
 let currentKurzText = "";
 let currentDetailText = "";
 let currentBriefText = "";
@@ -1321,6 +1345,7 @@ window.frageMode = "free";
 
     function updateHomeLanguage() {
       const lang = homeLangEl ? homeLangEl.value : "de";
+      applyDocumentLanguage(lang);
       const t = homeTexts[lang] || homeTexts.de;
 
       if (homeSubTitleEl) homeSubTitleEl.textContent = t.sub;
@@ -1347,6 +1372,7 @@ window.frageMode = "free";
 
     function updateBriefLanguage() {
       const lang = langEl ? langEl.value : "de";
+      applyDocumentLanguage(lang);
       const t = briefTexts[lang] || briefTexts.de;
       const u = uiTexts[lang] || uiTexts.de;
 
@@ -2871,9 +2897,18 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     }
 
     function setupEvents() {
+      const preferredLang = loadPreferredLanguage();
+      if (["de", "tr", "bg", "ro", "en"].includes(preferredLang)) {
+        currentLang = preferredLang;
+        if (homeLangEl) homeLangEl.value = preferredLang;
+        if (langEl) langEl.value = preferredLang;
+      }
+      applyDocumentLanguage(currentLang || "de");
+
       if (homeLangEl) {
         homeLangEl.onchange = function () {
           currentLang = homeLangEl.value || "de";
+          savePreferredLanguage(currentLang);
 
           if (langEl) {
             langEl.value = currentLang;
@@ -2888,6 +2923,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       if (langEl) {
         langEl.onchange = function () {
           currentLang = langEl.value || "de";
+          savePreferredLanguage(currentLang);
+          if (homeLangEl) homeLangEl.value = currentLang;
           updateBriefLanguage();
           updateQuestionLanguage();
         };
