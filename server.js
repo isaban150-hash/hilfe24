@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v9.8-pdf-quality" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v9.9-pdf-trigger-name-fix" });
 });
 
 function getTodayGerman() {
@@ -384,6 +384,27 @@ function looksLikePersonName(value) {
   return parts.every((p) => /^[A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{2,}$/.test(p));
 }
 
+function scorePersonNameForAutofill(value = "") {
+  const clean = normalizeString(value).replace(/^(herr|frau)\s+/i, "").replace(/,.*$/, "").trim();
+  if (!looksLikePersonName(clean)) return -1;
+  const parts = clean.split(/\s+/).filter(Boolean);
+  return parts.length * 100 + clean.length;
+}
+
+function chooseBestPersonName(candidates = []) {
+  let best = "";
+  let bestScore = -1;
+  for (const candidate of candidates) {
+    const clean = normalizeString(candidate).replace(/^(herr|frau)\s+/i, "").replace(/,.*$/, "").trim();
+    const score = scorePersonNameForAutofill(clean);
+    if (score > bestScore) {
+      best = clean;
+      bestScore = score;
+    }
+  }
+  return bestScore >= 0 ? best : "";
+}
+
 function getDetectedPersonName(meta = {}) {
   const candidates = [
     meta.person,
@@ -396,11 +417,7 @@ function getDetectedPersonName(meta = {}) {
     meta.versicherungsnehmer,
     ...(Array.isArray(meta.betroffene_personen) ? meta.betroffene_personen : [])
   ];
-  for (const c of candidates) {
-    const clean = normalizeString(c).replace(/^(herr|frau)\s+/i, "").replace(/,.*$/, "").trim();
-    if (looksLikePersonName(clean)) return clean;
-  }
-  return "";
+  return chooseBestPersonName(candidates);
 }
 
 function normalizeChoice(value, allowed, fallback = "unklar") {
@@ -685,19 +702,23 @@ function isFinanzSchutzbriefContext(context = "") {
 
 function findPersonNameInContext(context = "") {
   const text = String(context || "");
+  const candidates = [];
   const patterns = [
-    /(?:Herr|Frau)\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40})?)/,
-    /(?:Versicherungsnehmer|Kunde|Arbeitnehmer|Patient|Name)\s*[:\-]?\s*([A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40})?)/i
+    /(?:Herr|Frau)\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40})?)/g,
+    /(?:Versicherungsnehmer|Kunde|Arbeitnehmer|Patient|Name)\s*[:\-]?\s*([A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüßÇĞİŞçğışéèêáàâóòôúùû.'-]{1,40})?)/gi
   ];
   for (const pattern of patterns) {
-    const m = text.match(pattern);
-    if (m && looksLikePersonName(m[1])) return normalizeString(m[1]);
+    for (const m of text.matchAll(pattern)) {
+      if (m && m[1]) candidates.push(m[1]);
+    }
   }
-  return "";
+  return chooseBestPersonName(candidates);
 }
 
 function getSafeSignatureName(meta = {}, context = "") {
-  return getDetectedPersonName(meta) || findPersonNameInContext(context) || "[Name]";
+  const fromMeta = getDetectedPersonName(meta);
+  const fromContext = findPersonNameInContext(context);
+  return chooseBestPersonName([fromMeta, fromContext]) || "[Name]";
 }
 
 function buildSubject(meta = {}, domain = "allgemein", intent = "reply", context = "") {
@@ -976,7 +997,7 @@ ${body}`);
 
 function buildEmailAndPdfOutput(meta = {}, context = "", domain = "allgemein", intent = "reply") {
   const emailText = buildProfessionalOutput(meta, context, domain, intent);
-  const pdfText = buildPdfLetterText(meta, context, domain, "pdf");
+  const pdfText = buildPdfLetterText(meta, context, domain, intent === "pdf" ? inferIntentFromHistory(context) : intent);
   return cleanText(`E-MAIL:
 
 ${emailText}
@@ -986,6 +1007,14 @@ PDF-BRIEF:
 ${pdfText}
 
 Hinweis: Bitte prüfe vor dem Senden Name, Adresse, Datum, Nummer und Empfänger.`);
+}
+
+function buildPdfOnlyOutput(meta = {}, context = "", domain = "allgemein", intent = "pdf") {
+  const rememberedIntent = intent && intent !== "pdf" ? intent : inferIntentFromHistory(context);
+  const pdfText = buildPdfLetterText(meta, context, domain, rememberedIntent && rememberedIntent !== "reply" ? rememberedIntent : "pdf");
+  return cleanText(`PDF-BRIEF:
+
+${pdfText}`);
 }
 
 
@@ -1029,24 +1058,40 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   }
 
   if (intent === "cancel") {
-    if (wantsPdf) return buildProfessionalOutput(meta, context, domain, "pdf");
+    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "cancel");
     return buildProfessionalOutput(meta, context, domain, "cancel");
   }
 
   if (intent === "pdf") {
     const rememberedIntent = inferIntentFromHistory(historyText || context);
-    return buildProfessionalOutput(meta, context, domain, rememberedIntent && rememberedIntent !== "reply" ? rememberedIntent : "pdf");
+    return buildPdfOnlyOutput(meta, context, domain, rememberedIntent && rememberedIntent !== "reply" ? rememberedIntent : "pdf");
   }
-  if (intent === "reply") return buildProfessionalOutput(meta, context, domain, "reply");
+  if (intent === "reply") {
+    if (wantsPdf) return buildEmailAndPdfOutput(meta, context, domain, "reply");
+    return buildProfessionalOutput(meta, context, domain, "reply");
+  }
 
   if (intent === "no_money") {
+    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "no_money");
     if (wantsWrittenOutput(frage, frageMode)) return buildProfessionalOutput(meta, context, domain, "no_money");
     return buildNoMoneyShort(meta, domain);
   }
-  if (intent === "installments") return buildProfessionalOutput(meta, context, domain, "installments");
-  if (intent === "paid") return buildProfessionalOutput(meta, context, domain, "paid");
-  if (intent === "sent_proof") return buildProfessionalOutput(meta, context, domain, "sent_proof");
-  if (intent === "dispute") return buildProfessionalOutput(meta, context, domain, "dispute");
+  if (intent === "installments") {
+    if (wantsPdf) return buildEmailAndPdfOutput(meta, context, domain, "installments");
+    return buildProfessionalOutput(meta, context, domain, "installments");
+  }
+  if (intent === "paid") {
+    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "paid");
+    return buildProfessionalOutput(meta, context, domain, "paid");
+  }
+  if (intent === "sent_proof") {
+    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "sent_proof");
+    return buildProfessionalOutput(meta, context, domain, "sent_proof");
+  }
+  if (intent === "dispute") {
+    if (wantsPdf) return buildPdfOnlyOutput(meta, context, domain, "dispute");
+    return buildProfessionalOutput(meta, context, domain, "dispute");
+  }
   if (intent === "next_steps") return buildNextSteps(meta, domain);
   if (intent === "documents") return "Sende nur Unterlagen, die wirklich zum Schreiben passen. Wichtig sind meist: das Schreiben selbst, die genannte Nummer, Nachweise, Zahlungsbelege oder Bescheide. Wenn du willst, schreibe ich dir eine kurze Nachricht zum Nachreichen.";
   if (intent === "deadline") return meta.frist || meta.termin ? `Frist/Termin: ${meta.frist || meta.termin}. Bitte im Originalbrief prüfen und rechtzeitig reagieren.` : "Ich sehe keine sichere Frist. Bitte prüfe das Originalschreiben oder nutze Daten genauer prüfen.";
@@ -1460,5 +1505,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.8 pdf quality");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.9 pdf trigger + name fix");
 });
