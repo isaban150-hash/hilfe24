@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v10.1-output-choice-ask" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v11.1-general-chat-logic" });
 });
 
 function getTodayGerman() {
@@ -359,19 +359,46 @@ function normalizeChoiceAnswer(frage = "") {
   return "";
 }
 
+function getLastAssistantHistoryText(historyText = "") {
+  const h = String(historyText || "");
+  const idx = h.lastIndexOf("Hilfe24:");
+  if (idx < 0) return "";
+  return h.slice(idx).toLowerCase();
+}
+
+function isOutputChoicePromptActive(historyText = "") {
+  const lastAssistant = getLastAssistantHistoryText(historyText);
+  if (!lastAssistant) return false;
+
+  return (
+    lastAssistant.includes("wie möchtest du es haben") &&
+    lastAssistant.includes("als e-mail") &&
+    lastAssistant.includes("als pdf-brief") &&
+    lastAssistant.includes("beides")
+  );
+}
+
 function isAnsweringOutputChoice(frage = "", historyText = "") {
   const choice = normalizeChoiceAnswer(frage);
   if (!choice) return "";
-  const h = String(historyText || "").toLowerCase();
-  if (
-    h.includes("wie möchtest du es haben") ||
-    h.includes("als e-mail") ||
-    h.includes("als pdf-brief") ||
-    h.includes("beides")
-  ) {
-    return choice;
-  }
+
+  // V11.1: 1/2/3 gelten nur direkt nach der Auswahlfrage.
+  // Nicht mehr irgendeine alte Auswahl aus dem Chatverlauf verwenden.
+  if (isOutputChoicePromptActive(historyText)) return choice;
+
   return "";
+}
+
+function isNormalFollowUpAfterOutputChoice(frage = "", historyText = "") {
+  if (!isOutputChoicePromptActive(historyText)) return false;
+  if (normalizeChoiceAnswer(frage)) return false;
+
+  const q = normalizeString(frage).toLowerCase();
+  if (!q) return false;
+
+  // Wenn der Nutzer nach der Auswahlfrage einen normalen Satz schreibt,
+  // ist das eine neue Frage/Korrektur und keine Auswahl mehr.
+  return q.length > 3;
 }
 
 function isUnsafeReference(value) {
@@ -1090,6 +1117,14 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
   const outputChoice = isAnsweringOutputChoice(frage, historyText);
+
+  // V11.1: Wenn der Nutzer nach der Auswahlfrage keine klare 1/2/3-Auswahl schickt,
+  // nicht weiter im E-Mail/PDF-Auswahlmodus hängen bleiben.
+  // Dann geht die Frage normal an den allgemeinen Chat/Gemini-Fallback.
+  if (!outputChoice && isNormalFollowUpAfterOutputChoice(frage, historyText)) {
+    return "";
+  }
+
   const intent = outputChoice ? inferIntentFromHistory(historyText || context) : detectIntent(frage, frageMode, historyText);
   const wantsPdf = outputChoice === "pdf" || (!outputChoice && wantsPdfOutput(frage, frageMode));
   const wantsEmail = outputChoice === "email" || (!outputChoice && wantsEmailOutput(frage, frageMode));
@@ -1536,5 +1571,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v10.1 output choice ask");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v11.1 general chat logic");
 });
