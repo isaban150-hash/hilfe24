@@ -242,17 +242,37 @@
   .audio-status { color:var(--muted); font-size:13px; margin:0; }
   audio { width:100%; margin-top:6px; }
   .audio-dock {
-    position:fixed; right:14px; bottom:calc(env(safe-area-inset-bottom, 0px) + 12px); z-index:20;
-    width:auto; max-width:220px; margin:0; background:transparent; border:none; box-shadow:none;
-    display:flex; justify-content:flex-end; align-items:center; pointer-events:none;
+    position:fixed;
+    right:14px;
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 14px);
+    z-index:50;
+    width:auto;
+    max-width:260px;
+    margin:0;
+    background:transparent;
+    border:none;
+    box-shadow:none;
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    pointer-events:none;
   }
+  .audio-dock.hidden { display:none !important; }
   .audio-dock-inner { display:none; }
   .audio-mini-label { display:none; }
   .audio-dock .audio-status { display:none; }
   .audio-dock audio { display:none; }
   .audio-dock .btn-danger {
-    pointer-events:auto; white-space:nowrap; padding:9px 14px; border-radius:999px; background:#fff1f2; color:#be123c;
-    border:1px solid #fecdd3; box-shadow:0 10px 26px rgba(190,18,60,.12); font-size:14px;
+    pointer-events:auto;
+    white-space:nowrap;
+    padding:8px 13px;
+    border-radius:999px;
+    background:#fff1f2;
+    color:#be123c;
+    border:1px solid #fecdd3;
+    box-shadow:0 10px 26px rgba(190,18,60,.14);
+    font-size:13px;
+    font-weight:950;
   }
   .manual-text-toggle {
     width:100%; margin-top:10px; border-radius:16px; border:1px solid #ccfbf1; background:#f0fdfa; color:#0f766e;
@@ -274,7 +294,7 @@
     h1 { font-size:26px; }
     .short-box { font-size:17px; }
     button, select, textarea { font-size:16px; }
-    .audio-dock { right:12px; left:auto; bottom:calc(env(safe-area-inset-bottom, 0px) + 10px); }
+    .audio-dock { right:10px; left:auto; bottom:calc(env(safe-area-inset-bottom, 0px) + 10px); }
     .audio-mini-label { display:none; }
     .audio-dock audio { display:none; }
   }
@@ -1194,6 +1214,8 @@ let activeRequestId = 0;
 let activeQuestionRequestId = 0;
 let currentCaseId = 0;
 let activeAudioUrl = "";
+let activeUtterance = null;
+let activeAudioSessionId = 0;
 let selectedImageFiles = [];
 let chatHistory = [];
 let analysisStatusTimer = null;
@@ -1357,9 +1379,9 @@ window.frageMode = "free";
       if (answerTitleEl) answerTitleEl.textContent = u.answerTitle || "Antwort";
       if (readShortBtnEl) readShortBtnEl.textContent = u.readShort || "🔊 Kurz vorlesen";
       if (readAllBtnEl) readAllBtnEl.textContent = u.readDetails || "🔊 Details vorlesen";
-      if (stopBtnEl) stopBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
-if (stopDetailsBtnEl) stopDetailsBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
-if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp";
+      if (stopBtnEl) stopBtnEl.textContent = "⏹ Stopp";
+if (stopDetailsBtnEl) stopDetailsBtnEl.textContent = "⏹ Stopp";
+if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       currentLang = lang;
       updateQuestionLanguage();
     }
@@ -1510,6 +1532,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     }
 
     function stopAudio() {
+      activeAudioSessionId++;
+
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -2257,29 +2281,126 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       return map[code] || "de-DE";
     }
 
-    function prepareAudioText(text) {
-      let clean = String(text || "")
+    function h24NormalizeForAudio(text) {
+      return String(text || "")
+        .replace(/\r/g, "\n")
+        .replace(/<[^>]*>/g, " ")
         .replace(/\*\*/g, "")
-        .replace(/\[[^\]]*\]/g, "")
+        .replace(/__+/g, "")
+        .replace(/`+/g, "")
+        .replace(/[•●]/g, "-")
+        .replace(/[📄📧🔊💬👤✅❌⚠️⏹️🤝📋]/g, "")
+        .replace(/\[[^\]]{0,80}\]/g, "")
+        .replace(/\bPDF-BRIEF\s*:/gi, "")
+        .replace(/\bE-?MAIL\s*:/gi, "")
         .replace(/\n{3,}/g, "\n\n")
+        .replace(/[ \t]{2,}/g, " ")
         .trim();
+    }
+
+    function h24ExtractBestAudioPart(text) {
+      let clean = h24NormalizeForAudio(text);
+      if (!clean) return "";
+
+      const upper = clean.toUpperCase();
+      const pdfIndex = upper.indexOf("PDF-BRIEF");
+      const mailIndex = upper.indexOf("E-MAIL");
+      const cutPoints = [pdfIndex, mailIndex].filter(i => i > 120);
+      if (cutPoints.length) clean = clean.slice(0, Math.min(...cutPoints)).trim();
+
+      const stopMarkers = [
+        "PDF herunterladen",
+        "Vor dem Senden bitte",
+        "Bitte prüfe vor dem Senden",
+        "Hinweis: Bitte prüfe",
+        "Möchtest du sie als",
+        "Wie möchtest du es haben?"
+      ];
+      for (const marker of stopMarkers) {
+        const idx = clean.indexOf(marker);
+        if (idx > 120) clean = clean.slice(0, idx).trim();
+      }
+
+      return clean.trim();
+    }
+
+    function prepareAudioText(text) {
+      let clean = h24ExtractBestAudioPart(text);
+      if (!clean) return "";
 
       const lines = clean
         .split("\n")
         .map(line => line.trim())
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter(line => !/^[-–—]{2,}$/.test(line))
+        .filter(line => !/^\d+\.?$/.test(line));
 
-      // Beim Vorlesen nicht den ganzen Roman lesen. Die ersten klaren Zeilen reichen.
-      clean = lines.slice(0, 8).join(". ");
+      clean = lines.slice(0, 7).join(". ");
 
-      const maxChars = 950;
+      clean = clean
+        .replace(/\s+([,.!?;:])/g, "$1")
+        .replace(/\.{2,}/g, ".")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const maxChars = 780;
       if (clean.length > maxChars) {
         clean = clean.slice(0, maxChars);
         const lastEnd = Math.max(clean.lastIndexOf("."), clean.lastIndexOf("!"), clean.lastIndexOf("?"), clean.lastIndexOf("؟"));
-        if (lastEnd > 180) clean = clean.slice(0, lastEnd + 1);
+        if (lastEnd > 220) clean = clean.slice(0, lastEnd + 1);
       }
 
       return clean.trim();
+    }
+
+    function splitAudioIntoChunks(text) {
+      const clean = String(text || "").trim();
+      if (!clean) return [];
+
+      const sentences = clean
+        .replace(/([.!?؟])\s+/g, "$1|")
+        .split("|")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const chunks = [];
+      let current = "";
+      const limit = 260;
+
+      for (const sentence of sentences) {
+        if ((current + " " + sentence).trim().length > limit && current) {
+          chunks.push(current.trim());
+          current = sentence;
+        } else {
+          current = (current + " " + sentence).trim();
+        }
+      }
+      if (current) chunks.push(current.trim());
+
+      return chunks.length ? chunks : [clean];
+    }
+
+    function h24WaitForVoices() {
+      return new Promise((resolve) => {
+        if (!window.speechSynthesis || !window.speechSynthesis.getVoices) {
+          resolve([]);
+          return;
+        }
+
+        let voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length) {
+          resolve(voices);
+          return;
+        }
+
+        const done = () => {
+          voices = window.speechSynthesis.getVoices() || [];
+          resolve(voices);
+        };
+
+        window.speechSynthesis.onvoiceschanged = done;
+        setTimeout(done, 500);
+      });
     }
 
     function chooseSpeechVoice(langCode) {
@@ -2288,11 +2409,59 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
       if (!voices || !voices.length) return null;
 
-      const exact = voices.find(v => String(v.lang || "").toLowerCase() === langCode.toLowerCase());
+      const lower = String(langCode || "").toLowerCase();
+      const exact = voices.find(v => String(v.lang || "").toLowerCase() === lower);
       if (exact) return exact;
 
-      const prefix = langCode.split("-")[0].toLowerCase();
-      return voices.find(v => String(v.lang || "").toLowerCase().startsWith(prefix)) || null;
+      const prefix = lower.split("-")[0];
+      const prefixMatch = voices.find(v => String(v.lang || "").toLowerCase().startsWith(prefix));
+      if (prefixMatch) return prefixMatch;
+
+      return voices.find(v => String(v.lang || "").toLowerCase().startsWith("de")) || null;
+    }
+
+    function h24GetAudioRunningLabel() {
+      const lang = getSelectedLang();
+      const labels = {
+        de: "🔊 Vorlesen läuft",
+        tr: "🔊 Okunuyor",
+        bg: "🔊 Чете се",
+        ro: "🔊 Se citește",
+        ar: "🔊 جارٍ القراءة",
+        en: "🔊 Reading"
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function speakAudioChunks(chunks, langCode, voice, sessionId, index = 0) {
+      if (sessionId !== activeAudioSessionId) return;
+      if (!chunks || index >= chunks.length) {
+        activeUtterance = null;
+        clearAudioStatus();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(chunks[index]);
+      utterance.lang = langCode;
+      utterance.rate = 0.93;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      if (voice) utterance.voice = voice;
+
+      utterance.onend = function () {
+        if (sessionId !== activeAudioSessionId) return;
+        speakAudioChunks(chunks, langCode, voice, sessionId, index + 1);
+      };
+
+      utterance.onerror = function () {
+        if (sessionId !== activeAudioSessionId) return;
+        activeUtterance = null;
+        clearAudioStatus();
+        setError(getUiText().audioError || "Audio konnte nicht gestartet werden.");
+      };
+
+      activeUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
     }
 
     async function playServerAudio(text) {
@@ -2317,30 +2486,14 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
       stopAudio();
       hide(audioPlayerEl);
-      setAudioStatus("🔊");
+      setAudioStatus(h24GetAudioRunningLabel());
 
-      const utterance = new SpeechSynthesisUtterance(audioText);
-      utterance.lang = speechLang;
-      utterance.rate = 0.92;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-
+      await h24WaitForVoices();
       const voice = chooseSpeechVoice(speechLang);
-      if (voice) utterance.voice = voice;
+      const chunks = splitAudioIntoChunks(audioText);
+      const sessionId = ++activeAudioSessionId;
 
-      utterance.onend = function () {
-        activeUtterance = null;
-        clearAudioStatus();
-      };
-
-      utterance.onerror = function () {
-        activeUtterance = null;
-        clearAudioStatus();
-        setError(getUiText().audioError || "Audio konnte nicht gestartet werden.");
-      };
-
-      activeUtterance = utterance;
-      window.speechSynthesis.speak(utterance);
+      speakAudioChunks(chunks, speechLang, voice, sessionId, 0);
     }
 
   async function explainLetter() {
