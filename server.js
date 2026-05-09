@@ -382,14 +382,45 @@ function findAnyPostalBlock(context = "") {
   return "";
 }
 
+function addressLooksLikeCompanyOrSender(address = "", sender = "") {
+  const a = normalizeString(address).toLowerCase();
+  const s = normalizeString(sender).toLowerCase();
+  if (!a) return false;
+  if (/(gmbh|ag|ug|kg|inkasso|bank|versicherung|jobcenter|amtsgericht|staatsanwaltschaft|finanzamt|beitragsservice|postfach)/i.test(a)) return true;
+  if (s) {
+    const senderTokens = s.split(/\s+/).filter(x => x.length >= 3 && !/^(der|die|das|und|für|fuer)$/i.test(x));
+    if (senderTokens.some(tok => a.includes(tok))) return true;
+  }
+  return false;
+}
+
+function addressLooksLikePersonAddress(address = "", personName = "", sender = "") {
+  const a = normalizeString(address);
+  if (!a || !looksLikeAddress(a)) return false;
+  const p = normalizeString(personName).toLowerCase();
+  const lower = a.toLowerCase();
+  if (p && lower.includes(p)) return true;
+  if (addressLooksLikeCompanyOrSender(a, sender)) return false;
+  return /\d{5}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+/.test(a) && /(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)/i.test(a);
+}
+
 function getUserPostalAddress(meta = {}, context = "") {
   const name = getSafeSignatureName(meta, context);
-  const fromMeta = normalizePostalAddress(meta.absender_adresse || meta.user_adresse || meta.adresse);
-  if (fromMeta) return formatAddressBlockWithName(name, fromMeta);
+  const sender = getSender(meta);
 
+  // V14.6: Für PDF-Absender zuerst Adresse direkt bei der betroffenen Person suchen.
+  // Absender-/Firmenadressen aus dem Brief dürfen nicht in den Absenderblock des Nutzers rutschen.
   if (name && name !== "[Name]") {
     const fromContext = findAddressBlockAfterLine(context, name);
-    if (fromContext) return formatAddressBlockWithName(name, fromContext);
+    if (addressLooksLikePersonAddress(fromContext, name, sender)) return formatAddressBlockWithName(name, fromContext);
+  }
+
+  const candidates = [meta.user_adresse, meta.adresse, meta.empfaenger_adresse, meta.absender_adresse]
+    .map(x => normalizePostalAddress(x))
+    .filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (addressLooksLikePersonAddress(candidate, name, sender)) return formatAddressBlockWithName(name, candidate);
   }
 
   return formatAddressBlockWithName(name && name !== "[Name]" ? name : "", "");
@@ -397,17 +428,29 @@ function getUserPostalAddress(meta = {}, context = "") {
 
 function getRecipientPostalAddress(meta = {}, context = "") {
   const sender = getSender(meta);
-  const fromMeta = normalizePostalAddress(meta.empfaenger_adresse || meta.absender_adresse_empfaenger || meta.postanschrift);
-  if (fromMeta) return formatRecipientAddressBlock(sender, fromMeta);
+  const personName = getSafeSignatureName(meta, context);
+
+  const candidates = [meta.empfaenger_adresse, meta.absender_adresse_empfaenger, meta.postanschrift, meta.absender_adresse]
+    .map(x => normalizePostalAddress(x))
+    .filter(Boolean);
+
+  // V14.6: Empfängeradresse darf nicht die Privatadresse der betroffenen Person sein.
+  for (const candidate of candidates) {
+    const lower = normalizeString(candidate).toLowerCase();
+    const personLower = normalizeString(personName).toLowerCase();
+    if (personLower && lower.includes(personLower)) continue;
+    if (addressLooksLikeCompanyOrSender(candidate, sender) || !addressLooksLikePersonAddress(candidate, personName, sender)) {
+      return formatRecipientAddressBlock(sender, candidate);
+    }
+  }
 
   if (sender) {
     const fromContext = findAddressBlockAfterLine(context, sender);
-    if (fromContext) return formatRecipientAddressBlock(sender, fromContext);
+    if (fromContext && !addressLooksLikePersonAddress(fromContext, personName, sender)) return formatRecipientAddressBlock(sender, fromContext);
   }
 
   const any = findAnyPostalBlock(context);
-  const personName = getSafeSignatureName(meta, context);
-  if (any && (!personName || !any.toLowerCase().includes(String(personName).toLowerCase()))) return formatRecipientAddressBlock(sender, any);
+  if (any && !addressLooksLikePersonAddress(any, personName, sender)) return formatRecipientAddressBlock(sender, any);
 
   return formatRecipientAddressBlock(sender, "");
 }
@@ -1114,7 +1157,7 @@ function buildPdfLetterText(meta = {}, context = "", domain = "allgemein", inten
   const recipientAddress = (bodyIntent === "reimbursement" || bodyIntent === "erstattung_kostenuebernahme")
     ? "Krankenkasse / Versicherung\n[Adresse eintragen]"
     : getRecipientPostalAddress(meta, context);
-  const subject = buildSubject(meta, domain, intent === "cancel" ? "cancel" : bodyIntent, context);
+  const subject = buildSubject(meta, domain, bodyIntent === "cancel" ? "cancel" : bodyIntent, context);
   const body = buildEmailBody(meta, context, domain, bodyIntent);
   const date = getTodayGerman();
   const city = getCityFromPostalAddress(senderAddress);
