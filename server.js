@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v9.6-email-pdf-download" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v9.8-pdf-quality" });
 });
 
 function getTodayGerman() {
@@ -153,6 +153,116 @@ function normalizePostalAddress(value) {
   return raw;
 }
 
+
+function splitAddressIntoLines(value = "") {
+  const raw = String(value || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => normalizeString(line))
+    .filter(Boolean)
+    .join("\n");
+
+  if (!raw) return "";
+
+  const lines = raw.split("\n").map((line) => normalizeString(line)).filter(Boolean);
+  const out = [];
+
+  for (const line of lines) {
+    const commaParts = line.split(/\s*,\s*/).map((part) => normalizeString(part)).filter(Boolean);
+    if (commaParts.length >= 2 && commaParts.some((part) => /\b\d{5}\s+/.test(part))) {
+      out.push(...commaParts);
+    } else {
+      out.push(line);
+    }
+  }
+
+  return dedupe(out).join("\n").trim();
+}
+
+function formatAddressBlockWithName(name = "", address = "", fallbackName = "[Name bitte prüfen/eintragen]") {
+  const cleanName = looksLikePersonName(name) ? normalizeString(name) : fallbackName;
+  const cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
+  if (cleanAddress && cleanAddress.toLowerCase().includes(cleanName.toLowerCase())) return cleanAddress;
+  if (cleanAddress) return `${cleanName}\n${cleanAddress}`.trim();
+  return `${cleanName}\n[Adresse bitte prüfen/eintragen]`;
+}
+
+function formatRecipientAddressBlock(sender = "", address = "") {
+  const cleanSender = normalizeString(sender);
+  const cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
+  if (cleanAddress && cleanSender && cleanAddress.toLowerCase().includes(cleanSender.toLowerCase())) return cleanAddress;
+  if (cleanSender && cleanAddress) return `${cleanSender}\n${cleanAddress}`.trim();
+  if (cleanAddress) return cleanAddress;
+  if (cleanSender) return `${cleanSender}\n[Anschrift aus dem Schreiben übernehmen]`;
+  return "[Empfängeranschrift aus dem Schreiben übernehmen]";
+}
+
+function getCityFromPostalAddress(address = "") {
+  const text = String(address || "");
+  const matches = Array.from(text.matchAll(/\b\d{5}\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+){0,3})/g));
+  if (!matches.length) return "";
+  const city = normalizeString(matches[matches.length - 1][1]);
+  if (!city || /straße|strasse|weg|platz|allee|gasse/i.test(city)) return "";
+  return city;
+}
+
+function labelAndCleanReference(ref = "", domain = "allgemein") {
+  const original = normalizeString(ref);
+  if (!original) return { label: "", value: "" };
+
+  const labelMatch = original.match(/^(mahnungsnummer|mahnnummer|aktenzeichen|az|kundennummer|kunden-nr\.?|bg-nummer|steuernummer|beitragsnummer|rechnungsnummer|versicherungsscheinnummer|versicherungsnummer|vertragsnummer|vertragskonto|nummer)\s*[:#-]?\s*(.+)$/i);
+  let label = "";
+  let value = original;
+  if (labelMatch) {
+    label = labelMatch[1].toLowerCase();
+    value = normalizeString(labelMatch[2]);
+  }
+
+  value = value
+    .replace(/^(aktenzeichen|az|kundennummer|kunden-nr\.?|bg-nummer|steuernummer|beitragsnummer|rechnungsnummer|versicherungsscheinnummer|versicherungsnummer|vertragsnummer|vertragskonto|mahnungsnummer|mahnnummer|nummer)\s*[:#-]?\s*/i, "")
+    .trim();
+
+  if (!value || isUnsafeReference(value)) return { label: "", value: "" };
+
+  if (/mahn/.test(label)) return { label: "Mahnungsnummer", value };
+  if (/steuer/.test(label)) return { label: "Steuernummer", value };
+  if (/beitrag/.test(label)) return { label: "Beitragsnummer", value };
+  if (/rechnung/.test(label)) return { label: "Rechnungsnummer", value };
+  if (/versicherungsschein/.test(label)) return { label: "Versicherungsscheinnummer", value };
+  if (/versicherung/.test(label)) return { label: "Versicherungsnummer", value };
+  if (/vertrag/.test(label)) return { label: "Vertragsnummer", value };
+  if (/kunden/.test(label)) return { label: "Kundennummer", value };
+  if (/bg/.test(label)) return { label: "BG-Nummer", value };
+  if (/aktenzeichen|az/.test(label)) return { label: "Aktenzeichen", value };
+
+  if (domain === "vertrag_versicherung") return { label: "Versicherungsscheinnummer", value };
+  if (domain === "finanzamt") return { label: "Steuernummer", value };
+  if (domain === "inkasso") return { label: "Aktenzeichen", value };
+  return { label: "Nummer", value };
+}
+
+function formatReferenceForSubject(ref = "", domain = "allgemein") {
+  const parsed = labelAndCleanReference(ref, domain);
+  if (!parsed.value) return "";
+  return `${parsed.label} ${parsed.value}`.trim();
+}
+
+function formatReferenceForSentence(ref = "", domain = "allgemein") {
+  const parsed = labelAndCleanReference(ref, domain);
+  if (!parsed.value) return "";
+  return `zur ${parsed.label} ${parsed.value}`.trim();
+}
+
+function inferIntentFromHistory(historyText = "") {
+  const h = String(historyText || "").toLowerCase();
+  if (hasAny(h, ["ratenzahlung", "rate", "in raten"])) return "installments";
+  if (hasAny(h, ["widerruf", "kündigung", "kuendigung", "kündigen", "kuendigen"])) return "cancel";
+  if (hasAny(h, ["stundung", "zahlungsaufschub", "kann nicht zahlen", "kein geld"])) return "no_money";
+  if (hasAny(h, ["zahlungsnachweis", "bereits bezahlt", "schon bezahlt"])) return "paid";
+  if (hasAny(h, ["widerspruch", "stimmt nicht", "bestreiten"])) return "dispute";
+  return "reply";
+}
+
 function cleanAddressLines(lines = []) {
   const cleaned = [];
   for (const line of lines) {
@@ -197,32 +307,33 @@ function findAnyPostalBlock(context = "") {
 }
 
 function getUserPostalAddress(meta = {}, context = "") {
-  const fromMeta = normalizePostalAddress(meta.absender_adresse || meta.user_adresse || meta.adresse);
-  if (fromMeta) return fromMeta;
-
   const name = getSafeSignatureName(meta, context);
+  const fromMeta = normalizePostalAddress(meta.absender_adresse || meta.user_adresse || meta.adresse);
+  if (fromMeta) return formatAddressBlockWithName(name, fromMeta);
+
   if (name && name !== "[Name]") {
     const fromContext = findAddressBlockAfterLine(context, name);
-    if (fromContext) return fromContext;
+    if (fromContext) return formatAddressBlockWithName(name, fromContext);
   }
 
-  return name && name !== "[Name]" ? `${name}\n[Adresse bitte prüfen/eintragen]` : "[Name]\n[Adresse bitte eintragen]";
+  return formatAddressBlockWithName(name && name !== "[Name]" ? name : "", "");
 }
 
 function getRecipientPostalAddress(meta = {}, context = "") {
-  const fromMeta = normalizePostalAddress(meta.empfaenger_adresse || meta.absender_adresse_empfaenger || meta.postanschrift);
-  if (fromMeta) return fromMeta;
-
   const sender = getSender(meta);
+  const fromMeta = normalizePostalAddress(meta.empfaenger_adresse || meta.absender_adresse_empfaenger || meta.postanschrift);
+  if (fromMeta) return formatRecipientAddressBlock(sender, fromMeta);
+
   if (sender) {
     const fromContext = findAddressBlockAfterLine(context, sender);
-    if (fromContext) return fromContext;
+    if (fromContext) return formatRecipientAddressBlock(sender, fromContext);
   }
 
   const any = findAnyPostalBlock(context);
-  if (any && sender && !any.toLowerCase().includes(String(getSafeSignatureName(meta, context)).toLowerCase())) return any;
+  const personName = getSafeSignatureName(meta, context);
+  if (any && (!personName || !any.toLowerCase().includes(String(personName).toLowerCase()))) return formatRecipientAddressBlock(sender, any);
 
-  return sender ? `${sender}\n[Anschrift aus dem Schreiben übernehmen]` : "[Empfängeranschrift aus dem Schreiben übernehmen]";
+  return formatRecipientAddressBlock(sender, "");
 }
 
 function wantsPdfOutput(frage = "", frageMode = "") {
@@ -555,19 +666,11 @@ function getRecipientLine(meta = {}, context = "") {
 }
 
 function cleanReferenceLabel(ref = "") {
-  return normalizeString(ref)
-    .replace(/^(aktenzeichen|az|kundennummer|kunden-nr\.?|bg-nummer|steuernummer|beitragsnummer|rechnungsnummer|versicherungsscheinnummer|versicherungsnummer|nummer)\s*[:#-]?\s*/i, "")
-    .trim();
+  return labelAndCleanReference(ref, "allgemein").value;
 }
 
 function referenceLabelForDomain(ref = "", domain = "allgemein") {
-  const clean = cleanReferenceLabel(ref);
-  if (!clean) return "";
-  if (domain === "vertrag_versicherung") return `Versicherungsscheinnummer ${clean}`;
-  if (domain === "finanzamt") return `Steuernummer ${clean}`;
-  if (domain === "behoerde") return `Nummer ${clean}`;
-  if (domain === "inkasso") return `Aktenzeichen/Nummer ${clean}`;
-  return clean;
+  return formatReferenceForSubject(ref, domain);
 }
 
 function hasCreditRejectedContext(context = "") {
@@ -633,14 +736,15 @@ function buildSubject(meta = {}, domain = "allgemein", intent = "reply", context
 
 function buildReferenceSentence(meta = {}, domain = "allgemein", context = "") {
   const refRaw = getPrimaryReference(meta);
-  const ref = cleanReferenceLabel(refRaw);
+  const refValue = cleanReferenceLabel(refRaw);
+  const refSentence = formatReferenceForSentence(refRaw, domain);
   const date = getDate(meta);
   const amount = getAmount(meta);
   const topic = normalizeString(meta.briefart || meta.worum_geht_es || "");
 
   if (domain === "vertrag_versicherung") {
-    if (isFinanzSchutzbriefContext(context) && ref) return `ich beziehe mich auf den Finanz-Schutzbrief mit der Versicherungsscheinnummer ${ref}.`;
-    if (ref) return `ich beziehe mich auf den Vertrag mit der Nummer ${ref}.`;
+    if (isFinanzSchutzbriefContext(context) && refValue) return `ich beziehe mich auf den Finanz-Schutzbrief mit der Versicherungsscheinnummer ${refValue}.`;
+    if (refValue) return `ich beziehe mich auf den Vertrag mit der Nummer ${refValue}.`;
     if (date) return `ich beziehe mich auf Ihr Schreiben vom ${date}.`;
     return "ich beziehe mich auf den Vertrag bzw. Ihr Schreiben.";
   }
@@ -653,7 +757,7 @@ function buildReferenceSentence(meta = {}, domain = "allgemein", context = "") {
 
   const bits = [];
   if (date) bits.push(`vom ${date}`);
-  if (ref) bits.push(`zur Nummer ${ref}`);
+  if (refSentence) bits.push(refSentence);
   if (amount) bits.push(`über ${amount}`);
 
   if (bits.length) return `ich beziehe mich auf Ihr Schreiben ${bits.join(" ")}.`;
@@ -837,14 +941,17 @@ function buildPdfLetterText(meta = {}, context = "", domain = "allgemein", inten
   const senderAddress = getUserPostalAddress(meta, context);
   const recipientAddress = getRecipientPostalAddress(meta, context);
   const subject = buildSubject(meta, domain, intent === "cancel" ? "cancel" : intent, context);
-  const body = buildEmailBody(meta, context, domain, intent === "pdf" ? "reply" : intent);
+  const bodyIntent = intent === "pdf" ? inferIntentFromHistory(context) : intent;
+  const body = buildEmailBody(meta, context, domain, bodyIntent);
   const date = getTodayGerman();
+  const city = getCityFromPostalAddress(senderAddress);
+  const placeLine = city ? `${city}, ${date}` : `[Ort], ${date}`;
 
   return cleanText(`${senderAddress}
 
 ${recipientAddress}
 
-[Ort], ${date}
+${placeLine}
 
 Betreff: ${subject}
 
@@ -926,7 +1033,10 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
     return buildProfessionalOutput(meta, context, domain, "cancel");
   }
 
-  if (intent === "pdf") return buildProfessionalOutput(meta, context, domain, "pdf");
+  if (intent === "pdf") {
+    const rememberedIntent = inferIntentFromHistory(historyText || context);
+    return buildProfessionalOutput(meta, context, domain, rememberedIntent && rememberedIntent !== "reply" ? rememberedIntent : "pdf");
+  }
   if (intent === "reply") return buildProfessionalOutput(meta, context, domain, "reply");
 
   if (intent === "no_money") {
@@ -1350,5 +1460,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.6 email/pdf download");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v9.8 pdf quality");
 });
