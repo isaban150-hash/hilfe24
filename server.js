@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v14.7-contract-insurance-intent-fix" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v15.0-assistant-analysis-template-guard" });
 });
 
 function getTodayGerman() {
@@ -251,12 +251,7 @@ function splitAddressIntoLines(value = "") {
 
 function formatAddressBlockWithName(name = "", address = "", fallbackName = "[Name bitte prüfen/eintragen]") {
   const cleanName = looksLikePersonName(name) ? normalizeString(name) : fallbackName;
-  let cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
-  const addressLines = cleanAddress ? cleanAddress.split("\n").filter(Boolean) : [];
-  // V14.7: Keine langen Extraktionsreste oder komplette Erklärung als Absenderblock übernehmen.
-  if (addressLines.length > 4 || /(kurz erklärt|kısaca|wichtig|önemli|betreff|sehr geehrte|forderung|versicherungsscheinnummer.*mandatsreferenz.*gläubigeridentifikationsnummer)/i.test(cleanAddress)) {
-    cleanAddress = "";
-  }
+  const cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
   if (cleanAddress && cleanAddress.toLowerCase().includes(cleanName.toLowerCase())) return cleanAddress;
   if (cleanAddress) return `${cleanName}\n${cleanAddress}`.trim();
   return `${cleanName}\n[Adresse bitte prüfen/eintragen]`;
@@ -264,12 +259,7 @@ function formatAddressBlockWithName(name = "", address = "", fallbackName = "[Na
 
 function formatRecipientAddressBlock(sender = "", address = "") {
   const cleanSender = normalizeString(sender);
-  let cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
-  const addressLines = cleanAddress ? cleanAddress.split("\n").filter(Boolean) : [];
-  // V14.7: Keine langen Extraktionsreste als Empfängeradresse übernehmen.
-  if (addressLines.length > 5 || /(kurz erklärt|kısaca|wichtig|önemli|sehr geehrte|mit freundlichen grüßen|mandatsreferenz.*gläubigeridentifikationsnummer)/i.test(cleanAddress)) {
-    cleanAddress = "";
-  }
+  const cleanAddress = splitAddressIntoLines(normalizePostalAddress(address) || address);
   if (cleanAddress && cleanSender && cleanAddress.toLowerCase().includes(cleanSender.toLowerCase())) return cleanAddress;
   if (cleanSender && cleanAddress) return `${cleanSender}\n${cleanAddress}`.trim();
   if (cleanAddress) return cleanAddress;
@@ -866,8 +856,8 @@ function referenceLabelForDomain(ref = "", domain = "allgemein") {
 
 function hasCreditRejectedContext(context = "") {
   const t = String(context || "").toLowerCase();
-  return hasAny(t, ["kredit", "kredi", "credit", "loan"])
-    && hasAny(t, ["abgelehnt", "nicht bewilligt", "nicht genehmigt", "nicht bekommen", "keinen kredit", "kredit wurde abgelehnt", "olmadı", "olmadi", "alamadı", "alamadi", "kredi de çıkmadı", "kredi de cikmadi", "başvuru olmadı", "basvuru olmadi"]);
+  return hasAny(t, ["kredit"])
+    && hasAny(t, ["abgelehnt", "nicht bewilligt", "nicht genehmigt", "nicht bekommen", "keinen kredit", "kredit wurde abgelehnt"]);
 }
 
 function isFinanzSchutzbriefContext(context = "") {
@@ -995,8 +985,8 @@ ${name}`;
 
   if (domain === "vertrag_versicherung" || intent === "cancel") {
     const creditLine = hasCreditRejectedContext(context)
-      ? "Der Vertrag ist im Zusammenhang mit einer Online-Kreditanfrage entstanden. Der beantragte Kredit wurde nach meiner Kenntnis nicht bewilligt. Der Vertrag wurde von mir nicht bewusst und nicht gewollt abgeschlossen."
-      : "Der Vertrag ist nach meiner Kenntnis im Zusammenhang mit einer Online-Anfrage entstanden. Ich bitte um Prüfung, ob ein wirksamer Vertragsschluss vorliegt.";
+      ? "Der Vertrag ist im Zusammenhang mit einer Online-Kreditanfrage entstanden. Der beantragte Kredit wurde nach meiner Kenntnis nicht bewilligt."
+      : "Der Vertrag ist nach meiner Kenntnis im Zusammenhang mit einer Online-Anfrage entstanden.";
 
     return `Sehr geehrte Damen und Herren,
 
@@ -1268,89 +1258,487 @@ function buildNoMoneyShort(meta = {}, domain = "allgemein") {
   return "Dann nicht sofort eine Rate vorschlagen. Der sichere Schritt ist Zahlungsaufschub oder Stundung. Schreibe der Stelle, dass du aktuell nicht zahlen kannst, und bitte um Aussetzung weiterer Maßnahmen bis zur Entscheidung.";
 }
 
+
+
+/* ==========================================================
+   HILFE24 V15.0 - ASSISTENTEN-ANALYSE + TEMPLATE-GUARD
+   Ziel: erst analysieren, dann antworten/schreiben.
+   Index bleibt Anzeige-Schicht. Server entscheidet Fachlogik.
+   ========================================================== */
+
+function normalizeForIntent(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c");
+}
+
+function detectUserLanguageFromQuestion(frage = "", fallback = "de") {
+  const raw = String(frage || "").toLowerCase();
+  const q = normalizeForIntent(raw);
+  if (/(\bben\b|bana|sana|nasıl|nasil|yapayim|yapayım|anlat|avukat|yardim|yardım|dilekce|dilekçe|mektup|sigorta|taksit|gonder|gönder|hazirla|hazırla|odeme|ödeme)/i.test(q)) return "tr";
+  if (/[а-яё]/i.test(raw)) return "bg";
+  if (/(what|how|why|please|letter|lawyer|insurance|refund|help)/i.test(raw)) return "en";
+  if (/(avocat|asigurare|scrisoare|ajutor|rambursare|plată|plata)/i.test(raw)) return "ro";
+  return fallback || "de";
+}
+
+function safeSignatureForDraft(meta = {}, context = "") {
+  const raw = getSafeSignatureName(meta, context);
+  const clean = normalizeString(raw)
+    .replace(/['’´`]?(nin|nın|nun|nün|in|ın|un|ün)$/i, "")
+    .replace(/['’´`]s$/i, "")
+    .replace(/\b(forderung|versicherung|portal|patientenportal|webseite|rechnung|aktenzeichen)\b/gi, "")
+    .trim();
+  return looksLikePersonName(clean) ? clean : (looksLikePersonName(raw) ? raw : "[Name bitte prüfen/eintragen]");
+}
+
+function hasLegalAidCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(anwalt|rechtsanwalt|verteidiger|pflichtverteidiger|beratungshilfe|prozesskostenhilfe|verfahrenskostenhilfe|rechtsantragstelle|avukat|avukati|avukata|avukat tut|para odemeden avukat|hukuki yardim|hukuk yardimi|legal aid|lawyer)/i.test(q);
+}
+
+function hasCourtCriminalCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(gericht|amtsgericht|landgericht|staatsanwaltschaft|polizei|anklage|angeklagt|straf|strafverfahren|strafbefehl|hauptverhandlung|ladung|umladung|termin|haftbefehl|pflichtverteidiger|gefahrliche korperverletzung|körperverletzung|mahkeme|savcilik|savcılık|ceza davasi|dava|duruşma|durusma|police|court|prosecutor)/i.test(q);
+}
+
+function hasGuidanceCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(schritt fur schritt|schrittweise|leitfaden|checkliste|was brauche ich|was muss ich mitnehmen|was soll ich jetzt machen|was soll ich tun|wie mache ich|wie bekomme ich|tek tek|tek tek anlat|nasil yapayim|nasıl yapayım|bana yol goster|yol göster|ne yapmam gerekiyor|kontrol listesi|abhaken|plan|guide|checklist)/i.test(q);
+}
+
+function hasBenefitCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(pflegegrad|pflegekasse|pflegeversicherung|pflegegeld|entlastungsbetrag|krankenkasse|rentenversicherung|rentenkasse|erwerbsminderung|reha|schwerbehindert|gdb|versorgungsamt|jobcenter|burgergeld|buergergeld|sozialamt|wohngeld|familienkasse|kinderzuschlag|unterhaltsvorschuss|bildung und teilhabe|but|rundfunkbefreiung|p-konto|pfandung|pfändung|was kann ich bekommen|steht mir zu)/i.test(q);
+}
+
+function hasInsuranceContractCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(finanz-schutzbrief|finanzschutzbrief|versicherungsschein|versicherungsscheinnummer|versicherungsbeginn|versicherungsende|versicherungsablauf|sepa-lastschrift|kredit|kreditanfrage|kredit nicht|kredi|kredi cek|kredi olmad|sigorta cik|sigorta çık|abschließen|abgeschlossen|vertrag|widerruf|kundigen|kündigen|kuendigen|abo|lastschrift)/i.test(q)
+    && /(versicherung|sigorta|schutzbrief|vertrag|kredit|kredi)/i.test(q);
+}
+
+function detectCaseTypeV15(context = "") {
+  const q = normalizeForIntent(context);
+  if (hasCourtCriminalCue(q)) return "court_legal_aid";
+  if (hasInsuranceContractCue(q)) return "insurance_contract";
+  if (/(dzr|zahnarzt|zahn|rechnung|rg-nummer|goz|bema|behandlung|patient)/i.test(q)) return "invoice_medical";
+  if (/(inkasso|mahnung|forderung|gerichtsvollzieher|vollstreckung)/i.test(q)) return "debt_collection";
+  if (/(jobcenter|burgergeld|buergergeld|sozialamt|rückforderung|rueckforderung|bescheid|widerspruch|aufrechnung)/i.test(q)) return "authority_social";
+  if (/(pflegegrad|pflegekasse|pflegeversicherung|md gutachten|medizinischer dienst)/i.test(q)) return "care_insurance";
+  if (/(rentenversicherung|rentenkasse|erwerbsminderung|reha|teilhabe am arbeitsleben|kontenklärung|kontenklaerung)/i.test(q)) return "pension_insurance";
+  if (/(schwerbehindert|gdb|merkzeichen|versorgungsamt|behindertenausweis)/i.test(q)) return "disability";
+  if (/(arbeitgeber|arbeitnehmer|lohn|gehalt|abmahnung|kündigung|kuendigung|arbeitszeugnis|schuldanerkenntnis|lohnabtretung)/i.test(q)) return "employment";
+  if (/(vermieter|miete|nebenkosten|kaution|räumung|raeumung|wohnung)/i.test(q)) return "housing";
+  if (/(finanzamt|steuer|einkommensteuer|säumniszuschlag|saeumniszuschlag)/i.test(q)) return "tax";
+  if (/(rundfunkbeitrag|beitragsservice|beitragskonto)/i.test(q)) return "broadcast_fee";
+  if (/(familienkasse|kindergeld|kinderzuschlag|jugendamt|unterhaltsvorschuss|schule|kita|klassenfahrt|bildung und teilhabe)/i.test(q)) return "family_school";
+  if (/(krankenkasse|hilfsmittel|zuzahlungsbefreiung|krankengeld|haushaltshilfe|fahrtkosten|rezept|verordnung)/i.test(q)) return "health_insurance";
+  return detectDomain(context) || "allgemein";
+}
+
+function detectCurrentUserGoalV15(frage = "", context = "") {
+  const q = normalizeForIntent(`${frage} ${context}`);
+  if (hasLegalAidCue(q)) return "legal_aid";
+  if (hasGuidanceCue(frage)) return "guidance";
+  if (hasInsuranceContractCue(`${frage} ${context}`) && /(widerruf|kundig|kündig|kuendig|iptal|fesih|nicht gewollt|nicht bewusst|kredi|kredit|vertrag prüfen|vertrag pruefen)/i.test(q)) return "contract_check_cancel";
+  if (hasReimbursementIntent(frage, "")) return "reimbursement";
+  if (/(ratenzahlung|rate|raten|taksit|taksitli|stundung|zahlungsaufschub)/i.test(q)) return "payment_plan";
+  if (/(schon bezahlt|bereits bezahlt|habe bezahlt|überwiesen|ueberwiesen|dekont|zahlungsnachweis)/i.test(q)) return "paid_proof";
+  if (/(widerspruch|einspruch|bestreiten|stimmt nicht|itiraz|ablehnung|abgelehnt)/i.test(q)) return "appeal_dispute";
+  if (hasBenefitCue(q)) return "benefit_check";
+  if (/(welche behandlung|was wurde gemacht|wofur ist die rechnung|wofür ist die rechnung|leistungsaufstellung|goz|bema)/i.test(q)) return "details_needed";
+  if (/(frist|bis wann|termin|deadline)/i.test(q)) return "deadline";
+  if (/(was bedeutet|erklär|erklar|anlam|ne demek)/i.test(q)) return "understand";
+  if (/(was soll ich|was muss ich|was kann ich|ne yapmam|nasil|nasıl|wie weiter)/i.test(q)) return "guidance";
+  return "answer_question";
+}
+
+function detectRequestedFormatV15(frage = "", frageMode = "") {
+  if (wantsBothEmailAndPdf(frage, frageMode)) return "both";
+  if (wantsPdfOutput(frage, frageMode)) return "pdf";
+  if (wantsEmailOutput(frage, frageMode)) return "email";
+  return "none";
+}
+
+function buildTemplateRulesV15(caseType = "", userGoal = "") {
+  const rules = {
+    allowedTemplates: ["general_answer"],
+    forbiddenTemplates: [],
+    riskLevel: "low",
+    riskReasons: []
+  };
+  if (caseType === "court_legal_aid") {
+    rules.riskLevel = "high";
+    rules.riskReasons.push("Gericht/Strafsache/Anwalt möglich");
+    rules.allowedTemplates = ["legal_aid_checklist", "legal_aid_request", "public_defender_request", "court_clarification", "appointment_notice"];
+    rules.forbiddenTemplates = ["krankenkasse_reimbursement", "dzr_installments", "dental_detail_request", "insurance_reimbursement", "generic_invoice_refund"];
+  } else if (caseType === "insurance_contract") {
+    rules.riskLevel = "medium";
+    rules.riskReasons.push("Vertrag/Widerruf/Kündigung möglich");
+    rules.allowedTemplates = ["contract_check_cancel", "withdrawal", "termination", "contract_proof_request", "stop_debit_request"];
+    rules.forbiddenTemplates = ["krankenkasse_reimbursement", "dzr_installments", "dental_detail_request"];
+  } else if (caseType === "invoice_medical") {
+    rules.allowedTemplates = ["reimbursement", "paid_proof", "installments", "detail_request", "general_answer"];
+    rules.forbiddenTemplates = ["legal_aid_request", "public_defender_request"];
+  } else if (caseType === "debt_collection") {
+    rules.riskLevel = "medium";
+    rules.allowedTemplates = ["debt_check", "installments", "paid_proof", "dispute"];
+    rules.forbiddenTemplates = ["krankenkasse_reimbursement", "legal_aid_request"];
+  } else if (["tax", "employment", "housing"].includes(caseType)) {
+    rules.riskLevel = "medium";
+    rules.riskReasons.push("Frist/Geld/Vertrag möglich");
+  }
+  return rules;
+}
+
+function buildHilfe24AnalysisV15({ frage = "", frageMode = "", meta = {}, briefText = "", kurz = "", details = "", historyText = "" }) {
+  const context = buildContext(meta, briefText, kurz, details, frage, historyText);
+  const currentOnly = String(frage || "");
+  const caseType = detectCaseTypeV15(`${context}`);
+  const currentUserGoal = detectCurrentUserGoalV15(currentOnly, context);
+  const requestedFormat = detectRequestedFormatV15(frage, frageMode);
+  const isWriteRequest = isExplicitWriteRequest(frage, frageMode) || requestedFormat !== "none";
+  const wantsChecklist = hasGuidanceCue(currentOnly) || /(checkliste|leitfaden|abhaken|kontrol listesi)/i.test(normalizeForIntent(currentOnly));
+  const wantsStepByStep = hasGuidanceCue(currentOnly);
+  const wantsGuidance = wantsChecklist || wantsStepByStep || currentUserGoal === "guidance" || (caseType === "court_legal_aid" && hasLegalAidCue(currentOnly));
+  const templateRules = buildTemplateRulesV15(caseType, currentUserGoal);
+  let targetParty = getSender(meta) || "Stelle aus dem Schreiben";
+  let officialDraftLanguage = "Deutsch";
+  let shouldOnlyAnswer = !isWriteRequest;
+  let shouldCreateDraft = isWriteRequest && requestedFormat !== "none";
+  let shouldAskClarification = false;
+  let clarificationQuestion = "";
+
+  if (caseType === "court_legal_aid") {
+    targetParty = "Amtsgericht / Rechtsantragstelle";
+    if (wantsGuidance && !/^(pdf|brief|e-?mail|email|mail)$/i.test(normalizeString(frage))) {
+      shouldOnlyAnswer = false;
+      shouldCreateDraft = false;
+    }
+  } else if (caseType === "insurance_contract") {
+    targetParty = getSender(meta) || "Versicherung / Vertragspartner";
+  } else if (currentUserGoal === "reimbursement") {
+    targetParty = "Krankenkasse / Versicherung / Kostenträger";
+  } else if (currentUserGoal === "payment_plan" || currentUserGoal === "paid_proof") {
+    targetParty = getSender(meta) || "Gläubiger / Rechnungssteller";
+  }
+
+  if (isWriteRequest && requestedFormat === "none") {
+    shouldAskClarification = true;
+    clarificationQuestion = "Möchtest du eine E-Mail, einen PDF-Brief oder beides?";
+    shouldCreateDraft = false;
+  }
+
+  const allowedTemplates = templateRules.allowedTemplates;
+  const forbiddenTemplates = templateRules.forbiddenTemplates;
+
+  return {
+    caseType,
+    currentUserGoal,
+    currentUserIntent: isWriteRequest ? "write_or_prepare" : (wantsGuidance ? "guidance" : "answer"),
+    isWriteRequest,
+    wantsChecklist,
+    wantsStepByStep,
+    wantsGuidance,
+    requestedFormat,
+    shouldOnlyAnswer,
+    shouldCreateDraft,
+    shouldAskClarification,
+    clarificationQuestion,
+    userLanguage: detectUserLanguageFromQuestion(frage, "de"),
+    officialDraftLanguage,
+    sourceParty: getSender(meta) || "",
+    demandingParty: getSender(meta) || "",
+    targetParty,
+    costCarrierParty: currentUserGoal === "reimbursement" ? "Krankenkasse / Versicherung / Kostenträger" : "",
+    contractParty: caseType === "insurance_contract" ? (getSender(meta) || "Versicherung / Vertragspartner") : "",
+    legalAidParty: caseType === "court_legal_aid" ? "Amtsgericht / Rechtsantragstelle" : "",
+    benefitParty: currentUserGoal === "benefit_check" ? "zuständige Leistungsstelle" : "",
+    rightsCategory: [caseType, currentUserGoal].filter(Boolean),
+    possibleRights: inferPossibleRightsV15(caseType, currentUserGoal),
+    possibleBenefits: inferPossibleBenefitsV15(caseType, currentUserGoal),
+    requiredDocuments: inferRequiredDocumentsV15(caseType, currentUserGoal, meta),
+    deadline: meta.frist || meta.termin || "",
+    appointment: Boolean(meta.termin || /termin|duruşma|durusma|hauptverhandlung|ladung/i.test(normalizeForIntent(context))),
+    riskLevel: templateRules.riskLevel,
+    riskReasons: templateRules.riskReasons,
+    forbiddenTemplates,
+    allowedTemplates,
+    protectedSignatureName: safeSignatureForDraft(meta, context),
+    protectedIdentifiers: [getPrimaryReference(meta)].filter(Boolean),
+    needsKnowledgeLookup: hasBenefitCue(`${frage} ${context}`) || hasLegalAidCue(`${frage} ${context}`),
+    knowledgeCategory: [caseType, currentUserGoal].filter(Boolean)
+  };
+}
+
+function inferPossibleRightsV15(caseType = "", goal = "") {
+  if (caseType === "court_legal_aid") return ["Beratungshilfe prüfen", "Pflichtverteidiger prüfen", "Frist/Termin beachten", "schriftliche Klärung verlangen"];
+  if (caseType === "insurance_contract") return ["Widerruf prüfen", "hilfsweise Kündigung", "Vertragsschluss-Nachweis verlangen", "Lastschrift/Abbuchung prüfen"];
+  if (caseType === "debt_collection") return ["Forderung prüfen", "Forderungsaufstellung verlangen", "Nachweise verlangen", "Ratenzahlung/Stundung prüfen"];
+  if (caseType === "authority_social") return ["Widerspruch prüfen", "Unterlagen nachreichen", "Akteneinsicht/Begründung verlangen", "Frist beachten"];
+  if (caseType === "care_insurance") return ["Pflegegrad beantragen oder Höherstufung prüfen", "Widerspruch gegen Bescheid prüfen", "MD-Gutachten prüfen"];
+  if (caseType === "pension_insurance") return ["Reha prüfen", "Erwerbsminderungsrente prüfen", "Widerspruch gegen Bescheid prüfen"];
+  if (caseType === "disability") return ["Schwerbehindertenausweis/GdB prüfen", "Merkzeichen/Nachteilsausgleiche prüfen", "Widerspruch prüfen"];
+  if (goal === "reimbursement") return ["Kostenübernahme/Erstattung prüfen lassen"];
+  return [];
+}
+
+function inferPossibleBenefitsV15(caseType = "", goal = "") {
+  if (caseType === "court_legal_aid") return ["Beratungshilfe", "Prozesskostenhilfe/Verfahrenskostenhilfe je nach Verfahren", "Pflichtverteidiger nur bei bestimmten Strafsachen"];
+  if (caseType === "care_insurance") return ["Pflegegeld", "Pflegesachleistungen", "Entlastungsbetrag", "Pflegehilfsmittel", "Wohnraumanpassung"];
+  if (caseType === "health_insurance") return ["Kostenübernahme", "Hilfsmittel", "Zuzahlungsbefreiung", "Krankengeld", "Fahrtkosten"];
+  if (caseType === "pension_insurance") return ["Reha", "Teilhabe am Arbeitsleben", "Erwerbsminderungsrente"];
+  if (caseType === "disability") return ["Nachteilsausgleiche", "Merkzeichen", "Steuer-/Mobilitätsvorteile je nach Fall"];
+  if (caseType === "family_school") return ["Bildung und Teilhabe", "Kinderzuschlag", "Unterhaltsvorschuss", "Kita-Ermäßigung"];
+  if (goal === "benefit_check") return ["mögliche staatliche Hilfe oder Befreiung prüfen lassen"];
+  return [];
+}
+
+function inferRequiredDocumentsV15(caseType = "", goal = "", meta = {}) {
+  const ref = getPrimaryReference(meta);
+  const common = [];
+  if (ref) common.push(`Nummer/Aktenzeichen: ${ref}`);
+  if (caseType === "court_legal_aid") return dedupe(["Gerichtsschreiben", ref ? `Aktenzeichen: ${ref}` : "Aktenzeichen", "aktueller Bürgergeld-/Jobcenter-Bescheid", "Personalausweis oder Reisepass", "falls vorhanden: Einkommens- und Ausgabennachweise"]);
+  if (caseType === "insurance_contract") return dedupe(["Vertrag/Versicherungsschein", "Schreiben der Versicherung", "Nachweis zur Kreditanfrage", "Kontoauszug bei Abbuchung", ...common]);
+  if (goal === "reimbursement") return dedupe(["Rechnung", "Zahlungsnachweis", "Leistungsaufstellung", "Versicherungs-/Krankenkassendaten", ...common]);
+  if (caseType === "care_insurance") return ["Pflegegrad-Bescheid", "MD-Gutachten", "Arztberichte", "Medikamentenplan", "Pflegedokumentation"];
+  if (caseType === "pension_insurance") return ["Rentenversicherungs-Schreiben", "Arztberichte", "Arbeitsunfähigkeitszeiten", "Reha-Unterlagen", "Versicherungsverlauf"];
+  return common;
+}
+
+function templateAllowedV15(analysis = {}, templateName = "") {
+  if (!templateName) return true;
+  if (Array.isArray(analysis.forbiddenTemplates) && analysis.forbiddenTemplates.includes(templateName)) return false;
+  if (Array.isArray(analysis.allowedTemplates) && analysis.allowedTemplates.length && !analysis.allowedTemplates.includes(templateName) && !analysis.allowedTemplates.includes("general_answer")) return false;
+  return true;
+}
+
+function getLegalAidRecipientAddress(meta = {}, context = "") {
+  const c = String(context || "");
+  if (/amtsgericht\s+lemgo/i.test(c)) return "Amtsgericht Lemgo\nRechtsantragstelle\nAm Lindenhaus 2\n32657 Lemgo";
+  const recipient = getRecipientPostalAddress(meta, context);
+  if (/amtsgericht|gericht/i.test(recipient)) return recipient.replace(/(Amtsgericht[^\n]*)/i, "$1\nRechtsantragstelle");
+  if (/amtsgericht/i.test(c)) return "Amtsgericht / Rechtsantragstelle\n[Adresse bitte eintragen]";
+  return "Amtsgericht / Rechtsantragstelle\n[Adresse bitte eintragen]";
+}
+
+function buildLegalAidChecklistAnswerV15(meta = {}, context = "", langCode = "tr") {
+  const ref = getPrimaryReference(meta);
+  const termin = meta.termin || "";
+  const recipient = getLegalAidRecipientAddress(meta, context);
+  if (langCode === "tr") {
+    return cleanText(`Tamam. Burada konu para iadesi değil, avukat yardımıdır.
+
+Bu bir mahkeme/ceza davası olduğu için dikkatli ve hızlı ilerlemek gerekir. Bürgergeld/Jobcenter yardımı alınıyorsa Beratungshilfe veya bazı durumlarda Pflichtverteidiger konusu kontrol edilebilir. Bu garanti değildir; yetkili yer karar verir.
+
+Kontrol listesi:
+☐ 1. Mahkeme yazısını hazırla.
+${ref ? `☐ 2. Aktenzeichen'i not et: ${ref}.` : "☐ 2. Aktenzeichen'i mahkeme yazısından not et."}
+☐ 3. Güncel Bürgergeld/Jobcenter Bescheidini hazırla.
+☐ 4. Kimliği hazırla: Personalausweis veya Reisepass.
+☐ 5. ${recipient.replace(/\n/g, ", ")} ile iletişime geç.
+☐ 6. Şunu sor: “Beratungshilfe alabilir miyim? Bu dosyada Pflichtverteidiger mümkün mü?”
+☐ 7. Strafrecht alanında bir avukat ara ve Bürgergeld aldığını söyle.
+${termin ? `☐ 8. Mahkeme tarihini kaçırma: ${termin}.` : "☐ 8. Mahkeme tarihini kaçırma. Tarih yazıda varsa hemen takvime ekle."}
+
+Sorulması gereken kısa sorular:
+- Şu anda avukatınız var mı?
+- Avukat masrafını ödeyebiliyor musunuz?
+- Güncel Jobcenter/Bürgergeld Bescheidiniz var mı?
+- Duruşma tarihi kesin mi?
+
+Önemli: Mahkeme, polis veya ceza davası varsa yanlış bilgi vermeyin ve anlamadığınız bir şeyi imzalamayın.
+
+İstersen bundan sonra Amtsgericht / Rechtsantragstelle için Almanca PDF dilekçesi hazırlayabilirim.`);
+  }
+  return cleanText(`Das ist kein Erstattungsfall, sondern ein Thema anwaltliche Hilfe.
+
+Wenn Bürgergeld bezogen wird, können Beratungshilfe oder je nach Verfahren weitere Hilfe geprüft werden. In Strafsachen kann unter bestimmten Voraussetzungen auch ein Pflichtverteidiger in Betracht kommen. Das ist nicht garantiert; die zuständige Stelle entscheidet.
+
+Checkliste:
+☐ 1. Gerichtsschreiben bereitlegen.
+${ref ? `☐ 2. Aktenzeichen notieren: ${ref}.` : "☐ 2. Aktenzeichen aus dem Schreiben notieren."}
+☐ 3. Aktuellen Bürgergeld-/Jobcenter-Bescheid bereitlegen.
+☐ 4. Ausweis bereitlegen.
+☐ 5. Amtsgericht / Rechtsantragstelle kontaktieren.
+☐ 6. Beratungshilfe und Pflichtverteidiger-Möglichkeit erfragen.
+☐ 7. Strafrecht-Anwalt kontaktieren.
+${termin ? `☐ 8. Gerichtstermin nicht verpassen: ${termin}.` : "☐ 8. Gerichtstermin nicht verpassen."}
+
+Wenn du möchtest, erstelle ich daraus einen deutschen PDF-Brief an das Amtsgericht / die Rechtsantragstelle.`);
+}
+
+function buildLegalAidPdfOutputV15(meta = {}, context = "") {
+  const senderAddress = getUserPostalAddress(meta, context).replace(getSafeSignatureName(meta, context), safeSignatureForDraft(meta, context));
+  const recipient = getLegalAidRecipientAddress(meta, context);
+  const date = getTodayGerman();
+  const city = getCityFromPostalAddress(senderAddress);
+  const placeLine = city ? `${city}, ${date}` : `[Ort], ${date}`;
+  const ref = getPrimaryReference(meta);
+  const subject = ref
+    ? `Bitte um Hilfe wegen anwaltlicher Vertretung / Beratungshilfe – ${formatReferenceForSubject(ref, "gericht") || ref}`
+    : "Bitte um Hilfe wegen anwaltlicher Vertretung / Beratungshilfe";
+  const name = safeSignatureForDraft(meta, context);
+  const body = `Sehr geehrte Damen und Herren,
+
+ich bitte um Hilfe, weil ich mir einen Rechtsanwalt finanziell nicht leisten kann.
+
+${ref ? `Ich beziehe mich auf das Verfahren mit dem Aktenzeichen ${cleanReferenceLabel(ref) || ref}.` : "Ich beziehe mich auf das aktuelle gerichtliche Schreiben."}
+
+Ich beziehe Bürgergeld bzw. habe nur geringe finanzielle Mittel. Deshalb bitte ich um Mitteilung, wie ich Beratungshilfe beantragen kann.
+
+Bitte teilen Sie mir außerdem mit, ob in diesem Verfahren die Beiordnung eines Pflichtverteidigers in Betracht kommt oder welche Schritte dafür erforderlich sind.
+
+Den Bürgergeld-/Jobcenter-Bescheid, meinen Ausweis und das gerichtliche Schreiben kann ich vorlegen.
+
+Bitte bestätigen Sie mir den Eingang dieses Schreibens und teilen Sie mir schriftlich mit, was ich als Nächstes tun muss.
+
+Mit freundlichen Grüßen
+
+${name}`;
+  return cleanText(`PDF-BRIEF:
+
+${senderAddress}
+
+${recipient}
+
+${placeLine}
+
+Betreff: ${subject}
+
+${body}`);
+}
+
+function buildInsuranceContractGuidanceV15(meta = {}, context = "", langCode = "tr") {
+  const ref = getPrimaryReference(meta);
+  if (langCode === "tr") {
+    return cleanText(`Bu durumda “sigorta” kelimesi para iadesi/Krankenkasse anlamında görünmüyor. Daha çok bir sigorta sözleşmesi veya krediyle bağlantılı ek ürün gibi duruyor.
+
+Bu yüzden doğru yol:
+1. Sözleşmenin gerçekten isteyerek yapılıp yapılmadığını kontrol ettirmek.
+2. Mümkünse Widerruf yani cayma hakkını kullanmak.
+3. Ek olarak hilfsweise Kündigung yani yedek olarak fesih göndermek.
+4. Abbuchung varsa banka hesabını kontrol etmek.
+5. Yazılı onay istemek.
+${ref ? `
+Önemli numara: ${ref}` : ""}
+
+Garanti veremem. Ama bu bir Erstattung/Krankenkasse konusu değil; sözleşme kontrolü, Widerruf ve Kündigung konusudur.`);
+  }
+  return cleanText(`Das wirkt nicht wie ein Erstattungsfall, sondern wie ein Versicherungs-/Vertragsproblem.
+
+Sinnvoll ist: Vertragsschluss prüfen lassen, vorsorglich widerrufen, hilfsweise kündigen, weitere Abbuchungen stoppen lassen und schriftliche Bestätigung verlangen.${ref ? `
+
+Wichtige Nummer: ${ref}` : ""}`);
+}
+
+function buildAssistantAnalysisDebugLine(analysis = {}) {
+  return ""; // bewusst leer: Analyse bleibt intern, keine UI-Verwirrung.
+}
+
 function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
+  const analysis = buildHilfe24AnalysisV15({ frage, frageMode, meta, briefText, kurz, details, historyText });
   const outputChoice = isAnsweringOutputChoice(frage, historyText);
-  const intent = outputChoice ? inferIntentFromHistory(historyText || context) : detectIntent(frage, frageMode, historyText);
+  const intent = outputChoice ? inferIntentFromHistory(historyText || context) : detectCoreIntent(frage, frageMode);
   const wantsPdf = outputChoice === "pdf" || (!outputChoice && wantsPdfOutput(frage, frageMode));
   const wantsEmail = outputChoice === "email" || (!outputChoice && wantsEmailOutput(frage, frageMode));
   const wantsBoth = outputChoice === "both" || (!outputChoice && wantsBothEmailAndPdf(frage, frageMode));
+  const explicitWrite = isExplicitWriteRequest(frage, frageMode) || Boolean(outputChoice);
 
   if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
 
-  // V10.1: Ausgabeform sauber trennen.
-  // PDF nur bei PDF-Wunsch, E-Mail nur bei E-Mail-Wunsch, beides nur bei beidem.
-  // Wenn der Nutzer nur eine Antwort/Ratenzahlung/etc. möchte, fragt Hilfe24 nach der gewünschten Form.
-  if (wantsBoth) {
-    const finalIntent = intent && intent !== "pdf" ? intent : inferIntentFromHistory(historyText || context);
-    return buildEmailAndPdfOutput(meta, context, domain, finalIntent && finalIntent !== "pdf" ? finalIntent : "reply");
-  }
+  // V15.0: Gericht/Anwalt/Bürgergeld ist Hochrisiko. Zuerst Assistenten-Leitfaden,
+  // wenn der Nutzer Schritt-für-Schritt-Hilfe braucht. Keine falsche Erstattungs-/Krankenkassen-Vorlage.
+  if (analysis.caseType === "court_legal_aid") {
+    const pureFormatChoice = /^(pdf|brief|e-?mail|email|mail|beides|1|2|3)$/i.test(normalizeString(frage));
+    const directDraftRequest = explicitWrite && (wantsPdf || wantsEmail || wantsBoth) && !analysis.wantsGuidance;
+    const followUpDraftAfterGuidance = pureFormatChoice && /beratungshilfe|pflichtverteidiger|rechtsantragstelle|amtsgericht|anwalt|avukat/i.test(historyText || "");
 
-  if (intent === "pdf") {
-    const rememberedIntent = inferIntentFromHistory(historyText || context);
-    return buildPdfOnlyOutput(meta, context, domain, rememberedIntent && rememberedIntent !== "reply" ? rememberedIntent : "pdf");
-  }
-
-  const formIntent = intent || "reply";
-
-  if (["cancel", "reply", "no_money", "installments", "paid", "sent_proof", "dispute"].includes(formIntent)) {
-    if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, formIntent === "reply" ? "pdf" : formIntent);
-    if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, formIntent);
-
-    if (formIntent === "no_money" && !wantsWrittenOutput(frage, frageMode)) {
-      return buildNoMoneyShort(meta, domain);
+    if ((analysis.wantsGuidance || analysis.currentUserGoal === "legal_aid") && !directDraftRequest && !followUpDraftAfterGuidance) {
+      return buildLegalAidChecklistAnswerV15(meta, context, analysis.userLanguage);
     }
 
-    return askOutputChoice(formIntent);
+    if ((wantsPdf || followUpDraftAfterGuidance) && templateAllowedV15(analysis, "legal_aid_request")) {
+      return buildLegalAidPdfOutputV15(meta, context);
+    }
+
+    if (wantsEmail && templateAllowedV15(analysis, "legal_aid_request")) {
+      const pdf = buildLegalAidPdfOutputV15(meta, context).replace(/^PDF-BRIEF:\s*/i, "");
+      return cleanText(`Empfänger: Amtsgericht / Rechtsantragstelle
+
+Betreff: Bitte um Hilfe wegen anwaltlicher Vertretung / Beratungshilfe
+
+${pdf.split(/\n\nBetreff:/).pop().replace(/^.*?Sehr geehrte/s, "Sehr geehrte")}`);
+    }
+
+    return buildLegalAidChecklistAnswerV15(meta, context, analysis.userLanguage);
   }
 
-  if (intent === "next_steps") return buildNextSteps(meta, domain);
-  if (intent === "documents") return "Sende nur Unterlagen, die wirklich zum Schreiben passen. Wichtig sind meist: das Schreiben selbst, die genannte Nummer, Nachweise, Zahlungsbelege oder Bescheide. Wenn du willst, schreibe ich dir eine kurze Nachricht zum Nachreichen.";
-  if (intent === "deadline") return meta.frist || meta.termin ? `Frist/Termin: ${meta.frist || meta.termin}. Bitte im Originalbrief prüfen und rechtzeitig reagieren.` : "Ich sehe keine sichere Frist. Bitte prüfe das Originalschreiben oder nutze Daten genauer prüfen.";
+  // V15.0: Versicherung/sigorta als Vertrag darf nicht in Krankenkassen-Erstattung kippen.
+  if (analysis.caseType === "insurance_contract") {
+    if (explicitWrite && (wantsPdf || wantsEmail || wantsBoth)) {
+      const contractContext = `${context}\n${frage}`;
+      if (wantsBoth) return buildEmailAndPdfOutput(meta, contractContext, "vertrag_versicherung", "cancel");
+      if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, contractContext, "vertrag_versicherung", "cancel");
+      if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, contractContext, "vertrag_versicherung", "cancel");
+    }
+    if (analysis.wantsGuidance || analysis.currentUserGoal === "contract_check_cancel") {
+      return buildInsuranceContractGuidanceV15(meta, context, analysis.userLanguage);
+    }
+  }
+
+  // V15.0: Leitfaden-/Checklistenfragen nicht sofort in Schreibmodus drücken.
+  if (analysis.wantsGuidance && !explicitWrite) {
+    const lines = [];
+    lines.push("Ich mache dir zuerst einen einfachen Leitfaden.");
+    lines.push("");
+    lines.push("Checkliste:");
+    const docs = analysis.requiredDocuments && analysis.requiredDocuments.length ? analysis.requiredDocuments : ["aktuelles Schreiben", "Nummer/Aktenzeichen", "Nachweise", "Ausweis falls Termin bei einer Stelle nötig ist"];
+    docs.slice(0, 6).forEach((d, i) => lines.push(`☐ ${i + 1}. ${d}`));
+    lines.push("");
+    if (analysis.possibleRights && analysis.possibleRights.length) lines.push(`Möglich zu prüfen: ${analysis.possibleRights.join(", ")}.`);
+    if (analysis.targetParty) lines.push(`Zuständige Stelle wahrscheinlich: ${analysis.targetParty}.`);
+    if (analysis.deadline) lines.push(`Wichtig: Frist/Termin beachten: ${analysis.deadline}.`);
+    lines.push("Die zuständige Stelle entscheidet. Ich kann dir den sicheren nächsten Schritt formulieren, aber keine Garantie geben.");
+    lines.push("");
+    lines.push("Wenn du möchtest, erstelle ich dir danach eine E-Mail oder einen PDF-Brief.");
+    return cleanText(lines.join("\n"));
+  }
+
+  // Write Mode: nur bei ausdrücklichem Wunsch und nur nach aktueller Analyse.
+  const rememberedWriteIntent = inferIntentFromHistory(historyText || context);
+  let currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+
+  // Template-Guard: bei Vertragsversicherung darf aktuelles „sigorta“ nicht automatisch Erstattung bedeuten.
+  if (analysis.caseType === "insurance_contract" && currentWriteIntent === "reimbursement") currentWriteIntent = "cancel";
+
+  const costCarrierWriteNow = currentWriteIntent === "reimbursement";
+  const effectiveWriteIntent = currentWriteIntent
+    || ((intent === "erstattung_kostenuebernahme" || intent === "reimbursement" || costCarrierWriteNow) ? "reimbursement" : rememberedWriteIntent);
+
+  // Template-Guard: verbotene Vorlagen blockieren und stattdessen sichere Rückfrage/Leitfaden liefern.
+  if (analysis.forbiddenTemplates && analysis.forbiddenTemplates.length) {
+    if ((effectiveWriteIntent === "reimbursement" || effectiveWriteIntent === "erstattung_kostenuebernahme") && analysis.forbiddenTemplates.includes("krankenkasse_reimbursement")) {
+      return "Das wäre hier wahrscheinlich die falsche Vorlage. In diesem Fall geht es nicht um Krankenkasse/Erstattung. Ich mache zuerst einen passenden Leitfaden und kann danach den richtigen Brief erstellen.";
+    }
+  }
+
+  if (wantsBoth) return buildEmailAndPdfOutput(meta, context, domain, effectiveWriteIntent);
+  if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, effectiveWriteIntent);
+  if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, effectiveWriteIntent);
+  if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(effectiveWriteIntent);
+
   return "";
-}
-
-
-function shortGermanExplanation(info = {}) {
-  const lines = [];
-  const sender = getSender(info);
-  const amount = getAmount(info);
-
-  if (info.kurz_gesagt) lines.push(info.kurz_gesagt);
-  else if (sender) lines.push(`Dieser Brief ist von ${sender}.`);
-  else lines.push("Das ist ein Schreiben.");
-
-  if (info.worum_geht_es) lines.push(info.worum_geht_es);
-  if (amount) lines.push(`Betrag: ${amount}.`);
-  if (info.frist || info.termin) lines.push(`Frist/Termin: ${info.frist || info.termin}.`);
-  if (info.naechster_schritt) lines.push(info.naechster_schritt);
-  else lines.push("Prüfe die Daten im Brief und reagiere rechtzeitig, wenn etwas verlangt wird.");
-
-  return cleanText(dedupe(lines).slice(0, 6).join("\n"));
-}
-
-function labelForBrief(info = {}) {
-  const ctx = buildContext(info);
-  const domain = detectDomain(ctx);
-  if (domain === "vertrag_versicherung") return "Versicherung / Vertrag";
-  if (domain === "bank_pkonto") return "Bank / Pfändung / P-Konto";
-  if (domain === "arbeit") return "Arbeit / Rückzahlung / Vereinbarung";
-  if (domain === "finanzamt") return "Finanzamt / Steuer";
-  if (domain === "inkasso") return "Inkasso / Forderung";
-  if (domain === "behoerde") return "Behörde / Bescheid";
-  if (domain === "gericht") return "Gericht / Polizei / Strafsache";
-  if (domain === "gesundheit") return "Gesundheit / Krankenkasse";
-  return info.briefart || "Schreiben";
-}
-
-async function translateShortIfNeeded(text, lang) {
-  const langMeta = getLanguageMeta(lang);
-  const clean = cleanText(text);
-  if (langMeta.code === "de") return clean;
-
-  const raw = await callGemini([{ text: `Übersetze diesen Hilfe24-Text vollständig in ${langMeta.label}. Keine neuen Informationen. Daten, Namen, Beträge, Fristen und Nummern exakt erhalten. Kurz und einfach.\n\nTEXT:\n${clean}` }]);
-  return cleanText(raw);
 }
 
 async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
@@ -1440,7 +1828,7 @@ function buildHilfe24CoreRules(langLabel = "Deutsch") {
   return `
 Du bist Hilfe24.
 Du bist kein normaler Chatbot und kein reiner Brief-Zusammenfasser.
-Du bist ein Fall-Assistent für Menschen, die schwierige Briefe, Rechnungen, Mahnungen, Bescheide, Verträge, Versicherungen, Gerichtsbriefe, Arbeitgeberbriefe, Vermieterschreiben, Pflege-/Krankenkassen- und Behördenpost verstehen müssen.
+Du bist ein Fall-Assistent für Menschen, die schwierige Briefe, Rechnungen, Mahnungen, Bescheide, Verträge und Behördenpost verstehen müssen.
 
 Sprache für Erklärung und Beratung: ${effectiveLang.label || langLabel}.
 Bei offiziellen Antworttexten: Sprache der empfangenden Stelle verwenden. Bei deutschen Stellen immer Deutsch verwenden.
@@ -1449,81 +1837,27 @@ ${buildMultilingualRules(effectiveLang)}
 
 Harte Regeln:
 1. Nutze nur den aktuellen Brief, die extrahierten Daten und die aktuelle Nutzerfrage.
-2. Die aktuelle Nutzerfrage schlägt alten Chatverlauf. Alte Chatdaten sind nur Hintergrund, niemals Hauptentscheidung.
-3. Nutzerziel schlägt Stichwort. Ein Wort wie "sigorta", "bezahlt" oder "Jobcenter" darf niemals allein entscheiden.
-4. Zielstelle richtet sich nach dem Nutzerziel, nicht automatisch nach dem Briefabsender.
-5. Trenne immer: sicher sichtbar / unklar / nicht sichtbar.
-6. Wenn etwas nicht im Brief steht, sage klar in der Nutzersprache: "Das steht auf dem sichtbaren Schreiben nicht."
-7. Erfinde niemals Behandlungen, Leistungen, Fristen, Gründe, Rechtsfolgen, Aktenzeichen, Beträge oder persönliche Daten.
-8. Beantworte normale Fragen zuerst direkt. Frage nicht sofort nach E-Mail/PDF.
-9. E-Mail/PDF nur erstellen, wenn der Nutzer das ausdrücklich möchte oder nach einer Antwort zum Senden fragt.
-10. Keine Schuld blind anerkennen. Keine Forderung blind bestätigen. Keine rechtlichen, medizinischen oder finanziellen Garantien geben.
-11. Firma/Behörde niemals als Unterschrift verwenden. IBAN, BIC, Telefon, Fax, Adresse, Öffnungszeiten und E-Mail niemals als Aktenzeichen benutzen.
-12. Schreibe klar, menschlich und praktisch: nicht zu kurz, nicht zu lang.
-
-V15 Denklogik:
-Bei jeder Frage prüfst du zuerst:
-- Was will der Nutzer wirklich?
-- Normale Antwort oder offizieller Text?
-- Wer ist zuständig?
-- Gibt es ein mögliches Recht, eine Schutzmöglichkeit, Erstattung, Kostenübernahme, Befreiung oder Leistung?
-- Gibt es eine Frist?
-- Muss man aktuelle Beträge/Formulare/Voraussetzungen prüfen?
-- Ist das Thema riskant genug für Beratungsstelle/Anwalt?
-
-Rechte- und Hilfe-Check:
-- Behörden: Widerspruch, Akteneinsicht, Begründung verlangen, Unterlagen nachreichen, Fristverlängerung, Ratenzahlung/Stundung, Überprüfungsantrag, Beratungshilfe.
-- Rechnungen/Inkasso: Forderung prüfen, Forderungsaufstellung verlangen, Nachweise verlangen, nicht blind anerkennen, Zahlungsnachweis senden, Ratenzahlung, Verjährung prüfen lassen.
-- Verträge/Versicherungen/Abo/Kredit: Widerruf prüfen, Kündigung prüfen, Vertragskopie verlangen, Nachweis Vertragsschluss verlangen, Abbuchungen/Lastschrift prüfen, Rückerstattung prüfen.
-- Gericht/Polizei/Staatsanwaltschaft: Fristen ernst nehmen, Aktenzeichen nennen, schriftlich klären, bei Krankheit Nachweis einreichen, bei Strafsachen vorsichtig, Anwalt/Beratung prüfen.
-- Pflege/Krankheit/Behinderung: Pflegegrad, Höherstufung, Widerspruch, Hilfsmittel, Zuzahlungsbefreiung, Schwerbehindertenausweis, GdB/Merkzeichen, Nachteilsausgleiche, Reha, Erwerbsminderungsrente.
-- Arbeit: Lohnabrechnung, Kündigungsschutz, Zeugnis, Urlaub, Rückzahlung/Schuldanerkenntnis/Lohnabtretung nicht blind unterschreiben, Gewerkschaft/Beratung.
-- Wohnen: Nebenkosten prüfen, Kaution, Kündigung/Räumung ernst nehmen, Mietschuldenhilfe, Mieterverein/Sozialamt/Jobcenter prüfen.
-- Schule/Kita/Familie: Bildung und Teilhabe, Klassenfahrt, Kita-Essen, Lernförderung, Kinderzuschlag, Unterhaltsvorschuss, Ermäßigung.
-
-Mehrdeutige Wörter:
-- "Versicherung/sigorta" kann Kostenträger, Vertragspartner, Absender, Gegner oder Zusatzprodukt sein. Erst Kontext prüfen.
-- "bezahlt" kann Zahlungsnachweis bedeuten oder nur Hintergrund für Erstattung sein.
-- "Jobcenter" kann Zielstelle, Kostenträger, Nachweis für wenig Einkommen oder nur Hintergrund sein.
-- "Anwalt" bedeutet oft Beratungshilfe/Amtsgericht/Rechtsantragstelle, nicht Jobcenter als Empfänger.
-
-Kostenübernahme/Erstattung:
-- Zahnarzt/Arzt/Rechnung bezahlt + Krankenkasse/Versicherung/sigorta/geri almak/Erstattung = mögliche Erstattung/Kostenübernahme. Zielstelle: Krankenkasse/Versicherung/Kostenstelle. Nicht Rechnungssteller.
-- Ratenzahlung/Zahlungsnachweis = Rechnungssteller/Gläubiger/Inkasso.
-- Rundfunkbeitrag + Bürgergeld/Befreiung = Beitragsservice mit Nachweis, nicht Jobcenter als Empfänger.
-- Anwalt + wenig Geld/Bürgergeld = Beratungshilfe beim Amtsgericht/Rechtsantragstelle prüfen.
-- Strom/Gas/Mietschulden = Anbieter für Ratenzahlung, Jobcenter/Sozialamt evtl. Darlehen/Notlage prüfen.
-- Pflegehilfsmittel = Pflegekasse/Krankenkasse/Sanitätshaus/Arzt je nach Fall.
-
-Vertragslogik:
-Wenn Versicherung/Finanz-Schutzbrief/Kredit-Zusatzprodukt/Online-Anfrage/Abo gemeint ist:
-- Nicht als Erstattung behandeln.
-- Vertragsschluss prüfen lassen.
-- Widerruf prüfen.
-- Hilfsweise Kündigung prüfen.
-- Abbuchungen stoppen lassen.
-- Rückzahlung bereits abgebuchter Beträge nur vorsichtig verlangen.
-- Nie behaupten, dass der Vertrag sicher unwirksam ist.
-
-Live-/Aktualitätslogik:
-Bei allgemeinen Rechten darfst du Orientierung geben.
-Bei aktuellen Beträgen, Formularen, Fristen, Voraussetzungen oder Gesetzesänderungen sage vorsichtig:
-"Das kann sich ändern. Bitte den aktuellen Stand bei der zuständigen Stelle prüfen."
-Wenn Live-Recherche später verfügbar ist, soll sie nur für aktuelle Beträge/Formulare/Voraussetzungen genutzt werden, nicht für jede normale Frage.
+2. Vermische niemals alte Briefe, alte Namen, alte Beträge oder alte Nummern mit dem aktuellen Fall.
+3. Trenne immer: sicher sichtbar / unklar / nicht sichtbar.
+4. Wenn etwas nicht im Brief steht, sage klar in der Nutzersprache: "Das steht auf dem sichtbaren Schreiben nicht."
+5. Erfinde niemals Behandlungen, Leistungen, Fristen, Gründe, Rechtsfolgen, Aktenzeichen, Beträge oder persönliche Daten.
+6. Beantworte normale Fragen zuerst direkt. Frage nicht sofort nach E-Mail/PDF.
+7. E-Mail/PDF nur erstellen, wenn der Nutzer das ausdrücklich möchte oder nach einer Antwort zum Senden fragt.
+8. Keine Schuld blind anerkennen. Keine Forderung blind bestätigen. Keine rechtlichen Garantien geben.
+9. Firma/Behörde niemals als Unterschrift verwenden. IBAN, BIC, Telefon, Fax, Adresse, Öffnungszeiten und E-Mail niemals als Aktenzeichen benutzen.
+10. Schreibe klar, menschlich und praktisch: nicht zu kurz, nicht zu lang.
 
 Antwortlogik:
-- Normale Frage: direkte Antwort, mögliche Hilfe/Recht nennen, zuständige Stelle, Unterlagen, nächster sicherer Schritt. Keine automatische E-Mail/PDF.
-- Schreibwunsch: Zielstelle + Format + Sprache prüfen. Wenn unklar, kurz nachfragen.
-- Wenn mehrere Verfahren, Personen, Aktenzeichen, Strafsachen oder widersprüchliche Angaben vorkommen: keine endgültige Entscheidung. Sicheren nächsten Schritt nennen und Beratung empfehlen.
-
-Sichere Formulierungen:
-- "Das kann möglich sein, ist aber nicht sicher."
-- "Die zuständige Stelle entscheidet."
-- "Bitte stelle den Antrag schriftlich."
-- "Bitte verlange eine schriftliche Bestätigung."
-- "Bitte unterschreibe nichts, was du nicht verstehst."
-- "Wenn eine Frist läuft, schnell reagieren."
-- "Bei Gericht, Strafsachen, Kündigung, Räumung, hohen Forderungen, Schuldanerkenntnis oder Lohnabtretung bitte Beratung/Anwalt nutzen."
+- Verständnisfrage: einfach erklären.
+- Handlungsfrage: konkrete Schritte geben.
+- Fristfrage: Frist/Termin nennen, wenn sicher; sonst klar sagen, dass sie nicht sicher erkennbar ist.
+- Folgefrage: nur echte Folgen aus dem Brief nennen, keine Panik erfinden.
+- Schon bezahlt: nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen, Prüfung/Zuordnung verlangen, Mahnungen/Maßnahmen bis Klärung stoppen lassen.
+- Schon geschickt: Nachweis erneut mit Nummer senden, Prüfung und schriftliche Bestätigung verlangen, Versandnachweis behalten.
+- Kann nicht zahlen/Ratenzahlung: Forderung zuerst prüfen; wenn plausibel, Ratenzahlung/Stundung als Möglichkeit nennen; keine Schuld blind anerkennen.
+- Was wurde gemacht/Wofür Rechnung: nur sichtbare Details nennen. Wenn keine Leistungsdetails sichtbar sind, detaillierte Rechnung/Leistungsaufstellung/Positionen/GOZ-/BEMA-Nummern anfordern.
+- Jobcenter/Bürgergeld/Sozialleistung: mögliche Befreiung, Ermäßigung, Kostenübernahme oder Nachweisprüfung nennen, aber nichts garantieren.
+- Schreibwunsch: Ausgabeform klären, wenn nicht genannt: E-Mail, PDF-Brief oder beides. Offizielle Entwürfe immer in Empfänger-/Amtssprache schreiben, nicht in Nutzersprache.
 `;
 }
 
@@ -1746,29 +2080,13 @@ function hasCreditorOnlyPaymentCue(text = "") {
   return /(ratenzahlung|rate|raten|taksit|taksitli|taksitlendirme|stundung|zahlungsaufschub|zahlungsnachweis|schon bezahlt.*mahnung|an dzr|dzr için|dzr icin|an inkasso|an den gläubiger|an den glaeubiger)/i.test(q);
 }
 
-function hasExplicitRefundCue(text = "") {
-  const q = String(text || "").toLowerCase();
-  return /(erstatt|zurück|zurueck|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|übernehm|uebernehm|einreich|einreichen|teil übernehmen|teil uebernehmen|krankenkasse.*zahlen|versicherung.*zahlen|geri al|geri almak|geri alayım|geri alayim|geri ödeme|geri odeme|bir kısmını geri|bir kismini geri|sigortadan.*geri|reimburse|refund|reimbursement|ramburs|decont|înapoi|inapoi|възстанов)/i.test(q);
-}
-
-function hasInsuranceContractDisputeCue(frage = "", context = "") {
-  const q = String(frage || "").toLowerCase();
-  const c = String(context || "").toLowerCase();
-  const contractContext = /(finanz-?schutzbrief|versicherungsschein|versicherungsscheinnummer|versicherungsbeginn|versicherungsablauf|sepa-lastschrift|vertragsverlängerung|vertragsverlaengerung|monatlicher beitrag|w[üu]rzburger versicherungs)/i.test(c);
-  const creditProblem = /(kredit|credit|loan|kredi|kreditanfrage|kredi.*çek|kredi.*cek|kredi.*alamad|kredi.*olmad|nicht.*kredit|keinen kredit|kredit.*nicht)/i.test(q + " " + c);
-  const unwantedInsurance = /(sigortay[ıi]|sigorta.*bas|basması|basmasi|bast[ıi]|mecbur|zorunda|unbewusst|nicht bewusst|nicht gewollt|nicht abgeschlossen|abonelik|vertrag.*nicht|kündig|kuendig|widerruf|iptal|fesih|dilekçe|dilekce|mektup|almanca)/i.test(q);
-  const explicitRefund = hasExplicitRefundCue(q);
-  return contractContext && (creditProblem || unwantedInsurance) && !explicitRefund;
-}
-
 function inferCurrentWriteIntentFromUserQuestion(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
 
-  // V14.7: Bei Finanz-Schutzbrief/Versicherungsvertrag bedeutet „sigorta“ nicht automatisch Erstattung.
-  // Wenn es um ungewollten Vertrag nach Kreditanfrage geht: Vertrag prüfen, widerrufen/kündigen, Abbuchungen stoppen.
-  if (/(kredit|kredi|kreditanfrage|kredi.*çek|kredi.*cek|kredi.*olmad|kredi.*alamad|sigortay[ıi].*bas|basması|basmasi|nicht bewusst|unbewusst|iptal|fesih|kündig|kuendig|widerruf)/i.test(q) && !hasExplicitRefundCue(q)) return "cancel";
-
   // V14.5: Die aktuelle Nutzerfrage schlägt die vorherige Chat-Historie.
+  // Beispiel: Vorher fragte der Nutzer nach Erstattung an Versicherung.
+  // Danach schreibt er: „Bana DZR için taksitli ödeme e-postası hazırla“.
+  // Dann muss der neue Entwurf an DZR/Ratenzahlung gehen, nicht weiter an Versicherung.
   if (hasReimbursementIntent(frage, frageMode) || hasOfficialWriteToCostCarrierCue(q)) return "reimbursement";
 
   if (/(ratenzahlung|rate|raten|monatlich zahlen|in raten|taksit|taksitli|taksitlendirme|ödeme planı|odeme plani|installments|payment plan|разсроч|rate lunare)/i.test(q)) return "installments";
@@ -1991,6 +2309,392 @@ Unklar bleibt:
 ${buildUnclearLines(meta)}`);
 }
 
+
+
+/* ==========================================================
+   HILFE24 V15.0 - ASSISTENTEN-ANALYSE + TEMPLATE-GUARD
+   Ziel: erst analysieren, dann antworten/schreiben.
+   Index bleibt Anzeige-Schicht. Server entscheidet Fachlogik.
+   ========================================================== */
+
+function normalizeForIntent(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c");
+}
+
+function detectUserLanguageFromQuestion(frage = "", fallback = "de") {
+  const raw = String(frage || "").toLowerCase();
+  const q = normalizeForIntent(raw);
+  if (/(\bben\b|bana|sana|nasıl|nasil|yapayim|yapayım|anlat|avukat|yardim|yardım|dilekce|dilekçe|mektup|sigorta|taksit|gonder|gönder|hazirla|hazırla|odeme|ödeme)/i.test(q)) return "tr";
+  if (/[а-яё]/i.test(raw)) return "bg";
+  if (/(what|how|why|please|letter|lawyer|insurance|refund|help)/i.test(raw)) return "en";
+  if (/(avocat|asigurare|scrisoare|ajutor|rambursare|plată|plata)/i.test(raw)) return "ro";
+  return fallback || "de";
+}
+
+function safeSignatureForDraft(meta = {}, context = "") {
+  const raw = getSafeSignatureName(meta, context);
+  const clean = normalizeString(raw)
+    .replace(/['’´`]?(nin|nın|nun|nün|in|ın|un|ün)$/i, "")
+    .replace(/['’´`]s$/i, "")
+    .replace(/\b(forderung|versicherung|portal|patientenportal|webseite|rechnung|aktenzeichen)\b/gi, "")
+    .trim();
+  return looksLikePersonName(clean) ? clean : (looksLikePersonName(raw) ? raw : "[Name bitte prüfen/eintragen]");
+}
+
+function hasLegalAidCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(anwalt|rechtsanwalt|verteidiger|pflichtverteidiger|beratungshilfe|prozesskostenhilfe|verfahrenskostenhilfe|rechtsantragstelle|avukat|avukati|avukata|avukat tut|para odemeden avukat|hukuki yardim|hukuk yardimi|legal aid|lawyer)/i.test(q);
+}
+
+function hasCourtCriminalCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(gericht|amtsgericht|landgericht|staatsanwaltschaft|polizei|anklage|angeklagt|straf|strafverfahren|strafbefehl|hauptverhandlung|ladung|umladung|termin|haftbefehl|pflichtverteidiger|gefahrliche korperverletzung|körperverletzung|mahkeme|savcilik|savcılık|ceza davasi|dava|duruşma|durusma|police|court|prosecutor)/i.test(q);
+}
+
+function hasGuidanceCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(schritt fur schritt|schrittweise|leitfaden|checkliste|was brauche ich|was muss ich mitnehmen|was soll ich jetzt machen|was soll ich tun|wie mache ich|wie bekomme ich|tek tek|tek tek anlat|nasil yapayim|nasıl yapayım|bana yol goster|yol göster|ne yapmam gerekiyor|kontrol listesi|abhaken|plan|guide|checklist)/i.test(q);
+}
+
+function hasBenefitCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(pflegegrad|pflegekasse|pflegeversicherung|pflegegeld|entlastungsbetrag|krankenkasse|rentenversicherung|rentenkasse|erwerbsminderung|reha|schwerbehindert|gdb|versorgungsamt|jobcenter|burgergeld|buergergeld|sozialamt|wohngeld|familienkasse|kinderzuschlag|unterhaltsvorschuss|bildung und teilhabe|but|rundfunkbefreiung|p-konto|pfandung|pfändung|was kann ich bekommen|steht mir zu)/i.test(q);
+}
+
+function hasInsuranceContractCue(text = "") {
+  const q = normalizeForIntent(text);
+  return /(finanz-schutzbrief|finanzschutzbrief|versicherungsschein|versicherungsscheinnummer|versicherungsbeginn|versicherungsende|versicherungsablauf|sepa-lastschrift|kredit|kreditanfrage|kredit nicht|kredi|kredi cek|kredi olmad|sigorta cik|sigorta çık|abschließen|abgeschlossen|vertrag|widerruf|kundigen|kündigen|kuendigen|abo|lastschrift)/i.test(q)
+    && /(versicherung|sigorta|schutzbrief|vertrag|kredit|kredi)/i.test(q);
+}
+
+function detectCaseTypeV15(context = "") {
+  const q = normalizeForIntent(context);
+  if (hasCourtCriminalCue(q)) return "court_legal_aid";
+  if (hasInsuranceContractCue(q)) return "insurance_contract";
+  if (/(dzr|zahnarzt|zahn|rechnung|rg-nummer|goz|bema|behandlung|patient)/i.test(q)) return "invoice_medical";
+  if (/(inkasso|mahnung|forderung|gerichtsvollzieher|vollstreckung)/i.test(q)) return "debt_collection";
+  if (/(jobcenter|burgergeld|buergergeld|sozialamt|rückforderung|rueckforderung|bescheid|widerspruch|aufrechnung)/i.test(q)) return "authority_social";
+  if (/(pflegegrad|pflegekasse|pflegeversicherung|md gutachten|medizinischer dienst)/i.test(q)) return "care_insurance";
+  if (/(rentenversicherung|rentenkasse|erwerbsminderung|reha|teilhabe am arbeitsleben|kontenklärung|kontenklaerung)/i.test(q)) return "pension_insurance";
+  if (/(schwerbehindert|gdb|merkzeichen|versorgungsamt|behindertenausweis)/i.test(q)) return "disability";
+  if (/(arbeitgeber|arbeitnehmer|lohn|gehalt|abmahnung|kündigung|kuendigung|arbeitszeugnis|schuldanerkenntnis|lohnabtretung)/i.test(q)) return "employment";
+  if (/(vermieter|miete|nebenkosten|kaution|räumung|raeumung|wohnung)/i.test(q)) return "housing";
+  if (/(finanzamt|steuer|einkommensteuer|säumniszuschlag|saeumniszuschlag)/i.test(q)) return "tax";
+  if (/(rundfunkbeitrag|beitragsservice|beitragskonto)/i.test(q)) return "broadcast_fee";
+  if (/(familienkasse|kindergeld|kinderzuschlag|jugendamt|unterhaltsvorschuss|schule|kita|klassenfahrt|bildung und teilhabe)/i.test(q)) return "family_school";
+  if (/(krankenkasse|hilfsmittel|zuzahlungsbefreiung|krankengeld|haushaltshilfe|fahrtkosten|rezept|verordnung)/i.test(q)) return "health_insurance";
+  return detectDomain(context) || "allgemein";
+}
+
+function detectCurrentUserGoalV15(frage = "", context = "") {
+  const q = normalizeForIntent(`${frage} ${context}`);
+  if (hasLegalAidCue(q)) return "legal_aid";
+  if (hasGuidanceCue(frage)) return "guidance";
+  if (hasInsuranceContractCue(`${frage} ${context}`) && /(widerruf|kundig|kündig|kuendig|iptal|fesih|nicht gewollt|nicht bewusst|kredi|kredit|vertrag prüfen|vertrag pruefen)/i.test(q)) return "contract_check_cancel";
+  if (hasReimbursementIntent(frage, "")) return "reimbursement";
+  if (/(ratenzahlung|rate|raten|taksit|taksitli|stundung|zahlungsaufschub)/i.test(q)) return "payment_plan";
+  if (/(schon bezahlt|bereits bezahlt|habe bezahlt|überwiesen|ueberwiesen|dekont|zahlungsnachweis)/i.test(q)) return "paid_proof";
+  if (/(widerspruch|einspruch|bestreiten|stimmt nicht|itiraz|ablehnung|abgelehnt)/i.test(q)) return "appeal_dispute";
+  if (hasBenefitCue(q)) return "benefit_check";
+  if (/(welche behandlung|was wurde gemacht|wofur ist die rechnung|wofür ist die rechnung|leistungsaufstellung|goz|bema)/i.test(q)) return "details_needed";
+  if (/(frist|bis wann|termin|deadline)/i.test(q)) return "deadline";
+  if (/(was bedeutet|erklär|erklar|anlam|ne demek)/i.test(q)) return "understand";
+  if (/(was soll ich|was muss ich|was kann ich|ne yapmam|nasil|nasıl|wie weiter)/i.test(q)) return "guidance";
+  return "answer_question";
+}
+
+function detectRequestedFormatV15(frage = "", frageMode = "") {
+  if (wantsBothEmailAndPdf(frage, frageMode)) return "both";
+  if (wantsPdfOutput(frage, frageMode)) return "pdf";
+  if (wantsEmailOutput(frage, frageMode)) return "email";
+  return "none";
+}
+
+function buildTemplateRulesV15(caseType = "", userGoal = "") {
+  const rules = {
+    allowedTemplates: ["general_answer"],
+    forbiddenTemplates: [],
+    riskLevel: "low",
+    riskReasons: []
+  };
+  if (caseType === "court_legal_aid") {
+    rules.riskLevel = "high";
+    rules.riskReasons.push("Gericht/Strafsache/Anwalt möglich");
+    rules.allowedTemplates = ["legal_aid_checklist", "legal_aid_request", "public_defender_request", "court_clarification", "appointment_notice"];
+    rules.forbiddenTemplates = ["krankenkasse_reimbursement", "dzr_installments", "dental_detail_request", "insurance_reimbursement", "generic_invoice_refund"];
+  } else if (caseType === "insurance_contract") {
+    rules.riskLevel = "medium";
+    rules.riskReasons.push("Vertrag/Widerruf/Kündigung möglich");
+    rules.allowedTemplates = ["contract_check_cancel", "withdrawal", "termination", "contract_proof_request", "stop_debit_request"];
+    rules.forbiddenTemplates = ["krankenkasse_reimbursement", "dzr_installments", "dental_detail_request"];
+  } else if (caseType === "invoice_medical") {
+    rules.allowedTemplates = ["reimbursement", "paid_proof", "installments", "detail_request", "general_answer"];
+    rules.forbiddenTemplates = ["legal_aid_request", "public_defender_request"];
+  } else if (caseType === "debt_collection") {
+    rules.riskLevel = "medium";
+    rules.allowedTemplates = ["debt_check", "installments", "paid_proof", "dispute"];
+    rules.forbiddenTemplates = ["krankenkasse_reimbursement", "legal_aid_request"];
+  } else if (["tax", "employment", "housing"].includes(caseType)) {
+    rules.riskLevel = "medium";
+    rules.riskReasons.push("Frist/Geld/Vertrag möglich");
+  }
+  return rules;
+}
+
+function buildHilfe24AnalysisV15({ frage = "", frageMode = "", meta = {}, briefText = "", kurz = "", details = "", historyText = "" }) {
+  const context = buildContext(meta, briefText, kurz, details, frage, historyText);
+  const currentOnly = String(frage || "");
+  const caseType = detectCaseTypeV15(`${context}`);
+  const currentUserGoal = detectCurrentUserGoalV15(currentOnly, context);
+  const requestedFormat = detectRequestedFormatV15(frage, frageMode);
+  const isWriteRequest = isExplicitWriteRequest(frage, frageMode) || requestedFormat !== "none";
+  const wantsChecklist = hasGuidanceCue(currentOnly) || /(checkliste|leitfaden|abhaken|kontrol listesi)/i.test(normalizeForIntent(currentOnly));
+  const wantsStepByStep = hasGuidanceCue(currentOnly);
+  const wantsGuidance = wantsChecklist || wantsStepByStep || currentUserGoal === "guidance" || (caseType === "court_legal_aid" && hasLegalAidCue(currentOnly));
+  const templateRules = buildTemplateRulesV15(caseType, currentUserGoal);
+  let targetParty = getSender(meta) || "Stelle aus dem Schreiben";
+  let officialDraftLanguage = "Deutsch";
+  let shouldOnlyAnswer = !isWriteRequest;
+  let shouldCreateDraft = isWriteRequest && requestedFormat !== "none";
+  let shouldAskClarification = false;
+  let clarificationQuestion = "";
+
+  if (caseType === "court_legal_aid") {
+    targetParty = "Amtsgericht / Rechtsantragstelle";
+    if (wantsGuidance && !/^(pdf|brief|e-?mail|email|mail)$/i.test(normalizeString(frage))) {
+      shouldOnlyAnswer = false;
+      shouldCreateDraft = false;
+    }
+  } else if (caseType === "insurance_contract") {
+    targetParty = getSender(meta) || "Versicherung / Vertragspartner";
+  } else if (currentUserGoal === "reimbursement") {
+    targetParty = "Krankenkasse / Versicherung / Kostenträger";
+  } else if (currentUserGoal === "payment_plan" || currentUserGoal === "paid_proof") {
+    targetParty = getSender(meta) || "Gläubiger / Rechnungssteller";
+  }
+
+  if (isWriteRequest && requestedFormat === "none") {
+    shouldAskClarification = true;
+    clarificationQuestion = "Möchtest du eine E-Mail, einen PDF-Brief oder beides?";
+    shouldCreateDraft = false;
+  }
+
+  const allowedTemplates = templateRules.allowedTemplates;
+  const forbiddenTemplates = templateRules.forbiddenTemplates;
+
+  return {
+    caseType,
+    currentUserGoal,
+    currentUserIntent: isWriteRequest ? "write_or_prepare" : (wantsGuidance ? "guidance" : "answer"),
+    isWriteRequest,
+    wantsChecklist,
+    wantsStepByStep,
+    wantsGuidance,
+    requestedFormat,
+    shouldOnlyAnswer,
+    shouldCreateDraft,
+    shouldAskClarification,
+    clarificationQuestion,
+    userLanguage: detectUserLanguageFromQuestion(frage, "de"),
+    officialDraftLanguage,
+    sourceParty: getSender(meta) || "",
+    demandingParty: getSender(meta) || "",
+    targetParty,
+    costCarrierParty: currentUserGoal === "reimbursement" ? "Krankenkasse / Versicherung / Kostenträger" : "",
+    contractParty: caseType === "insurance_contract" ? (getSender(meta) || "Versicherung / Vertragspartner") : "",
+    legalAidParty: caseType === "court_legal_aid" ? "Amtsgericht / Rechtsantragstelle" : "",
+    benefitParty: currentUserGoal === "benefit_check" ? "zuständige Leistungsstelle" : "",
+    rightsCategory: [caseType, currentUserGoal].filter(Boolean),
+    possibleRights: inferPossibleRightsV15(caseType, currentUserGoal),
+    possibleBenefits: inferPossibleBenefitsV15(caseType, currentUserGoal),
+    requiredDocuments: inferRequiredDocumentsV15(caseType, currentUserGoal, meta),
+    deadline: meta.frist || meta.termin || "",
+    appointment: Boolean(meta.termin || /termin|duruşma|durusma|hauptverhandlung|ladung/i.test(normalizeForIntent(context))),
+    riskLevel: templateRules.riskLevel,
+    riskReasons: templateRules.riskReasons,
+    forbiddenTemplates,
+    allowedTemplates,
+    protectedSignatureName: safeSignatureForDraft(meta, context),
+    protectedIdentifiers: [getPrimaryReference(meta)].filter(Boolean),
+    needsKnowledgeLookup: hasBenefitCue(`${frage} ${context}`) || hasLegalAidCue(`${frage} ${context}`),
+    knowledgeCategory: [caseType, currentUserGoal].filter(Boolean)
+  };
+}
+
+function inferPossibleRightsV15(caseType = "", goal = "") {
+  if (caseType === "court_legal_aid") return ["Beratungshilfe prüfen", "Pflichtverteidiger prüfen", "Frist/Termin beachten", "schriftliche Klärung verlangen"];
+  if (caseType === "insurance_contract") return ["Widerruf prüfen", "hilfsweise Kündigung", "Vertragsschluss-Nachweis verlangen", "Lastschrift/Abbuchung prüfen"];
+  if (caseType === "debt_collection") return ["Forderung prüfen", "Forderungsaufstellung verlangen", "Nachweise verlangen", "Ratenzahlung/Stundung prüfen"];
+  if (caseType === "authority_social") return ["Widerspruch prüfen", "Unterlagen nachreichen", "Akteneinsicht/Begründung verlangen", "Frist beachten"];
+  if (caseType === "care_insurance") return ["Pflegegrad beantragen oder Höherstufung prüfen", "Widerspruch gegen Bescheid prüfen", "MD-Gutachten prüfen"];
+  if (caseType === "pension_insurance") return ["Reha prüfen", "Erwerbsminderungsrente prüfen", "Widerspruch gegen Bescheid prüfen"];
+  if (caseType === "disability") return ["Schwerbehindertenausweis/GdB prüfen", "Merkzeichen/Nachteilsausgleiche prüfen", "Widerspruch prüfen"];
+  if (goal === "reimbursement") return ["Kostenübernahme/Erstattung prüfen lassen"];
+  return [];
+}
+
+function inferPossibleBenefitsV15(caseType = "", goal = "") {
+  if (caseType === "court_legal_aid") return ["Beratungshilfe", "Prozesskostenhilfe/Verfahrenskostenhilfe je nach Verfahren", "Pflichtverteidiger nur bei bestimmten Strafsachen"];
+  if (caseType === "care_insurance") return ["Pflegegeld", "Pflegesachleistungen", "Entlastungsbetrag", "Pflegehilfsmittel", "Wohnraumanpassung"];
+  if (caseType === "health_insurance") return ["Kostenübernahme", "Hilfsmittel", "Zuzahlungsbefreiung", "Krankengeld", "Fahrtkosten"];
+  if (caseType === "pension_insurance") return ["Reha", "Teilhabe am Arbeitsleben", "Erwerbsminderungsrente"];
+  if (caseType === "disability") return ["Nachteilsausgleiche", "Merkzeichen", "Steuer-/Mobilitätsvorteile je nach Fall"];
+  if (caseType === "family_school") return ["Bildung und Teilhabe", "Kinderzuschlag", "Unterhaltsvorschuss", "Kita-Ermäßigung"];
+  if (goal === "benefit_check") return ["mögliche staatliche Hilfe oder Befreiung prüfen lassen"];
+  return [];
+}
+
+function inferRequiredDocumentsV15(caseType = "", goal = "", meta = {}) {
+  const ref = getPrimaryReference(meta);
+  const common = [];
+  if (ref) common.push(`Nummer/Aktenzeichen: ${ref}`);
+  if (caseType === "court_legal_aid") return dedupe(["Gerichtsschreiben", ref ? `Aktenzeichen: ${ref}` : "Aktenzeichen", "aktueller Bürgergeld-/Jobcenter-Bescheid", "Personalausweis oder Reisepass", "falls vorhanden: Einkommens- und Ausgabennachweise"]);
+  if (caseType === "insurance_contract") return dedupe(["Vertrag/Versicherungsschein", "Schreiben der Versicherung", "Nachweis zur Kreditanfrage", "Kontoauszug bei Abbuchung", ...common]);
+  if (goal === "reimbursement") return dedupe(["Rechnung", "Zahlungsnachweis", "Leistungsaufstellung", "Versicherungs-/Krankenkassendaten", ...common]);
+  if (caseType === "care_insurance") return ["Pflegegrad-Bescheid", "MD-Gutachten", "Arztberichte", "Medikamentenplan", "Pflegedokumentation"];
+  if (caseType === "pension_insurance") return ["Rentenversicherungs-Schreiben", "Arztberichte", "Arbeitsunfähigkeitszeiten", "Reha-Unterlagen", "Versicherungsverlauf"];
+  return common;
+}
+
+function templateAllowedV15(analysis = {}, templateName = "") {
+  if (!templateName) return true;
+  if (Array.isArray(analysis.forbiddenTemplates) && analysis.forbiddenTemplates.includes(templateName)) return false;
+  if (Array.isArray(analysis.allowedTemplates) && analysis.allowedTemplates.length && !analysis.allowedTemplates.includes(templateName) && !analysis.allowedTemplates.includes("general_answer")) return false;
+  return true;
+}
+
+function getLegalAidRecipientAddress(meta = {}, context = "") {
+  const c = String(context || "");
+  if (/amtsgericht\s+lemgo/i.test(c)) return "Amtsgericht Lemgo\nRechtsantragstelle\nAm Lindenhaus 2\n32657 Lemgo";
+  const recipient = getRecipientPostalAddress(meta, context);
+  if (/amtsgericht|gericht/i.test(recipient)) return recipient.replace(/(Amtsgericht[^\n]*)/i, "$1\nRechtsantragstelle");
+  if (/amtsgericht/i.test(c)) return "Amtsgericht / Rechtsantragstelle\n[Adresse bitte eintragen]";
+  return "Amtsgericht / Rechtsantragstelle\n[Adresse bitte eintragen]";
+}
+
+function buildLegalAidChecklistAnswerV15(meta = {}, context = "", langCode = "tr") {
+  const ref = getPrimaryReference(meta);
+  const termin = meta.termin || "";
+  const recipient = getLegalAidRecipientAddress(meta, context);
+  if (langCode === "tr") {
+    return cleanText(`Tamam. Burada konu para iadesi değil, avukat yardımıdır.
+
+Bu bir mahkeme/ceza davası olduğu için dikkatli ve hızlı ilerlemek gerekir. Bürgergeld/Jobcenter yardımı alınıyorsa Beratungshilfe veya bazı durumlarda Pflichtverteidiger konusu kontrol edilebilir. Bu garanti değildir; yetkili yer karar verir.
+
+Kontrol listesi:
+☐ 1. Mahkeme yazısını hazırla.
+${ref ? `☐ 2. Aktenzeichen'i not et: ${ref}.` : "☐ 2. Aktenzeichen'i mahkeme yazısından not et."}
+☐ 3. Güncel Bürgergeld/Jobcenter Bescheidini hazırla.
+☐ 4. Kimliği hazırla: Personalausweis veya Reisepass.
+☐ 5. ${recipient.replace(/\n/g, ", ")} ile iletişime geç.
+☐ 6. Şunu sor: “Beratungshilfe alabilir miyim? Bu dosyada Pflichtverteidiger mümkün mü?”
+☐ 7. Strafrecht alanında bir avukat ara ve Bürgergeld aldığını söyle.
+${termin ? `☐ 8. Mahkeme tarihini kaçırma: ${termin}.` : "☐ 8. Mahkeme tarihini kaçırma. Tarih yazıda varsa hemen takvime ekle."}
+
+Sorulması gereken kısa sorular:
+- Şu anda avukatınız var mı?
+- Avukat masrafını ödeyebiliyor musunuz?
+- Güncel Jobcenter/Bürgergeld Bescheidiniz var mı?
+- Duruşma tarihi kesin mi?
+
+Önemli: Mahkeme, polis veya ceza davası varsa yanlış bilgi vermeyin ve anlamadığınız bir şeyi imzalamayın.
+
+İstersen bundan sonra Amtsgericht / Rechtsantragstelle için Almanca PDF dilekçesi hazırlayabilirim.`);
+  }
+  return cleanText(`Das ist kein Erstattungsfall, sondern ein Thema anwaltliche Hilfe.
+
+Wenn Bürgergeld bezogen wird, können Beratungshilfe oder je nach Verfahren weitere Hilfe geprüft werden. In Strafsachen kann unter bestimmten Voraussetzungen auch ein Pflichtverteidiger in Betracht kommen. Das ist nicht garantiert; die zuständige Stelle entscheidet.
+
+Checkliste:
+☐ 1. Gerichtsschreiben bereitlegen.
+${ref ? `☐ 2. Aktenzeichen notieren: ${ref}.` : "☐ 2. Aktenzeichen aus dem Schreiben notieren."}
+☐ 3. Aktuellen Bürgergeld-/Jobcenter-Bescheid bereitlegen.
+☐ 4. Ausweis bereitlegen.
+☐ 5. Amtsgericht / Rechtsantragstelle kontaktieren.
+☐ 6. Beratungshilfe und Pflichtverteidiger-Möglichkeit erfragen.
+☐ 7. Strafrecht-Anwalt kontaktieren.
+${termin ? `☐ 8. Gerichtstermin nicht verpassen: ${termin}.` : "☐ 8. Gerichtstermin nicht verpassen."}
+
+Wenn du möchtest, erstelle ich daraus einen deutschen PDF-Brief an das Amtsgericht / die Rechtsantragstelle.`);
+}
+
+function buildLegalAidPdfOutputV15(meta = {}, context = "") {
+  const senderAddress = getUserPostalAddress(meta, context).replace(getSafeSignatureName(meta, context), safeSignatureForDraft(meta, context));
+  const recipient = getLegalAidRecipientAddress(meta, context);
+  const date = getTodayGerman();
+  const city = getCityFromPostalAddress(senderAddress);
+  const placeLine = city ? `${city}, ${date}` : `[Ort], ${date}`;
+  const ref = getPrimaryReference(meta);
+  const subject = ref
+    ? `Bitte um Hilfe wegen anwaltlicher Vertretung / Beratungshilfe – ${formatReferenceForSubject(ref, "gericht") || ref}`
+    : "Bitte um Hilfe wegen anwaltlicher Vertretung / Beratungshilfe";
+  const name = safeSignatureForDraft(meta, context);
+  const body = `Sehr geehrte Damen und Herren,
+
+ich bitte um Hilfe, weil ich mir einen Rechtsanwalt finanziell nicht leisten kann.
+
+${ref ? `Ich beziehe mich auf das Verfahren mit dem Aktenzeichen ${cleanReferenceLabel(ref) || ref}.` : "Ich beziehe mich auf das aktuelle gerichtliche Schreiben."}
+
+Ich beziehe Bürgergeld bzw. habe nur geringe finanzielle Mittel. Deshalb bitte ich um Mitteilung, wie ich Beratungshilfe beantragen kann.
+
+Bitte teilen Sie mir außerdem mit, ob in diesem Verfahren die Beiordnung eines Pflichtverteidigers in Betracht kommt oder welche Schritte dafür erforderlich sind.
+
+Den Bürgergeld-/Jobcenter-Bescheid, meinen Ausweis und das gerichtliche Schreiben kann ich vorlegen.
+
+Bitte bestätigen Sie mir den Eingang dieses Schreibens und teilen Sie mir schriftlich mit, was ich als Nächstes tun muss.
+
+Mit freundlichen Grüßen
+
+${name}`;
+  return cleanText(`PDF-BRIEF:
+
+${senderAddress}
+
+${recipient}
+
+${placeLine}
+
+Betreff: ${subject}
+
+${body}`);
+}
+
+function buildInsuranceContractGuidanceV15(meta = {}, context = "", langCode = "tr") {
+  const ref = getPrimaryReference(meta);
+  if (langCode === "tr") {
+    return cleanText(`Bu durumda “sigorta” kelimesi para iadesi/Krankenkasse anlamında görünmüyor. Daha çok bir sigorta sözleşmesi veya krediyle bağlantılı ek ürün gibi duruyor.
+
+Bu yüzden doğru yol:
+1. Sözleşmenin gerçekten isteyerek yapılıp yapılmadığını kontrol ettirmek.
+2. Mümkünse Widerruf yani cayma hakkını kullanmak.
+3. Ek olarak hilfsweise Kündigung yani yedek olarak fesih göndermek.
+4. Abbuchung varsa banka hesabını kontrol etmek.
+5. Yazılı onay istemek.
+${ref ? `
+Önemli numara: ${ref}` : ""}
+
+Garanti veremem. Ama bu bir Erstattung/Krankenkasse konusu değil; sözleşme kontrolü, Widerruf ve Kündigung konusudur.`);
+  }
+  return cleanText(`Das wirkt nicht wie ein Erstattungsfall, sondern wie ein Versicherungs-/Vertragsproblem.
+
+Sinnvoll ist: Vertragsschluss prüfen lassen, vorsorglich widerrufen, hilfsweise kündigen, weitere Abbuchungen stoppen lassen und schriftliche Bestätigung verlangen.${ref ? `
+
+Wichtige Nummer: ${ref}` : ""}`);
+}
+
+function buildAssistantAnalysisDebugLine(analysis = {}) {
+  return ""; // bewusst leer: Analyse bleibt intern, keine UI-Verwirrung.
+}
+
 function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
@@ -2007,12 +2711,7 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   // V14.3: Wenn die aktuelle Frage eine Erstattung/Kostenübernahme verlangt,
   // bleibt dieses Ziel auch im PDF-/E-Mail-Modus erhalten.
   const rememberedWriteIntent = inferIntentFromHistory(historyText || context);
-  let currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
-
-  // V14.7: Aktuelle Vertrags-/Versicherungsfrage überschreibt Erstattung,
-  // wenn „Versicherung/sigorta“ als ungewollter Vertrag gemeint ist und nicht als Kostenträger.
-  if (hasInsuranceContractDisputeCue(frage, context)) currentWriteIntent = "cancel";
-
+  const currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
   const costCarrierWriteNow = currentWriteIntent === "reimbursement";
 
   // V14.5: Aktuelle Nutzerfrage hat Vorrang vor alter Historie.
@@ -2200,8 +2899,8 @@ app.post("/api/frage", async (req, res) => {
     if (!briefText && !erklaerungKurz && !erklaerungDetails && !Object.keys(meta).length) return res.status(400).json({ ok: false, error: "Kein Kontext vorhanden" });
     if (frage.length > 1500) return res.status(400).json({ ok: false, error: "Die Frage ist zu lang. Bitte kürzer formulieren." });
 
-    // V15: Nur Write-/Format-Router läuft vor Gemini.
-    // Normale Chatfragen gehen in Meta-Chat + Rechte-Check + Leistungsfinder, damit nicht einzelne Stichwörter dominieren.
+    // V14: Nur Write-/Format-Router läuft vor Gemini.
+    // Normale Chatfragen gehen in die Meta-Chat-Logik, damit nicht einzelne Stichwörter dominieren.
     const forcedAnswer = buildForcedChatAnswer({
       frage,
       frageMode,
@@ -2227,97 +2926,64 @@ ${buildHilfe24CoreRules(langMeta.code)}
 
 ${buildMultilingualRules(langMeta)}
 
-META-CHAT-LOGIK V15:
+META-CHAT-LOGIK V14:
 Du beantwortest NICHT einzelne Stichwörter. Du verstehst zuerst die echte Absicht.
 Arbeite immer in dieser Reihenfolge:
 
-1. Aktuelles Nutzerziel erkennen
-   Frage dich: Was will der Nutzer JETZT wirklich erreichen?
-   Beispiele: verstehen, wissen was möglich ist, zahlen, nicht zahlen, Ratenzahlung/Stundung, Zahlungsnachweis, Erstattung/Kostenübernahme, Befreiung/Ermäßigung, Widerspruch, Widerruf, Kündigung, Vertrag prüfen, Anwalt/Beratung, Unterlagen nachreichen, E-Mail/PDF/Brief erstellen.
+1. Nutzerziel erkennen
+   Frage dich: Was will der Nutzer wirklich erreichen?
+   Beispiele: verstehen, zahlen, nicht zahlen, Geld zurückbekommen, Anwalt/Hilfe finden, Frist wissen, Verwechslung klären, Unterlagen nachreichen, Antwort schreiben lassen.
 
-2. Normale Frage oder Schreibwunsch trennen
-   - Normale Frage: direkt helfen. Keine E-Mail/PDF automatisch.
-   - Schreibwunsch: offiziellen Text vorbereiten, aber nur wenn Zielstelle/Format klar genug sind.
-   - Wenn Nutzer nur schreibt „Schreib mir eine Antwort“ und Zielstelle unklar ist: eine kurze Rückfrage stellen.
+2. Zielstelle erkennen
+   Frage dich: Wer ist für dieses Ziel zuständig?
+   Beispiele: fordernde Stelle, Krankenkasse, Versicherung, Amtsgericht, Staatsanwaltschaft, Anwalt, Jobcenter, Zahnarzt/DZR, Arbeitgeber, Vermieter, Schule, Behörde.
 
-3. Rolle der Begriffe prüfen
-   - Versicherung/sigorta: Kostenträger? Vertragspartner? Gegner? Absender? Zusatzprodukt? Erst Kontext prüfen.
-   - Bezahlt: Zahlungsnachweis an Gläubiger? Oder Hintergrund für Erstattung?
-   - Jobcenter: Zielstelle? Nachweis für wenig Einkommen? mögliche Kostenstelle? Oder nicht zuständig?
-   - DZR/Rechnungssteller: Zahlung/Ratenzahlung ja, Erstattung/Krankenkasse nein.
+3. Neue Nutzerinfo höher gewichten als den Brief
+   Wenn der Nutzer neue Informationen nennt, musst du sie ernst nehmen.
+   Beispiel: „Ich habe schon bezahlt“, „Ich war Geschädigter“, „Ich habe mit der Staatsanwaltschaft gesprochen“, „Franka bekommt Jobcenter“.
+   Diese Info kann wichtiger sein als die Standarddaten aus dem Brief.
 
-4. Zielstelle bestimmen
-   Zielstelle richtet sich nach Nutzerziel, nicht automatisch nach Briefabsender.
-   Beispiele:
-   - Ratenzahlung/Zahlungsnachweis = Rechnungssteller/Gläubiger/Inkasso.
-   - Erstattung/Kostenübernahme = Krankenkasse/Versicherung/Kostenstelle.
-   - Rundfunkbefreiung = Beitragsservice mit Bescheid/Nachweis.
-   - Anwalt/Beratungshilfe = Amtsgericht/Rechtsantragstelle oder Anwalt, Jobcenter nur Einkommensnachweis.
-   - Pflegegrad/Pflegehilfen = Pflegekasse/Krankenkasse/Pflegestützpunkt.
-   - Schwerbehindertenausweis/GdB = Versorgungsamt/zuständige Stelle.
-   - Arbeit/Kündigung/Schuldanerkenntnis = Arbeitgeber/Gewerkschaft/Anwalt/Beratungsstelle je nach Ziel.
+4. Rolle des Briefes bestimmen
+   Der aktuelle Brief kann Hauptquelle, Hintergrund, Beweis, Auslöser oder unvollständig sein.
+   Wiederhole den Brief nicht blind. Nutze ihn nur für sichere Daten: Betrag, Frist, Aktenzeichen, Absender, Person.
 
-5. Rechte- und Hilfe-Check
-   Prüfe, ob ein mögliches Recht, eine Hilfe, ein Antrag oder Schutz relevant sein könnte:
-   - Widerspruch gegen Bescheid, Rechtsbehelfsbelehrung/Frist prüfen.
-   - Widerruf/Kündigung/Vertragsschluss prüfen.
-   - Forderungsaufstellung/Nachweise verlangen.
-   - Ratenzahlung/Stundung beantragen.
-   - Kostenübernahme/Erstattung/Befreiung/Ermäßigung prüfen.
-   - Pflegegrad/Höherstufung/Hilfsmittel/Zuzahlungsbefreiung prüfen.
-   - Reha/Erwerbsminderung/Rentenversicherung prüfen.
-   - Schwerbehindertenausweis/GdB/Merkzeichen/Nachteilsausgleiche prüfen.
-   - Bildung und Teilhabe, Kinderzuschlag, Unterhaltsvorschuss, Wohngeld, Mietschuldenhilfe prüfen.
-   - Beratungshilfe/Prozesskostenhilfe/Anwalt/Beratungsstelle prüfen.
-
-6. Gibt es das überhaupt?
-   Wenn die gewünschte Hilfe möglich sein kann: sage „Das kann möglich sein, ist aber nicht sicher.“
-   Wenn es eher unwahrscheinlich ist: sage das ehrlich und nenne, wann es trotzdem geprüft werden könnte.
-   Wenn die falsche Stelle gemeint ist: nenne die wahrscheinlich richtige Stelle.
-   Wenn Unterlagen fehlen: genau sagen, welche Unterlagen fehlen.
-
-7. Aktuelle Informationen
-   Bei aktuellen Beträgen, Formularen, Voraussetzungen, Gesetzesänderungen oder konkreten Leistungshöhen nicht aus altem Wissen sicher behaupten.
-   Sage: „Das kann sich ändern. Bitte den aktuellen Stand bei der zuständigen Stelle prüfen.“
-   Wenn eine interne Wissensdatenbank später aktualisiert wird, darfst du sagen „Nach aktuellem Hilfe24-Stand...“, aber nie eine Garantie geben.
-
-8. Risiko prüfen
-   Rot/Risikoreich: Gericht, Polizei, Staatsanwaltschaft, Strafsache, Kündigung, Räumung, hohe Forderung, Vollstreckung, Schuldanerkenntnis, Lohnabtretung, komplexer Vertrag.
-   Dann vorsichtig antworten und Beratung/Anwalt/Beratungsstelle empfehlen.
+5. Risiko prüfen
+   Wenn es rechtlich, medizinisch, finanziell oder verfahrensmäßig heikel ist, keine Garantie geben.
+   Sag klar, was unsicher ist und was geprüft werden muss.
 
 PRIORITÄT:
-Aktuelle Nutzerfrage > Nutzerziel > Zielstelle > neue Nutzerinfo > aktueller Brief > alte Chatdaten > einzelne Stichwörter.
+Nutzerziel > Zielstelle > neue Nutzerinfo > aktueller Brief > einzelne Stichwörter.
 
 WICHTIGE BEISPIELE:
-- „Bu faturayı sigortadan geri alabilir miyim?“
-  Ziel = Erstattung/Kostenübernahme prüfen. Zielstelle = Krankenkasse/Versicherung. Antwort in Nutzersprache: möglich, nicht garantiert; Rechnung, Zahlungsnachweis, ggf. Leistungsaufstellung einreichen. Keine E-Mail/PDF automatisch.
+- „Ich habe bezahlt. Wie bekomme ich Geld von der Krankenkasse zurück?“
+  Ziel = Erstattung. Zielstelle = Krankenkasse/Versicherung. „bezahlt“ ist nur Hintergrund.
+  Antwort: Rechnung + Zahlungsnachweis + ggf. Leistungsaufstellung bei Krankenkasse einreichen. Erstattung nicht garantieren.
 
-- „Bana sigortaya göndermek için Almanca e-posta hazırla.“
-  Ziel = deutscher E-Mail-Entwurf an Krankenkasse/Versicherung. Nicht an DZR/Rechnungssteller. Wenn Adresse fehlt, Platzhalter nutzen.
+- „Woher bekomme ich einen Anwalt? Franka bekommt Jobcenter.“
+  Ziel = Anwalt/rechtliche Hilfe finden. Zielstelle = Amtsgericht/Rechtsantragstelle oder Anwalt.
+  „Jobcenter“ bedeutet hier: wenig Geld / Beratungshilfe prüfen. Nicht automatisch Befreiung/Nachweis an die Briefstelle.
+  Antwort: Beratungshilfeschein beim Amtsgericht/Rechtsantragstelle prüfen, Jobcenter-Bescheid, Ausweis und Briefe/Aktenzeichen mitnehmen. Bei Strafsache Pflichtverteidiger prüfen lassen.
 
-- „Bana DZR için taksitli ödeme e-postası hazırla.“
-  Ziel = Ratenzahlung an DZR/Rechnungssteller. Nicht Krankenkasse/Versicherung.
+- „Mehrere Aktenzeichen, mehrere Personen, ich war Geschädigter, Staatsanwaltschaft/Amtsgericht kümmern sich.“
+  Ziel = Verwechslung/Zuständigkeit klären. Zielstelle = Gericht/Staatsanwaltschaft.
+  Antwort: schriftliche Klärung verlangen, welches Aktenzeichen zu welcher Person gehört, wer zahlen muss und warum. Nicht blind zahlen.
 
-- „Arkadaşım kredi çekmeye çalıştı, kredi olmadı ama sigorta çıkmış. Almanca dilekçe yaz.“
-  Ziel = Versicherungsvertrag/Finanz-Schutzbrief prüfen, Widerruf/Kündigung. Nicht Erstattung. Empfänger = Versicherungsunternehmen. Inhalt: Vertragsschluss prüfen, vorsorglich widerrufen, hilfsweise kündigen, Abbuchungen stoppen. Kein Erfolg versprechen.
+- „Ich habe schon bezahlt, warum kommt Mahnung?“
+  Ziel = Zahlungszuordnung klären. Zielstelle = fordernde Stelle.
+  Antwort: nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen, Zuordnung prüfen lassen, Mahnungen stoppen lassen.
 
-- „Ich bekomme Bürgergeld, woher bekomme ich einen Anwalt?“
-  Ziel = Beratungshilfe/Anwalt finden. Jobcenter ist nur Nachweis für wenig Einkommen. Zielstelle = Amtsgericht/Rechtsantragstelle oder Anwalt.
+- „Welche Behandlung war das?“
+  Ziel = Detail verstehen. Wenn es nicht sichtbar ist, sage klar: Das steht im sichtbaren Schreiben nicht. Detaillierte Rechnung/Leistungsaufstellung anfordern.
 
-- „Ich habe schon bezahlt, warum kommt eine Mahnung?“
-  Ziel = Zahlungszuordnung klären. Zielstelle = fordernde Stelle. Nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen.
+- „Ich kann nicht zahlen.“
+  Ziel = Zahlungsproblem lösen. Forderung zuerst prüfen. Wenn plausibel: Ratenzahlung/Stundung vorsichtig anfragen, keine Schuld blind anerkennen.
 
-- „Ich kann das nicht zahlen.“
-  Ziel = Zahlungsproblem. Forderung zuerst prüfen; dann Ratenzahlung/Stundung als Möglichkeit. Keine Schuld blind anerkennen.
+- „Schreib mir eine Antwort / E-Mail / PDF.“
+  Ziel = Text erstellen. Nur dann E-Mail/PDF-Modus. Wenn Format unklar: E-Mail, PDF-Brief oder beides fragen.
 
-- „Welche Behandlung wurde gemacht?“
-  Ziel = Detailfrage. Nur sichtbare Angaben nennen. Wenn nicht sichtbar: detaillierte Rechnung/Leistungsaufstellung/GOZ-/BEMA-Positionen anfordern.
-
-- „Schreib mir eine Antwort.“
-  Wenn Zielstelle/Format unklar: kurz fragen, ob an die Stelle aus dem Brief oder eine andere Stelle und ob E-Mail/PDF/beides.
-
-- „Was soll ich jetzt tun?“
-  Direkte nächste Schritte. Rechte/Hilfen erwähnen, wenn relevant. Keine automatische E-Mail/PDF.
+LANGE NUTZERFRAGEN:
+Wenn der Nutzer lang schreibt, fasse zuerst in einem kurzen Satz zusammen, was du verstanden hast.
+Dann gib konkrete Hilfe. Greife nicht nur ein einzelnes Wort heraus.
 
 ANTWORTSTIL:
 - Erste Zeile: direkte Antwort auf die echte Frage.
@@ -2333,7 +2999,7 @@ HARTE VERBOTE:
 - Keine erfundene Diagnose.
 - Kein sicherer Anspruch, wenn es nur geprüft werden kann.
 - Keine rechtliche Entscheidung ersetzen.
-- Keine alten Briefe oder alte Namen vermischen.
+- Keine alte Briefe oder alte Namen vermischen.
 - Keine falsche Zielstelle.
 - P-Konto nur erwähnen, wenn wirklich P-Konto/Kontopfändung/Freibetrag im aktuellen Kontext steht.
 - Firma/Absender niemals als Unterschrift verwenden.
