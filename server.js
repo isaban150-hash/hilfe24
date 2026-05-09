@@ -350,6 +350,30 @@ function wantsBothEmailAndPdf(frage = "", frageMode = "") {
   return wantsPdfOutput(frage, frageMode) && wantsEmailOutput(frage, frageMode);
 }
 
+
+function normalizeChoiceAnswer(frage = "") {
+  const q = normalizeString(frage).toLowerCase();
+  if (/^(1|eins|ein|erste|e-mail|email|mail|als e-mail|als email)$/.test(q)) return "email";
+  if (/^(2|zwei|zweite|pdf|pdf brief|pdf-brief|als pdf|brief|pdf-brief zum herunterladen)$/.test(q)) return "pdf";
+  if (/^(3|drei|dritte|beides|beide|email und pdf|e-mail und pdf|mail und pdf)$/.test(q)) return "both";
+  return "";
+}
+
+function isAnsweringOutputChoice(frage = "", historyText = "") {
+  const choice = normalizeChoiceAnswer(frage);
+  if (!choice) return "";
+  const h = String(historyText || "").toLowerCase();
+  if (
+    h.includes("wie möchtest du es haben") ||
+    h.includes("als e-mail") ||
+    h.includes("als pdf-brief") ||
+    h.includes("beides")
+  ) {
+    return choice;
+  }
+  return "";
+}
+
 function isUnsafeReference(value) {
   const v = normalizeString(value);
   if (!v) return true;
@@ -1065,10 +1089,11 @@ function buildNoMoneyShort(meta = {}, domain = "allgemein") {
 function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
-  const intent = detectIntent(frage, frageMode, historyText);
-  const wantsPdf = wantsPdfOutput(frage, frageMode);
-  const wantsEmail = wantsEmailOutput(frage, frageMode);
-  const wantsBoth = wantsBothEmailAndPdf(frage, frageMode);
+  const outputChoice = isAnsweringOutputChoice(frage, historyText);
+  const intent = outputChoice ? inferIntentFromHistory(historyText || context) : detectIntent(frage, frageMode, historyText);
+  const wantsPdf = outputChoice === "pdf" || (!outputChoice && wantsPdfOutput(frage, frageMode));
+  const wantsEmail = outputChoice === "email" || (!outputChoice && wantsEmailOutput(frage, frageMode));
+  const wantsBoth = outputChoice === "both" || (!outputChoice && wantsBothEmailAndPdf(frage, frageMode));
 
   if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
 
