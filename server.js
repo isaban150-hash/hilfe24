@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v11.1-general-chat-logic" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v12-core-logic" });
 });
 
 function getTodayGerman() {
@@ -359,46 +359,19 @@ function normalizeChoiceAnswer(frage = "") {
   return "";
 }
 
-function getLastAssistantHistoryText(historyText = "") {
-  const h = String(historyText || "");
-  const idx = h.lastIndexOf("Hilfe24:");
-  if (idx < 0) return "";
-  return h.slice(idx).toLowerCase();
-}
-
-function isOutputChoicePromptActive(historyText = "") {
-  const lastAssistant = getLastAssistantHistoryText(historyText);
-  if (!lastAssistant) return false;
-
-  return (
-    lastAssistant.includes("wie möchtest du es haben") &&
-    lastAssistant.includes("als e-mail") &&
-    lastAssistant.includes("als pdf-brief") &&
-    lastAssistant.includes("beides")
-  );
-}
-
 function isAnsweringOutputChoice(frage = "", historyText = "") {
   const choice = normalizeChoiceAnswer(frage);
   if (!choice) return "";
-
-  // V11.1: 1/2/3 gelten nur direkt nach der Auswahlfrage.
-  // Nicht mehr irgendeine alte Auswahl aus dem Chatverlauf verwenden.
-  if (isOutputChoicePromptActive(historyText)) return choice;
-
+  const h = String(historyText || "").toLowerCase();
+  if (
+    h.includes("wie möchtest du es haben") ||
+    h.includes("als e-mail") ||
+    h.includes("als pdf-brief") ||
+    h.includes("beides")
+  ) {
+    return choice;
+  }
   return "";
-}
-
-function isNormalFollowUpAfterOutputChoice(frage = "", historyText = "") {
-  if (!isOutputChoicePromptActive(historyText)) return false;
-  if (normalizeChoiceAnswer(frage)) return false;
-
-  const q = normalizeString(frage).toLowerCase();
-  if (!q) return false;
-
-  // Wenn der Nutzer nach der Auswahlfrage einen normalen Satz schreibt,
-  // ist das eine neue Frage/Korrektur und keine Auswahl mehr.
-  return q.length > 3;
 }
 
 function isUnsafeReference(value) {
@@ -1113,154 +1086,10 @@ function buildNoMoneyShort(meta = {}, domain = "allgemein") {
   return "Dann nicht sofort eine Rate vorschlagen. Der sichere Schritt ist Zahlungsaufschub oder Stundung. Schreibe der Stelle, dass du aktuell nicht zahlen kannst, und bitte um Aussetzung weiterer Maßnahmen bis zur Entscheidung.";
 }
 
-
-function isExplicitOutputRequest(frage = "", frageMode = "") {
-  const q = String(`${frage} ${frageMode}`).toLowerCase();
-
-  // Ausgabeform ist klar gewünscht.
-  if (wantsPdfOutput(frage, frageMode) || wantsEmailOutput(frage, frageMode) || wantsBothEmailAndPdf(frage, frageMode)) return true;
-
-  // Nutzer will ausdrücklich einen sendbaren Text.
-  return hasAny(q, [
-    "schreib mir", "schreibe mir", "schreib eine", "schreibe eine", "formuliere", "formulier",
-    "mach mir", "erstelle", "fertig machen", "fertigmachen", "vorlage", "text zum senden",
-    "antwort schreiben", "professionelle antwort", "brief schreiben", "nachricht schreiben"
-  ]);
-}
-
-function hasSocialBenefitContext(text = "") {
-  const t = String(text || "").toLowerCase();
-  return hasAny(t, [
-    "jobcenter", "bürgergeld", "buergergeld", "arbeitslosengeld", "alg ii", "hartz", "sozialhilfe",
-    "grundsicherung", "wohngeld", "kinderzuschlag", "kindergeldzuschlag", "bafög", "bafoeg",
-    "leistungen nach", "sozialleistung", "bescheid", "leistungsbescheid"
-  ]);
-}
-
-function buildGeneralAdvice(intent = "", meta = {}, context = "", domain = "allgemein") {
-  const ctx = String(context || "").toLowerCase();
-  const number = safeReferences(meta).map((r) => referenceLabelForDomain(r, domain)).filter(Boolean)[0] || "die Nummer aus dem Schreiben";
-  const amount = getAmount(meta) || "den Betrag aus dem Schreiben";
-  const sender = getSender(meta) || "die Stelle";
-  const social = hasSocialBenefitContext(ctx);
-
-  if (intent === "sent_proof") {
-    if (social) {
-      return cleanText(`Wenn du einen Bescheid/Nachweis schon geschickt hast, sende ihn zur Sicherheit nochmal.
-
-Das solltest du tun:
-1. ${number} nennen.
-2. Den Bescheid/Nachweis erneut mitschicken.
-3. Um Prüfung bitten, ob eine Befreiung, Ermäßigung oder Kostenübernahme möglich ist.
-4. Um Pause/Aussetzung weiterer Maßnahmen bitten, bis alles geprüft wurde.
-5. Sende alles so, dass du einen Nachweis hast.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-    }
-
-    return cleanText(`Wenn du Unterlagen schon geschickt hast, sende sie zur Sicherheit nochmal und nenne ${number}.
-
-Das solltest du tun:
-1. Unterlagen/Nachweis erneut mitschicken.
-2. Um schriftliche Bestätigung bitten.
-3. Fragen, ob noch etwas fehlt.
-4. Versandnachweis aufbewahren.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-  }
-
-  if (intent === "installments") {
-    return cleanText(`Wenn du ${amount} nicht auf einmal zahlen kannst, ist eine Ratenzahlung oder Stundung der richtige Weg.
-
-Das solltest du tun:
-1. Prüfe zuerst, ob die Forderung stimmt.
-2. Überlege, welche monatliche Rate realistisch ist.
-3. Beantrage schriftlich Ratenzahlung oder Zahlungsaufschub.
-4. Bitte um schriftliche Bestätigung und darum, bis zur Entscheidung keine weiteren Maßnahmen einzuleiten.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-  }
-
-  if (intent === "no_money") {
-    return cleanText(`Wenn du aktuell nicht zahlen kannst, nicht ignorieren.
-
-Das solltest du tun:
-1. Prüfe, ob die Forderung stimmt.
-2. Schreibe ${sender} kurz, dass du aktuell nicht auf einmal zahlen kannst.
-3. Bitte um Stundung, Zahlungsaufschub oder Ratenzahlung.
-4. Bitte darum, bis zur Entscheidung keine weiteren Maßnahmen einzuleiten.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-  }
-
-  if (intent === "paid") {
-    return cleanText(`Wenn du schon bezahlt hast, sende einen Zahlungsnachweis.
-
-Das solltest du tun:
-1. Zahlungsbeleg oder Kontoauszug bereithalten.
-2. ${number} nennen.
-3. Um Prüfung und schriftliche Bestätigung bitten.
-4. Wenn weitere Maßnahmen angekündigt sind: um Stopp bis zur Klärung bitten.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-  }
-
-  if (intent === "dispute") {
-    return cleanText(`Wenn du die Forderung oder den Inhalt nicht verstehst oder bestreitest, erkenne nichts vorschnell an.
-
-Das solltest du tun:
-1. Um eine genaue Erklärung/Aufstellung bitten.
-2. Nachweisen lassen, worauf die Forderung beruht.
-3. Fristen im Brief prüfen.
-4. Bei hoher Dringlichkeit Beratung holen.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-  }
-
-  if (intent === "cancel") {
-    return cleanText(`Wenn du einen Vertrag beenden willst, prüfe zuerst, ob Widerruf oder Kündigung passt.
-
-Das solltest du tun:
-1. Vertragsnummer/Kundennummer aus dem Schreiben nennen.
-2. Vorsorglich widerrufen, wenn das noch möglich ist.
-3. Hilfsweise zum nächstmöglichen Zeitpunkt kündigen.
-4. Schriftliche Bestätigung verlangen.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-  }
-
-  if (intent === "next_steps" || !intent) {
-    if (social) {
-      return cleanText(`Wenn du Leistungen bekommst, prüfe, ob du einen Nachweis, eine Befreiung, Ermäßigung oder Kostenübernahme einreichen kannst.
-
-Das solltest du tun:
-1. Nummer aus dem Schreiben nennen.
-2. Leistungsbescheid/Nachweis mitschicken.
-3. Um Prüfung bitten.
-4. Falls schon geschickt: nochmal senden und auf die frühere Sendung hinweisen.
-5. Um Pause weiterer Maßnahmen bis zur Klärung bitten.
-
-Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
-    }
-
-    return buildNextSteps(meta, domain);
-  }
-
-  return buildNextSteps(meta, domain);
-}
-
 function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
   const outputChoice = isAnsweringOutputChoice(frage, historyText);
-
-  // V11.1: Wenn der Nutzer nach der Auswahlfrage keine klare 1/2/3-Auswahl schickt,
-  // nicht weiter im E-Mail/PDF-Auswahlmodus hängen bleiben.
-  // Dann geht die Frage normal an den allgemeinen Chat/Gemini-Fallback.
-  if (!outputChoice && isNormalFollowUpAfterOutputChoice(frage, historyText)) {
-    return "";
-  }
-
   const intent = outputChoice ? inferIntentFromHistory(historyText || context) : detectIntent(frage, frageMode, historyText);
   const wantsPdf = outputChoice === "pdf" || (!outputChoice && wantsPdfOutput(frage, frageMode));
   const wantsEmail = outputChoice === "email" || (!outputChoice && wantsEmailOutput(frage, frageMode));
@@ -1287,18 +1116,15 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
     if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, formIntent === "reply" ? "pdf" : formIntent);
     if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, formIntent);
 
-    // V11.2: Beratungsfrage ≠ Schreibauftrag.
-    // Wenn der Nutzer fragt „Was kann ich tun?“, „Ich habe schon geschickt“, „Ich bekomme Jobcenter“ usw.,
-    // wird zuerst geholfen. Ausgabeform erst dann, wenn der Nutzer E-Mail/PDF/Schreibauftrag klar möchte.
-    if (!isExplicitOutputRequest(frage, frageMode)) {
-      return buildGeneralAdvice(formIntent, meta, context, domain);
+    if (formIntent === "no_money" && !wantsWrittenOutput(frage, frageMode)) {
+      return buildNoMoneyShort(meta, domain);
     }
 
     return askOutputChoice(formIntent);
   }
 
-  if (intent === "next_steps") return buildGeneralAdvice("next_steps", meta, context, domain);
-  if (intent === "documents") return "Sende nur Unterlagen, die wirklich zum Schreiben passen. Wichtig sind meist: das Schreiben selbst, die genannte Nummer, Nachweise, Zahlungsbelege oder Bescheide. Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.";
+  if (intent === "next_steps") return buildNextSteps(meta, domain);
+  if (intent === "documents") return "Sende nur Unterlagen, die wirklich zum Schreiben passen. Wichtig sind meist: das Schreiben selbst, die genannte Nummer, Nachweise, Zahlungsbelege oder Bescheide. Wenn du willst, schreibe ich dir eine kurze Nachricht zum Nachreichen.";
   if (intent === "deadline") return meta.frist || meta.termin ? `Frist/Termin: ${meta.frist || meta.termin}. Bitte im Originalbrief prüfen und rechtzeitig reagieren.` : "Ich sehe keine sichere Frist. Bitte prüfe das Originalschreiben oder nutze Daten genauer prüfen.";
   return "";
 }
@@ -1418,6 +1244,447 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
   };
 }
 
+
+
+/* =========================================================
+   HILFE24 V12 CORE LOGIC
+   Kernziel: Briefe zuerst sauber erklären, danach Chatfragen
+   direkt beantworten. E-Mail/PDF nur bei ausdrücklichem Wunsch.
+   ========================================================= */
+
+function buildHilfe24CoreRules(langLabel = "Deutsch") {
+  return `
+Du bist Hilfe24.
+Du bist kein normaler Chatbot und kein reiner Brief-Zusammenfasser.
+Du bist ein Fall-Assistent für Menschen, die schwierige Briefe, Rechnungen, Mahnungen, Bescheide, Verträge und Behördenpost verstehen müssen.
+
+Sprache für Erklärung und Beratung: ${langLabel}.
+Bei offiziellen Antworttexten an deutsche Stellen: Deutsch verwenden.
+
+Harte Regeln:
+1. Nutze nur den aktuellen Brief, die extrahierten Daten und die aktuelle Nutzerfrage.
+2. Vermische niemals alte Briefe, alte Namen, alte Beträge oder alte Nummern mit dem aktuellen Fall.
+3. Trenne immer: sicher sichtbar / unklar / nicht sichtbar.
+4. Wenn etwas nicht im Brief steht, sage klar: "Das steht auf dem sichtbaren Schreiben nicht."
+5. Erfinde niemals Behandlungen, Leistungen, Fristen, Gründe, Rechtsfolgen, Aktenzeichen, Beträge oder persönliche Daten.
+6. Beantworte normale Fragen zuerst direkt. Frage nicht sofort nach E-Mail/PDF.
+7. E-Mail/PDF nur erstellen, wenn der Nutzer das ausdrücklich möchte oder nach einer Antwort zum Senden fragt.
+8. Keine Schuld blind anerkennen. Keine Forderung blind bestätigen. Keine rechtlichen Garantien geben.
+9. Firma/Behörde niemals als Unterschrift verwenden. IBAN, BIC, Telefon, Fax, Adresse, Öffnungszeiten und E-Mail niemals als Aktenzeichen benutzen.
+10. Schreibe klar, menschlich und praktisch: nicht zu kurz, nicht zu lang.
+
+Antwortlogik:
+- Verständnisfrage: einfach erklären.
+- Handlungsfrage: konkrete Schritte geben.
+- Fristfrage: Frist/Termin nennen, wenn sicher; sonst klar sagen, dass sie nicht sicher erkennbar ist.
+- Folgefrage: nur echte Folgen aus dem Brief nennen, keine Panik erfinden.
+- Schon bezahlt: nicht nochmal zahlen, Zahlungsnachweis senden, Nummer nennen, Prüfung/Zuordnung verlangen, Mahnungen/Maßnahmen bis Klärung stoppen lassen.
+- Schon geschickt: Nachweis erneut mit Nummer senden, Prüfung und schriftliche Bestätigung verlangen, Versandnachweis behalten.
+- Kann nicht zahlen/Ratenzahlung: Forderung zuerst prüfen; wenn plausibel, Ratenzahlung/Stundung als Möglichkeit nennen; keine Schuld blind anerkennen.
+- Was wurde gemacht/Wofür Rechnung: nur sichtbare Details nennen. Wenn keine Leistungsdetails sichtbar sind, detaillierte Rechnung/Leistungsaufstellung/Positionen/GOZ-/BEMA-Nummern anfordern.
+- Jobcenter/Bürgergeld/Sozialleistung: mögliche Befreiung, Ermäßigung, Kostenübernahme oder Nachweisprüfung nennen, aber nichts garantieren.
+- Schreibwunsch: Ausgabeform klären, wenn nicht genannt: E-Mail, PDF-Brief oder beides.
+`;
+}
+
+function buildExtractionPromptBase(inputMode) {
+  return `
+Du bist Hilfe24. Lies ein aktuelles Schreiben sehr genau und extrahiere nur sichere Fakten.
+
+Input: ${inputMode === "image" ? "Bilder eines Briefes. Lies alle sichtbaren Seiten genau." : "Text eines Briefes."}
+
+Arbeitsweise:
+- Erkenne die Briefart allgemein. Keine Fixierung auf einzelne Testbriefe.
+- Trenne sicher sichtbare Daten von unklaren oder fehlenden Daten.
+- Nenne in unsicherheiten aktiv, was im sichtbaren Schreiben NICHT steht oder nicht sicher lesbar ist.
+- Wenn z. B. nur "zahnärztliche Rechnung" sichtbar ist, aber keine Behandlung/Positionen: unsicherheiten muss enthalten, dass die genaue Behandlung/Leistung nicht sichtbar ist.
+- Keine Daten erfinden. Namen, Beträge, Fristen, Termine und Nummern nur übernehmen, wenn sicher lesbar.
+- Unterscheide Absender/Firma/Behörde und betroffene Person. Absender/Firma niemals als betroffene Person eintragen.
+- Eine IBAN, BIC, Telefonnummer, Adresse, Webseite, Öffnungszeit oder E-Mail ist keine Aktenzeichen-Referenz.
+- E-Mail-Adresse separat bei email_adresse eintragen, falls sichtbar.
+- Adresse der betroffenen Person bei absender_adresse eintragen, wenn sicher sichtbar.
+- Adresse der Stelle/Behörde/Firma bei empfaenger_adresse eintragen, wenn sicher sichtbar.
+- Bank/P-Konto nur wenn wirklich Pfändung, P-Konto, Pfändungsschutzkonto, Freibetrag oder Kontopfändung vorkommt.
+- Gib nur gültiges JSON zurück. Keine Markdown-Codeblöcke.
+
+Gib genau dieses JSON zurück:
+{
+  "absender_original": "",
+  "absender_kurz": "",
+  "email_adresse": "",
+  "absender_adresse": "",
+  "empfaenger_adresse": "",
+  "briefart": "",
+  "betroffene_person": "",
+  "empfaenger": "",
+  "betroffene_personen": [],
+  "zeugen": [],
+  "angeklagte_beschuldigte": [],
+  "worum_geht_es": "",
+  "wichtigste_punkte": [],
+  "was_ist_zu_tun": [],
+  "frist": "",
+  "termin": "",
+  "folge_wenn_nichts": "",
+  "versteckte_wichtige_info": "",
+  "kurz_gesagt": "",
+  "unsicherheiten": [],
+  "pflicht_oder_freiwillig": "unklar",
+  "dringlichkeit": "unklar",
+  "naechster_schritt": "",
+  "betrag": "",
+  "datum_schreiben": "",
+  "unterlagen": [],
+  "referenzen": [],
+  "antwort_sprache": "unklar",
+  "brief_schwierigkeit": "unklar",
+  "muss_handeln": "unklar",
+  "geld_betroffen": "unklar",
+  "risiko_kurz": "",
+  "erster_sicherer_schritt": "",
+  "daten_unsicher": [],
+  "passende_aktionen": []
+}
+`;
+}
+
+function formatImportantDataLines(info = {}) {
+  const rows = [];
+  const sender = getSender(info);
+  const name = getDetectedPersonName(info);
+  const amount = getAmount(info);
+  const ref = safeReferences(info).join(", ");
+  if (sender) rows.push(`- Absender: ${sender}`);
+  if (name) rows.push(`- Betroffene Person: ${name}`);
+  if (amount) rows.push(`- Betrag: ${amount}`);
+  if (info.datum_schreiben) rows.push(`- Datum im Schreiben: ${info.datum_schreiben}`);
+  if (info.frist) rows.push(`- Frist: ${info.frist}`);
+  if (info.termin) rows.push(`- Termin: ${info.termin}`);
+  if (ref) rows.push(`- Nummer/Aktenzeichen: ${ref}`);
+  if (!rows.length) rows.push("- Keine wichtigen Daten sicher erkannt. Bitte Originalbrief prüfen.");
+  return rows.join("\n");
+}
+
+function buildUnclearLines(info = {}) {
+  const items = dedupe([
+    ...(Array.isArray(info.unsicherheiten) ? info.unsicherheiten : []),
+    ...(Array.isArray(info.daten_unsicher) ? info.daten_unsicher : [])
+  ]).filter(Boolean);
+  if (!items.length) return "- Keine zusätzliche Unsicherheit erkannt. Bitte trotzdem Namen, Betrag, Frist und Nummer im Originalbrief prüfen.";
+  return items.slice(0, 5).map((x) => `- ${x}`).join("\n");
+}
+
+function buildActionLines(info = {}) {
+  const steps = dedupe([
+    ...(Array.isArray(info.was_ist_zu_tun) ? info.was_ist_zu_tun : []),
+    info.erster_sicherer_schritt,
+    info.naechster_schritt
+  ]).filter(Boolean);
+  if (!steps.length) {
+    return "1. Prüfe Absender, Name, Betrag, Frist und Nummer im Originalbrief.\n2. Wenn etwas unklar ist, frage die Stelle schriftlich nach.\n3. Reagiere rechtzeitig, wenn eine Frist oder Zahlung verlangt wird.";
+  }
+  return steps.slice(0, 5).map((s, i) => `${i + 1}. ${s}`).join("\n");
+}
+
+function buildCoreExplanationDe(info = {}) {
+  const sender = getSender(info);
+  const amount = getAmount(info);
+  const ref = getPrimaryReference(info);
+  const next = info.erster_sicherer_schritt || info.naechster_schritt || "Prüfe zuerst die sicheren Daten im Originalbrief und kläre schriftlich, was unklar ist.";
+  const shortParts = [];
+  if (info.kurz_gesagt) shortParts.push(info.kurz_gesagt);
+  else if (sender && amount) shortParts.push(`Es geht um ein Schreiben von ${sender} über ${amount}.`);
+  else if (sender) shortParts.push(`Es geht um ein Schreiben von ${sender}.`);
+  else shortParts.push("Es geht um ein Schreiben, das geprüft werden muss.");
+  if (info.worum_geht_es) shortParts.push(info.worum_geht_es);
+  if (info.frist || info.termin) shortParts.push(`Wichtig ist auch: ${info.frist || info.termin}.`);
+
+  return cleanText(`Kurz erklärt:
+${dedupe(shortParts).slice(0, 4).join("\n")}
+
+Wichtige Daten:
+${formatImportantDataLines(info)}
+
+Was bedeutet das praktisch?
+${info.versteckte_wichtige_info || info.risiko_kurz || "Der Brief kann eine Reaktion verlangen. Wichtig ist, die genannten Daten zu prüfen und nichts zu übersehen."}
+
+Was ist unklar?
+${buildUnclearLines(info)}
+
+Was du jetzt tun solltest:
+${buildActionLines(info)}
+
+Wenn du nichts machst:
+${info.folge_wenn_nichts || "Das steht auf dem sichtbaren Schreiben nicht sicher. Wenn eine Frist, Mahnung oder Zahlung genannt ist, solltest du rechtzeitig reagieren."}
+
+Nächster Schritt:
+${next}${ref ? ` Nenne dabei die Nummer: ${ref}.` : ""}`);
+}
+
+function buildCoreShortDe(info = {}) {
+  const sender = getSender(info);
+  const amount = getAmount(info);
+  const next = info.erster_sicherer_schritt || info.naechster_schritt || "Prüfe zuerst die wichtigen Daten im Originalbrief.";
+  const unclear = dedupe([...(info.unsicherheiten || []), ...(info.daten_unsicher || [])])[0] || "Wenn etwas nicht sicher lesbar ist, bitte im Originalbrief prüfen.";
+  const lines = [];
+  lines.push("Kurz erklärt:");
+  if (info.kurz_gesagt) lines.push(info.kurz_gesagt);
+  else if (sender && amount) lines.push(`Es geht um ein Schreiben von ${sender} über ${amount}.`);
+  else if (sender) lines.push(`Es geht um ein Schreiben von ${sender}.`);
+  else lines.push("Es geht um ein Schreiben, das geprüft werden muss.");
+  if (info.worum_geht_es) lines.push(info.worum_geht_es);
+  lines.push("");
+  lines.push("Wichtig:");
+  if (amount) lines.push(`Betrag: ${amount}.`);
+  if (info.frist || info.termin) lines.push(`Frist/Termin: ${info.frist || info.termin}.`);
+  const ref = getPrimaryReference(info);
+  if (ref) lines.push(`Nummer: ${ref}.`);
+  lines.push("");
+  lines.push("Was ist unklar?");
+  lines.push(unclear);
+  lines.push("");
+  lines.push("Nächster Schritt:");
+  lines.push(next);
+  return cleanText(lines.join("\n"));
+}
+
+async function translateHelpTextIfNeeded(text, lang) {
+  const langMeta = getLanguageMeta(lang);
+  const clean = cleanText(text);
+  if (langMeta.code === "de") return clean;
+  const raw = await callGemini([{ text: `${buildHilfe24CoreRules(langMeta.label)}\n\nÜbersetze den folgenden Hilfe24-Text vollständig in ${langMeta.label}. Keine neuen Informationen. Namen, Beträge, Fristen und Nummern exakt erhalten.\n\nTEXT:\n${clean}` }]);
+  return cleanText(raw);
+}
+
+function isExplicitWriteRequest(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+  if (wantsPdfOutput(frage, frageMode) || wantsEmailOutput(frage, frageMode)) return true;
+  return hasAny(q, ["schreib", "schreibe", "formuliere", "mach mir", "erstelle", "vorlage", "antwort zum senden", "brief erstellen", "professionelle antwort"]);
+}
+
+function detectCoreIntent(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+  const clean = normalizeString(frage).toLowerCase();
+  if (/^(ok|okay|danke|alles klar|verstanden|passt|ja)$/i.test(clean)) return "smalltalk";
+  if (hasAny(q, ["welche behandlung", "was wurde gemacht", "was haben die gemacht", "wofür ist die rechnung", "wofuer ist die rechnung", "welche leistung", "leistungsaufstellung", "positionen", "goz", "bema"])) return "detailfrage";
+  if (hasAny(q, ["schon bezahlt", "bereits bezahlt", "habe bezahlt", "überwiesen", "ueberwiesen", "zahlungsnachweis"])) return "schon_bezahlt";
+  if (hasAny(q, ["schon geschickt", "bereits geschickt", "nachweis geschickt", "unterlagen geschickt", "bescheid geschickt", "befreiung geschickt", "habe das geschickt", "dahin geschickt"])) return "schon_geschickt";
+  if (hasAny(q, ["jobcenter", "bürgergeld", "buergergeld", "sozialhilfe", "sozialamt", "grundsicherung", "arbeitslosengeld", "alg ii", "alg 2"])) return "sozialleistung";
+  if (hasAny(q, ["kein geld", "kann nicht zahlen", "nicht bezahlen", "nicht zahlen", "nicht auf einmal", "zahlungsaufschub", "stundung"])) return "zahlungsproblem";
+  if (hasAny(q, ["ratenzahlung", "rate", "raten", "monatlich zahlen", "in raten"])) return "ratenzahlung";
+  if (hasAny(q, ["was passiert", "wenn ich nichts", "folge", "konsequenz"])) return "folgenfrage";
+  if (hasAny(q, ["frist", "bis wann", "deadline", "termin"])) return "fristfrage";
+  if (hasAny(q, ["was soll ich tun", "was muss ich tun", "was kann ich tun", "was jetzt", "nächster schritt", "naechster schritt", "wie weiter"])) return "handlungsfrage";
+  if (hasAny(q, ["was bedeutet", "erklär", "erklaer", "verstehe nicht", "was heißt", "was heisst"])) return "verstaendnisfrage";
+  if (hasAny(q, ["kündigen", "kuendigen", "kündigung", "kuendigung", "widerrufen", "widerruf", "widersprechen", "widerspruch", "einspruch"])) return "rechtshandlung";
+  if (isExplicitWriteRequest(frage, frageMode)) return "schreibwunsch";
+  return "";
+}
+
+function coreReferenceText(meta = {}) {
+  const ref = getPrimaryReference(meta);
+  return ref ? ` Nenne dabei diese Nummer: ${ref}.` : "";
+}
+
+function buildPaidAdvice(meta = {}) {
+  return cleanText(`Dann zahl nicht nochmal.
+
+Schick der Stelle aus dem Brief einen Zahlungsnachweis. Nenne dabei Betrag, Datum der Zahlung und die Rechnungsnummer oder das Aktenzeichen.${coreReferenceText(meta)}
+
+Bitte die Stelle um Prüfung, ob die Zahlung richtig zugeordnet wurde. Bitte auch darum, weitere Mahnungen oder Maßnahmen bis zur Klärung zu stoppen.
+
+Wenn du möchtest, schreibe ich dir daraus eine kurze E-Mail oder einen PDF-Brief.`);
+}
+
+function buildSentProofAdvice(meta = {}) {
+  return cleanText(`Dann schick den Nachweis vorsorglich noch einmal.
+
+Nenne die Nummer aus dem Schreiben und schreibe dazu, dass du die Unterlagen bereits gesendet hast.${coreReferenceText(meta)}
+
+Bitte um Prüfung und schriftliche Bestätigung. Behalte einen Versandnachweis oder Screenshot.`);
+}
+
+function buildPaymentAdvice(meta = {}) {
+  return cleanText(`Prüfe zuerst, ob die Forderung wirklich stimmt.
+
+Wenn die Forderung korrekt ist, kannst du schriftlich um Ratenzahlung oder Stundung bitten. Schreibe vorsichtig, zum Beispiel: "Ohne Anerkennung einer Rechtspflicht bitte ich um Prüfung einer Ratenzahlung."
+
+Nenne nur eine Rate, die du realistisch zahlen kannst. Bitte um schriftliche Bestätigung, bevor du dich darauf verlässt.
+
+Wenn du möchtest, formuliere ich dir daraus eine E-Mail oder einen PDF-Brief.`);
+}
+
+function buildDetailAdvice(meta = {}, context = "") {
+  const visible = [];
+  if (meta.briefart) visible.push(meta.briefart);
+  if (meta.betrag) visible.push(`Betrag: ${meta.betrag}`);
+  if (getSender(meta)) visible.push(`Absender: ${getSender(meta)}`);
+  const visibleLine = visible.length ? `Sicher sichtbar ist: ${visible.join(", ")}.` : "Sicher sichtbar ist nur, dass es um dieses Schreiben geht.";
+  return cleanText(`Das kann ich aus dem sichtbaren Schreiben nicht sicher erkennen.
+
+${visibleLine}
+
+Welche genaue Leistung, Behandlung oder Position gemeint ist, steht auf dem sichtbaren Schreiben nicht sicher drin. Dafür brauchst du die detaillierte Rechnung oder Leistungsaufstellung.
+
+Lade am besten die Seite hoch, auf der einzelne Positionen, Leistungsbeschreibung, GOZ-/BEMA-Nummern oder Behandlungsarten stehen.`);
+}
+
+function buildSocialAdvice(meta = {}) {
+  return cleanText(`Das kann wichtig sein, aber es ist nicht automatisch sicher.
+
+Wenn du Bürgergeld, Jobcenter-Leistungen oder eine andere Sozialleistung bekommst, kann ein Nachweis, eine Befreiung, eine Ermäßigung oder eine Kostenübernahme relevant sein.
+
+Schick den Bescheid oder Nachweis erneut an die Stelle aus dem Brief. Nenne die Nummer aus dem Schreiben.${coreReferenceText(meta)}
+
+Bitte um Prüfung und schriftliche Bestätigung. Wenn Mahnung, Sperre oder Vollstreckung droht, bitte darum, weitere Maßnahmen bis zur Klärung auszusetzen.`);
+}
+
+function buildDeadlineAdvice(meta = {}) {
+  if (meta.frist || meta.termin) return `Frist/Termin: ${meta.frist || meta.termin}. Bitte prüfe das im Originalbrief und reagiere rechtzeitig.`;
+  return "Ich sehe keine sichere Frist. Prüfe das Originalschreiben genau. Wenn die Frist nicht klar ist, frage die Stelle schriftlich nach und bitte um Bestätigung.";
+}
+
+function buildConsequenceAdvice(meta = {}) {
+  if (meta.folge_wenn_nichts) return meta.folge_wenn_nichts;
+  return "Das steht auf dem sichtbaren Schreiben nicht sicher. Wenn eine Frist, Zahlung, Mahnung oder ein Termin genannt ist, solltest du trotzdem rechtzeitig reagieren, damit keine Nachteile entstehen.";
+}
+
+function buildCoreNextSteps(meta = {}) {
+  const steps = dedupe([...(meta.was_ist_zu_tun || []), meta.erster_sicherer_schritt, meta.naechster_schritt]).filter(Boolean).slice(0, 5);
+  if (steps.length) return steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
+  return "1. Prüfe Absender, Name, Betrag, Frist und Nummer im Originalbrief.\n2. Kläre schriftlich, was unklar ist.\n3. Wenn eine Frist oder Zahlung verlangt wird, reagiere rechtzeitig.";
+}
+
+function buildUnderstandingAnswer(meta = {}) {
+  return cleanText(`Kurz gesagt:
+${meta.kurz_gesagt || meta.worum_geht_es || "Es geht um ein Schreiben, das du prüfen solltest."}
+
+Wichtig ist vor allem:
+${formatImportantDataLines(meta)}
+
+Unklar bleibt:
+${buildUnclearLines(meta)}`);
+}
+
+function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+  const context = buildContext(meta, briefText, kurz, details, frage, historyText);
+  const domain = detectDomain(context);
+  const outputChoice = isAnsweringOutputChoice(frage, historyText);
+  const intent = outputChoice ? inferIntentFromHistory(historyText || context) : detectCoreIntent(frage, frageMode);
+  const wantsPdf = outputChoice === "pdf" || (!outputChoice && wantsPdfOutput(frage, frageMode));
+  const wantsEmail = outputChoice === "email" || (!outputChoice && wantsEmailOutput(frage, frageMode));
+  const wantsBoth = outputChoice === "both" || (!outputChoice && wantsBothEmailAndPdf(frage, frageMode));
+  const explicitWrite = isExplicitWriteRequest(frage, frageMode) || Boolean(outputChoice);
+
+  if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
+
+  // Write Mode: nur bei ausdrücklichem Wunsch.
+  if (wantsBoth) return buildEmailAndPdfOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
+  if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
+  if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
+  if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(inferIntentFromHistory(historyText || context));
+
+  // Advice Mode: normale Fragen zuerst beantworten. Keine E-Mail/PDF-Frage am Anfang.
+  if (intent === "schon_bezahlt") return buildPaidAdvice(meta);
+  if (intent === "schon_geschickt") return buildSentProofAdvice(meta);
+  if (intent === "zahlungsproblem" || intent === "ratenzahlung") return buildPaymentAdvice(meta);
+  if (intent === "detailfrage") return buildDetailAdvice(meta, context);
+  if (intent === "sozialleistung") return buildSocialAdvice(meta);
+  if (intent === "fristfrage") return buildDeadlineAdvice(meta);
+  if (intent === "folgenfrage") return buildConsequenceAdvice(meta);
+  if (intent === "handlungsfrage") return buildCoreNextSteps(meta);
+  if (intent === "verstaendnisfrage") return buildUnderstandingAnswer(meta);
+  if (intent === "rechtshandlung") {
+    return cleanText(`Prüfe zuerst, ob im Brief eine Frist oder bestimmte Form genannt ist.
+
+Wenn du kündigen, widerrufen oder widersprechen willst, sollte der Text vorsichtig formuliert werden und keine unnötige Schuld oder Forderung anerkennen.
+
+Wenn du möchtest, schreibe ich dir daraus eine E-Mail oder einen PDF-Brief.`);
+  }
+
+  return "";
+}
+
+async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
+  const langCode = getLanguageMeta(lang).code;
+  const kurzDe = buildCoreShortDe(info);
+  const detailsDe = buildCoreExplanationDe(info);
+  const kurz = await translateHelpTextIfNeeded(kurzDe, langCode);
+  const details = await translateHelpTextIfNeeded(detailsDe, langCode);
+  const refs = safeReferences(info);
+  const name = getDetectedPersonName(info);
+
+  return {
+    ok: true,
+    quality_ok: true,
+    hinweis: "",
+    kurz,
+    details,
+    helper: {
+      quality_mode: true,
+      quality_type: detectDomain(buildContext(info)),
+      briefart_label: labelForBrief(info),
+      urgency_label: info.dringlichkeit === "hoch" ? "Hoch" : info.dringlichkeit === "mittel" ? "Mittel" : info.dringlichkeit === "niedrig" ? "Niedrig" : "Unklar",
+      must_react_label: info.muss_handeln === "ja" ? "Ja" : info.muss_handeln === "nein" ? "Nein" : "Bitte prüfen",
+      money_label: info.geld_betroffen === "ja" || info.betrag ? "Ja" : info.geld_betroffen === "nein" ? "Nein" : "Bitte prüfen",
+      first_step: info.erster_sicherer_schritt || info.naechster_schritt || "Prüfe zuerst Absender, Betrag, Frist und Nummer im Originalbrief.",
+      help_tip: "Frag zuerst, was du verstehen willst. E-Mail oder PDF erst, wenn du es wirklich brauchst.",
+      next_steps: dedupe(info.was_ist_zu_tun).slice(0, 5),
+      suggested_actions: ["Was bedeutet das?", "Was soll ich jetzt tun?", "Was ist unklar?"],
+      unsafe_notice: (info.unsicherheiten || []).length ? "Einige Daten oder Details sind nicht sicher sichtbar. Die App erfindet sie nicht. Bitte Originalbrief prüfen." : "",
+      data_rows: [
+        { key: "sender", label: "Absender", value: getSender(info) || "Bitte prüfen", status: getSender(info) ? "safe" : "check" },
+        { key: "person", label: "Name", value: name || "Bitte prüfen", status: name ? "safe" : "check" },
+        { key: "amount", label: "Betrag", value: info.betrag || "Bitte prüfen", status: info.betrag ? "safe" : "check" },
+        { key: "deadline", label: "Frist/Termin", value: info.frist || info.termin || "Bitte prüfen", status: (info.frist || info.termin) ? "safe" : "check" },
+        { key: "reference", label: "Aktenzeichen/Nummer", value: refs.join(", ") || "Bitte prüfen", status: refs.length ? "safe" : "check" }
+      ],
+      whatsapp_summary: `${labelForBrief(info)}${getAmount(info) ? " – Betrag: " + getAmount(info) : ""}. ${info.naechster_schritt || "Bitte prüfen."}`,
+      phone_script: ""
+    },
+    meta: {
+      briefart: info.briefart,
+      absender: getSender(info),
+      absender_kurz: info.absender_kurz,
+      absender_original: info.absender_original,
+      email_adresse: info.email_adresse,
+      absender_adresse: info.absender_adresse,
+      empfaenger_adresse: info.empfaenger_adresse,
+      person: name,
+      person_sicher: Boolean(name),
+      betroffene_person: info.betroffene_person,
+      empfaenger: info.empfaenger,
+      termin: info.termin,
+      frist: info.frist,
+      betrag: info.betrag,
+      datum_schreiben: info.datum_schreiben,
+      unterlagen: info.unterlagen,
+      referenzen: refs,
+      referenzen_erkannt_roh: info.referenzen,
+      referenzen_sicher: refs.length > 0,
+      dringlichkeit: info.dringlichkeit,
+      pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
+      naechster_schritt: info.naechster_schritt,
+      antwort_sprache: info.antwort_sprache,
+      passende_aktionen: info.passende_aktionen,
+      unsicherheiten: info.unsicherheiten,
+      worum_geht_es: info.worum_geht_es,
+      wichtigste_punkte: info.wichtigste_punkte,
+      was_ist_zu_tun: info.was_ist_zu_tun,
+      folge_wenn_nichts: info.folge_wenn_nichts,
+      versteckte_wichtige_info: info.versteckte_wichtige_info,
+      sourceMode,
+      must_react: info.muss_handeln === "ja" ? "yes" : info.muss_handeln === "nein" ? "no" : "maybe",
+      money_affected: info.geld_betroffen === "ja" || info.betrag ? "yes" : info.geld_betroffen === "nein" ? "no" : "maybe",
+      brief_schwierigkeit: info.brief_schwierigkeit,
+      quality_type: detectDomain(buildContext(info)),
+      risiko_kurz: info.risiko_kurz,
+      erster_sicherer_schritt: info.erster_sicherer_schritt,
+      daten_unsicher: info.daten_unsicher
+    }
+  };
+}
+
 async function buildFinalAnswerFromText(text, lang) {
   const info = await buildInfoFromText(text);
   return await buildFinalPayloadFromInfo(info, lang, "text");
@@ -1523,7 +1790,10 @@ Du bist Hilfe24, ein einfacher Alltagshelfer für Briefe.
 Sprache des Nutzers: ${langMeta.label}
 Heutiges Datum: ${getTodayGerman()}
 
+${buildHilfe24CoreRules(langMeta.label)}
+
 Regeln:
+- Beantworte zuerst die echte Frage des Nutzers.
 - Antworte kurz, praktisch und menschlich.
 - Nicht auf alte Testbriefe fixieren.
 - P-Konto nur erwähnen, wenn wirklich P-Konto/Kontopfändung/Freibetrag im Kontext steht.
@@ -1531,9 +1801,6 @@ Regeln:
 - Firma/Absender niemals als Unterschrift verwenden.
 - IBAN/BIC/Telefon/Adresse niemals als Aktenzeichen verwenden.
 - Bei offiziellen Antworten an deutsche Stellen: Deutsch verwenden.
-- Allgemeine Beratungsfrage zuerst beantworten: „Was kann ich tun?“, „Was soll ich machen?“, „Ich habe schon geschickt“, „Ich bekomme Jobcenter/Bürgergeld/Sozialleistungen“, „Ich kann nicht zahlen“, „Ich verstehe das nicht“.
-- Bei solchen Beratungsfragen NICHT sofort nach E-Mail/PDF/beides fragen. Erst kurze konkrete Schritte geben. Danach höchstens anbieten: „Wenn du möchtest, kann ich daraus eine E-Mail oder einen PDF-Brief machen.“
-- Nur wenn der Nutzer ausdrücklich einen sendbaren Text will („schreib mir“, „E-Mail“, „PDF“, „Brief“, „Vorlage“, „formuliere“), eine Ausgabeform abfragen oder erstellen.
 
 ERKANNTE DATEN:
 ${JSON.stringify(meta, null, 2)}
@@ -1713,5 +1980,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v11.1 general chat logic");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v12 core logic");
 });
