@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v12.2-chat-intent-fix" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v12.3-complex-case-intent" });
 });
 
 function getTodayGerman() {
@@ -1475,10 +1475,56 @@ function hasReimbursementIntent(frage = "", frageMode = "") {
   return (payerCue && reimbursementCue) || strongReimbursementCue;
 }
 
+
+function hasComplexCaseIntent(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+
+  const authorityCue = /(staatsanwaltschaft|amtsgericht|gericht|polizei|bußgeldstelle|bussgeldstelle|ordnungswidrigkeit|strafverfahren|verfahren)/i.test(q);
+  const mixupCue = /(mehrere\s+(aktenzeichen|verfahren|termine)|zwei\s+(aktenzeichen|verfahren)|anderes\s+aktenzeichen|verschiedene\s+aktenzeichen|verwechselt|verwechslung|falsch zugeordnet|falsche person|betrifft.*(mehrere|drei|mich|mutter)|nicht nur|hat sich.*geändert|hat sich.*geaendert|termin.*geändert|termin.*geaendert|ich war.*geschädigt|ich war.*geschaedigt|geschädigte?r|geschaedigte?r|zusammen geschlagen|zusammengeschlagen|amtsgericht.*geschildert|staatsanwaltschaft.*geschildert|sich drum kümmern|sich darum kümmern)/i.test(q);
+  const clarificationCue = /(klären|klaeren|prüfen|pruefen|zuordnen|welches\s+aktenzeichen|wer.*zahlen|warum.*zahlen|was soll ich.*machen|wie.*weiter)/i.test(q);
+
+  return (authorityCue && mixupCue) || (authorityCue && clarificationCue && hasAny(q, ["aktenzeichen", "verfahren", "geschädigt", "geschaedigt", "falsche person", "nicht nur"]));
+}
+
+function buildComplexCaseAdvice(meta = {}) {
+  const ref = getPrimaryReference(meta);
+  const amount = getAmount(meta);
+  const sender = getSender(meta) || "die Stelle aus dem Schreiben";
+
+  const lines = [];
+  lines.push("Das ist kein normaler Zahlungsfall.");
+  lines.push("");
+  lines.push("Wenn mehrere Personen, Verfahren oder Aktenzeichen durcheinanderlaufen, musst du dir das schriftlich klären lassen. Telefonisch ist gut, aber bei Gericht oder Staatsanwaltschaft brauchst du am besten eine schriftliche Bestätigung.");
+  lines.push("");
+  lines.push("Was du jetzt tun solltest:");
+  lines.push("1. Schreibe der Staatsanwaltschaft oder dem Amtsgericht kurz, dass mehrere Verfahren oder Aktenzeichen verwechselt worden sein könnten.");
+  lines.push("2. Bitte um schriftliche Klärung, welches Aktenzeichen zu welcher Person gehört.");
+  lines.push("3. Schreibe dazu, dass du nach deiner Darstellung Geschädigter bist und die Zuordnung deshalb geprüft werden soll.");
+  lines.push("4. Bitte um Prüfung, ob die Zahlungsaufforderung wirklich richtig zugeordnet ist.");
+  lines.push("5. Bitte darum, bis zur Klärung keine weiteren Maßnahmen einzuleiten.");
+  lines.push("");
+  if (ref || amount || sender) {
+    const facts = [];
+    if (sender) facts.push(`Stelle aus dem Schreiben: ${sender}`);
+    if (amount) facts.push(`Betrag: ${amount}`);
+    if (ref) facts.push(`Nummer/Aktenzeichen aus dem Schreiben: ${ref}`);
+    lines.push(`Aus dem aktuellen Schreiben wichtig: ${facts.join(". ")}.`);
+    lines.push("");
+  }
+  lines.push("Zahle nicht einfach blind, wenn du glaubst, dass Person, Verfahren oder Aktenzeichen falsch zugeordnet wurden. Lass dir zuerst schriftlich bestätigen, wer genau zahlen muss, warum und zu welchem Aktenzeichen.");
+  lines.push("");
+  lines.push("Wenn du möchtest, schreibe ich dir daraus eine neutrale E-Mail an die Staatsanwaltschaft oder das Amtsgericht.");
+  return cleanText(lines.join("\n"));
+}
+
 function detectCoreIntent(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
   const clean = normalizeString(frage).toLowerCase();
   if (/^(ok|okay|danke|alles klar|verstanden|passt|ja)$/i.test(clean)) return "smalltalk";
+
+  // V12.3: Komplexe Verfahrens-/Aktenzeichen-Verwechslung zuerst erkennen.
+  // Lange Nutzertexte mit neuen Informationen dürfen nicht auf Frist/Termin reduziert werden.
+  if (hasComplexCaseIntent(frage, frageMode)) return "komplexer_verfahrensfall";
 
   // V12.2: Zielabsicht schlägt Statuswort.
   // „bezahlt“ allein = schon_bezahlt. Aber „bezahlt + Krankenkasse/Geld zurück/Erstattung“ = Erstattungsfrage.
@@ -1632,6 +1678,7 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(inferIntentFromHistory(historyText || context));
 
   // Advice Mode: normale Fragen zuerst beantworten. Keine E-Mail/PDF-Frage am Anfang.
+  if (intent === "komplexer_verfahrensfall") return buildComplexCaseAdvice(meta);
   if (intent === "erstattung_kostenuebernahme") return buildReimbursementAdvice(meta);
   if (intent === "schon_bezahlt") return buildPaidAdvice(meta);
   if (intent === "schon_geschickt") return buildSentProofAdvice(meta);
