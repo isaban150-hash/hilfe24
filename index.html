@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hilfe24</title>
+<!-- Hilfe24 Index V12.1 Audio Clean: Browser-Audio mit Kurzfassung, Cleaning und Inline-Stopp -->
 
 <style>
   html { color-scheme: light; }
@@ -242,25 +243,25 @@
   .audio-status { color:var(--muted); font-size:13px; margin:0; }
   audio { width:100%; margin-top:6px; }
   .audio-dock {
-    position:fixed;
-    right:14px;
-    bottom:calc(env(safe-area-inset-bottom, 0px) + 14px);
-    z-index:50;
-    width:auto;
-    max-width:260px;
-    margin:0;
-    background:transparent;
-    border:none;
-    box-shadow:none;
+    position:static;
+    z-index:1;
+    width:100%;
+    max-width:720px;
+    margin:10px auto 16px;
+    background:#ffffff;
+    border:1px solid #ccfbf1;
+    border-radius:18px;
+    box-shadow:0 8px 20px rgba(15,23,42,.06);
     display:flex;
-    justify-content:flex-end;
+    justify-content:space-between;
     align-items:center;
-    pointer-events:none;
+    gap:10px;
+    padding:8px 10px;
   }
   .audio-dock.hidden { display:none !important; }
-  .audio-dock-inner { display:none; }
-  .audio-mini-label { display:none; }
-  .audio-dock .audio-status { display:none; }
+  .audio-dock-inner { display:flex; align-items:center; gap:8px; min-width:0; }
+  .audio-mini-label { display:inline; font-size:13px; font-weight:950; color:#0f766e; }
+  .audio-dock .audio-status { display:block; color:#64748b; font-size:13px; font-weight:800; }
   .audio-dock audio { display:none; }
   .audio-dock .btn-danger {
     pointer-events:auto;
@@ -270,9 +271,14 @@
     background:#fff1f2;
     color:#be123c;
     border:1px solid #fecdd3;
-    box-shadow:0 10px 26px rgba(190,18,60,.14);
+    box-shadow:none;
     font-size:13px;
     font-weight:950;
+  }
+  .audio-active-btn {
+    background:#fff1f2 !important;
+    color:#be123c !important;
+    border-color:#fecdd3 !important;
   }
   .manual-text-toggle {
     width:100%; margin-top:10px; border-radius:16px; border:1px solid #ccfbf1; background:#f0fdfa; color:#0f766e;
@@ -294,8 +300,8 @@
     h1 { font-size:26px; }
     .short-box { font-size:17px; }
     button, select, textarea { font-size:16px; }
-    .audio-dock { right:10px; left:auto; bottom:calc(env(safe-area-inset-bottom, 0px) + 10px); }
-    .audio-mini-label { display:none; }
+    .audio-dock { margin:10px 0 16px; }
+    .audio-mini-label { display:inline; }
     .audio-dock audio { display:none; }
   }
 
@@ -1216,6 +1222,8 @@ let currentCaseId = 0;
 let activeAudioUrl = "";
 let activeUtterance = null;
 let activeAudioSessionId = 0;
+let activeAudioButton = null;
+let activeAudioButtonOldText = "";
 let selectedImageFiles = [];
 let chatHistory = [];
 let analysisStatusTimer = null;
@@ -1498,6 +1506,26 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       hide(audioDockEl);
     }
 
+    function setActiveAudioButton(button) {
+      clearActiveAudioButton();
+      if (!button) return;
+      activeAudioButton = button;
+      activeAudioButtonOldText = button.textContent || "";
+      button.textContent = getUiText().stopAudio || "⏹ Stopp";
+      button.classList.add("audio-active-btn");
+      button.setAttribute("aria-pressed", "true");
+    }
+
+    function clearActiveAudioButton() {
+      if (activeAudioButton) {
+        activeAudioButton.textContent = activeAudioButtonOldText || getChatAudioLabel();
+        activeAudioButton.classList.remove("audio-active-btn");
+        activeAudioButton.removeAttribute("aria-pressed");
+      }
+      activeAudioButton = null;
+      activeAudioButtonOldText = "";
+    }
+
     function h24StartNewCase() {
       currentCaseId += 1;
       activeQuestionRequestId += 1;
@@ -1549,6 +1577,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       }
 
       revokeAudioUrl();
+      clearActiveAudioButton();
       clearAudioStatus();
     }
 
@@ -1620,7 +1649,11 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       audioBtn.className = "chat-audio-btn";
       audioBtn.textContent = getChatAudioLabel();
       audioBtn.onclick = function () {
-        playServerAudio(text);
+        if (activeAudioButton === audioBtn && window.speechSynthesis && window.speechSynthesis.speaking) {
+          stopAudio();
+          return;
+        }
+        playServerAudio(text, "antwort_kurz", audioBtn);
       };
       bubble.appendChild(audioBtn);
     }
@@ -2268,7 +2301,6 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
 
     function getSpeechLanguageCode(lang) {
       const code = String(lang || getSelectedLang() || "de").toLowerCase();
-
       const map = {
         de: "de-DE",
         tr: "tr-TR",
@@ -2277,7 +2309,6 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
         ro: "ro-RO",
         en: "en-US"
       };
-
       return map[code] || "de-DE";
     }
 
@@ -2285,69 +2316,148 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       return String(text || "")
         .replace(/\r/g, "\n")
         .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "und")
         .replace(/\*\*/g, "")
         .replace(/__+/g, "")
         .replace(/`+/g, "")
-        .replace(/[•●]/g, "-")
-        .replace(/[📄📧🔊💬👤✅❌⚠️⏹️🤝📋]/g, "")
+        .replace(/#{1,6}\s*/g, "")
+        .replace(/[•●◆◇▪▫]/g, "-")
+        .replace(/[📄📧🔊💬👤✅❌⚠️⏹️🤝📋➡️⬇️🔴🟢🟡]/gu, "")
+        .replace(/[\u{1F300}-\u{1FAFF}]/gu, "")
+        .replace(/\[(sandbox|http|https):[^\]]+\]/gi, "")
         .replace(/\[[^\]]{0,80}\]/g, "")
-        .replace(/\bPDF-BRIEF\s*:/gi, "")
-        .replace(/\bE-?MAIL\s*:/gi, "")
+        .replace(/\b(PDF herunterladen|Download PDF|PDF indir|Als TXT|ZIP herunterladen)\b/gi, "")
+        .replace(/\b(Vorlesen|Kurz vorlesen|Diesen Teil vorlesen|Letzte Antwort vorlesen|Stopp)\b/gi, "")
+        .replace(/\b(PDF-BRIEF|PDF BRIEF|E-?MAIL|EMAIL)\s*:/gi, "$1:")
         .replace(/\n{3,}/g, "\n\n")
         .replace(/[ \t]{2,}/g, " ")
         .trim();
     }
 
-    function h24ExtractBestAudioPart(text) {
+    function h24LineLooksLikeMenuOrUi(line) {
+      const l = String(line || "").trim();
+      if (!l) return true;
+      if (/^[-–—]{2,}$/.test(l)) return true;
+      if (/^\d+\.?$/.test(l)) return true;
+      if (/^[123]\s*[.)-]?\s*(als\s*)?(e-?mail|pdf|beides)/i.test(l)) return true;
+      if (/^(möchtest du|wie möchtest du|wähle|auswahl|empfänger|betreff)\b/i.test(l) && l.length < 90) return true;
+      if (/^(pdf herunterladen|download pdf|vor dem senden bitte|bitte prüfe vor dem senden)/i.test(l)) return true;
+      return false;
+    }
+
+    function h24MakeDraftAudioSummary(text) {
+      const raw = h24NormalizeForAudio(text);
+      const subjectMatch = raw.match(/Betreff\s*:\s*([^\n]{5,160})/i);
+      const subject = subjectMatch ? subjectMatch[1].trim() : "";
+      const recipientLines = raw.split("\n").map(x => x.trim()).filter(Boolean);
+      let recipient = "die Stelle aus dem Brief";
+      const markerIndex = recipientLines.findIndex(l => /^(pdf-brief|pdf brief|e-?mail|email):?$/i.test(l));
+      if (markerIndex >= 0 && recipientLines[markerIndex + 1] && !/^(absender|betreff|sehr geehrte)/i.test(recipientLines[markerIndex + 1])) {
+        recipient = recipientLines[markerIndex + 1].replace(/,$/, "");
+      }
+      if (subject) {
+        return `Das ist ein Entwurf an ${recipient}. Es geht um: ${subject}. Prüfe vor dem Senden Name, Nummern und Datum.`;
+      }
+      return `Das ist ein Entwurf an ${recipient}. Bitte prüfe vor dem Senden Name, Nummern, Datum und Empfänger.`;
+    }
+
+    function h24ExtractBestAudioPart(text, mode) {
       let clean = h24NormalizeForAudio(text);
       if (!clean) return "";
+      const lower = clean.toLowerCase();
+      const isDraft = /\b(pdf-brief|pdf brief|e-?mail|email)\s*:/i.test(clean) || /\bsehr geehrte/i.test(clean);
 
-      const upper = clean.toUpperCase();
-      const pdfIndex = upper.indexOf("PDF-BRIEF");
-      const mailIndex = upper.indexOf("E-MAIL");
-      const cutPoints = [pdfIndex, mailIndex].filter(i => i > 120);
-      if (cutPoints.length) clean = clean.slice(0, Math.min(...cutPoints)).trim();
+      if (isDraft && mode !== "entwurf_voll") {
+        return h24MakeDraftAudioSummary(clean);
+      }
 
-      const stopMarkers = [
+      const hardStopMarkers = [
         "PDF herunterladen",
         "Vor dem Senden bitte",
         "Bitte prüfe vor dem Senden",
         "Hinweis: Bitte prüfe",
+        "Möchtest du es als",
         "Möchtest du sie als",
-        "Wie möchtest du es haben?"
+        "Wie möchtest du es haben?",
+        "1. Als E-Mail",
+        "2. Als PDF",
+        "3. Beides"
       ];
-      for (const marker of stopMarkers) {
-        const idx = clean.indexOf(marker);
-        if (idx > 120) clean = clean.slice(0, idx).trim();
+      for (const marker of hardStopMarkers) {
+        const idx = clean.toLowerCase().indexOf(marker.toLowerCase());
+        if (idx > 80) clean = clean.slice(0, idx).trim();
       }
+
+      // Bei normalen Audio-Modi keine langen formalen Briefblöcke lesen.
+      const draftCut = clean.search(/\n\s*(Sehr geehrte|Mit freundlichen Grüßen|Betreff\s*:)/i);
+      if (draftCut > 160 && mode !== "entwurf_voll") clean = clean.slice(0, draftCut).trim();
 
       return clean.trim();
     }
 
-    function prepareAudioText(text) {
-      let clean = h24ExtractBestAudioPart(text);
+    function h24SpeakableReplace(text) {
+      return String(text || "")
+        .replace(/(\d+[.,]\d{2})\s*€/g, "$1 Euro")
+        .replace(/€/g, " Euro")
+        .replace(/%/g, " Prozent")
+        .replace(/\bNr\./gi, "Nummer")
+        .replace(/\bAz\./gi, "Aktenzeichen")
+        .replace(/\bz\.\s*B\./gi, "zum Beispiel")
+        .replace(/\bggf\./gi, "gegebenenfalls")
+        .replace(/\bu\.\s*a\./gi, "unter anderem")
+        .replace(/\s+([,.!?;:])/g, "$1")
+        .replace(/\.{2,}/g, ".")
+        .replace(/[;:]{2,}/g, ":")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function prepareAudioText(text, mode = "antwort_kurz") {
+      let clean = h24ExtractBestAudioPart(text, mode);
       if (!clean) return "";
 
-      const lines = clean
+      let lines = clean
         .split("\n")
         .map(line => line.trim())
         .filter(Boolean)
-        .filter(line => !/^[-–—]{2,}$/.test(line))
-        .filter(line => !/^\d+\.?$/.test(line));
+        .filter(line => !h24LineLooksLikeMenuOrUi(line));
 
-      clean = lines.slice(0, 7).join(". ");
+      // Überschriften nicht mitlesen, aber den Inhalt behalten.
+      lines = lines.map(line => line
+        .replace(/^(Kurz erklärt|Wichtige Daten|Was bedeutet das praktisch|Was ist unklar|Was du jetzt tun solltest|Wenn du nichts machst|Nächster Schritt)\s*:?\s*/i, "")
+        .trim()
+      ).filter(Boolean);
 
-      clean = clean
-        .replace(/\s+([,.!?;:])/g, "$1")
-        .replace(/\.{2,}/g, ".")
-        .replace(/\s+/g, " ")
-        .trim();
+      // Formale Adress- und Signaturblöcke in Kurzmodi entfernen.
+      if (mode !== "entwurf_voll") {
+        lines = lines.filter(line => {
+          if (/^(Mit freundlichen Grüßen|Sehr geehrte|Sehr geehrter|Absender|Empfänger)\b/i.test(line)) return false;
+          if (/^\d{5}\s+/.test(line)) return false;
+          if (/^(Straße|Str\.|Adresse|Telefon|Fax|IBAN|BIC)\b/i.test(line)) return false;
+          return true;
+        });
+      }
 
-      const maxChars = 780;
+      clean = lines.join(". ");
+      clean = h24SpeakableReplace(clean);
+
+      // Auf Audio-Kern reduzieren: Thema, wichtig, nächster Schritt.
+      const maxChars = mode === "entwurf_voll" ? 1800 : (mode === "brief_kurz" ? 620 : 720);
       if (clean.length > maxChars) {
         clean = clean.slice(0, maxChars);
         const lastEnd = Math.max(clean.lastIndexOf("."), clean.lastIndexOf("!"), clean.lastIndexOf("?"), clean.lastIndexOf("؟"));
-        if (lastEnd > 220) clean = clean.slice(0, lastEnd + 1);
+        if (lastEnd > 180) clean = clean.slice(0, lastEnd + 1);
+      }
+
+      // Nicht mehr als 5 Sätze, außer voller Entwurf.
+      if (mode !== "entwurf_voll") {
+        const sentences = clean
+          .replace(/([.!?؟])\s+/g, "$1|")
+          .split("|")
+          .map(s => s.trim())
+          .filter(Boolean);
+        clean = sentences.slice(0, 5).join(" ");
       }
 
       return clean.trim();
@@ -2356,17 +2466,14 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     function splitAudioIntoChunks(text) {
       const clean = String(text || "").trim();
       if (!clean) return [];
-
       const sentences = clean
         .replace(/([.!?؟])\s+/g, "$1|")
         .split("|")
         .map(s => s.trim())
         .filter(Boolean);
-
       const chunks = [];
       let current = "";
-      const limit = 260;
-
+      const limit = 220;
       for (const sentence of sentences) {
         if ((current + " " + sentence).trim().length > limit && current) {
           chunks.push(current.trim());
@@ -2376,7 +2483,6 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
         }
       }
       if (current) chunks.push(current.trim());
-
       return chunks.length ? chunks : [clean];
     }
 
@@ -2386,49 +2492,42 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
           resolve([]);
           return;
         }
-
         let voices = window.speechSynthesis.getVoices();
         if (voices && voices.length) {
           resolve(voices);
           return;
         }
-
         const done = () => {
           voices = window.speechSynthesis.getVoices() || [];
           resolve(voices);
         };
-
         window.speechSynthesis.onvoiceschanged = done;
-        setTimeout(done, 500);
+        setTimeout(done, 650);
       });
     }
 
     function chooseSpeechVoice(langCode) {
       if (!window.speechSynthesis) return null;
-
       const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
       if (!voices || !voices.length) return null;
-
       const lower = String(langCode || "").toLowerCase();
       const exact = voices.find(v => String(v.lang || "").toLowerCase() === lower);
       if (exact) return exact;
-
       const prefix = lower.split("-")[0];
       const prefixMatch = voices.find(v => String(v.lang || "").toLowerCase().startsWith(prefix));
       if (prefixMatch) return prefixMatch;
-
       return voices.find(v => String(v.lang || "").toLowerCase().startsWith("de")) || null;
     }
 
     function h24GetAudioRunningLabel() {
       const lang = getSelectedLang();
       const labels = {
-        de: "🔊 Vorlesen läuft",
-        tr: "🔊 Okunuyor",
-        bg: "🔊 Чете се",
-        ro: "🔊 Se citește",
-        ar: "🔊 جارٍ القراءة",
-        en: "🔊 Reading"
+        de: "Audio läuft",
+        tr: "Ses okunuyor",
+        bg: "Аудиото се чете",
+        ro: "Audio rulează",
+        ar: "الصوت يعمل",
+        en: "Audio is playing"
       };
       return labels[lang] || labels.de;
     }
@@ -2438,61 +2537,54 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       if (!chunks || index >= chunks.length) {
         activeUtterance = null;
         clearAudioStatus();
+        clearActiveAudioButton();
         return;
       }
-
       const utterance = new SpeechSynthesisUtterance(chunks[index]);
       utterance.lang = langCode;
-      utterance.rate = 0.93;
+      utterance.rate = 0.9;
       utterance.pitch = 1;
       utterance.volume = 1;
       if (voice) utterance.voice = voice;
-
       utterance.onend = function () {
         if (sessionId !== activeAudioSessionId) return;
         speakAudioChunks(chunks, langCode, voice, sessionId, index + 1);
       };
-
       utterance.onerror = function () {
         if (sessionId !== activeAudioSessionId) return;
         activeUtterance = null;
+        clearActiveAudioButton();
         clearAudioStatus();
         setError(getUiText().audioError || "Audio konnte nicht gestartet werden.");
       };
-
       activeUtterance = utterance;
       window.speechSynthesis.speak(utterance);
     }
 
-    async function playServerAudio(text) {
+    async function playServerAudio(text, mode = "antwort_kurz", button = null) {
       if (!text || !text.trim()) {
         alert(getUiText().noAudioText);
         return;
       }
-
       if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
         setError(getUiText().audioError || "Audio ist auf diesem Gerät nicht verfügbar.");
         return;
       }
-
       const lang = getSelectedLang();
       const speechLang = getSpeechLanguageCode(lang);
-      const audioText = prepareAudioText(text);
-
+      const audioText = prepareAudioText(text, mode);
       if (!audioText) {
         alert(getUiText().noAudioText);
         return;
       }
-
       stopAudio();
+      setActiveAudioButton(button);
       hide(audioPlayerEl);
       setAudioStatus(h24GetAudioRunningLabel());
-
       await h24WaitForVoices();
       const voice = chooseSpeechVoice(speechLang);
       const chunks = splitAudioIntoChunks(audioText);
       const sessionId = ++activeAudioSessionId;
-
       speakAudioChunks(chunks, speechLang, voice, sessionId, 0);
     }
 
@@ -2845,20 +2937,23 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
 
       if (readShortBtn) {
         readShortBtn.onclick = function () {
-          playServerAudio(currentKurzText);
+          if (activeAudioButton === readShortBtn && window.speechSynthesis && window.speechSynthesis.speaking) { stopAudio(); return; }
+          playServerAudio(currentKurzText, "brief_kurz", readShortBtn);
         };
       }
 
       if (readAllBtn) {
         readAllBtn.onclick = function () {
-          playServerAudio(currentDetailText);
+          if (activeAudioButton === readAllBtn && window.speechSynthesis && window.speechSynthesis.speaking) { stopAudio(); return; }
+          playServerAudio(currentDetailText || currentKurzText, "brief_kurz", readAllBtn);
         };
       }
 
       if (readFrageAntwortBtn) {
         readFrageAntwortBtn.onclick = function () {
+          if (activeAudioButton === readFrageAntwortBtn && window.speechSynthesis && window.speechSynthesis.speaking) { stopAudio(); return; }
           const text = frageAntwortEl ? frageAntwortEl.textContent : "";
-          playServerAudio(text);
+          playServerAudio(text, "antwort_kurz", readFrageAntwortBtn);
         };
       }
 
