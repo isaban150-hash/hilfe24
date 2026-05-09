@@ -337,6 +337,34 @@
     line-height: 1.35;
   }
 
+  /* HILFE24 EMAIL ACTION FIX */
+  .h24-email-action-row {
+    margin-top: 10px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    position: relative;
+    z-index: 3;
+  }
+  .h24-email-copy-btn, .h24-email-open-btn {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #0f766e, #2563eb);
+    color: #fff;
+    padding: 11px 15px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 950;
+    box-shadow: 0 10px 24px rgba(37,99,235,.18);
+  }
+  .h24-email-open-btn {
+    background: linear-gradient(135deg, #334155, #2563eb);
+  }
+  .h24-email-copy-btn:disabled, .h24-email-open-btn:disabled {
+    opacity: .65;
+    cursor: wait;
+  }
+
 </style>
 </head>
 
@@ -1687,6 +1715,218 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
 
 
 
+    /* HILFE24 EMAIL ACTION FIX */
+    function h24GetEmailCopyLabel() {
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const labels = {
+        de: "📧 E-Mail kopieren",
+        tr: "📧 E-postayı kopyala",
+        bg: "📧 Копирай имейла",
+        ro: "📧 Copiază e-mailul",
+        ar: "📧 نسخ البريد",
+        en: "📧 Copy email"
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function h24GetEmailCopiedLabel() {
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const labels = {
+        de: "Kopiert ✅",
+        tr: "Kopyalandı ✅",
+        bg: "Копирано ✅",
+        ro: "Copiat ✅",
+        ar: "تم النسخ ✅",
+        en: "Copied ✅"
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function h24GetEmailOpenLabel() {
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const labels = {
+        de: "📨 Mail-App öffnen",
+        tr: "📨 Mail uygulamasını aç",
+        bg: "📨 Отвори имейл приложение",
+        ro: "📨 Deschide aplicația de e-mail",
+        ar: "📨 افتح تطبيق البريد",
+        en: "📨 Open mail app"
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function h24GetEmailErrorText() {
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const labels = {
+        de: "Ich finde gerade keinen fertigen E-Mail-Text.",
+        tr: "Hazır bir e-posta metni bulamıyorum.",
+        bg: "Не намирам готов текст за имейл.",
+        ro: "Nu găsesc un text de e-mail pregătit.",
+        ar: "لا أجد نص بريد جاهز.",
+        en: "I can't find a ready email text."
+      };
+      return labels[lang] || labels.de;
+    }
+
+    function h24CleanEmailText(text) {
+      return String(text || "")
+        .replace(/\r/g, "")
+        .replace(/\u00a0/g, " ")
+        .replace(/📧\s*E-Mail kopieren/gi, "")
+        .replace(/📨\s*Mail-App öffnen/gi, "")
+        .replace(/📄\s*PDF herunterladen/gi, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    }
+
+    function h24AnswerContainsEmail(text) {
+      const t = String(text || "").toLowerCase();
+      const hasMarker = /\b(e\s*-?\s*mail|email)\s*:/i.test(text || "");
+      const hasEmailDraft = /empfänger\s*:/i.test(text || "") && /betreff\s*:/i.test(text || "") && /sehr geehrte/i.test(text || "");
+      return hasMarker || hasEmailDraft;
+    }
+
+    function h24ExtractEmailTextFromAnswer(answer) {
+      const raw = String(answer || "");
+      if (!raw.trim()) return "";
+
+      let emailText = "";
+      const markerPatterns = [
+        /e\s*-?\s*mail\s*:/i,
+        /email\s*:/i,
+        /e-mail-text\s*:/i
+      ];
+
+      let bestIndex = -1;
+      let bestLength = 0;
+      for (const pattern of markerPatterns) {
+        const matches = Array.from(raw.matchAll(new RegExp(pattern.source, pattern.flags + (pattern.flags.includes("g") ? "" : "g"))));
+        for (const match of matches) {
+          if (match.index >= bestIndex) {
+            bestIndex = match.index;
+            bestLength = match[0].length;
+          }
+        }
+      }
+
+      if (bestIndex >= 0) {
+        emailText = raw.slice(bestIndex + bestLength).trim();
+      } else {
+        const empfaengerIndex = raw.search(/empfänger\s*:/i);
+        emailText = empfaengerIndex >= 0 ? raw.slice(empfaengerIndex).trim() : raw.trim();
+      }
+
+      const stopPatterns = [
+        /\n\s*PDF\s*-?\s*BRIEF\s*:/i,
+        /\n\s*PDF\s*:/i,
+        /\n\s*Hinweis\s*:/i,
+        /\n\s*Bitte\s+prüfe\s+vor\s+dem\s+Senden/i,
+        /\n\s*Vor\s+dem\s+Senden/i
+      ];
+      for (const pattern of stopPatterns) {
+        const match = emailText.match(pattern);
+        if (match && match.index > 40) emailText = emailText.slice(0, match.index).trim();
+      }
+
+      emailText = emailText.replace(/^[:\-\s]+/, "").trim();
+      return h24CleanEmailText(emailText);
+    }
+
+    function h24ParseEmailDraft(emailText) {
+      const clean = h24CleanEmailText(emailText);
+      const recipientMatch = clean.match(/^\s*Empfänger\s*:\s*([^\n]+)/im);
+      const subjectMatch = clean.match(/^\s*Betreff\s*:\s*([^\n]+)/im);
+      const recipient = recipientMatch ? recipientMatch[1].trim() : "";
+      const subject = subjectMatch ? subjectMatch[1].trim() : "";
+      let body = clean;
+      if (recipientMatch) body = body.replace(recipientMatch[0], "").trim();
+      if (subjectMatch) body = body.replace(subjectMatch[0], "").trim();
+      body = body.replace(/^\s*(E\s*-?\s*MAIL|EMAIL)\s*:?\s*/i, "").trim();
+      return { recipient, subject, body, clean };
+    }
+
+    function h24ExtractEmailAddress(line) {
+      const match = String(line || "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      return match ? match[0] : "";
+    }
+
+    async function h24CopyEmailFromText(emailText, button) {
+      const cleanEmailText = h24ExtractEmailTextFromAnswer(emailText);
+      if (!cleanEmailText || cleanEmailText.length < 30) {
+        alert(h24GetEmailErrorText());
+        return;
+      }
+      const oldText = button ? button.textContent : "";
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(cleanEmailText);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = cleanEmailText;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.top = "-1000px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+        if (button) {
+          button.textContent = h24GetEmailCopiedLabel();
+          setTimeout(() => { button.textContent = oldText || h24GetEmailCopyLabel(); }, 1400);
+        }
+      } catch (error) {
+        console.error("E-Mail Kopieren Fehler:", error);
+        alert(h24GetEmailErrorText());
+      }
+    }
+
+    function h24OpenMailAppFromText(emailText) {
+      const cleanEmailText = h24ExtractEmailTextFromAnswer(emailText);
+      const parsed = h24ParseEmailDraft(cleanEmailText);
+      const mail = h24ExtractEmailAddress(parsed.recipient);
+      if (!mail) {
+        alert("Keine sichere E-Mail-Adresse gefunden. Bitte kopiere den Text und füge ihn selbst ein.");
+        return;
+      }
+      const subject = encodeURIComponent(parsed.subject || "");
+      const body = encodeURIComponent(parsed.body || parsed.clean || "");
+      window.location.href = `mailto:${encodeURIComponent(mail)}?subject=${subject}&body=${body}`;
+    }
+
+    function h24AddEmailActionButtons(bubble, answerText) {
+      if (!bubble || !h24AnswerContainsEmail(answerText)) return;
+
+      const emailText = h24ExtractEmailTextFromAnswer(answerText);
+      if (!emailText || emailText.length < 30) return;
+
+      const row = document.createElement("div");
+      row.className = "h24-email-action-row";
+
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "h24-email-copy-btn";
+      copyBtn.textContent = h24GetEmailCopyLabel();
+      copyBtn.onclick = function () { h24CopyEmailFromText(emailText, copyBtn); };
+      row.appendChild(copyBtn);
+
+      const parsed = h24ParseEmailDraft(emailText);
+      if (h24ExtractEmailAddress(parsed.recipient)) {
+        const openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "h24-email-open-btn";
+        openBtn.textContent = h24GetEmailOpenLabel();
+        openBtn.onclick = function () { h24OpenMailAppFromText(emailText); };
+        row.appendChild(openBtn);
+      }
+
+      bubble.appendChild(row);
+    }
+
+
+
+
+
     /* HILFE24 PDF DOWNLOAD FIX */
     function h24GetPdfButtonLabel() {
       const lang = getSelectedLang ? getSelectedLang() : "de";
@@ -1742,6 +1982,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
         t.includes("brief als pdf") ||
         t.includes("pdf:") ||
         t.includes("pdf brief") ||
+        t.includes("pdf mektup") ||
+        t.includes("pdf letter") ||
         t.includes("[ort],")
       );
     }
@@ -1905,6 +2147,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       bubble.appendChild(meta);
       bubble.appendChild(body);
       if (role !== "user") {
+        h24AddEmailActionButtons(bubble, clean);
         h24AddPdfDownloadButton(bubble, clean);
         addChatAudioButton(bubble, clean);
       }
