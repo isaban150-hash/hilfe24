@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v13-meta-chat-logic" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v14-multilingual-logic" });
 });
 
 function getTodayGerman() {
@@ -39,14 +39,58 @@ function getTodayGerman() {
 }
 
 function getLanguageMeta(lang) {
-  switch ((lang || "de").toLowerCase()) {
-    case "tr": return { code: "tr", label: "Türkisch", ttsLanguageCode: "tr-TR", ttsGender: "FEMALE" };
-    case "bg": return { code: "bg", label: "Bulgarisch", ttsLanguageCode: "bg-BG", ttsGender: "FEMALE" };
-    case "ar": return { code: "ar", label: "Arabisch", ttsLanguageCode: "ar-XA", ttsGender: "FEMALE" };
-    case "ro": return { code: "ro", label: "Rumänisch", ttsLanguageCode: "ro-RO", ttsGender: "FEMALE" };
-    case "en": return { code: "en", label: "Englisch", ttsLanguageCode: "en-US", ttsGender: "FEMALE" };
-    default: return { code: "de", label: "Deutsch", ttsLanguageCode: "de-DE", ttsGender: "FEMALE" };
-  }
+  const raw = String(lang || "de").toLowerCase().slice(0, 2);
+  const languages = {
+    de: { code: "de", label: "Deutsch", nativeName: "Deutsch", promptLanguage: "Deutsch", outputLanguage: "Deutsch", uiLocale: "de-DE", ttsLanguageCode: "de-DE", ttsGender: "FEMALE", dir: "ltr", officialDraftLanguage: "Deutsch", live: true },
+    tr: { code: "tr", label: "Türkisch", nativeName: "Türkçe", promptLanguage: "Türkisch", outputLanguage: "Türkisch", uiLocale: "tr-TR", ttsLanguageCode: "tr-TR", ttsGender: "FEMALE", dir: "ltr", officialDraftLanguage: "Deutsch", live: true },
+    bg: { code: "bg", label: "Bulgarisch", nativeName: "Български", promptLanguage: "Bulgarisch", outputLanguage: "Bulgarisch", uiLocale: "bg-BG", ttsLanguageCode: "bg-BG", ttsGender: "FEMALE", dir: "ltr", officialDraftLanguage: "Deutsch", live: true },
+    ro: { code: "ro", label: "Rumänisch", nativeName: "Română", promptLanguage: "Rumänisch", outputLanguage: "Rumänisch", uiLocale: "ro-RO", ttsLanguageCode: "ro-RO", ttsGender: "FEMALE", dir: "ltr", officialDraftLanguage: "Deutsch", live: true },
+    en: { code: "en", label: "Englisch", nativeName: "English", promptLanguage: "Englisch", outputLanguage: "Englisch", uiLocale: "en-US", ttsLanguageCode: "en-US", ttsGender: "FEMALE", dir: "ltr", officialDraftLanguage: "Deutsch", live: true },
+    // Arabisch ist technisch vorbereitet, aber im V14-UI noch nicht live.
+    ar: { code: "ar", label: "Arabisch", nativeName: "العربية", promptLanguage: "Arabisch", outputLanguage: "Arabisch", uiLocale: "ar", ttsLanguageCode: "ar-XA", ttsGender: "FEMALE", dir: "rtl", officialDraftLanguage: "Deutsch", live: false }
+  };
+  return languages[raw] || languages.de;
+}
+
+function getProtectedFieldsRuleText() {
+  return `GESCHÜTZTE ORIGINALDATEN:
+Diese Werte niemals übersetzen, verändern, umformatieren oder frei ergänzen:
+- Namen und Anschriften
+- Aktenzeichen, Kundennummern, Rechnungsnummern, BG-Nummern, Beitragsnummern, Versicherungsnummern, Vertragsnummern
+- Beträge, Fristen, Termine, Datumsangaben, Uhrzeiten
+- IBAN/BIC/Telefon/Fax/E-Mail/Webseiten nur als solche behandeln, niemals als Aktenzeichen
+- wichtige Originalzitate und deutsche amtliche Begriffe, wenn sie später im Schriftverkehr wieder gebraucht werden.`;
+}
+
+function buildMultilingualRules(langMeta = getLanguageMeta("de")) {
+  return `MEHRSPRACHIGKEIT V14:
+Es gibt immer drei Sprachebenen:
+1. Originalsprache des Briefes.
+2. Nutzersprache für Erklärung, Chat, Hinweise und Audio: ${langMeta.label}.
+3. Amtssprache für offizielle Antworttexte an deutsche Stellen: Deutsch.
+
+Regeln:
+- Erklärungen, Chat-Antworten, Sicherheitswarnungen, nächste Schritte und Audio-Texte immer in ${langMeta.label} schreiben.
+- Offizielle E-Mails und PDF-Briefe an deutsche Behörden, Gerichte, Jobcenter, Krankenkassen, Versicherungen, Inkasso oder andere deutsche Stellen immer direkt auf Deutsch schreiben.
+- Nie eine offizielle deutsche E-Mail aus einer bereits übersetzten Erklärung zurückübersetzen.
+- Nutze für offizielle Entwürfe immer die Originaldaten aus dem aktuellen Fall.
+- Deutsche Fachbegriffe beim ersten Auftreten nicht nur übersetzen, sondern kurz erklären, z. B. Widerspruch, Widerruf, Kündigung, Mahnung, Vollstreckung, Beratungshilfe, Prozesskostenhilfe, Pflichtverteidiger, Bürgergeld, Bedarfsgemeinschaft, Ratenzahlung, Stundung.
+- Wenn ein deutscher Fachbegriff später bei Behörde, Gericht oder Anwalt wichtig ist, den deutschen Begriff sichtbar stehen lassen und in ${langMeta.label} einfach erklären.
+- Bei sensiblen Fällen keine Garantien geben und keine rechtliche/medizinische Sicherheit erfinden.
+${getProtectedFieldsRuleText()}`;
+}
+
+function isOfficialGermanDraftText(text = "") {
+  const t = String(text || "");
+  return /Sehr geehrte Damen und Herren/.test(t) || /E-MAIL:/.test(t) || /PDF-BRIEF:/.test(t) || /Betreff:/.test(t);
+}
+
+async function localizeUserFacingAnswerIfNeeded(text, lang) {
+  const clean = cleanText(text);
+  const langMeta = getLanguageMeta(lang);
+  if (!clean || langMeta.code === "de") return clean;
+  if (isOfficialGermanDraftText(clean)) return clean;
+  return translateHelpTextIfNeeded(clean, langMeta.code);
 }
 
 async function callGemini(parts) {
@@ -1253,19 +1297,23 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
    ========================================================= */
 
 function buildHilfe24CoreRules(langLabel = "Deutsch") {
+  const langMeta = getLanguageMeta(langLabel && langLabel.length <= 3 ? langLabel : "de");
+  const effectiveLang = langMeta.code === "de" && langLabel !== "Deutsch" ? { ...langMeta, label: langLabel, promptLanguage: langLabel, outputLanguage: langLabel } : langMeta;
   return `
 Du bist Hilfe24.
 Du bist kein normaler Chatbot und kein reiner Brief-Zusammenfasser.
 Du bist ein Fall-Assistent für Menschen, die schwierige Briefe, Rechnungen, Mahnungen, Bescheide, Verträge und Behördenpost verstehen müssen.
 
-Sprache für Erklärung und Beratung: ${langLabel}.
+Sprache für Erklärung und Beratung: ${effectiveLang.label || langLabel}.
 Bei offiziellen Antworttexten an deutsche Stellen: Deutsch verwenden.
+
+${buildMultilingualRules(effectiveLang)}
 
 Harte Regeln:
 1. Nutze nur den aktuellen Brief, die extrahierten Daten und die aktuelle Nutzerfrage.
 2. Vermische niemals alte Briefe, alte Namen, alte Beträge oder alte Nummern mit dem aktuellen Fall.
 3. Trenne immer: sicher sichtbar / unklar / nicht sichtbar.
-4. Wenn etwas nicht im Brief steht, sage klar: "Das steht auf dem sichtbaren Schreiben nicht."
+4. Wenn etwas nicht im Brief steht, sage klar in der Nutzersprache: "Das steht auf dem sichtbaren Schreiben nicht."
 5. Erfinde niemals Behandlungen, Leistungen, Fristen, Gründe, Rechtsfolgen, Aktenzeichen, Beträge oder persönliche Daten.
 6. Beantworte normale Fragen zuerst direkt. Frage nicht sofort nach E-Mail/PDF.
 7. E-Mail/PDF nur erstellen, wenn der Nutzer das ausdrücklich möchte oder nach einer Antwort zum Senden fragt.
@@ -1454,6 +1502,40 @@ async function translateHelpTextIfNeeded(text, lang) {
   if (langMeta.code === "de") return clean;
   const raw = await callGemini([{ text: `${buildHilfe24CoreRules(langMeta.label)}\n\nÜbersetze den folgenden Hilfe24-Text vollständig in ${langMeta.label}. Keine neuen Informationen. Namen, Beträge, Fristen und Nummern exakt erhalten.\n\nTEXT:\n${clean}` }]);
   return cleanText(raw);
+}
+
+async function translateBriefExplanationSetIfNeeded(kurzDe, detailsDe, lang) {
+  const langMeta = getLanguageMeta(lang);
+  const cleanKurz = cleanText(kurzDe);
+  const cleanDetails = cleanText(detailsDe);
+  if (langMeta.code === "de") return { kurz: cleanKurz, details: cleanDetails };
+
+  const raw = await callGemini([{ text: `${buildHilfe24CoreRules(langMeta.code)}
+
+Übersetze diese Hilfe24-Erklärung direkt in ${langMeta.label}.
+Keine neuen Informationen. Keine Rückübersetzung. Namen, Adressen, Beträge, Fristen, Termine, Aktenzeichen, BG-Nummern, Rechnungsnummern, Kundennummern und Versicherungsnummern exakt erhalten. Deutsche Fachbegriffe beim ersten Auftreten stehen lassen und kurz in ${langMeta.label} erklären.
+
+Gib nur gültiges JSON zurück:
+{ "kurz": "...", "details": "..." }
+
+KURZ_DE:
+${cleanKurz}
+
+DETAILS_DE:
+${cleanDetails}` }]);
+
+  try {
+    const parsed = extractJson(raw);
+    return {
+      kurz: cleanText(parsed.kurz || cleanKurz),
+      details: cleanText(parsed.details || cleanDetails)
+    };
+  } catch (e) {
+    return {
+      kurz: await translateHelpTextIfNeeded(cleanKurz, langMeta.code),
+      details: await translateHelpTextIfNeeded(cleanDetails, langMeta.code)
+    };
+  }
 }
 
 function isExplicitWriteRequest(frage = "", frageMode = "") {
@@ -1677,7 +1759,7 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
   if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(inferIntentFromHistory(historyText || context));
 
-  // V13: Normale Beratungsfragen NICHT mehr hart per Stichwort-Router beantworten.
+  // V14: Normale Beratungsfragen NICHT mehr hart per Stichwort-Router beantworten.
   // Der alte Router hat bei komplexen Sätzen zu oft nur Einzelwörter erkannt
   // (z. B. Jobcenter, bezahlt, Frist) und dadurch die echte Nutzerabsicht verfehlt.
   // Ab hier übernimmt der Meta-Chat-Prompt die Antwort mit Ziel + Zielstelle + Kontext + Risiko.
@@ -1688,8 +1770,9 @@ async function buildFinalPayloadFromInfo(info, lang, sourceMode = "text") {
   const langCode = getLanguageMeta(lang).code;
   const kurzDe = buildCoreShortDe(info);
   const detailsDe = buildCoreExplanationDe(info);
-  const kurz = await translateHelpTextIfNeeded(kurzDe, langCode);
-  const details = await translateHelpTextIfNeeded(detailsDe, langCode);
+  const translatedSet = await translateBriefExplanationSetIfNeeded(kurzDe, detailsDe, langCode);
+  const kurz = translatedSet.kurz;
+  const details = translatedSet.details;
   const refs = safeReferences(info);
   const name = getDetectedPersonName(info);
 
@@ -1816,7 +1899,9 @@ app.post("/api/daten-pruefen", async (req, res) => {
     if (!Array.isArray(bilder) || bilder.length === 0) return res.status(400).json({ ok: false, error: "Keine Bilder gesendet" });
     if (bilder.length > 3) return res.status(400).json({ ok: false, error: "Maximal 3 Bilder möglich." });
 
-    const parts = [{ text: `Du bist Hilfe24. Prüfe nur die kritischen Daten aus den Fotos: Empfänger, betroffene Person, Absender, Datum, Nummern, Betrag, Frist, Termin. Antworte kurz in ${langMeta.label}. Nichts erfinden. IBAN/BIC/Telefon nicht als Aktenzeichen bezeichnen.` }];
+    const parts = [{ text: `Du bist Hilfe24. Prüfe nur die kritischen Daten aus den Fotos: Empfänger, betroffene Person, Absender, Datum, Nummern, Betrag, Frist, Termin. Antworte kurz in ${langMeta.label}. Nichts erfinden. IBAN/BIC/Telefon nicht als Aktenzeichen bezeichnen.
+
+${buildMultilingualRules(langMeta)}` }];
     let i = 1;
     for (const bild of bilder) {
       if (!bild || !bild.imageData || !bild.mimeType) continue;
@@ -1849,7 +1934,7 @@ app.post("/api/frage", async (req, res) => {
     if (!briefText && !erklaerungKurz && !erklaerungDetails && !Object.keys(meta).length) return res.status(400).json({ ok: false, error: "Kein Kontext vorhanden" });
     if (frage.length > 1500) return res.status(400).json({ ok: false, error: "Die Frage ist zu lang. Bitte kürzer formulieren." });
 
-    // V13: Nur Write-/Format-Router läuft vor Gemini.
+    // V14: Nur Write-/Format-Router läuft vor Gemini.
     // Normale Chatfragen gehen in die Meta-Chat-Logik, damit nicht einzelne Stichwörter dominieren.
     const forcedAnswer = buildForcedChatAnswer({
       frage,
@@ -1861,7 +1946,10 @@ app.post("/api/frage", async (req, res) => {
       historyText: chatHistoryText
     });
 
-    if (forcedAnswer) return res.json({ ok: true, antwort: forcedAnswer });
+    if (forcedAnswer) {
+      const localizedForcedAnswer = await localizeUserFacingAnswerIfNeeded(forcedAnswer, langMeta.code);
+      return res.json({ ok: true, antwort: localizedForcedAnswer });
+    }
 
     const raw = await callGemini([{ text: `
 Du bist Hilfe24, ein einfacher Fall-Chat für schwierige Briefe.
@@ -1869,9 +1957,11 @@ Du bist Hilfe24, ein einfacher Fall-Chat für schwierige Briefe.
 Sprache des Nutzers: ${langMeta.label}
 Heutiges Datum: ${getTodayGerman()}
 
-${buildHilfe24CoreRules(langMeta.label)}
+${buildHilfe24CoreRules(langMeta.code)}
 
-META-CHAT-LOGIK V13:
+${buildMultilingualRules(langMeta)}
+
+META-CHAT-LOGIK V14:
 Du beantwortest NICHT einzelne Stichwörter. Du verstehst zuerst die echte Absicht.
 Arbeite immer in dieser Reihenfolge:
 
@@ -2134,5 +2224,5 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v12 core logic");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v14 multilingual logic");
 });
