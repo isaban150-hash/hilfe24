@@ -1188,6 +1188,8 @@ let currentDetailText = "";
 let currentBriefText = "";
 let currentMeta = {};
 let activeRequestId = 0;
+let activeQuestionRequestId = 0;
+let currentCaseId = 0;
 let activeAudioUrl = "";
 let selectedImageFiles = [];
 let chatHistory = [];
@@ -1469,6 +1471,24 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         hide(audioStatusEl);
       }
       hide(audioDockEl);
+    }
+
+    function h24StartNewCase() {
+      currentCaseId += 1;
+      activeQuestionRequestId += 1;
+      chatHistory = [];
+      window.frageMode = "free";
+      frageMode = "free";
+      if (frageTextEl) frageTextEl.value = "";
+      if (frageAntwortEl) frageAntwortEl.textContent = "";
+      if (frageErrorEl) {
+        frageErrorEl.textContent = "";
+        hide(frageErrorEl);
+      }
+      if (frageStatusEl) {
+        frageStatusEl.textContent = "";
+        hide(frageStatusEl);
+      }
     }
 
     function setAudioStatus(text) {
@@ -1773,12 +1793,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
         h24DownloadPdfFromText(pdfText, btn);
       };
 
-      const hint = document.createElement("div");
-      hint.className = "h24-pdf-download-hint";
-      hint.textContent = "Vor dem Senden bitte Name, Adresse, Datum, Nummer und Empfänger prüfen.";
-
       row.appendChild(btn);
-      row.appendChild(hint);
       bubble.appendChild(row);
     }
 
@@ -2010,6 +2025,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
       currentDetailText = "";
       currentBriefText = "";
       currentMeta = {};
+      window.frageMode = "free";
+      frageMode = "free";
 
       hide(resultCardEl);
       hide(helperCardEl);
@@ -2319,6 +2336,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
 
   async function explainLetter() {
   const requestId = ++activeRequestId;
+  h24StartNewCase();
 
   const text = briefTextEl ? briefTextEl.value.trim() : "";
   const files = selectedImageFiles.slice(0, 3);
@@ -2442,6 +2460,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
   const lang = getSelectedLang();
 
   currentLang = lang;
+  const questionRequestId = ++activeQuestionRequestId;
+  const caseIdAtQuestionStart = currentCaseId;
 
   function normalizeForIntent(text) {
     return String(text || "")
@@ -2522,18 +2542,27 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     try { data = rawText ? JSON.parse(rawText) : null; } catch (parseError) { throw new Error(getUiText().questionNetworkError || getUiText().questionError); }
     if (!response.ok || !data || !data.ok) throw new Error((data && data.error) || getUiText().questionError);
 
+    if (questionRequestId !== activeQuestionRequestId || caseIdAtQuestionStart !== currentCaseId) {
+      return;
+    }
+
     const answer = data.antwort || "";
     appendChatMessage("assistant", answer);
     if (frageAntwortEl) frageAntwortEl.textContent = answer;
     hide(frageAntwortBoxEl);
   } catch (err) {
+    if (questionRequestId !== activeQuestionRequestId || caseIdAtQuestionStart !== currentCaseId) {
+      return;
+    }
     const msg = String(err && err.message ? err.message : "");
     const safeMsg = msg && msg !== "Load failed" ? msg : (getUiText().questionNetworkError || getUiText().questionError);
     if (frageErrorEl) { frageErrorEl.textContent = safeMsg; show(frageErrorEl); }
     appendChatMessage("assistant", safeMsg);
   } finally {
-    if (frageStatusEl) { frageStatusEl.textContent = ""; hide(frageStatusEl); }
-    if (frageBtn) frageBtn.disabled = false;
+    if (questionRequestId === activeQuestionRequestId && caseIdAtQuestionStart === currentCaseId) {
+      if (frageStatusEl) { frageStatusEl.textContent = ""; hide(frageStatusEl); }
+      if (frageBtn) frageBtn.disabled = false;
+    }
   }
 }
 
@@ -2740,6 +2769,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹️ Stopp"
     window.askQuestionAboutLetter = askQuestionAboutLetter;
     window.stopAudio = stopAudio;
     window.h24FillChatSuggestion = fillChatSuggestion;
+    window.h24StartNewCase = h24StartNewCase;
   
 </script>
 </body>
