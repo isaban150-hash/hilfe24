@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v12-core-logic" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v12.2-chat-intent-fix" });
 });
 
 function getTodayGerman() {
@@ -1462,10 +1462,28 @@ function isExplicitWriteRequest(frage = "", frageMode = "") {
   return hasAny(q, ["schreib", "schreibe", "formuliere", "mach mir", "erstelle", "vorlage", "antwort zum senden", "brief erstellen", "professionelle antwort"]);
 }
 
+function hasReimbursementIntent(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+
+  const payerCue = /(krankenkasse|krankenversicherung|versicherung|beihilfe|kostenstelle|pflegekasse|kasse)\b/i.test(q);
+  const reimbursementCue = /(erstatt|zurück|zurueck|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|übernehm|uebernehm|einreich|einreichen|teil|anteil|zahlt die|bezahlt die|ersetz|ersetzt|bekomme ich.*geld|geld.*bekommen)/i.test(q);
+
+  // Auch ohne explizite Krankenkasse kann eine Erstattungsfrage gemeint sein,
+  // wenn der Nutzer klar nach Geld zurück / Erstattung / Kostenübernahme fragt.
+  const strongReimbursementCue = /(erstattung|erstattet|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|wer zahlt|wer übernimmt|wer uebernimmt|bekomme ich.*zurück|bekomme ich.*zurueck)/i.test(q);
+
+  return (payerCue && reimbursementCue) || strongReimbursementCue;
+}
+
 function detectCoreIntent(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
   const clean = normalizeString(frage).toLowerCase();
   if (/^(ok|okay|danke|alles klar|verstanden|passt|ja)$/i.test(clean)) return "smalltalk";
+
+  // V12.2: Zielabsicht schlägt Statuswort.
+  // „bezahlt“ allein = schon_bezahlt. Aber „bezahlt + Krankenkasse/Geld zurück/Erstattung“ = Erstattungsfrage.
+  if (hasReimbursementIntent(frage, frageMode)) return "erstattung_kostenuebernahme";
+
   if (hasAny(q, ["welche behandlung", "was wurde gemacht", "was haben die gemacht", "wofür ist die rechnung", "wofuer ist die rechnung", "welche leistung", "leistungsaufstellung", "positionen", "goz", "bema"])) return "detailfrage";
   if (hasAny(q, ["schon bezahlt", "bereits bezahlt", "habe bezahlt", "überwiesen", "ueberwiesen", "zahlungsnachweis"])) return "schon_bezahlt";
   if (hasAny(q, ["schon geschickt", "bereits geschickt", "nachweis geschickt", "unterlagen geschickt", "bescheid geschickt", "befreiung geschickt", "habe das geschickt", "dahin geschickt"])) return "schon_geschickt";
@@ -1484,6 +1502,35 @@ function detectCoreIntent(frage = "", frageMode = "") {
 function coreReferenceText(meta = {}) {
   const ref = getPrimaryReference(meta);
   return ref ? ` Nenne dabei diese Nummer: ${ref}.` : "";
+}
+
+function buildReimbursementAdvice(meta = {}) {
+  const ref = getPrimaryReference(meta);
+  const amount = getAmount(meta);
+  const sender = getSender(meta);
+
+  const lines = [];
+  lines.push("Ja, du kannst versuchen, eine Erstattung oder Teil-Erstattung bei der Krankenkasse oder Versicherung zu bekommen.");
+  lines.push("");
+  lines.push("Sicher ist das aber nicht. Es hängt davon ab, welche Leistung gemacht wurde, ob sie medizinisch notwendig war und ob deine Krankenkasse oder Versicherung diese Kosten übernimmt.");
+  lines.push("");
+  lines.push("Was du jetzt tun solltest:");
+  lines.push("1. Schick der Krankenkasse oder Versicherung die Rechnung.");
+  lines.push("2. Schick den Zahlungsnachweis mit, weil du schon bezahlt hast.");
+  if (ref) lines.push(`3. Nenne die Nummer aus dem Schreiben: ${ref}.`);
+  else lines.push("3. Nenne Rechnungsnummer, Datum und Betrag aus dem Schreiben.");
+  lines.push("4. Bitte um Prüfung, ob die Kosten ganz oder teilweise erstattet werden können.");
+  lines.push("5. Wenn nicht genau sichtbar ist, welche Behandlung oder Leistung gemacht wurde, fordere beim Zahnarzt, Leistungserbringer oder bei der Abrechnungsstelle eine detaillierte Leistungsaufstellung an.");
+  lines.push("");
+  if (amount || sender) {
+    const parts = [];
+    if (amount) parts.push(`Betrag: ${amount}`);
+    if (sender) parts.push(`Stelle aus dem Schreiben: ${sender}`);
+    lines.push(`Aus dem aktuellen Schreiben wichtig: ${parts.join(". ")}.`);
+    lines.push("");
+  }
+  lines.push("Wenn du möchtest, schreibe ich dir daraus eine E-Mail oder einen PDF-Brief an die Krankenkasse oder Versicherung.");
+  return cleanText(lines.join("\n"));
 }
 
 function buildPaidAdvice(meta = {}) {
@@ -1585,6 +1632,7 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(inferIntentFromHistory(historyText || context));
 
   // Advice Mode: normale Fragen zuerst beantworten. Keine E-Mail/PDF-Frage am Anfang.
+  if (intent === "erstattung_kostenuebernahme") return buildReimbursementAdvice(meta);
   if (intent === "schon_bezahlt") return buildPaidAdvice(meta);
   if (intent === "schon_geschickt") return buildSentProofAdvice(meta);
   if (intent === "zahlungsproblem" || intent === "ratenzahlung") return buildPaymentAdvice(meta);
@@ -1794,6 +1842,9 @@ ${buildHilfe24CoreRules(langMeta.label)}
 
 Regeln:
 - Beantworte zuerst die echte Frage des Nutzers.
+- Erkenne die Absicht, nicht nur einzelne Wörter.
+- Zielwörter schlagen Statuswörter: Wenn Nutzer nach Krankenkasse, Versicherung, Geld zurück, Erstattung, Kostenübernahme oder Teil-Erstattung fragt, ist das eine Erstattungsfrage – auch wenn er zusätzlich "bezahlt" schreibt.
+- Bei Erstattung/Kostenübernahme: Rechnung + Zahlungsnachweis + ggf. Leistungsaufstellung an Krankenkasse/Versicherung empfehlen. Nicht zuerst Zahlungsnachweis an die fordernde Stelle erklären.
 - Antworte kurz, praktisch und menschlich.
 - Nicht auf alte Testbriefe fixieren.
 - P-Konto nur erwähnen, wenn wirklich P-Konto/Kontopfändung/Freibetrag im Kontext steht.
