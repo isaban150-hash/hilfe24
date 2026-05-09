@@ -1113,6 +1113,142 @@ function buildNoMoneyShort(meta = {}, domain = "allgemein") {
   return "Dann nicht sofort eine Rate vorschlagen. Der sichere Schritt ist Zahlungsaufschub oder Stundung. Schreibe der Stelle, dass du aktuell nicht zahlen kannst, und bitte um Aussetzung weiterer Maßnahmen bis zur Entscheidung.";
 }
 
+
+function isExplicitOutputRequest(frage = "", frageMode = "") {
+  const q = String(`${frage} ${frageMode}`).toLowerCase();
+
+  // Ausgabeform ist klar gewünscht.
+  if (wantsPdfOutput(frage, frageMode) || wantsEmailOutput(frage, frageMode) || wantsBothEmailAndPdf(frage, frageMode)) return true;
+
+  // Nutzer will ausdrücklich einen sendbaren Text.
+  return hasAny(q, [
+    "schreib mir", "schreibe mir", "schreib eine", "schreibe eine", "formuliere", "formulier",
+    "mach mir", "erstelle", "fertig machen", "fertigmachen", "vorlage", "text zum senden",
+    "antwort schreiben", "professionelle antwort", "brief schreiben", "nachricht schreiben"
+  ]);
+}
+
+function hasSocialBenefitContext(text = "") {
+  const t = String(text || "").toLowerCase();
+  return hasAny(t, [
+    "jobcenter", "bürgergeld", "buergergeld", "arbeitslosengeld", "alg ii", "hartz", "sozialhilfe",
+    "grundsicherung", "wohngeld", "kinderzuschlag", "kindergeldzuschlag", "bafög", "bafoeg",
+    "leistungen nach", "sozialleistung", "bescheid", "leistungsbescheid"
+  ]);
+}
+
+function buildGeneralAdvice(intent = "", meta = {}, context = "", domain = "allgemein") {
+  const ctx = String(context || "").toLowerCase();
+  const number = safeReferences(meta).map((r) => referenceLabelForDomain(r, domain)).filter(Boolean)[0] || "die Nummer aus dem Schreiben";
+  const amount = getAmount(meta) || "den Betrag aus dem Schreiben";
+  const sender = getSender(meta) || "die Stelle";
+  const social = hasSocialBenefitContext(ctx);
+
+  if (intent === "sent_proof") {
+    if (social) {
+      return cleanText(`Wenn du einen Bescheid/Nachweis schon geschickt hast, sende ihn zur Sicherheit nochmal.
+
+Das solltest du tun:
+1. ${number} nennen.
+2. Den Bescheid/Nachweis erneut mitschicken.
+3. Um Prüfung bitten, ob eine Befreiung, Ermäßigung oder Kostenübernahme möglich ist.
+4. Um Pause/Aussetzung weiterer Maßnahmen bitten, bis alles geprüft wurde.
+5. Sende alles so, dass du einen Nachweis hast.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+    }
+
+    return cleanText(`Wenn du Unterlagen schon geschickt hast, sende sie zur Sicherheit nochmal und nenne ${number}.
+
+Das solltest du tun:
+1. Unterlagen/Nachweis erneut mitschicken.
+2. Um schriftliche Bestätigung bitten.
+3. Fragen, ob noch etwas fehlt.
+4. Versandnachweis aufbewahren.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+  }
+
+  if (intent === "installments") {
+    return cleanText(`Wenn du ${amount} nicht auf einmal zahlen kannst, ist eine Ratenzahlung oder Stundung der richtige Weg.
+
+Das solltest du tun:
+1. Prüfe zuerst, ob die Forderung stimmt.
+2. Überlege, welche monatliche Rate realistisch ist.
+3. Beantrage schriftlich Ratenzahlung oder Zahlungsaufschub.
+4. Bitte um schriftliche Bestätigung und darum, bis zur Entscheidung keine weiteren Maßnahmen einzuleiten.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+  }
+
+  if (intent === "no_money") {
+    return cleanText(`Wenn du aktuell nicht zahlen kannst, nicht ignorieren.
+
+Das solltest du tun:
+1. Prüfe, ob die Forderung stimmt.
+2. Schreibe ${sender} kurz, dass du aktuell nicht auf einmal zahlen kannst.
+3. Bitte um Stundung, Zahlungsaufschub oder Ratenzahlung.
+4. Bitte darum, bis zur Entscheidung keine weiteren Maßnahmen einzuleiten.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+  }
+
+  if (intent === "paid") {
+    return cleanText(`Wenn du schon bezahlt hast, sende einen Zahlungsnachweis.
+
+Das solltest du tun:
+1. Zahlungsbeleg oder Kontoauszug bereithalten.
+2. ${number} nennen.
+3. Um Prüfung und schriftliche Bestätigung bitten.
+4. Wenn weitere Maßnahmen angekündigt sind: um Stopp bis zur Klärung bitten.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+  }
+
+  if (intent === "dispute") {
+    return cleanText(`Wenn du die Forderung oder den Inhalt nicht verstehst oder bestreitest, erkenne nichts vorschnell an.
+
+Das solltest du tun:
+1. Um eine genaue Erklärung/Aufstellung bitten.
+2. Nachweisen lassen, worauf die Forderung beruht.
+3. Fristen im Brief prüfen.
+4. Bei hoher Dringlichkeit Beratung holen.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+  }
+
+  if (intent === "cancel") {
+    return cleanText(`Wenn du einen Vertrag beenden willst, prüfe zuerst, ob Widerruf oder Kündigung passt.
+
+Das solltest du tun:
+1. Vertragsnummer/Kundennummer aus dem Schreiben nennen.
+2. Vorsorglich widerrufen, wenn das noch möglich ist.
+3. Hilfsweise zum nächstmöglichen Zeitpunkt kündigen.
+4. Schriftliche Bestätigung verlangen.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+  }
+
+  if (intent === "next_steps" || !intent) {
+    if (social) {
+      return cleanText(`Wenn du Leistungen bekommst, prüfe, ob du einen Nachweis, eine Befreiung, Ermäßigung oder Kostenübernahme einreichen kannst.
+
+Das solltest du tun:
+1. Nummer aus dem Schreiben nennen.
+2. Leistungsbescheid/Nachweis mitschicken.
+3. Um Prüfung bitten.
+4. Falls schon geschickt: nochmal senden und auf die frühere Sendung hinweisen.
+5. Um Pause weiterer Maßnahmen bis zur Klärung bitten.
+
+Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.`);
+    }
+
+    return buildNextSteps(meta, domain);
+  }
+
+  return buildNextSteps(meta, domain);
+}
+
 function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
@@ -1151,15 +1287,18 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
     if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, formIntent === "reply" ? "pdf" : formIntent);
     if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, formIntent);
 
-    if (formIntent === "no_money" && !wantsWrittenOutput(frage, frageMode)) {
-      return buildNoMoneyShort(meta, domain);
+    // V11.2: Beratungsfrage ≠ Schreibauftrag.
+    // Wenn der Nutzer fragt „Was kann ich tun?“, „Ich habe schon geschickt“, „Ich bekomme Jobcenter“ usw.,
+    // wird zuerst geholfen. Ausgabeform erst dann, wenn der Nutzer E-Mail/PDF/Schreibauftrag klar möchte.
+    if (!isExplicitOutputRequest(frage, frageMode)) {
+      return buildGeneralAdvice(formIntent, meta, context, domain);
     }
 
     return askOutputChoice(formIntent);
   }
 
-  if (intent === "next_steps") return buildNextSteps(meta, domain);
-  if (intent === "documents") return "Sende nur Unterlagen, die wirklich zum Schreiben passen. Wichtig sind meist: das Schreiben selbst, die genannte Nummer, Nachweise, Zahlungsbelege oder Bescheide. Wenn du willst, schreibe ich dir eine kurze Nachricht zum Nachreichen.";
+  if (intent === "next_steps") return buildGeneralAdvice("next_steps", meta, context, domain);
+  if (intent === "documents") return "Sende nur Unterlagen, die wirklich zum Schreiben passen. Wichtig sind meist: das Schreiben selbst, die genannte Nummer, Nachweise, Zahlungsbelege oder Bescheide. Wenn du möchtest, kann ich dir daraus eine E-Mail oder einen PDF-Brief machen.";
   if (intent === "deadline") return meta.frist || meta.termin ? `Frist/Termin: ${meta.frist || meta.termin}. Bitte im Originalbrief prüfen und rechtzeitig reagieren.` : "Ich sehe keine sichere Frist. Bitte prüfe das Originalschreiben oder nutze Daten genauer prüfen.";
   return "";
 }
@@ -1392,6 +1531,9 @@ Regeln:
 - Firma/Absender niemals als Unterschrift verwenden.
 - IBAN/BIC/Telefon/Adresse niemals als Aktenzeichen verwenden.
 - Bei offiziellen Antworten an deutsche Stellen: Deutsch verwenden.
+- Allgemeine Beratungsfrage zuerst beantworten: „Was kann ich tun?“, „Was soll ich machen?“, „Ich habe schon geschickt“, „Ich bekomme Jobcenter/Bürgergeld/Sozialleistungen“, „Ich kann nicht zahlen“, „Ich verstehe das nicht“.
+- Bei solchen Beratungsfragen NICHT sofort nach E-Mail/PDF/beides fragen. Erst kurze konkrete Schritte geben. Danach höchstens anbieten: „Wenn du möchtest, kann ich daraus eine E-Mail oder einen PDF-Brief machen.“
+- Nur wenn der Nutzer ausdrücklich einen sendbaren Text will („schreib mir“, „E-Mail“, „PDF“, „Brief“, „Vorlage“, „formuliere“), eine Ausgabeform abfragen oder erstellen.
 
 ERKANNTE DATEN:
 ${JSON.stringify(meta, null, 2)}
