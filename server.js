@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v14.3-reimbursement-target-fix" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v14.4-cost-carrier-target-fix" });
 });
 
 function getTodayGerman() {
@@ -328,8 +328,7 @@ function inferIntentFromHistory(historyText = "") {
   // V14.3: Erstattung/Kostenübernahme muss im Schreibmodus erhalten bleiben.
   // Beispiel: Nutzer schreibt Türkisch „sigortaya yollayayım, bir kısmını geri alayım“.
   // Dann ist die Zielstelle Krankenkasse/Versicherung, nicht die DZR/der Absender der Rechnung.
-  if (/(krankenkasse|krankenversicherung|versicherung|beihilfe|kostenstelle|pflegekasse|kasse|sigorta|sigortaya|sigortadan|insurance|asigurare|asigurări|asigurari|застраховка|здравна каса)/i.test(h)
-      && /(erstatt|zurück|zurueck|geld zurück|geld zurueck|kostenübernahme|kostenuebernahme|einreich|übernehm|uebernehm|geri al|geri almak|geri ödeme|geri odeme|bir kısm|bir kisim|teil|anteil|reimburse|refund|claim|ramburs|decont|înapoi|inapoi|възстанов|възстановяване)/i.test(h)) {
+  if (hasReimbursementIntent(h, "") || hasOfficialWriteToCostCarrierCue(h)) {
     return "reimbursement";
   }
   if (hasAny(h, ["ratenzahlung", "rate", "in raten"])) return "installments";
@@ -475,7 +474,8 @@ function isCompanyLikeName(value) {
   return hasAny(v, [
     "gmbh", "ag", "kg", "ug", "ev", "e.v.", "versicherung", "bank", "sparkasse", "jobcenter",
     "finanzamt", "amtsgericht", "staatsanwaltschaft", "inkasso", "personalmanagement", "krankenkasse",
-    "beitragsservice", "stadt", "gemeinde", "landkreis", "agentur", "service", "verwaltung"
+    "beitragsservice", "stadt", "gemeinde", "landkreis", "agentur", "service", "verwaltung",
+    "portal", "patientenportal", "www", "http", "forderung", "abrechnungsstelle", "rechnungsaussteller"
   ]);
 }
 
@@ -760,6 +760,9 @@ function detectIntent(frage = "", frageMode = "", historyText = "") {
 
   if (/^(ok|okay|danke|alles klar|verstanden|passt|ja)$/i.test(normalizeString(frage))) return "smalltalk";
 
+  // V14.4: Nutzerziel Kostenübernahme/Erstattung schlägt allgemeinen Schreibwunsch.
+  if (hasReimbursementIntent(frage, frageMode)) return "reimbursement";
+
   if (wantsExplicitGermanDraft(q) && wantsOfficialLetterLikeText(q)) {
     if (wantsPdfOutput(frage, frageMode)) return "pdf";
     return "reply";
@@ -791,7 +794,7 @@ function detectIntent(frage = "", frageMode = "", historyText = "") {
 
 function getRecipientLine(meta = {}, context = "", intent = "") {
   if (intent === "reimbursement" || intent === "erstattung_kostenuebernahme") {
-    return "Krankenkasse / Versicherung – E-Mail-Adresse eintragen";
+    return "[E-Mail-Adresse der Krankenkasse / Versicherung eintragen]";
   }
   const email = normalizeString(meta.email_adresse) || findEmail(context);
   if (looksLikeEmail(email)) return email;
@@ -1626,17 +1629,41 @@ function isExplicitWriteRequest(frage = "", frageMode = "") {
   return hasAny(q, ["schreib", "schreibe", "formuliere", "mach mir", "erstelle", "vorlage", "antwort zum senden", "brief erstellen", "professionelle antwort"]);
 }
 
+function hasCostCarrierCue(text = "") {
+  const q = String(text || "").toLowerCase();
+  return /(krankenkasse|krankenversicherung|versicherung|beihilfe|kostenstelle|pflegekasse|kasse|aok|tk|barmer|dak|ikk|kkh|hkk|zahnzusatz|zusatzversicherung|sigorta|sigortaya|sigortadan|sigortam|insurance|insurer|health insurance|asigurare|asigurări|asigurari|casa de asigurări|застраховка|здравна каса)/i.test(q);
+}
+
+function hasCreditorOnlyPaymentCue(text = "") {
+  const q = String(text || "").toLowerCase();
+  return /(ratenzahlung|rate|raten|taksit|taksitli|taksitlendirme|stundung|zahlungsaufschub|zahlungsnachweis|schon bezahlt.*mahnung|an dzr|dzr için|an inkasso|an den gläubiger|an den glaeubiger)/i.test(q);
+}
+
+function hasOfficialWriteToCostCarrierCue(text = "") {
+  const q = String(text || "").toLowerCase();
+  const carrier = hasCostCarrierCue(q);
+  const sendWrite = /(schreib|schreibe|formuliere|erstelle|mach mir|e-?mail|mail|pdf|brief|antrag|dilekçe|dilekce|mektup|gönder|gonder|göndermek|gondermek|yolla|yollayayım|yollayayim|hazırla|hazirla|prepare|write|send|trimite|scrisoare|имейл|писмо)/i.test(q);
+  return carrier && sendWrite;
+}
+
 function hasReimbursementIntent(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
 
-  const payerCue = /(krankenkasse|krankenversicherung|versicherung|beihilfe|kostenstelle|pflegekasse|kasse|sigorta|sigortaya|sigortadan|insurance|asigurare|asigurări|asigurari|застраховка|здравна каса)/i.test(q);
+  const payerCue = hasCostCarrierCue(q);
   const reimbursementCue = /(erstatt|zurück|zurueck|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|übernehm|uebernehm|einreich|einreichen|teil|anteil|zahlt die|bezahlt die|ersetz|ersetzt|bekomme ich.*geld|geld.*bekommen|geri al|geri almak|geri alayım|geri alayim|geri ödeme|geri odeme|bir kısm|bir kisim|ödedim.*geri|odedim.*geri|reimburse|refund|claim|ramburs|decont|înapoi|inapoi|възстанов|възстановяване)/i.test(q);
 
-  // Auch ohne explizite Krankenkasse kann eine Erstattungsfrage gemeint sein,
-  // wenn der Nutzer klar nach Geld zurück / Erstattung / Kostenübernahme fragt.
+  // V14.4: Wenn der Nutzer ausdrücklich an Krankenkasse/Versicherung/Kostenträger schreiben will,
+  // ist das ein Zielstellen-/Kostenübernahme-Fall, auch wenn er nicht extra „Erstattung“ sagt.
+  // Beispiel: „Bana sigortaya göndermek için Almanca e-posta hazırla“.
+  const writeToCostCarrier = hasOfficialWriteToCostCarrierCue(q);
+
   const strongReimbursementCue = /(erstattung|erstattet|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|wer zahlt|wer übernimmt|wer uebernimmt|bekomme ich.*zurück|bekomme ich.*zurueck|geri al|geri alayım|geri alayim|geri ödeme|geri odeme|bir kısmını geri|bir kismini geri|refund|reimbursement|ramburs|decont)/i.test(q);
 
-  return (payerCue && reimbursementCue) || strongReimbursementCue;
+  // Wenn der Nutzer ausdrücklich Ratenzahlung/Zahlungsnachweis an den Gläubiger will,
+  // darf „Versicherung“ aus dem Brief nicht versehentlich auf Erstattung routen.
+  if (hasCreditorOnlyPaymentCue(q) && !reimbursementCue && !writeToCostCarrier && !strongReimbursementCue) return false;
+
+  return (payerCue && (reimbursementCue || writeToCostCarrier)) || strongReimbursementCue;
 }
 
 
@@ -1839,7 +1866,10 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   // V14.3: Wenn die aktuelle Frage eine Erstattung/Kostenübernahme verlangt,
   // bleibt dieses Ziel auch im PDF-/E-Mail-Modus erhalten.
   const rememberedWriteIntent = inferIntentFromHistory(historyText || context);
-  const effectiveWriteIntent = intent === "erstattung_kostenuebernahme" ? "reimbursement" : rememberedWriteIntent;
+  const costCarrierWriteNow = hasReimbursementIntent(frage, frageMode) || hasOfficialWriteToCostCarrierCue(frage);
+  const effectiveWriteIntent = (intent === "erstattung_kostenuebernahme" || intent === "reimbursement" || costCarrierWriteNow)
+    ? "reimbursement"
+    : rememberedWriteIntent;
 
   if (wantsBoth) return buildEmailAndPdfOutput(meta, context, domain, effectiveWriteIntent);
   if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, effectiveWriteIntent);
