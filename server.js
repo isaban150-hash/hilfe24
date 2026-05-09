@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v14.2-email-tools" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v14.3-reimbursement-target-fix" });
 });
 
 function getTodayGerman() {
@@ -63,7 +63,7 @@ Diese Werte niemals übersetzen, verändern, umformatieren oder frei ergänzen:
 }
 
 function buildMultilingualRules(langMeta = getLanguageMeta("de")) {
-  return `MEHRSPRACHIGKEIT V14.1:
+  return `MEHRSPRACHIGKEIT V14.3:
 Es gibt immer vier Sprachebenen:
 1. Originalsprache des Briefes.
 2. Nutzersprache für Erklärung, Chat, Hinweise und Audio: ${langMeta.label}.
@@ -325,6 +325,13 @@ function formatReferenceForSentence(ref = "", domain = "allgemein") {
 
 function inferIntentFromHistory(historyText = "") {
   const h = String(historyText || "").toLowerCase();
+  // V14.3: Erstattung/Kostenübernahme muss im Schreibmodus erhalten bleiben.
+  // Beispiel: Nutzer schreibt Türkisch „sigortaya yollayayım, bir kısmını geri alayım“.
+  // Dann ist die Zielstelle Krankenkasse/Versicherung, nicht die DZR/der Absender der Rechnung.
+  if (/(krankenkasse|krankenversicherung|versicherung|beihilfe|kostenstelle|pflegekasse|kasse|sigorta|sigortaya|sigortadan|insurance|asigurare|asigurări|asigurari|застраховка|здравна каса)/i.test(h)
+      && /(erstatt|zurück|zurueck|geld zurück|geld zurueck|kostenübernahme|kostenuebernahme|einreich|übernehm|uebernehm|geri al|geri almak|geri ödeme|geri odeme|bir kısm|bir kisim|teil|anteil|reimburse|refund|claim|ramburs|decont|înapoi|inapoi|възстанов|възстановяване)/i.test(h)) {
+    return "reimbursement";
+  }
   if (hasAny(h, ["ratenzahlung", "rate", "in raten"])) return "installments";
   if (hasAny(h, ["widerruf", "kündigung", "kuendigung", "kündigen", "kuendigen"])) return "cancel";
   if (hasAny(h, ["stundung", "zahlungsaufschub", "kann nicht zahlen", "kein geld"])) return "no_money";
@@ -782,7 +789,10 @@ function detectIntent(frage = "", frageMode = "", historyText = "") {
   return "";
 }
 
-function getRecipientLine(meta = {}, context = "") {
+function getRecipientLine(meta = {}, context = "", intent = "") {
+  if (intent === "reimbursement" || intent === "erstattung_kostenuebernahme") {
+    return "Krankenkasse / Versicherung – E-Mail-Adresse eintragen";
+  }
   const email = normalizeString(meta.email_adresse) || findEmail(context);
   if (looksLikeEmail(email)) return email;
   const sender = getSender(meta);
@@ -843,6 +853,7 @@ function buildSubject(meta = {}, domain = "allgemein", intent = "reply", context
   if (intent === "sent_proof") base = "Nachweis erneut eingereicht";
   if (intent === "dispute") base = "Bitte um Prüfung und Klärung";
   if (intent === "cancel") base = "Widerruf und hilfsweise Kündigung";
+  if (intent === "reimbursement" || intent === "erstattung_kostenuebernahme") base = "Bitte um Prüfung einer Kostenerstattung";
 
   if (domain === "vertrag_versicherung") {
     base = isFinanzSchutzbriefContext(context)
@@ -897,6 +908,34 @@ function buildReferenceSentence(meta = {}, domain = "allgemein", context = "") {
 function buildEmailBody(meta = {}, context = "", domain = "allgemein", intent = "reply") {
   const name = getSafeSignatureName(meta, context);
   const amount = getAmount(meta);
+
+  if (intent === "reimbursement" || intent === "erstattung_kostenuebernahme") {
+    const ref = getPrimaryReference(meta);
+    const date = getDate(meta);
+    const originalSender = getSender(meta);
+    const invoiceParts = [];
+    if (originalSender) invoiceParts.push(`Abrechnungsstelle/Rechnungsaussteller: ${originalSender}`);
+    if (date) invoiceParts.push(`Rechnungsdatum/Schreiben vom: ${date}`);
+    if (ref) invoiceParts.push(`Rechnungsnummer/Referenz: ${ref}`);
+    if (amount) invoiceParts.push(`Betrag: ${amount}`);
+    const invoiceInfo = invoiceParts.length ? "\n\nDaten zur Rechnung:\n- " + invoiceParts.join("\n- ") : "";
+
+    return `Sehr geehrte Damen und Herren,
+
+ich bitte um Prüfung, ob die beigefügte Rechnung ganz oder teilweise erstattet werden kann.
+
+Die Rechnung wurde bereits bezahlt. Den Zahlungsnachweis füge ich bei bzw. reiche ich nach.${invoiceInfo}
+
+Bitte prüfen Sie, ob eine Kostenübernahme oder Erstattung nach meinem Versicherungs-/Leistungsanspruch möglich ist.
+
+Falls weitere Unterlagen benötigt werden, teilen Sie mir bitte schriftlich mit, welche Nachweise noch fehlen. Falls eine detaillierte Leistungsaufstellung erforderlich ist, werde ich diese beim Zahnarzt bzw. bei der Abrechnungsstelle anfordern.
+
+Bitte bestätigen Sie mir den Eingang dieses Schreibens und senden Sie mir Ihre Entscheidung schriftlich zu.
+
+Mit freundlichen Grüßen
+
+${name}`;
+  }
 
   if (domain === "vertrag_versicherung" || intent === "cancel") {
     const creditLine = hasCreditRejectedContext(context)
@@ -1068,9 +1107,11 @@ ${name}`;
 
 function buildPdfLetterText(meta = {}, context = "", domain = "allgemein", intent = "pdf") {
   const senderAddress = getUserPostalAddress(meta, context);
-  const recipientAddress = getRecipientPostalAddress(meta, context);
-  const subject = buildSubject(meta, domain, intent === "cancel" ? "cancel" : intent, context);
   const bodyIntent = intent === "pdf" ? inferIntentFromHistory(context) : intent;
+  const recipientAddress = (bodyIntent === "reimbursement" || bodyIntent === "erstattung_kostenuebernahme")
+    ? "Krankenkasse / Versicherung\n[Adresse eintragen]"
+    : getRecipientPostalAddress(meta, context);
+  const subject = buildSubject(meta, domain, intent === "cancel" ? "cancel" : bodyIntent, context);
   const body = buildEmailBody(meta, context, domain, bodyIntent);
   const date = getTodayGerman();
   const city = getCityFromPostalAddress(senderAddress);
@@ -1088,7 +1129,7 @@ ${body}`);
 }
 
 function buildProfessionalOutput(meta = {}, context = "", domain = "allgemein", intent = "reply") {
-  const recipient = getRecipientLine(meta, context);
+  const recipient = getRecipientLine(meta, context, intent);
   const subject = buildSubject(meta, domain, intent, context);
   const body = buildEmailBody(meta, context, domain, intent);
 
@@ -1135,7 +1176,8 @@ function askOutputChoice(intent = "reply") {
     paid: "eine Nachricht mit Zahlungsnachweis",
     sent_proof: "eine Nachricht zum Nachweis/Nachreichen",
     dispute: "eine Prüfungs- oder Widerspruchs-Nachricht",
-    reply: "eine passende Antwort"
+    reply: "eine passende Antwort",
+    reimbursement: "eine Nachricht an Krankenkasse oder Versicherung zur Erstattung"
   };
   const action = actionMap[intent] || actionMap.reply;
   return cleanText(`Ich kann dir daraus ${action} vorbereiten.
@@ -1587,12 +1629,12 @@ function isExplicitWriteRequest(frage = "", frageMode = "") {
 function hasReimbursementIntent(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
 
-  const payerCue = /(krankenkasse|krankenversicherung|versicherung|beihilfe|kostenstelle|pflegekasse|kasse)\b/i.test(q);
-  const reimbursementCue = /(erstatt|zurück|zurueck|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|übernehm|uebernehm|einreich|einreichen|teil|anteil|zahlt die|bezahlt die|ersetz|ersetzt|bekomme ich.*geld|geld.*bekommen)/i.test(q);
+  const payerCue = /(krankenkasse|krankenversicherung|versicherung|beihilfe|kostenstelle|pflegekasse|kasse|sigorta|sigortaya|sigortadan|insurance|asigurare|asigurări|asigurari|застраховка|здравна каса)/i.test(q);
+  const reimbursementCue = /(erstatt|zurück|zurueck|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|übernehm|uebernehm|einreich|einreichen|teil|anteil|zahlt die|bezahlt die|ersetz|ersetzt|bekomme ich.*geld|geld.*bekommen|geri al|geri almak|geri alayım|geri alayim|geri ödeme|geri odeme|bir kısm|bir kisim|ödedim.*geri|odedim.*geri|reimburse|refund|claim|ramburs|decont|înapoi|inapoi|възстанов|възстановяване)/i.test(q);
 
   // Auch ohne explizite Krankenkasse kann eine Erstattungsfrage gemeint sein,
   // wenn der Nutzer klar nach Geld zurück / Erstattung / Kostenübernahme fragt.
-  const strongReimbursementCue = /(erstattung|erstattet|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|wer zahlt|wer übernimmt|wer uebernimmt|bekomme ich.*zurück|bekomme ich.*zurueck)/i.test(q);
+  const strongReimbursementCue = /(erstattung|erstattet|geld zurück|geld zurueck|zurückbekommen|zurueckbekommen|kostenübernahme|kostenuebernahme|wer zahlt|wer übernimmt|wer uebernimmt|bekomme ich.*zurück|bekomme ich.*zurueck|geri al|geri alayım|geri alayim|geri ödeme|geri odeme|bir kısmını geri|bir kismini geri|refund|reimbursement|ramburs|decont)/i.test(q);
 
   return (payerCue && reimbursementCue) || strongReimbursementCue;
 }
@@ -1794,10 +1836,15 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
 
   // Write Mode: nur bei ausdrücklichem Wunsch.
-  if (wantsBoth) return buildEmailAndPdfOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
-  if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
-  if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, inferIntentFromHistory(historyText || context));
-  if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(inferIntentFromHistory(historyText || context));
+  // V14.3: Wenn die aktuelle Frage eine Erstattung/Kostenübernahme verlangt,
+  // bleibt dieses Ziel auch im PDF-/E-Mail-Modus erhalten.
+  const rememberedWriteIntent = inferIntentFromHistory(historyText || context);
+  const effectiveWriteIntent = intent === "erstattung_kostenuebernahme" ? "reimbursement" : rememberedWriteIntent;
+
+  if (wantsBoth) return buildEmailAndPdfOutput(meta, context, domain, effectiveWriteIntent);
+  if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, effectiveWriteIntent);
+  if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, effectiveWriteIntent);
+  if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(effectiveWriteIntent);
 
   // V14: Normale Beratungsfragen NICHT mehr hart per Stichwort-Router beantworten.
   // Der alte Router hat bei komplexen Sätzen zu oft nur Einzelwörter erkannt
