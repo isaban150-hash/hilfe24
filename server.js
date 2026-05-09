@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v14-multilingual-logic" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v14.2-email-tools" });
 });
 
 function getTodayGerman() {
@@ -63,15 +63,20 @@ Diese Werte niemals übersetzen, verändern, umformatieren oder frei ergänzen:
 }
 
 function buildMultilingualRules(langMeta = getLanguageMeta("de")) {
-  return `MEHRSPRACHIGKEIT V14:
-Es gibt immer drei Sprachebenen:
+  return `MEHRSPRACHIGKEIT V14.1:
+Es gibt immer vier Sprachebenen:
 1. Originalsprache des Briefes.
 2. Nutzersprache für Erklärung, Chat, Hinweise und Audio: ${langMeta.label}.
-3. Amtssprache für offizielle Antworttexte an deutsche Stellen: Deutsch.
+3. Empfänger-/Amtssprache für offizielle Antworttexte.
+4. Geschützte Originaldaten, die nie übersetzt oder verändert werden.
 
 Regeln:
 - Erklärungen, Chat-Antworten, Sicherheitswarnungen, nächste Schritte und Audio-Texte immer in ${langMeta.label} schreiben.
-- Offizielle E-Mails und PDF-Briefe an deutsche Behörden, Gerichte, Jobcenter, Krankenkassen, Versicherungen, Inkasso oder andere deutsche Stellen immer direkt auf Deutsch schreiben.
+- Offizielle E-Mails, Briefe und PDF-Briefe NICHT automatisch in die Nutzersprache übersetzen.
+- Offizielle Schreiben müssen in der Sprache der empfangenden Stelle erstellt werden.
+- Bei deutschen Behörden, Gerichten, Jobcentern, Krankenkassen, Versicherungen, Inkasso, Banken oder deutschen Firmen: offizielle E-Mail/PDF immer direkt auf Deutsch.
+- Bei ausländischen Stellen: offizielle E-Mail/PDF grundsätzlich in der Sprache des Originalbriefes oder der empfangenden Stelle schreiben. Wenn unklar, kurz nachfragen.
+- Wenn der Nutzer ausdrücklich sagt "Deutsch", "Almanca", "German" oder "auf Deutsch", muss der Entwurf sofort Deutsch sein.
 - Nie eine offizielle deutsche E-Mail aus einer bereits übersetzten Erklärung zurückübersetzen.
 - Nutze für offizielle Entwürfe immer die Originaldaten aus dem aktuellen Fall.
 - Deutsche Fachbegriffe beim ersten Auftreten nicht nur übersetzen, sondern kurz erklären, z. B. Widerspruch, Widerruf, Kündigung, Mahnung, Vollstreckung, Beratungshilfe, Prozesskostenhilfe, Pflichtverteidiger, Bürgergeld, Bedarfsgemeinschaft, Ratenzahlung, Stundung.
@@ -80,16 +85,37 @@ Regeln:
 ${getProtectedFieldsRuleText()}`;
 }
 
-function isOfficialGermanDraftText(text = "") {
+function containsOfficialDraftMarker(text = "") {
   const t = String(text || "");
-  return /Sehr geehrte Damen und Herren/.test(t) || /E-MAIL:/.test(t) || /PDF-BRIEF:/.test(t) || /Betreff:/.test(t);
+  return /(^|\n)\s*(E-?MAIL|EMAIL|PDF-BRIEF|PDF BRIEF)\s*:/i.test(t);
+}
+
+function isOfficialDraftText(text = "") {
+  const t = String(text || "");
+  return containsOfficialDraftMarker(t) || /Sehr geehrte Damen und Herren/i.test(t) || /(^|\n)\s*Betreff\s*:/i.test(t) || /Mit freundlichen Grüßen/i.test(t);
+}
+
+function wantsExplicitGermanDraft(text = "") {
+  const q = String(text || "").toLowerCase();
+  return /\b(deutsch|german|auf deutsch|almanca|alman\s*dili|almanca hazırla|almanca hazirla)\b/i.test(q);
+}
+
+function wantsOfficialLetterLikeText(text = "") {
+  const q = String(text || "").toLowerCase();
+  return hasAny(q, [
+    "pdf", "pdf-brief", "brief", "e-mail", "email", "mail", "schreiben", "antwort", "formuliere", "vorlage", "fertig",
+    "mektup", "mektupla", "dilekçe", "dilekce", "hazırla", "hazirla", "yaz", "cevap", "eposta", "e-posta",
+    "писмо", "имейл", "отговор", "напиши", "подготви",
+    "scrisoare", "răspuns", "raspuns", "email", "pregătește", "pregateste", "scrie",
+    "letter", "write", "prepare", "draft", "reply"
+  ]);
 }
 
 async function localizeUserFacingAnswerIfNeeded(text, lang) {
   const clean = cleanText(text);
   const langMeta = getLanguageMeta(lang);
   if (!clean || langMeta.code === "de") return clean;
-  if (isOfficialGermanDraftText(clean)) return clean;
+  if (isOfficialDraftText(clean)) return clean;
   return translateHelpTextIfNeeded(clean, langMeta.code);
 }
 
@@ -382,12 +408,16 @@ function getRecipientPostalAddress(meta = {}, context = "") {
 
 function wantsPdfOutput(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
-  return hasAny(q, ["pdf", "pdf-brief", "brief als pdf", "als pdf", "download", "herunterladen", "ausdrucken"]);
+  return hasAny(q, [
+    "pdf", "pdf-brief", "brief als pdf", "als pdf", "download", "herunterladen", "ausdrucken",
+    "mektup", "mektupla", "dilekçe", "dilekce", "yazdır", "yazdir", "posta ile",
+    "писмо", "scrisoare", "letter"
+  ]);
 }
 
 function wantsEmailOutput(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
-  return hasAny(q, ["e-mail", "email", "mail", "per mail"]);
+  return hasAny(q, ["e-mail", "email", "mail", "per mail", "e-posta", "eposta", "имейл"]);
 }
 
 function wantsBothEmailAndPdf(frage = "", frageMode = "") {
@@ -398,7 +428,7 @@ function wantsBothEmailAndPdf(frage = "", frageMode = "") {
 function normalizeChoiceAnswer(frage = "") {
   const q = normalizeString(frage).toLowerCase();
   if (/^(1|eins|ein|erste|e-mail|email|mail|als e-mail|als email)$/.test(q)) return "email";
-  if (/^(2|zwei|zweite|pdf|pdf brief|pdf-brief|als pdf|brief|pdf-brief zum herunterladen)$/.test(q)) return "pdf";
+  if (/^(2|zwei|zweite|pdf|pdf brief|pdf-brief|als pdf|brief|mektup|dilekçe|dilekce|pdf-brief zum herunterladen)$/.test(q)) return "pdf";
   if (/^(3|drei|dritte|beides|beide|email und pdf|e-mail und pdf|mail und pdf)$/.test(q)) return "both";
   return "";
 }
@@ -715,13 +745,23 @@ function detectDomain(context = "") {
 
 function wantsWrittenOutput(frage = "", frageMode = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
-  return hasAny(q, ["schreib", "schreibe", "antwort", "professionelle antwort", "e-mail", "email", "mail", "brief", "vorlage", "fertig", "formuliere", "pdf", "text", "mach mir"]);
+  return wantsOfficialLetterLikeText(q);
 }
 
 function detectIntent(frage = "", frageMode = "", historyText = "") {
   const q = String(`${frage} ${frageMode}`).toLowerCase();
 
   if (/^(ok|okay|danke|alles klar|verstanden|passt|ja)$/i.test(normalizeString(frage))) return "smalltalk";
+
+  if (wantsExplicitGermanDraft(q) && wantsOfficialLetterLikeText(q)) {
+    if (wantsPdfOutput(frage, frageMode)) return "pdf";
+    return "reply";
+  }
+
+  if (hasAny(q, ["dilekçe", "dilekce", "mektup", "mektupla", "hazırla", "hazirla", "cevap yaz", "almanca hazırla", "almanca hazirla"])) {
+    if (wantsPdfOutput(frage, frageMode)) return "pdf";
+    return "reply";
+  }
 
   // Spezifische Nutzerlage zuerst erkennen. Danach entscheidet buildForcedChatAnswer,
   // ob kurze Hilfe oder fertige E-Mail/PDF gebraucht wird.
@@ -1305,7 +1345,7 @@ Du bist kein normaler Chatbot und kein reiner Brief-Zusammenfasser.
 Du bist ein Fall-Assistent für Menschen, die schwierige Briefe, Rechnungen, Mahnungen, Bescheide, Verträge und Behördenpost verstehen müssen.
 
 Sprache für Erklärung und Beratung: ${effectiveLang.label || langLabel}.
-Bei offiziellen Antworttexten an deutsche Stellen: Deutsch verwenden.
+Bei offiziellen Antworttexten: Sprache der empfangenden Stelle verwenden. Bei deutschen Stellen immer Deutsch verwenden.
 
 ${buildMultilingualRules(effectiveLang)}
 
@@ -1331,7 +1371,7 @@ Antwortlogik:
 - Kann nicht zahlen/Ratenzahlung: Forderung zuerst prüfen; wenn plausibel, Ratenzahlung/Stundung als Möglichkeit nennen; keine Schuld blind anerkennen.
 - Was wurde gemacht/Wofür Rechnung: nur sichtbare Details nennen. Wenn keine Leistungsdetails sichtbar sind, detaillierte Rechnung/Leistungsaufstellung/Positionen/GOZ-/BEMA-Nummern anfordern.
 - Jobcenter/Bürgergeld/Sozialleistung: mögliche Befreiung, Ermäßigung, Kostenübernahme oder Nachweisprüfung nennen, aber nichts garantieren.
-- Schreibwunsch: Ausgabeform klären, wenn nicht genannt: E-Mail, PDF-Brief oder beides.
+- Schreibwunsch: Ausgabeform klären, wenn nicht genannt: E-Mail, PDF-Brief oder beides. Offizielle Entwürfe immer in Empfänger-/Amtssprache schreiben, nicht in Nutzersprache.
 `;
 }
 
