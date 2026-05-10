@@ -27,7 +27,7 @@ app.use(express.json({ limit: "70mb" }));
 app.use((err, req, res, next) => {
   if (!err) return next();
   if (req && req.path === "/api/brief-bild" && (err.type === "request.aborted" || /aborted/i.test(String(err.message || "")))) {
-    console.error("Fehler /api/brief-bild:", err);
+    console.error("Upload abgebrochen /api/brief-bild", err);
     return res.status(408).json({ ok: false, error: "Upload wurde abgebrochen. Bitte versuche es erneut." });
   }
   return next(err);
@@ -2903,9 +2903,9 @@ app.post("/api/brief-bild", async (req, res) => {
       }
       const normalizedImageData = String(bild.imageData).replace(/^data:[^;]+;base64,/, "");
       if (!normalizedImageData || normalizedImageData.length > MAX_IMAGE_BASE64_LEN) {
-        return res.status(400).json({
+        return res.status(413).json({
           ok: false,
-          error: "Das Foto ist zu groß. Bitte mache ein neues, schärferes Foto oder lade weniger Bilder hoch."
+          error: "Das Foto ist zu groß. Bitte lade ein kleineres oder klareres Foto hoch."
         });
       }
     }
