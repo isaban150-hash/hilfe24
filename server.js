@@ -1673,7 +1673,7 @@ function buildAssistantAnalysisDebugLine(analysis = {}) {
   return ""; // bewusst leer: Analyse bleibt intern, keine UI-Verwirrung.
 }
 
-function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+function buildForcedChatAnswer_LEGACY_1({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
   const analysis = buildHilfe24AnalysisV15({ frage, frageMode, meta, briefText, kurz, details, historyText });
@@ -2724,7 +2724,7 @@ function buildAssistantAnalysisDebugLine(analysis = {}) {
   return ""; // bewusst leer: Analyse bleibt intern, keine UI-Verwirrung.
 }
 
-function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+function buildForcedChatAnswer_LEGACY_2({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const domain = detectDomain(context);
   const outputChoice = isAnsweringOutputChoice(frage, historyText);
@@ -3250,7 +3250,7 @@ function buildContractEmailOutputV1502(meta = {}, context = "") {
   return buildProfessionalOutput(meta, context, "vertrag_versicherung", "cancel");
 }
 
-function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+function buildForcedChatAnswer_LEGACY_3({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const context = buildContext(meta, briefText, kurz, details, frage, historyText);
   const analysis = buildHilfe24AnalysisV15({ frage, frageMode, meta, briefText, kurz, details, historyText });
   const outputChoice = isAnsweringOutputChoice(frage, historyText);
@@ -3441,7 +3441,7 @@ Betreff: ${subject}
 ${body}`);
 }
 
-function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+function buildForcedChatAnswer_LEGACY_4({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const currentContext = currentCaseContextV1503(meta, briefText, kurz, details, frage);
   const fullContext = buildContext(meta, briefText, kurz, details, frage, historyText);
   const analysis = buildHilfe24AnalysisV15({ frage, frageMode, meta, briefText, kurz, details, historyText: "" });
@@ -4285,7 +4285,7 @@ ${next}
 Wenn du möchtest, schreibe ich dir daraus eine E-Mail oder einen PDF-Brief.`);
 }
 
-function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+function buildForcedChatAnswer_LEGACY_5({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const route = buildRouteV151({ frage, frageMode, meta, briefText, kurz, details, historyText });
   const context = contextCurrentOnlyV151(meta, briefText, kurz, details);
 
@@ -4323,6 +4323,233 @@ Ich erstelle den offiziellen Text in der Sprache der empfangenden Stelle.`);
   // Short assistant answer for common goal questions; otherwise allow Gemini fallback.
   if (["reimbursement", "payment_plan", "contract_cancel", "legal_aid", "benefit_check"].includes(route.currentUserGoal)) {
     return buildShortAnswerV151(route, meta, context, frage);
+  }
+
+  return "";
+}
+
+
+// ===============================
+// V15.2 CLEANUP FINAL ROUTER
+// Purpose:
+// - One active chat router only: this final function overrides all legacy routers above.
+// - Current user question beats old chat history and old case context.
+// - Strong reimbursement / insurance / legal-aid signals are resolved before mixed context.
+// - Official drafts are built only from pure templates.
+// ===============================
+function normCleanV152(text = "") {
+  return normV151 ? normV151(text) : String(text || "").toLowerCase();
+}
+
+function strongReimbursementQuestionV152(frage = "") {
+  const q = normCleanV152(frage);
+  return /(sigortadan|sigortaya|geri al|geri odeme|geri ödeme|bir kismini|bir kısmını|bunu odedim|bunu ödedim|odedim.*sigorta|ödedim.*sigorta|doctor|doktor|arzt|rechnung|fatura|kostenubernahme|kostenübernahme|erstattung|erstattet|zuruckbekommen|zurückbekommen|refund|reimbursement)/i.test(q)
+    && /(sigorta|versicherung|krankenkasse|kasse|doctor|doktor|arzt|rechnung|fatura|kosten|geri|erstattung|refund)/i.test(q);
+}
+
+function strongLegalAidQuestionV152(frage = "") {
+  const q = normCleanV152(frage);
+  return /(avukat|anwalt|rechtsanwalt|beratungshilfe|pflichtverteidiger|rechtsantragstelle|para odemeden|para ödemeden|hukuki yardim|hukuki yardım)/i.test(q);
+}
+
+function strongContractQuestionV152(frage = "") {
+  const q = normCleanV152(frage);
+  return /(kredi|kredit|finanzschutzbrief|finanz-schutzbrief|versicherungsschein|sigorta.*kredi|kredi.*sigorta|vertrag|sozlesme|sözleşme|widerruf|kundigung|kündigung|iptal|fesih|abbuchung stoppen|lastschrift)/i.test(q)
+    && /(sigorta|versicherung|vertrag|kredi|kredit|schutzbrief|widerruf|kündig|kundig|iptal|fesih)/i.test(q);
+}
+
+function strongPaymentPlanQuestionV152(frage = "") {
+  const q = normCleanV152(frage);
+  return /(taksit|taksitli|rate|ratenzahlung|stundung|zahlungsaufschub|kann nicht zahlen|nicht bezahlen|ödeyemem|odeyemem)/i.test(q);
+}
+
+function strongPaidProofQuestionV152(frage = "") {
+  const q = normCleanV152(frage);
+  return /(schon bezahlt|bereits bezahlt|habe bezahlt|bunu odedim|bunu ödedim|odedim|ödedim|zahlungsnachweis|dekont|überwiesen|ueberwiesen)/i.test(q) && !strongReimbursementQuestionV152(frage);
+}
+
+function makeRouteV152({ frage = "", frageMode = "", meta = {}, briefText = "", kurz = "", details = "", historyText = "" }) {
+  const currentContext = contextCurrentOnlyV151(meta, briefText, kurz, details);
+  let route = buildRouteV151({ frage, frageMode, meta, briefText, kurz, details, historyText: "" });
+  const fmt = requestedFormatV151(frage, frageMode);
+  const writeReq = isWriteRequestV151(frage, frageMode) || fmt !== "none";
+
+  // Current user intent wins. This is the main cleanup fix.
+  if (strongReimbursementQuestionV152(frage)) {
+    route.caseType = /krankenkasse|kasse|versicherung|sigorta/i.test(normCleanV152(frage)) ? "invoice_medical" : (route.caseType === "health_insurance" ? "health_insurance" : "invoice_medical");
+    route.currentUserGoal = "reimbursement";
+    route.currentUserIntent = writeReq ? "write" : "answer";
+    route.isWriteRequest = writeReq;
+    route.requestedFormat = fmt;
+    route.wantsGuidance = isGuideRequestV151(frage);
+    route.wantsChecklist = route.wantsGuidance;
+    route.wantsStepByStep = route.wantsGuidance;
+    route.targetParty = "Krankenkasse / Versicherung / Kostenträger";
+    route.selectedTemplate = "reimbursement";
+    route.allowedTemplates = ["reimbursement", "document_request", "general_answer"];
+    route.forbiddenTemplates = ["legal_aid", "public_defender", "court_clarification", "contract_cancel"];
+    route.templateBlocked = false;
+    route.riskLevel = "medium";
+    route.requiredDocuments = ["Rechnung", "Zahlungsnachweis", "Leistungsaufstellung", "Versicherungs-/Krankenkassendaten"];
+    route.possibleRights = ["Kostenübernahme oder Erstattung prüfen lassen", "fehlende Unterlagen schriftlich anfordern"];
+    return route;
+  }
+
+  if (strongLegalAidQuestionV152(frage)) {
+    route.caseType = "legal_aid";
+    route.currentUserGoal = "legal_aid";
+    route.currentUserIntent = writeReq ? "write" : "guide";
+    route.isWriteRequest = writeReq;
+    route.requestedFormat = fmt;
+    route.wantsGuidance = !writeReq || isGuideRequestV151(frage);
+    route.wantsChecklist = route.wantsGuidance;
+    route.wantsStepByStep = route.wantsGuidance;
+    route.targetParty = "Amtsgericht / Rechtsantragstelle / Strafverteidiger";
+    route.selectedTemplate = "legal_aid";
+    route.allowedTemplates = ["legal_aid", "public_defender", "court_clarification", "appointment_notice"];
+    route.forbiddenTemplates = ["reimbursement", "medical_detail", "payment_plan", "contract_cancel"];
+    route.templateBlocked = false;
+    route.riskLevel = "high";
+    route.requiredDocuments = ["Gerichtsschreiben", "Aktenzeichen", "aktueller Bürgergeld-/Jobcenter-Bescheid", "Ausweis", "Einkommens-/Ausgabennachweise falls vorhanden"];
+    route.possibleRights = ["Beratungshilfe prüfen", "Pflichtverteidiger prüfen", "Termin/Frist beachten"];
+    return route;
+  }
+
+  if (strongContractQuestionV152(frage)) {
+    route.caseType = "contract_insurance";
+    route.currentUserGoal = "contract_cancel";
+    route.currentUserIntent = writeReq ? "write" : "answer";
+    route.isWriteRequest = writeReq;
+    route.requestedFormat = fmt;
+    route.wantsGuidance = isGuideRequestV151(frage);
+    route.wantsChecklist = route.wantsGuidance;
+    route.wantsStepByStep = route.wantsGuidance;
+    route.targetParty = getSender(meta) || "Versicherung / Vertragspartner";
+    route.selectedTemplate = "contract_cancel";
+    route.allowedTemplates = ["contract_cancel", "contract_proof", "stop_debit", "document_request"];
+    route.forbiddenTemplates = ["reimbursement", "legal_aid", "medical_detail", "payment_plan"];
+    route.templateBlocked = false;
+    route.riskLevel = "medium";
+    route.requiredDocuments = ["Versicherungsschreiben", "Versicherungsscheinnummer", "Nachweis zur Kreditanfrage", "Kontoauszug/Abbuchung falls vorhanden"];
+    route.possibleRights = ["Widerruf prüfen", "hilfsweise Kündigung", "Vertragsschluss-Nachweis verlangen", "Abbuchung stoppen lassen"];
+    return route;
+  }
+
+  if (strongPaymentPlanQuestionV152(frage)) {
+    route.currentUserGoal = "payment_plan";
+    route.targetParty = getSender(meta) || "Gläubiger / Rechnungssteller";
+    route.selectedTemplate = "payment_plan";
+    route.allowedTemplates = ["payment_plan", "document_request", "claim_dispute", "general_answer"];
+    route.forbiddenTemplates = ["legal_aid", "contract_cancel", "reimbursement"];
+    route.templateBlocked = false;
+    return route;
+  }
+
+  if (strongPaidProofQuestionV152(frage)) {
+    route.currentUserGoal = "paid_proof";
+    route.targetParty = getSender(meta) || "Gläubiger / Rechnungssteller";
+    route.selectedTemplate = "paid_proof";
+    route.allowedTemplates = ["paid_proof", "document_request", "general_answer"];
+    route.forbiddenTemplates = ["legal_aid", "contract_cancel"];
+    route.templateBlocked = false;
+    return route;
+  }
+
+  return route;
+}
+
+function buildShortGuideCleanV152(route = {}, meta = {}, context = "") {
+  const lang = route.userLanguage || "de";
+  const docs = (route.requiredDocuments || []).slice(0, 6);
+  const rights = (route.possibleRights || []).slice(0, 4);
+  if (lang === "tr") {
+    const title = route.currentUserGoal === "reimbursement" ? "Kontrol listesi: Sigorta / geri ödeme" : route.currentUserGoal === "legal_aid" ? "Kontrol listesi: Avukat / danışmanlık yardımı" : "Kontrol listesi: Sonraki adımlar";
+    const warning = route.riskLevel === "high" ? "Önemli: Mahkeme veya ceza konusu varsa süre/termin kaçırılmamalı." : "Önemli: Kararı yetkili kurum verir. Garanti yok.";
+    const next = route.currentUserGoal === "reimbursement" ? "Sonraki adım: Fatura ve ödeme dekontunu Krankenkasse / Versicherung’a gönder." : `Sonraki adım: ${route.targetParty || "yetkili kurum"} ile yazılı iletişime geç.`;
+    return cleanText(`${title}
+
+Kısaca:
+Bu mümkün olabilir, ama kesin değildir.
+
+Gerekenler:
+${docs.map(x => `☐ ${x}`).join("\n")}
+
+Kontrol et:
+${rights.map(x => `☐ ${x}`).join("\n")}
+
+Uyarı:
+${warning}
+
+${next}
+
+İstersen sana bunun için Almanca e-posta veya PDF mektup hazırlayayım.`);
+  }
+  return buildShortGuideV151(route, meta, context);
+}
+
+function buildShortAnswerCleanV152(route = {}, meta = {}, context = "", frage = "") {
+  const lang = route.userLanguage || detectUserLanguageFromQuestion(frage, "de");
+  if (route.currentUserGoal === "reimbursement" && lang === "tr") {
+    return cleanText(`Evet, bunu Krankenkasse veya Versicherung'a gönderebilirsiniz. Ama geri ödeme garanti değildir; onlar kontrol eder.
+
+Yapılacaklar:
+☐ Faturayı ekle
+☐ Ödeme dekontunu ekle
+☐ Varsa detaylı Leistungsaufstellung ekle
+☐ Yazılı cevap iste
+
+Sonraki adım: İstersen sana Almanca e-posta veya PDF mektup hazırlayayım.`);
+  }
+  if (route.currentUserGoal === "reimbursement") {
+    return cleanText(`Das kann möglich sein, ist aber nicht sicher. Krankenkasse oder Versicherung müssen es prüfen.
+
+Was du brauchst:
+- Rechnung
+- Zahlungsnachweis
+- falls vorhanden: Leistungsaufstellung
+
+Nächster Schritt: Rechnung und Zahlungsnachweis bei Krankenkasse/Versicherung einreichen.
+
+Wenn du möchtest, schreibe ich dir daraus eine E-Mail oder einen PDF-Brief.`);
+  }
+  return buildShortAnswerV151(route, meta, context, frage);
+}
+
+function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+  const currentContext = contextCurrentOnlyV151(meta, briefText, kurz, details);
+  const route = makeRouteV152({ frage, frageMode, meta, briefText, kurz, details, historyText });
+
+  if (route.templateBlocked) {
+    return cleanText(`Das wäre wahrscheinlich die falsche Vorlage.
+
+Schreib kurz, an wen es gehen soll:
+- an die Stelle aus dem Brief
+- an Krankenkasse / Versicherung
+- an Amtsgericht / Rechtsantragstelle
+- an Jobcenter / Sozialamt
+
+Dann erstelle ich den richtigen Text.`);
+  }
+
+  const explicitDraftNow = route.isWriteRequest && route.requestedFormat !== "none";
+  if (route.wantsGuidance && !explicitDraftNow) {
+    return buildShortGuideCleanV152(route, meta, currentContext);
+  }
+
+  if (route.isWriteRequest && route.requestedFormat === "none" && !/(brief|mektup|dilekce|dilekçe|schreiben|vorlage|yaz|hazirla|hazırla)/i.test(normCleanV152(frage))) {
+    return cleanText(`Möchtest du eine E-Mail, einen PDF-Brief oder beides?
+
+Der offizielle Text wird in der Sprache der empfangenden Stelle erstellt.`);
+  }
+
+  if (route.isWriteRequest || route.requestedFormat !== "none") {
+    const fmt = route.requestedFormat === "none" ? "pdf" : route.requestedFormat;
+    const draft = makeOfficialDraftV151(route, meta, currentContext, fmt);
+    return wrapAsEmailOrPdfV151(draft, route, fmt);
+  }
+
+  if (["reimbursement", "payment_plan", "contract_cancel", "legal_aid", "benefit_check", "paid_proof"].includes(route.currentUserGoal)) {
+    return buildShortAnswerCleanV152(route, meta, currentContext, frage);
   }
 
   return "";
