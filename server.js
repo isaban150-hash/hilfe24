@@ -3095,7 +3095,19 @@ app.post("/api/frage", async (req, res) => {
 
     const pendingNameRequested = v17Has(
       `${lastAssistantAnswer}\n${chatHistoryText}`,
-      [/ich brauche nur noch den namen fur die unterschrift/, /name fur die unterschrift/, /unterschrift/]
+      [
+        /ich brauche nur noch den namen fur die unterschrift/,
+        /name fur die unterschrift/,
+        /unterschrift/,
+        /imza icin sadece ismi yazman gerekiyor/,
+        /imza icin ismi yaz/,
+        /sadece ismi yaz/,
+        /isim yazman gerekiyor/,
+        /imza icin ad soyad/,
+        /\bad soyad\b/,
+        /bitte schreibe den namen/,
+        /bitte namen angeben/
+      ]
     );
     const isLikelyOnlyName = (() => {
       const trimmed = cleanText(frage);
@@ -3104,7 +3116,7 @@ app.post("/api/frage", async (req, res) => {
       if (words.length < 1 || words.length > 5) return false;
       if (!/[A-Za-zÄÖÜäöüßÇĞİÖŞÜçğıöşü]/.test(trimmed)) return false;
       if (/\?|!|,|;|:/.test(trimmed)) return false;
-      if (v17Has(trimmed, [/was|wie|warum|wieso|wo|wer|wann|kannst|bitte|ne|neden|niye|nasil|nasıl|kim|nerede|ne zaman/])) return false;
+      if (v17Has(trimmed, [/was|wie|warum|wieso|wo|wer|wann|kannst|bitte|ne|neden|niye|nasil|nasıl|kim|nerede|ne zaman|e-?posta|email|mail|taksit|odeme|ödeme|belge/])) return false;
       return !/\d/.test(trimmed) && trimmed.length <= 60;
     })();
     const saysNameInLetter = v17Has(currentQuestion, [/isim mektupta yaziyor/, /isim mektupta yazıyor/, /name steht im brief/, /steht im brief/]);
@@ -3116,6 +3128,7 @@ app.post("/api/frage", async (req, res) => {
       ((briefText.match(/\b([A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+)\b/) || [])[1] || "")
     );
     const pendingName = pendingNameRequested && isLikelyOnlyName ? cleanText(frage) : "";
+    const pendingDraftContext = `${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`;
 
     const correctionDetected = v17Has(currentQuestion, [
       /nein falsch/,
@@ -3127,8 +3140,8 @@ app.post("/api/frage", async (req, res) => {
       /das ist falsch/
     ]);
 
-    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]) || (pendingNameRequested && v17Has(`${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}`, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
-    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]) || (pendingNameRequested && v17Has(`${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}`, [/pdf-brief/, /\bpdf\b/]));
+    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]) || (pendingNameRequested && v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
+    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]) || (pendingNameRequested && v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]));
     const wantsChecklist = v17Has(currentQuestion, [/unterlagen/, /checkliste/, /welche dokumente/, /welche nachweise/, /hangi belge/]);
     const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/]);
 
@@ -3141,8 +3154,13 @@ app.post("/api/frage", async (req, res) => {
     const contextUnclear = !briefText && !erklaerungKurz && !erklaerungDetails;
     const goalUnclear = currentQuestion.length < 5 || /^(ok|okay|ja|nein|hmm|hallo|hi)$/.test(currentQuestion);
     if (answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarification";
+    const pendingNeedsInstallmentDraft = pendingName && v17Has(
+      pendingDraftContext,
+      [/e-?posta/, /email/, /\bmail\b/, /taksit/, /iki taksit/, /zwei raten/, /ratenzahlung/]
+    );
     if (pendingName) {
       answerType = wantsPdf ? "draft_pdf" : "draft_email";
+      if (!wantsPdf && !wantsEmail && pendingNeedsInstallmentDraft) answerType = "draft_email";
     }
 
     let userGoal = "understand";
@@ -3155,10 +3173,11 @@ app.post("/api/frage", async (req, res) => {
     else if (v17Has(currentQuestion, [/schon bezahlt/, /zahlungsnachweis/, /uberwiesen/, /überwiesen/, /dekont/])) userGoal = "payment_proof";
     else if (v17Has(currentQuestion, [/widerspruch/, /einspruch/, /stimmt nicht/, /bestreiten/, /itiraz/])) userGoal = "dispute_or_objection";
     if (pendingName && userGoal === "understand") {
-      if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
-      else if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
-      else if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_request";
-      else if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
+      if (v17Has(pendingDraftContext, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
+      else if (v17Has(pendingDraftContext, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
+      else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_request";
+      else if (v17Has(pendingDraftContext, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
+      else if (pendingNeedsInstallmentDraft) userGoal = "installment_request";
     }
 
     let caseGroup = "unknown";
@@ -3278,9 +3297,10 @@ app.post("/api/frage", async (req, res) => {
 
     let draftBody = "";
     if (userGoal === "installment_request" || userGoal === "deferral_request") {
+      const fixedRateIntro = "ich beziehe mich auf Ihr Schreiben.";
       const fixedRateText = "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich darum, den Betrag in zwei Raten zahlen zu dürfen.";
       const fixedRateConfirm = "Bitte teilen Sie mir schriftlich mit, ob Sie damit einverstanden sind und zu welchen Terminen ich die Raten überweisen soll.";
-      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateText}\n${fixedRateConfirm}`;
+      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateIntro}\n\n${fixedRateText}\n\n${fixedRateConfirm}`;
     } else if (userGoal === "reimbursement_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung einer Erstattung/Kostenübernahme.\nIch habe die Kosten bereits bezahlt und reiche die Nachweise ein.\nBitte teilen Sie mir schriftlich mit, ob und in welcher Höhe eine Erstattung möglich ist.`;
     } else if (userGoal === "cancellation_request") {
