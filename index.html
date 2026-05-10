@@ -176,6 +176,17 @@
   .chat-bubble { max-width:88%; border-radius:22px; padding:13px 15px; line-height:1.55; white-space:pre-wrap; font-size:16px; box-shadow:0 8px 18px rgba(15,23,42,.06); }
   .chat-bubble.user { align-self:flex-end; background:linear-gradient(135deg,#0f766e,#2563eb); color:#fff; border-bottom-right-radius:8px; }
   .chat-bubble.assistant { align-self:flex-start; background:#ffffff; border:1px solid #dbeafe; color:#0f172a; border-bottom-left-radius:8px; }
+  /* HILFE24 V16 UX: kurze Antworten, Checklisten, gespeicherter Zustand */
+  .h24-chat-text.collapsed { max-height: 280px; overflow: hidden; position: relative; }
+  .h24-chat-text.collapsed:after { content:""; position:absolute; left:0; right:0; bottom:0; height:70px; background:linear-gradient(to bottom, rgba(255,255,255,0), #fff); pointer-events:none; }
+  .h24-expand-btn { margin-top:8px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; border-radius:999px; padding:8px 12px; font-weight:900; cursor:pointer; font-size:13px; }
+  .h24-checklist-box { margin-top:8px; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:18px; padding:12px; }
+  .h24-checklist-box .h24-check-title { font-weight:1000; margin-bottom:8px; color:#166534; }
+  .h24-check-item { display:flex; gap:8px; align-items:flex-start; padding:7px 0; border-bottom:1px solid rgba(22,101,52,.10); }
+  .h24-check-item:last-child { border-bottom:0; }
+  .h24-check-item input { margin-top:4px; transform:scale(1.1); }
+  .h24-state-note { font-size:12px; color:#64748b; margin-top:6px; font-weight:800; }
+
   .chat-meta { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:950; opacity:.78; margin-bottom:5px; letter-spacing:.02em; }
   .chat-meta.user::before { content:"👤"; }
   .chat-meta.assistant::before { content:"💬"; }
@@ -878,7 +889,14 @@
   readDetails: "🔊 Details vorlesen",
   readAnswer: "🔊 Antwort vorlesen",
   stopAudio: "⏹ Stopp",
-  comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark."
+  comingSoon: "Dieser Bereich kommt später. Zuerst machen wir Schreiben verstehen richtig stark.",
+  dataCheck: "🔎 Daten genauer prüfen",
+  chatEmpty: "Noch keine Frage gestellt. Frag zum Beispiel: „Was soll ich jetzt tun?“",
+  showMore: "Mehr anzeigen",
+  showLess: "Weniger anzeigen",
+  savedRestored: "Dein letzter Fall wurde wiederhergestellt.",
+  noPdfText: "Ich finde gerade keinen fertigen PDF-Brieftext.",
+  noMailAddress: "Keine sichere E-Mail-Adresse gefunden. Bitte kopiere den Text und füge ihn selbst ein."
 },
      tr: {
   waiting: "Lütfen bekle... Mektup kontrol ediliyor.",
@@ -905,7 +923,14 @@
   readDetails: "🔊 Detayları oku",
   readAnswer: "🔊 Cevabı oku",
   stopAudio: "⏹ Durdur",
-  comingSoon: "Bu bölüm daha sonra gelecek. Önce mektup anlama kısmını güçlü yapıyoruz."
+  comingSoon: "Bu bölüm daha sonra gelecek. Önce mektup anlama kısmını güçlü yapıyoruz.",
+  dataCheck: "🔎 Bilgileri daha dikkatli kontrol et",
+  chatEmpty: "Henüz soru sorulmadı. Örneğin: ‘Şimdi ne yapmalıyım?’",
+  showMore: "Daha fazla göster",
+  showLess: "Daha az göster",
+  savedRestored: "Son dosyan tekrar açıldı.",
+  noPdfText: "Şu anda hazır bir PDF mektup metni bulamıyorum.",
+  noMailAddress: "Güvenli bir e-posta adresi bulunamadı. Lütfen metni kopyalayıp kendin ekle."
 },
 
 bg: {
@@ -1280,8 +1305,88 @@ let selectedImageFiles = [];
 let chatHistory = [];
 let analysisStatusTimer = null;
 let analysisProgressIndex = 0;
+
 let frageMode = "free";
 window.frageMode = "free";
+const H24_STATE_KEY = "hilfe24_v16_state";
+let h24RestoringState = false;
+
+function h24GetVisible(el) { return !!(el && !el.classList.contains("hidden")); }
+
+function h24SaveState() {
+  if (h24RestoringState) return;
+  try {
+    const state = {
+      version: "v16.0-index-ux",
+      savedAt: Date.now(),
+      lang: getSelectedLang ? getSelectedLang() : currentLang,
+      homeLang: homeLangEl ? homeLangEl.value : currentLang,
+      screen: briefInputCardEl && !briefInputCardEl.classList.contains("hidden") ? "brief" : "home",
+      briefText: briefTextEl ? briefTextEl.value : "",
+      currentKurzText,
+      currentDetailText,
+      currentBriefText,
+      currentMeta,
+      chatHistory: Array.isArray(chatHistory) ? chatHistory.slice(-20) : [],
+      resultVisible: h24GetVisible(resultCardEl),
+      helperHtml: helperContentEl ? helperContentEl.innerHTML : "",
+      helperVisible: h24GetVisible(helperCardEl),
+      detailToggleVisible: h24GetVisible(detailToggleCardEl),
+      detailVisible: h24GetVisible(detailCardEl),
+      frageVisible: h24GetVisible(frageCardEl)
+    };
+    sessionStorage.setItem(H24_STATE_KEY, JSON.stringify(state));
+  } catch (e) {}
+}
+
+function h24ClearSavedState() {
+  try { sessionStorage.removeItem(H24_STATE_KEY); } catch (e) {}
+}
+
+function h24RestoreState() {
+  try {
+    const raw = sessionStorage.getItem(H24_STATE_KEY);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    if (!state || !state.version) return false;
+    const age = Date.now() - Number(state.savedAt || 0);
+    if (age > 1000 * 60 * 60 * 12) return false;
+    h24RestoringState = true;
+    if (homeLangEl && state.homeLang) homeLangEl.value = state.homeLang;
+    if (langEl && state.lang) langEl.value = state.lang;
+    currentLang = state.lang || currentLang || "de";
+    updateHomeLanguage();
+    updateBriefLanguage();
+    if (state.screen === "brief") { hide(homeCardEl); show(briefInputCardEl); } else { show(homeCardEl); hide(briefInputCardEl); }
+    if (briefTextEl && state.briefText) briefTextEl.value = state.briefText;
+    currentKurzText = state.currentKurzText || "";
+    currentDetailText = state.currentDetailText || "";
+    currentBriefText = state.currentBriefText || state.briefText || "";
+    currentMeta = state.currentMeta || {};
+    if (kurzTextEl) kurzTextEl.textContent = currentKurzText;
+    if (detailTextEl) detailTextEl.textContent = currentDetailText;
+    if (currentKurzText) show(resultCardEl);
+    if (currentDetailText) show(detailToggleCardEl);
+    if (state.detailVisible) show(detailCardEl); else hide(detailCardEl);
+    if (helperContentEl && state.helperHtml) helperContentEl.innerHTML = state.helperHtml;
+    if (state.helperVisible && helperCardEl) show(helperCardEl);
+    if (state.frageVisible || currentKurzText || currentDetailText) show(frageCardEl);
+    if (chatMessagesEl) chatMessagesEl.innerHTML = "";
+    chatHistory = [];
+    const hist = Array.isArray(state.chatHistory) ? state.chatHistory : [];
+    hist.forEach(m => appendChatMessage(m.role === "user" ? "user" : "assistant", m.text || "", { skipHistory: true, noSuggestions: true }));
+    chatHistory = hist.slice(-20);
+    if (hist.length && chatEmptyHintEl) hide(chatEmptyHintEl);
+    if (currentKurzText && okBoxEl) { okBoxEl.textContent = getUiText().savedRestored || "Dein letzter Fall wurde wiederhergestellt."; show(okBoxEl); }
+    return true;
+  } catch (e) {
+    console.warn("Hilfe24 Zustand konnte nicht wiederhergestellt werden", e);
+    return false;
+  } finally {
+    h24RestoringState = false;
+  }
+}
+
   
   
     function getUiText() {
@@ -1441,11 +1546,20 @@ window.frageMode = "free";
       if (answerTitleEl) answerTitleEl.textContent = u.answerTitle || "Antwort";
       if (readShortBtnEl) readShortBtnEl.textContent = u.readShort || "🔊 Kurz vorlesen";
       if (readAllBtnEl) readAllBtnEl.textContent = u.readDetails || "🔊 Details vorlesen";
-      if (stopBtnEl) stopBtnEl.textContent = "⏹ Stopp";
-if (stopDetailsBtnEl) stopDetailsBtnEl.textContent = "⏹ Stopp";
-if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
+      if (stopBtnEl) stopBtnEl.textContent = u.stopAudio || "⏹ Stopp";
+if (stopDetailsBtnEl) stopDetailsBtnEl.textContent = u.stopAudio || "⏹ Stopp";
+if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹ Stopp";
+      if (uploadChooseBtnEl) uploadChooseBtnEl.textContent = t.uploadChoose || "📎 Datei hochladen";
+      if (uploadClearBtnEl) uploadClearBtnEl.textContent = t.uploadClear || "Auswahl löschen";
+      if (uploadFileInfoEl && (!selectedImageFiles || selectedImageFiles.length === 0)) uploadFileInfoEl.textContent = t.uploadEmpty || "Noch keine Datei ausgewählt";
+      if (toggleDetailsBtn) toggleDetailsBtn.textContent = u.detailsShow || u.showMore || "📋 Mehr anzeigen";
+      if (dataCheckBtn) dataCheckBtn.textContent = u.dataCheck || "🔎 Daten genauer prüfen";
+      if (chatEmptyHintEl) chatEmptyHintEl.textContent = u.chatEmpty || "Noch keine Frage gestellt.";
+      if (audioDockLabelEl) audioDockLabelEl.textContent = t.audioDock || "Audio";
       currentLang = lang;
+      savePreferredLanguage(lang);
       updateQuestionLanguage();
+      h24SaveState();
     }
 
     function updateQuestionLanguage() {
@@ -1494,6 +1608,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     }
 
     function goBackHome() {
+      h24ClearSavedState();
       if (briefTextEl) briefTextEl.value = "";
       selectedImageFiles = [];
       if (bilderEl) bilderEl.value = "";
@@ -1886,7 +2001,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       const parsed = h24ParseEmailDraft(cleanEmailText);
       const mail = h24ExtractEmailAddress(parsed.recipient);
       if (!mail) {
-        alert("Keine sichere E-Mail-Adresse gefunden. Bitte kopiere den Text und füge ihn selbst ein.");
+        alert(getUiText().noMailAddress || "Keine sichere E-Mail-Adresse gefunden. Bitte kopiere den Text und füge ihn selbst ein.");
         return;
       }
       const subject = encodeURIComponent(parsed.subject || "");
@@ -2053,11 +2168,12 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       const cleanPdfText = h24ExtractPdfTextFromAnswer(pdfText);
 
       if (!cleanPdfText || cleanPdfText.length < 30) {
-        alert("Ich finde gerade keinen fertigen PDF-Brieftext.");
+        alert(getUiText().noPdfText || "Ich finde gerade keinen fertigen PDF-Brieftext.");
         return;
       }
 
       const oldText = button ? button.textContent : "";
+      h24SaveState();
 
       try {
         if (button) {
@@ -2130,6 +2246,36 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     }
 
 
+
+    function h24LooksLikeChecklist(text) {
+      const raw = String(text || "");
+      return /(☐|✅|Checkliste|Kontrol listesi|Gerekli Belgeler|Belgeler|Unterlagen|Adım adım|Schritt für Schritt|Tek tek)/i.test(raw);
+    }
+
+    function h24EnhanceAssistantBubble(bubble, body, text) {
+      const raw = String(text || "");
+      const lang = getSelectedLang ? getSelectedLang() : "de";
+      const u = uiTexts[lang] || uiTexts.de;
+      const lineCount = raw.split("\n").filter(x => x.trim()).length;
+      if (h24LooksLikeChecklist(raw)) {
+        bubble.classList.add("h24-checklist-like");
+      }
+      if (raw.length > 900 || lineCount > 12) {
+        body.classList.add("collapsed");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "h24-expand-btn";
+        btn.textContent = u.showMore || u.detailsShow || "Mehr anzeigen";
+        let open = false;
+        btn.onclick = () => {
+          open = !open;
+          body.classList.toggle("collapsed", !open);
+          btn.textContent = open ? (u.showLess || u.detailsHide || "Weniger anzeigen") : (u.showMore || u.detailsShow || "Mehr anzeigen");
+        };
+        bubble.appendChild(btn);
+      }
+    }
+
     function appendChatMessage(role, text, options = {}) {
       if (!chatMessagesEl) return;
       const clean = String(text || "").trim();
@@ -2141,9 +2287,13 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
       meta.className = "chat-meta " + (role === "user" ? "user" : "assistant");
       meta.textContent = role === "user" ? "Du" : "Hilfe24";
       const body = document.createElement("div");
+      body.className = "h24-chat-text";
       body.textContent = clean;
       bubble.appendChild(meta);
       bubble.appendChild(body);
+      if (role !== "user") {
+        h24EnhanceAssistantBubble(bubble, body, clean);
+      }
       if (role !== "user") {
         h24AddEmailActionButtons(bubble, clean);
         h24AddPdfDownloadButton(bubble, clean);
@@ -2160,6 +2310,8 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
           chatHistory = chatHistory.slice(chatHistory.length - 12);
         }
       }
+
+      h24SaveState();
 
       if (role !== "user" && !options.noSuggestions) {
         renderChatSuggestions();
@@ -2963,6 +3115,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     if (toggleDetailsBtn) toggleDetailsBtn.textContent = getUiText().detailsShow;
 
     setOk(getUiText().okExplained);
+    h24SaveState();
   } catch (err) {
     if (requestId !== activeRequestId) return;
 
@@ -3033,6 +3186,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     appendChatMessage("assistant", reply);
     if (frageAntwortEl) frageAntwortEl.textContent = reply;
     hide(frageAntwortBoxEl);
+    h24SaveState();
     return;
   }
 
@@ -3071,6 +3225,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     appendChatMessage("assistant", answer);
     if (frageAntwortEl) frageAntwortEl.textContent = answer;
     hide(frageAntwortBoxEl);
+    h24SaveState();
   } catch (err) {
     if (questionRequestId !== activeQuestionRequestId || caseIdAtQuestionStart !== currentCaseId) {
       return;
@@ -3079,6 +3234,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     const safeMsg = msg && msg !== "Load failed" ? msg : (getUiText().questionNetworkError || getUiText().questionError);
     if (frageErrorEl) { frageErrorEl.textContent = safeMsg; show(frageErrorEl); }
     appendChatMessage("assistant", safeMsg);
+    h24SaveState();
   } finally {
     if (questionRequestId === activeQuestionRequestId && caseIdAtQuestionStart === currentCaseId) {
       if (frageStatusEl) { frageStatusEl.textContent = ""; hide(frageStatusEl); }
@@ -3293,6 +3449,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     updateBriefLanguage();
     updateQuestionLanguage();
     setupEvents();
+    h24RestoreState();
 
     window.h24UpdateHome = updateHomeLanguage;
     window.h24OpenBrief = openBriefArea;
@@ -3305,6 +3462,10 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = "⏹ Stopp";
     window.stopAudio = stopAudio;
     window.h24FillChatSuggestion = fillChatSuggestion;
     window.h24StartNewCase = h24StartNewCase;
+    window.addEventListener("beforeunload", h24SaveState);
+    if (briefTextEl) briefTextEl.addEventListener("input", h24SaveState);
+    if (frageTextEl) frageTextEl.addEventListener("input", h24SaveState);
+    if (langEl) langEl.addEventListener("change", h24SaveState);
   
 </script>
 </body>
