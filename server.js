@@ -3093,22 +3093,24 @@ app.post("/api/frage", async (req, res) => {
       });
     }
 
-    const pendingNameRequested = v17Has(
-      `${lastAssistantAnswer}\n${chatHistoryText}`,
-      [
-        /ich brauche nur noch den namen fur die unterschrift/,
-        /name fur die unterschrift/,
-        /unterschrift/,
-        /imza icin sadece ismi yazman gerekiyor/,
-        /imza icin ismi yaz/,
-        /sadece ismi yaz/,
-        /isim yazman gerekiyor/,
-        /imza icin ad soyad/,
-        /\bad soyad\b/,
-        /bitte schreibe den namen/,
-        /bitte namen angeben/
-      ]
-    );
+    const pendingDraftContext = `${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`;
+    const detectPendingField = (assistantText = "") => {
+      const t = v17Norm(assistantText || "");
+      if (!t) return "";
+      if (v17Has(t, [/name fur die unterschrift/, /ich brauche nur noch den namen/, /imza icin/, /ad soyad/, /bitte namen angeben/, /bitte schreibe den namen/])) return "name";
+      if (v17Has(t, [/wie hoch.*rate/, /monatlich/, /ratenhohe/, /ratenhöhe/, /taksit tutari/, /taksit miktari/])) return "installment_amount";
+      if (v17Has(t, [/wie viele raten/, /anzahl raten/, /kac taksit/, /kaç taksit/])) return "installment_count";
+      if (v17Has(t, [/e mail adresse/, /email adresse/, /empfanger email/, /empfänger email/, /e posta adresi/])) return "recipient_email";
+      if (v17Has(t, [/an wen soll/, /welche stelle/, /empfanger/, /empfänger/, /zielstelle/, /hedef kurum/])) return "target_party";
+      if (v17Has(t, [/aktenzeichen/, /kassenzeichen/, /rechnungsnummer/, /kundennummer/, /referenznummer/])) return "reference_number";
+      if (v17Has(t, [/welches datum/, /bis wann/, /frist/, /termin/, /son tarih/])) return "date_or_deadline";
+      if (v17Has(t, [/welche unterlagen/, /fehlende unterlagen/, /dokument/, /belge/])) return "missing_document";
+      if (v17Has(t, [/gleicher fall oder neuer fall/, /vorherigen brief oder neuer fall/])) return "clarification_case_relation";
+      if (v17Has(t, [/was ist dein ziel/, /was genau soll ich schreiben/, /hangi amac/])) return "clarification_goal";
+      return "";
+    };
+    const pendingField = detectPendingField(lastAssistantAnswer);
+    const pendingNameRequested = pendingField === "name";
     const isLikelyOnlyName = (() => {
       const trimmed = cleanText(frage);
       if (!trimmed) return false;
@@ -3128,7 +3130,31 @@ app.post("/api/frage", async (req, res) => {
       ((briefText.match(/\b([A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+)\b/) || [])[1] || "")
     );
     const pendingName = pendingNameRequested && isLikelyOnlyName ? cleanText(frage) : "";
-    const pendingDraftContext = `${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`;
+    const emailAnswerMatch = (cleanText(frage).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [])[0] || "";
+    const isLikelyInstallmentAmount = /(\d+[.,]?\d*)\s*(€|eur|euro)|monatlich|pro monat|aylik|aylık/i.test(frage);
+    const installmentCountMatch = (cleanText(frage).match(/\b(\d{1,2})\b/) || [])[1] || "";
+    const isLikelyReference = /[A-Z0-9\-\/.]{4,}/i.test(frage) && !/\s/.test(cleanText(frage));
+    const isLikelyDate = /\b\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b/.test(frage);
+    const pendingFieldValueMap = {
+      name: pendingName,
+      installment_amount: isLikelyInstallmentAmount ? cleanText(frage) : "",
+      installment_count: installmentCountMatch ? installmentCountMatch : "",
+      recipient_email: emailAnswerMatch,
+      target_party: cleanText(frage),
+      reference_number: isLikelyReference ? cleanText(frage) : "",
+      date_or_deadline: isLikelyDate ? cleanText(frage) : "",
+      missing_document: cleanText(frage),
+      clarification_case_relation: v17Has(currentQuestion, [/gleicher fall|selber fall|same case|ayni konu|aynı konu|vorherigen brief/]) ? "same_case" : (v17Has(currentQuestion, [/neuer fall|new case|baska konu|başka konu/]) ? "new_case" : ""),
+      clarification_goal: cleanText(frage)
+    };
+    const pendingFieldValue = pendingField ? (pendingFieldValueMap[pendingField] || "") : "";
+    const hasValidPendingFieldValue = Boolean(pendingField && pendingFieldValue);
+    const previousAnswerType = v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]) ? "draft_pdf" : (v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e-?mail|email|mail|e-?posta/]) ? "draft_email" : "");
+    const previousGoal = v17Has(pendingDraftContext, [/ratenzahlung|iki taksit|zwei raten|taksit|rate|raten/]) ? "installment_request"
+      : v17Has(pendingDraftContext, [/erstattung|kostenubernahme|kostenübernahme|zuruckbekommen|zurückbekommen/]) ? "reimbursement_request"
+      : v17Has(pendingDraftContext, [/kundigung|kündigung|widerruf|iptal|fesih/]) ? "cancellation_request"
+      : v17Has(pendingDraftContext, [/widerspruch|einspruch|itiraz|bestreiten/]) ? "dispute_or_objection"
+      : "";
 
     const correctionDetected = v17Has(currentQuestion, [
       /nein falsch/,
@@ -3140,8 +3166,8 @@ app.post("/api/frage", async (req, res) => {
       /das ist falsch/
     ]);
 
-    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]) || (pendingNameRequested && v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
-    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]) || (pendingNameRequested && v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]));
+    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]) || ((pendingNameRequested || hasValidPendingFieldValue) && v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
+    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]) || ((pendingNameRequested || hasValidPendingFieldValue) && v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]));
     const wantsChecklist = v17Has(currentQuestion, [/unterlagen/, /checkliste/, /welche dokumente/, /welche nachweise/, /hangi belge/]);
     const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/]);
 
@@ -3162,6 +3188,9 @@ app.post("/api/frage", async (req, res) => {
       answerType = wantsPdf ? "draft_pdf" : "draft_email";
       if (!wantsPdf && !wantsEmail && pendingNeedsInstallmentDraft) answerType = "draft_email";
     }
+    if (hasValidPendingFieldValue && previousAnswerType) {
+      answerType = previousAnswerType;
+    }
 
     let userGoal = "understand";
     if (v17Has(currentQuestion, [/ratenzahlung/, /\brate\b/, /\braten\b/, /taksit/, /iki taksit/, /zwei raten/, /in raten/, /monatlich zahlen/])) userGoal = "installment_request";
@@ -3178,6 +3207,9 @@ app.post("/api/frage", async (req, res) => {
       else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_request";
       else if (v17Has(pendingDraftContext, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
       else if (pendingNeedsInstallmentDraft) userGoal = "installment_request";
+    }
+    if (hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
+      userGoal = previousGoal;
     }
 
     let caseGroup = "unknown";
@@ -3228,7 +3260,9 @@ app.post("/api/frage", async (req, res) => {
     );
 
     let targetParty = "";
-    if (answerType === "draft_email" && metaEmail) targetParty = metaEmail;
+    if (pendingField === "recipient_email" && pendingFieldValueMap.recipient_email) targetParty = pendingFieldValueMap.recipient_email;
+    else if (pendingField === "target_party" && pendingFieldValueMap.target_party) targetParty = pendingFieldValueMap.target_party;
+    else if (answerType === "draft_email" && metaEmail) targetParty = metaEmail;
     else if (emailInTextMatch) targetParty = emailInTextMatch;
     else if (userGoal === "installment_request") targetParty = senderCandidate || "Stelle aus dem Brief";
     else if (userGoal === "reimbursement_request") targetParty = "Krankenkasse / Versicherung";
@@ -3269,7 +3303,9 @@ app.post("/api/frage", async (req, res) => {
       meta.nummer
     ].map((x) => cleanText(x || "")).filter(Boolean);
     const refMatch = currentContext.match(/\b(Mahnungsnummer|Aktenzeichen|Kassenzeichen|Rechnungsnummer|Kundennummer)\s*[:\-]?\s*([A-Z0-9\-\/.]{3,})/i);
-    const cleanRef = refCandidates[0] || cleanText(refMatch && refMatch[2] ? refMatch[2] : "");
+    const cleanRef = (pendingField === "reference_number" && pendingFieldValueMap.reference_number)
+      ? pendingFieldValueMap.reference_number
+      : (refCandidates[0] || cleanText(refMatch && refMatch[2] ? refMatch[2] : ""));
     const subjectRef = cleanRef ? ` – ${cleanRef}` : "";
     const salutation = "Sehr geehrte Damen und Herren,";
     const uncertainClaim = userGoal === "dispute_or_objection" || /unsicher|unklar|zweifel|bestreit|widerspruch|einspruch|itiraz/.test(currentQuestion);
@@ -3285,6 +3321,7 @@ app.post("/api/frage", async (req, res) => {
       ""
     );
     if (pendingName) signatureName = pendingName;
+    if (pendingField === "name" && pendingFieldValueMap.name) signatureName = pendingFieldValueMap.name;
     if (!signatureName && saysNameInLetter && briefNameMatch) signatureName = briefNameMatch;
     if (!signatureName && saysNameInLetter) {
       return res.json({
@@ -3300,7 +3337,16 @@ app.post("/api/frage", async (req, res) => {
       const fixedRateIntro = "ich beziehe mich auf Ihr Schreiben.";
       const fixedRateText = "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich darum, den Betrag in zwei Raten zahlen zu dürfen.";
       const fixedRateConfirm = "Bitte teilen Sie mir schriftlich mit, ob Sie damit einverstanden sind und zu welchen Terminen ich die Raten überweisen soll.";
-      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateIntro}\n\n${fixedRateText}\n\n${fixedRateConfirm}`;
+      const pendingInstallmentAmount = pendingField === "installment_amount" && pendingFieldValueMap.installment_amount
+        ? `\n\nAls Orientierung schlage ich vor: ${pendingFieldValueMap.installment_amount}.`
+        : "";
+      const pendingInstallmentCount = pendingField === "installment_count" && pendingFieldValueMap.installment_count
+        ? `\n\nIch bitte um Zahlung in ${pendingFieldValueMap.installment_count} Raten.`
+        : "";
+      const pendingDateInfo = pendingField === "date_or_deadline" && pendingFieldValueMap.date_or_deadline
+        ? `\n\nAls Referenz nenne ich folgendes Datum/Frist: ${pendingFieldValueMap.date_or_deadline}.`
+        : "";
+      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateIntro}\n\n${fixedRateText}\n\n${fixedRateConfirm}${pendingInstallmentAmount}${pendingInstallmentCount}${pendingDateInfo}`;
     } else if (userGoal === "reimbursement_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung einer Erstattung/Kostenübernahme.\nIch habe die Kosten bereits bezahlt und reiche die Nachweise ein.\nBitte teilen Sie mir schriftlich mit, ob und in welcher Höhe eine Erstattung möglich ist.`;
     } else if (userGoal === "cancellation_request") {
@@ -3312,7 +3358,10 @@ app.post("/api/frage", async (req, res) => {
     } else if (userGoal === "payment_proof") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich habe bereits gezahlt und sende den Zahlungsnachweis.\nBitte prüfen Sie die Zuordnung und bestätigen Sie mir den Ausgleich schriftlich.`;
     } else if (userGoal === "dispute_or_objection") {
-      draftBody = `${debtNoAck}${noGuiltCourt}ich widerspreche der Forderung in der vorliegenden Form und bitte um schriftliche Klärung.\nBitte senden Sie mir eine nachvollziehbare Begründung und die zugehörigen Nachweise.`;
+      const pendingDateInfo = pendingField === "date_or_deadline" && pendingFieldValueMap.date_or_deadline
+        ? `\nAls Bezug nenne ich den Termin/die Frist: ${pendingFieldValueMap.date_or_deadline}.`
+        : "";
+      draftBody = `${debtNoAck}${noGuiltCourt}ich widerspreche der Forderung in der vorliegenden Form und bitte um schriftliche Klärung.\nBitte senden Sie mir eine nachvollziehbare Begründung und die zugehörigen Nachweise.${pendingDateInfo}`;
     } else {
       draftBody = "bitte teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.";
     }
