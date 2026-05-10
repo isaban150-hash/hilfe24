@@ -2955,6 +2955,41 @@ app.post("/api/frage", async (req, res) => {
       JSON.stringify(meta || {})
     ].filter(Boolean).join("\n\n")).slice(0, 30000);
     const currentQuestion = v17Norm(frage);
+    const lastAssistantAnswer = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "assistant" && e.text) || {}).text || "");
+    const lastUserQuestion = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "user" && e.text) || {}).text || "");
+    const looksTurkish = /[ığüşöçİĞÜŞÖÇ]/.test(frage) || v17Has(currentQuestion, [/\bve\b/, /\bama\b/, /\bneden\b/, /\bniye\b/, /\bbana\b/, /\bisim\b/, /\bmektupta\b/, /\byaziyor\b/, /\byazıyor\b/, /\btaksit\b/]);
+    const userLang = looksTurkish ? "tr" : langMeta.code;
+
+    if (v17Has(currentQuestion, [/bana niye almanca yaziyorsun/, /bana niye almanca yazıyorsun/])) {
+      return res.json({
+        ok: true,
+        antwort: cleanText("Haklısın. Sana Türkçe açıklıyorum. Resmi e-postayı Almanca hazırlıyorum.")
+      });
+    }
+
+    const pendingNameRequested = v17Has(
+      `${lastAssistantAnswer}\n${chatHistoryText}`,
+      [/ich brauche nur noch den namen fur die unterschrift/, /name fur die unterschrift/, /unterschrift/]
+    );
+    const isLikelyOnlyName = (() => {
+      const trimmed = cleanText(frage);
+      if (!trimmed) return false;
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      if (words.length < 1 || words.length > 5) return false;
+      if (!/[A-Za-zÄÖÜäöüßÇĞİÖŞÜçğıöşü]/.test(trimmed)) return false;
+      if (/\?|!|,|;|:/.test(trimmed)) return false;
+      if (v17Has(trimmed, [/was|wie|warum|wieso|wo|wer|wann|kannst|bitte|ne|neden|niye|nasil|nasıl|kim|nerede|ne zaman/])) return false;
+      return !/\d/.test(trimmed) && trimmed.length <= 60;
+    })();
+    const saysNameInLetter = v17Has(currentQuestion, [/isim mektupta yaziyor/, /isim mektupta yazıyor/, /name steht im brief/, /steht im brief/]);
+    const briefNameMatch = cleanText(
+      meta.betroffene_person ||
+      meta.name ||
+      meta.vollname ||
+      meta.person_name ||
+      ((briefText.match(/\b([A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+)\b/) || [])[1] || "")
+    );
+    const pendingName = pendingNameRequested && isLikelyOnlyName ? cleanText(frage) : "";
 
     const correctionDetected = v17Has(currentQuestion, [
       /nein falsch/,
@@ -2966,8 +3001,8 @@ app.post("/api/frage", async (req, res) => {
       /das ist falsch/
     ]);
 
-    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]);
-    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]);
+    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]) || (pendingNameRequested && v17Has(`${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}`, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
+    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]) || (pendingNameRequested && v17Has(`${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}`, [/pdf-brief/, /\bpdf\b/]));
     const wantsChecklist = v17Has(currentQuestion, [/unterlagen/, /checkliste/, /welche dokumente/, /welche nachweise/, /hangi belge/]);
     const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/]);
 
@@ -2980,6 +3015,9 @@ app.post("/api/frage", async (req, res) => {
     const contextUnclear = !briefText && !erklaerungKurz && !erklaerungDetails;
     const goalUnclear = currentQuestion.length < 5 || /^(ok|okay|ja|nein|hmm|hallo|hi)$/.test(currentQuestion);
     if (answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarification";
+    if (pendingName) {
+      answerType = wantsPdf ? "draft_pdf" : "draft_email";
+    }
 
     let userGoal = "understand";
     if (v17Has(currentQuestion, [/ratenzahlung/, /\brate\b/, /\braten\b/, /taksit/, /iki taksit/, /zwei raten/, /in raten/, /monatlich zahlen/])) userGoal = "installment_request";
@@ -2990,6 +3028,12 @@ app.post("/api/frage", async (req, res) => {
     else if (v17Has(currentQuestion, [/unterlagen nachreichen/, /bescheid geschickt/, /nachweis senden/, /unterlagen senden/])) userGoal = "submit_documents";
     else if (v17Has(currentQuestion, [/schon bezahlt/, /zahlungsnachweis/, /uberwiesen/, /überwiesen/, /dekont/])) userGoal = "payment_proof";
     else if (v17Has(currentQuestion, [/widerspruch/, /einspruch/, /stimmt nicht/, /bestreiten/, /itiraz/])) userGoal = "dispute_or_objection";
+    if (pendingName && userGoal === "understand") {
+      if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
+      else if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
+      else if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_request";
+      else if (v17Has(`${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
+    }
 
     let caseGroup = "unknown";
     if (v17Has(currentContext, [/mahnung/, /inkasso/, /forderung/, /vollstreckung/, /gerichtsvollzieher/])) caseGroup = "debt_collection";
@@ -3046,7 +3090,10 @@ app.post("/api/frage", async (req, res) => {
     else if (userGoal === "cancellation_request") targetParty = senderCandidate || "Vertragspartner / Firma aus dem Brief";
     else if (userGoal === "legal_aid_request") targetParty = "Amtsgericht / Rechtsantragstelle oder Anwalt";
 
-    if (!targetParty && (answerType === "draft_email" || answerType === "draft_pdf")) {
+    if (!targetParty && answerType === "draft_email") {
+      targetParty = "[E-Mail-Adresse der Stelle einfügen]";
+    }
+    if (!targetParty && answerType === "draft_pdf") {
       answerType = "clarification";
     }
 
@@ -3083,7 +3130,7 @@ app.post("/api/frage", async (req, res) => {
     const uncertainClaim = userGoal === "dispute_or_objection" || /unsicher|unklar|zweifel|bestreit|widerspruch|einspruch|itiraz/.test(currentQuestion);
     const debtNoAck = (cautiousDebtPhrase || uncertainClaim) ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
     const noGuiltCourt = cautiousCourtPhrase ? "Dies stellt kein Schuldeingeständnis dar.\n\n" : "";
-    const signatureName = cleanText(
+    let signatureName = cleanText(
       meta.name ||
       meta.vollname ||
       meta.absender_name ||
@@ -3092,6 +3139,16 @@ app.post("/api/frage", async (req, res) => {
       meta.unterschrift ||
       ""
     );
+    if (pendingName) signatureName = pendingName;
+    if (!signatureName && saysNameInLetter && briefNameMatch) signatureName = briefNameMatch;
+    if (!signatureName && saysNameInLetter) {
+      return res.json({
+        ok: true,
+        antwort: cleanText(userLang === "tr"
+          ? "İsmi güvenli şekilde bulamıyorum. Lütfen adı bir kez kısa yaz."
+          : "Ich finde den Namen nicht sicher. Bitte schreib den Namen einmal kurz.")
+      });
+    }
 
     let draftBody = "";
     if (userGoal === "installment_request" || userGoal === "deferral_request") {
@@ -3160,7 +3217,7 @@ app.post("/api/frage", async (req, res) => {
       if (!signatureName) {
         return res.json({
           ok: true,
-          antwort: cleanText("Ich brauche nur noch den Namen für die Unterschrift.")
+          antwort: cleanText(userLang === "tr" ? "İmza için sadece ismi yazman gerekiyor." : "Ich brauche nur noch den Namen für die Unterschrift.")
         });
       }
       const emailSubject = userGoal === "installment_request" || userGoal === "deferral_request"
@@ -3180,7 +3237,7 @@ app.post("/api/frage", async (req, res) => {
       if (!signatureName) {
         return res.json({
           ok: true,
-          antwort: cleanText("Ich brauche nur noch den Namen für die Unterschrift.")
+          antwort: cleanText(userLang === "tr" ? "İmza için sadece ismi yazman gerekiyor." : "Ich brauche nur noch den Namen für die Unterschrift.")
         });
       }
       const pdfDraft = cleanText(
