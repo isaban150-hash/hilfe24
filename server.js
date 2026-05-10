@@ -2928,21 +2928,219 @@ app.post("/api/frage", async (req, res) => {
     if (!briefText && !erklaerungKurz && !erklaerungDetails && !Object.keys(meta).length) return res.status(400).json({ ok: false, error: "Kein Kontext vorhanden" });
     if (frage.length > 1500) return res.status(400).json({ ok: false, error: "Die Frage ist zu lang. Bitte kürzer formulieren." });
 
-    // V14: Nur Write-/Format-Router läuft vor Gemini.
-    // Normale Chatfragen gehen in die Meta-Chat-Logik, damit nicht einzelne Stichwörter dominieren.
-    const forcedAnswer = buildForcedChatAnswer({
-      frage,
-      frageMode,
-      meta,
-      briefText,
-      kurz: erklaerungKurz,
-      details: erklaerungDetails,
-      historyText: chatHistoryText
-    });
+    // V17 mini pipeline (route-local): decide answer path before Gemini.
+    const v17Norm = (value = "") => String(value || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/ı/g, "i")
+      .replace(/ş/g, "s")
+      .replace(/ğ/g, "g")
+      .replace(/ü/g, "u")
+      .replace(/ö/g, "o")
+      .replace(/ç/g, "c")
+      .replace(/[^\w@.\s\-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const v17Has = (text = "", patterns = []) => {
+      const q = v17Norm(text);
+      return patterns.some((p) => (p instanceof RegExp ? p.test(q) : q.includes(v17Norm(p))));
+    };
 
-    if (forcedAnswer) {
-      const localizedForcedAnswer = await localizeUserFacingAnswerIfNeeded(forcedAnswer, langMeta.code);
-      return res.json({ ok: true, antwort: localizedForcedAnswer });
+    const currentContext = cleanText([
+      briefText,
+      erklaerungKurz,
+      erklaerungDetails,
+      frage,
+      JSON.stringify(meta || {})
+    ].filter(Boolean).join("\n\n")).slice(0, 30000);
+    const currentQuestion = v17Norm(frage);
+
+    const correctionDetected = v17Has(currentQuestion, [
+      /nein falsch/,
+      /falsch/,
+      /yok yanlis/,
+      /yanlis/,
+      /yanlis/,
+      /nicht so/,
+      /das ist falsch/
+    ]);
+
+    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]);
+    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]);
+    const wantsChecklist = v17Has(currentQuestion, [/unterlagen/, /checkliste/, /welche dokumente/, /welche nachweise/, /hangi belge/]);
+    const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/]);
+
+    let answerType = "short_answer";
+    if (wantsEmail) answerType = "draft_email";
+    else if (wantsPdf) answerType = "draft_pdf";
+    else if (wantsChecklist) answerType = "checklist";
+    else if (wantsNextSteps) answerType = "next_steps";
+
+    const contextUnclear = !briefText && !erklaerungKurz && !erklaerungDetails;
+    const goalUnclear = currentQuestion.length < 5 || /^(ok|okay|ja|nein|hmm|hallo|hi)$/.test(currentQuestion);
+    if (answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarification";
+
+    let userGoal = "understand";
+    if (v17Has(currentQuestion, [/ratenzahlung/, /\brate\b/, /\braten\b/, /taksit/, /iki taksit/, /zwei raten/, /in raten/, /monatlich zahlen/])) userGoal = "installment_request";
+    else if (v17Has(currentQuestion, [/stundung/, /zahlungsaufschub/, /spater zahlen/, /später zahlen/])) userGoal = "deferral_request";
+    else if (v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/]) || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])) ) userGoal = "reimbursement_request";
+    else if (v17Has(currentQuestion, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
+    else if (v17Has(currentQuestion, [/anwalt/, /beratungshilfe/, /pflichtverteidiger/, /rechtsantragstelle/, /avukat/])) userGoal = "legal_aid_request";
+    else if (v17Has(currentQuestion, [/unterlagen nachreichen/, /bescheid geschickt/, /nachweis senden/, /unterlagen senden/])) userGoal = "submit_documents";
+    else if (v17Has(currentQuestion, [/schon bezahlt/, /zahlungsnachweis/, /uberwiesen/, /überwiesen/, /dekont/])) userGoal = "payment_proof";
+    else if (v17Has(currentQuestion, [/widerspruch/, /einspruch/, /stimmt nicht/, /bestreiten/, /itiraz/])) userGoal = "dispute_or_objection";
+
+    let caseGroup = "unknown";
+    if (v17Has(currentContext, [/mahnung/, /inkasso/, /forderung/, /vollstreckung/, /gerichtsvollzieher/])) caseGroup = "debt_collection";
+    else if (v17Has(currentContext, [/\bbank\b/, /p-konto/, /pfandung/, /pfändung/, /\bkonto\b/, /freibetrag/])) caseGroup = "banking";
+    else if (v17Has(currentContext, [/gericht/, /polizei/, /staatsanwaltschaft/, /strafsache/, /anklage/])) caseGroup = "court_police";
+    else if (v17Has(currentContext, [/vertrag/, /versicherung/, /kredit/, /\babo\b/, /widerruf/, /kundigung/, /kündigung/])) caseGroup = "contracts";
+    else if (v17Has(currentContext, [/krankenkasse/, /zahnarzt/, /\bdzr\b/, /rechnung/, /medizin/])) caseGroup = "health_insurance";
+    else if (v17Has(currentContext, [/jobcenter/, /burgergeld/, /buergergeld/, /bürgergeld/, /sozialamt/, /familienkasse/])) caseGroup = "social_benefits";
+    else if (v17Has(currentContext, [/finanzamt/, /steuer/])) caseGroup = "tax_office";
+    else if (v17Has(currentContext, [/arbeitgeber/, /lohn/, /ruckzahlung/, /rückzahlung/, /schuldanerkenntnis/])) caseGroup = "employment";
+    else if (v17Has(currentContext, [/vermieter/, /miete/, /wohnung/])) caseGroup = "housing";
+
+    const metaEmail = cleanText(meta.email_adresse || "");
+    const emailInTextMatch = (currentContext.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])[0] || "";
+    const senderCandidate = cleanText(
+      meta.absender ||
+      meta.absender_name ||
+      meta.stelle ||
+      meta.empfaenger ||
+      meta.firma ||
+      meta.sender ||
+      ""
+    );
+
+    let targetParty = "";
+    if (answerType === "draft_email" && metaEmail) targetParty = metaEmail;
+    else if (emailInTextMatch) targetParty = emailInTextMatch;
+    else if (userGoal === "installment_request") targetParty = senderCandidate || "Stelle aus dem Brief";
+    else if (userGoal === "reimbursement_request") targetParty = "Krankenkasse / Versicherung";
+    else if (userGoal === "cancellation_request") targetParty = senderCandidate || "Vertragspartner / Firma aus dem Brief";
+    else if (userGoal === "legal_aid_request") targetParty = "Amtsgericht / Rechtsantragstelle oder Anwalt";
+
+    if (!targetParty && (answerType === "draft_email" || answerType === "draft_pdf")) {
+      answerType = "clarification";
+    }
+
+    const forbidReimbursementTemplate = (
+      userGoal === "installment_request" ||
+      caseGroup === "court_police" ||
+      caseGroup === "debt_collection" ||
+      caseGroup === "banking" ||
+      caseGroup === "tax_office"
+    );
+    const forbidInstallmentTemplate = userGoal === "reimbursement_request";
+    const contractOnlyCancellation = caseGroup === "contracts" && userGoal !== "reimbursement_request";
+    const cautiousDebtPhrase = caseGroup === "debt_collection";
+    const cautiousCourtPhrase = caseGroup === "court_police";
+
+    if ((answerType === "draft_email" || answerType === "draft_pdf") && contractOnlyCancellation && userGoal !== "cancellation_request") {
+      answerType = "clarification";
+    }
+
+    const twoRatesRequested = v17Has(currentQuestion, [/zwei raten/, /iki taksit/]);
+    const cleanRef = cleanText(meta.aktenzeichen || meta.referenz || meta.nummer || "");
+    const subjectRef = cleanRef ? ` – ${cleanRef}` : "";
+    const salutation = "Sehr geehrte Damen und Herren,";
+    const debtNoAck = cautiousDebtPhrase ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
+    const noGuiltCourt = cautiousCourtPhrase ? "Dies stellt kein Schuldeingeständnis dar.\n\n" : "";
+
+    let draftBody = "";
+    if (userGoal === "installment_request" || userGoal === "deferral_request") {
+      const rateSentence = twoRatesRequested ? "Ich bitte ausdrücklich um Zahlung in zwei Raten." : "Deshalb bitte ich um Ratenzahlung.";
+      draftBody = `${debtNoAck}${noGuiltCourt}ich kann den Betrag derzeit nicht auf einmal zahlen.\n${rateSentence}\nBitte teilen Sie mir schriftlich mit, ob Sie damit einverstanden sind.`;
+    } else if (userGoal === "reimbursement_request") {
+      draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung einer Erstattung/Kostenübernahme.\nIch habe die Kosten bereits bezahlt und reiche die Nachweise ein.\nBitte teilen Sie mir schriftlich mit, ob und in welcher Höhe eine Erstattung möglich ist.`;
+    } else if (userGoal === "cancellation_request") {
+      draftBody = `${debtNoAck}${noGuiltCourt}hiermit erkläre ich den Widerruf, hilfsweise die Kündigung des Vertrags.\nBitte stoppen Sie weitere Abbuchungen und bestätigen Sie mir die Vertragsbeendigung schriftlich.`;
+    } else if (userGoal === "legal_aid_request") {
+      draftBody = `${noGuiltCourt}ich bitte um Information zur Beratungshilfe bzw. zur Möglichkeit einer anwaltlichen Unterstützung.\nBitte teilen Sie mir mit, welche Unterlagen ich einreichen soll.`;
+    } else if (userGoal === "submit_documents") {
+      draftBody = `anbei reiche ich die angeforderten Unterlagen/Nachweise ein.\nBitte bestätigen Sie mir den Eingang schriftlich.`;
+    } else if (userGoal === "payment_proof") {
+      draftBody = `${debtNoAck}${noGuiltCourt}ich habe bereits gezahlt und sende den Zahlungsnachweis.\nBitte prüfen Sie die Zuordnung und bestätigen Sie mir den Ausgleich schriftlich.`;
+    } else if (userGoal === "dispute_or_objection") {
+      draftBody = `${debtNoAck}${noGuiltCourt}ich widerspreche der Forderung in der vorliegenden Form und bitte um schriftliche Klärung.\nBitte senden Sie mir eine nachvollziehbare Begründung und die zugehörigen Nachweise.`;
+    } else {
+      draftBody = "bitte teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.";
+    }
+
+    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidReimbursementTemplate && userGoal === "reimbursement_request") {
+      answerType = "clarification";
+    }
+    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidInstallmentTemplate && userGoal === "installment_request") {
+      answerType = "clarification";
+    }
+
+    if (correctionDetected) {
+      return res.json({
+        ok: true,
+        antwort: cleanText("Verstanden, danke für die Korrektur. Ich berücksichtige das ab jetzt.")
+      });
+    }
+
+    if (answerType === "clarification") {
+      return res.json({
+        ok: true,
+        antwort: cleanText("An wen soll die Antwort genau gehen: an die Stelle aus dem Brief oder an eine andere Stelle?")
+      });
+    }
+
+    if (answerType === "checklist") {
+      const checklist = [
+        "Brief/Schreiben",
+        cleanRef ? `Aktenzeichen/Nummer: ${cleanRef}` : "Aktenzeichen/Nummer",
+        "Ausweis",
+        "relevante Nachweise/Belege",
+        "Zahlungsnachweis (falls vorhanden)"
+      ];
+      return res.json({
+        ok: true,
+        antwort: cleanText(`Checkliste:\n${checklist.map((x) => `☐ ${x}`).join("\n")}`)
+      });
+    }
+
+    if (answerType === "next_steps") {
+      return res.json({
+        ok: true,
+        antwort: cleanText("Nächste Schritte: 1) Frist und Aktenzeichen prüfen, 2) zuständige Stelle schriftlich kontaktieren, 3) Nachweise beilegen, 4) schriftliche Antwort aufbewahren.")
+      });
+    }
+
+    if (answerType === "draft_email") {
+      const emailDraft = cleanText(
+        `Empfänger: ${targetParty}\n` +
+        `Betreff: Anliegen zu Ihrem Schreiben${subjectRef}\n\n` +
+        `${salutation}\n\n` +
+        `${draftBody}\n\n` +
+        `Mit freundlichen Grüßen`
+      );
+      return res.json({ ok: true, antwort: emailDraft });
+    }
+
+    if (answerType === "draft_pdf") {
+      const pdfDraft = cleanText(
+        `PDF-BRIEF:\n\n` +
+        `${salutation}\n\n` +
+        `${draftBody}\n\n` +
+        `Mit freundlichen Grüßen`
+      );
+      return res.json({ ok: true, antwort: pdfDraft });
+    }
+
+    if (answerType === "short_answer") {
+      const short = userGoal === "installment_request"
+        ? "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest."
+        : userGoal === "reimbursement_request"
+          ? "Du kannst Erstattung/Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein."
+          : userGoal === "payment_proof"
+            ? "Nicht doppelt zahlen. Sende den Zahlungsnachweis und bitte um schriftliche Zuordnungsbestätigung."
+            : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
+      return res.json({ ok: true, antwort: cleanText(short) });
     }
 
     const raw = await callGemini([{ text: `
