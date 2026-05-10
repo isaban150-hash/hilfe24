@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v15.0.2-final-router-guard-fix" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v15.4-accepted-overpayment-ultrashort" });
 });
 
 function getTodayGerman() {
@@ -4555,29 +4555,32 @@ function strongAcceptedOverpaymentQuestionV153(frage = "", context = "") {
 
 function buildAcceptedOverpaymentShortAnswerV153(route = {}, meta = {}, context = "", frage = "") {
   const lang = route.userLanguage || detectUserLanguageFromQuestion(frage, "de");
-  const amount = getAmount(meta);
-  const ref = getPrimaryReference(meta);
+
+  // V15.4 Feinschliff:
+  // Bei einer reinen Bestätigung wie „Tamam doğru, fazla para aldık“ keine Briefdaten wiederholen.
+  // Der Nutzer bestätigt nur den Sachverhalt. Also kurz führen: Optionen + nächster Schritt.
   if (lang === "tr") {
-    return cleanText(`Tamam, anladım. Fazla ödeme doğruysa artık en önemli konu ödeme şeklidir.
+    return cleanText(`Tamam, anladım.
 
 Seçenekler:
 ☐ Kesintiyi kabul etmek
-☐ Aylık kesinti fazla geliyorsa daha düşük kesinti istemek
-☐ Mümkünse tek seferde ödeme yapmak
+☐ Kesinti fazla geliyorsa daha düşük kesinti istemek
+☐ Ödemeyi erteleme istemek
+☐ Mümkünse tek seferde ödemek
 
-Önemli: Bunun kesin doğru olduğunu ben garanti edemem. Jobcenter hesabı yine de kontrol edilebilir. Aylık kesinti sizi zorluyorsa yazılı olarak daha düşük Aufrechnung/Ratenzahlung veya Stundung isteyin.${amount ? `\n\nTutar: ${amount}` : ""}${ref ? `\nNumara: ${ref}` : ""}
+Önemli: Kesinti sizi zorluyorsa Jobcenter’a yazılı olarak daha düşük kesinti veya Stundung (ödeme erteleme) isteyebilirsiniz.
 
 İstersen sana Jobcenter için kısa Almanca dilekçe hazırlayayım.`);
   }
-  return cleanText(`Verstanden. Wenn die Überzahlung stimmt, geht es jetzt vor allem um die Zahlungsart.
+  return cleanText(`Verstanden.
 
 Optionen:
 ☐ Aufrechnung akzeptieren
 ☐ niedrigere monatliche Aufrechnung beantragen
-☐ Stundung/Ratenzahlung beantragen
+☐ Stundung beantragen
 ☐ einmalig zahlen, falls möglich
 
-Wichtig: Ich kann nicht sicher bestätigen, dass alles korrekt berechnet wurde. Das Jobcenter entscheidet. Wenn die monatliche Kürzung zu hoch ist, solltest du schriftlich eine niedrigere Aufrechnung oder Stundung beantragen.${amount ? `\n\nBetrag: ${amount}` : ""}${ref ? `\nNummer: ${ref}` : ""}
+Wichtig: Wenn die monatliche Kürzung zu hoch ist, solltest du schriftlich eine niedrigere Aufrechnung oder Stundung beantragen.
 
 Wenn du möchtest, schreibe ich dir einen kurzen deutschen Antrag an das Jobcenter.`);
 }
@@ -4624,4 +4627,60 @@ Der offizielle Text wird in der Sprache der empfangenden Stelle erstellt.`);
   }
 
   return "";
+}
+
+
+// ===============================
+// V15.5 FINAL OVERRIDE - ACCEPTED OVERPAYMENT MUST STAY ULTRA SHORT
+// Reason:
+// Some older fallback/router path could still add amount/reference details.
+// This override returns before any route/prompt can repeat Betrag or Mein Zeichen.
+// Keep at very end of file.
+// ===============================
+function acceptedOverpaymentUltraShortV155(frage = "", context = "") {
+  const q = normCleanV152(`${frage}\n${context}`);
+  const acceptedCue = /(tamam\s+dogru|tamam\s+doğru|dogru|doğru|evet\s+dogru|evet\s+doğru|stimmt|ist\s+richtig|ja\s+richtig|hakli|haklı|kabul|fazla\s+para\s+ald|fazla\s+odeme|fazla\s+ödeme|zu\s+viel\s+bekommen|zu\s+viel\s+geld\s+bekommen|ueberzahlung|überzahlung)/i.test(q);
+  const socialDebtCue = /(jobcenter|burgergeld|buergergeld|sgb|rueckforderung|rückforderung|aufrechnung|bescheid|bedarfsgemeinschaft|jc|sozialamt|regelleistung)/i.test(q);
+  return acceptedCue && socialDebtCue;
+}
+
+function acceptedOverpaymentUltraShortAnswerV155(frage = "") {
+  const lang = detectUserLanguageFromQuestion(frage, "de");
+  if (lang === "tr") {
+    return cleanText(`Tamam, anladım.
+
+Seçenekler:
+☐ Kesintiyi kabul etmek
+☐ Kesinti fazla geliyorsa daha düşük kesinti istemek
+☐ Ödemeyi erteleme istemek
+☐ Mümkünse tek seferde ödemek
+
+Önemli: Kesinti sizi zorluyorsa Jobcenter’a yazılı olarak daha düşük kesinti veya Stundung isteyebilirsiniz.
+
+İstersen sana Jobcenter için kısa Almanca dilekçe hazırlayayım.`);
+  }
+  return cleanText(`Verstanden.
+
+Optionen:
+☐ Aufrechnung akzeptieren
+☐ niedrigere monatliche Aufrechnung beantragen
+☐ Stundung beantragen
+☐ einmalig zahlen, falls möglich
+
+Wichtig: Wenn die monatliche Kürzung zu hoch ist, solltest du schriftlich eine niedrigere Aufrechnung oder Stundung beantragen.
+
+Wenn du möchtest, schreibe ich dir einen kurzen deutschen Antrag an das Jobcenter.`);
+}
+
+const buildForcedChatAnswer_V154 = buildForcedChatAnswer;
+function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+  const currentContext = contextCurrentOnlyV151(meta, briefText, kurz, details);
+
+  // Absolute first route: user confirms Jobcenter overpayment is correct.
+  // Do not repeat amount, reference numbers or full Bescheid details.
+  if (acceptedOverpaymentUltraShortV155(frage, currentContext)) {
+    return acceptedOverpaymentUltraShortAnswerV155(frage);
+  }
+
+  return buildForcedChatAnswer_V154({ frage, frageMode, meta, briefText, kurz, details, historyText });
 }
