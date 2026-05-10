@@ -3103,6 +3103,89 @@ app.post("/api/frage", async (req, res) => {
     }
 
     const pendingDraftContext = `${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`;
+
+    /** Last clear payment-related goal from prior USER turns (excludes current message). */
+    const extractStoredGoalFromUserHistory = () => {
+      const paymentGoalPatterns = [
+        { goal: "payment_proof", rx: [/schon bezahlt|bereits bezahlt|habe bezahlt|überwiesen|uberwiesen|zahlungsnachweis|überweisungsbeleg|iberweisungsbeleg|dekont|i paid|already paid|i have paid|payment made|am platit|am plătit|платих|вече платих|Ödedim|ödedim|دفعت|لقد دفعت/] },
+        { goal: "dispute_or_objection", rx: [/stimmt nicht|forderung falsch|kenne ich nicht|widerspruch|einspruch|bestreiten|itiraz|kabul etmiyorum|nu recunosc|не признавам|не е вярно|this is wrong|i dispute|objection|لا أوافق|اعتراض/] },
+        { goal: "deferral_request", rx: [/später zahlen|spater zahlen|zahlungsaufschub|stundung|mehr zeit|pay later|postpone payment|deferral|erteleme|отсрочка|amanare|أحتاج وقت|تأجيل الدفع/] },
+        { goal: "installment_request", rx: [/ratenzahlung|\bin raten\b|monatlich zahlen|kann nicht.*auf einmal|cannot pay all at once|can't pay in full|taksit|installments|payment plan|تقسيط|أقساط/] }
+      ];
+      const normMsg = (m) => cleanText(m || "").trim();
+      const currentTrim = normMsg(frage);
+      for (let i = chatHistory.length - 1; i >= 0; i--) {
+        const e = chatHistory[i];
+        if (!e || e.role !== "user" || !e.text) continue;
+        const t = normMsg(e.text);
+        if (t === currentTrim) continue;
+        const low = v17Norm(t);
+        for (const { goal, rx } of paymentGoalPatterns) {
+          if (rx.some((r) => r.test(low) || r.test(t))) return goal;
+        }
+      }
+      return "";
+    };
+
+    /** Generic “please write…” without starting a new substantive goal. */
+    const isWriteOnlyFollowUpQuestion = () => {
+      const raw = frage.trim();
+      if (!raw || raw.length > 220) return false;
+      // Skript-spezifische Formulierungen (v17Norm strippt Kyrillisch/Arabisch)
+      if (/напиши(\s+(ми|те))?\s*(отговор|имейл|е-?mail)/i.test(raw)) return true;
+      if (/اكتب\s+لي\s+رد|اكتب\s+لي\s+إيميل/i.test(raw) || /\bكتب.*?رد\b/.test(raw)) return true;
+      const q = v17Norm(raw);
+      if (v17Has(q, [/schreib.*antwort/, /mach.*antwort/, /antwort vorbereiten/, /mach mir eine e.?mail/, /schreib.*e.?mail/, /brief schreib/, /pdf erstellen/, /\bmake an email\b/, /\bwrite an email\b/, /\bwrite a reply\b/, /\bprepare a reply\b/, /bana cevap yaz/, /bana e.?posta yaz/, /napi[șs]i\s+otgovo/, /napi[șs]i\s+raspuns/, /scrie un raspuns/, /scrie\s+un\s+răspuns/])) return true;
+      return false;
+    };
+
+    /** True if message is clearly asking for clarification / continuation, not a pure field reply. */
+    const isMessyFollowUpNotPurePending = (text = "") => {
+      if (!text || String(text).length > 140) return true;
+      if (/\?/.test(text)) return true;
+      if (/ich habe (das|es) schon bezahlt|ich hab es schon bezahlt|habe bereits bezahlt|die forderung stimmt nicht|forderung falsch|kenne ich diese forderung nicht|ich kenne diese forderung nicht|das ist falsch|will widersprechen|ich will widersprechen|überwiesen|zahlungsnachweis|Ödedim|ödedim|already paid|платих|Am plătit|am plătit|دفعت/i.test(text)) return true;
+      return false;
+    };
+
+    const detectSubstantiveUserGoalFromText = (questionText = "") => {
+      const qNorm = v17Norm(questionText || "");
+      const qRaw = String(questionText || "");
+      if (!qNorm) return "understand";
+      if (v17Has(qNorm, [
+        /schon bezahlt/, /bereits bezahlt/, /habe bezahlt/, /uberwiesen/, /überwiesen/, /zahlungsnachweis/, /uberweisungsbeleg/, /überweisungsbeleg/, /beleg/, /kontoauszug/,
+        /odedim/, /ödedim/, /odeme yaptim/, /ödeme yaptım/, /zaten odedim/, /zaten ödedim/, /havale yaptim/, /havale yaptım/, /dekont/, /odeme belgesi/, /ödeme belgesi/, /para gonderdim/, /para gönderdim/,
+        /платих/, /вече платих/, /направих плащане/, /преведох парите/, /имам платежно/, /документ за плащане/, /платежно нареждане/,
+        /am platit/, /deja am platit/, /am facut plata/, /am transferat banii/, /dovada platii/, /chitanta/, /ordin de plata/, /am plătit/, /am platit/,
+        /\bi paid\b/, /already paid/, /i have paid/, /payment made/, /transferred the money/, /proof of payment/, /receipt/,
+        /دفعت/, /لقد دفعت/, /دفعت بالفعل/, /تم الدفع/, /حولت المبلغ/, /أرسلت المال/, /عندي إيصال/, /عندي وصل/, /إثبات الدفع/, /وصل الدفع/, /حوالة/
+      ]) || /\b(ge)?zahlt\b/i.test(qRaw)) return "payment_proof";
+      if (v17Has(qNorm, [
+        /stimmt nicht/, /falsch/, /forderung falsch/, /kenne ich nicht/, /widerspruch/, /einspruch/, /bestreiten/, /nicht nachvollziehbar/, /ich erkenne das nicht an/,
+        /yanlis/, /yanlış/, /borc dogru degil/, /borç doğru değil/, /kabul etmiyorum/, /itiraz/, /tanimiyorum/, /tanımıyorum/, /anlamiyorum/, /anlamıyorum/, /bu borcu kabul etmiyorum/,
+        /не е вярно/, /грешно е/, /не признавам/, /не съм съгласен/, /възражение/, /не познавам това задължение/,
+        /nu este corect/, /este gresit/, /este greșit/, /nu recunosc/, /nu sunt de acord/, /contestatie/, /contestație/, /nu cunosc aceasta datorie/, /nu cunosc această datorie/,
+        /this is wrong/, /not correct/, /i dispute this/, /i do not agree/, /objection/, /appeal/, /i don't recognize this debt/,
+        /هذا خطأ/, /غير صحيح/, /المبلغ غير صحيح/, /لا أوافق/, /لا أعترف بهذا الدين/, /لا أعرف هذه المطالبة/, /أريد الاعتراض/, /اعتراض/
+      ])) return "dispute_or_objection";
+      if (v17Has(qNorm, [
+        /spater zahlen/, /später zahlen/, /zahlungsaufschub/, /stundung/, /fristverlangerung/, /fristverlängerung/, /noch zeit/,
+        /sonra odemek/, /sonra ödemek/, /erteleme/, /odeme erteleme/, /ödeme erteleme/, /biraz zaman lazim/, /biraz zaman lazım/, /sure uzatma/, /süre uzatma/,
+        /да платя по късно/, /отсрочка/, /отлагане на плащането/, /трябва ми още време/, /удължаване на срока/,
+        /sa platesc mai tarziu/, /să plătesc mai târziu/, /amanare la plata/, /amânare la plată/, /imi trebuie timp/, /îmi trebuie timp/, /prelungirea termenului/,
+        /pay later/, /payment deferral/, /need more time/, /extend the deadline/, /postpone payment/,
+        /أريد الدفع لاحقًا/, /أحتاج وقتًا أكثر/, /تأجيل الدفع/, /مهلة إضافية/, /تمديد المهلة/, /لا أستطيع الدفع الآن/
+      ])) return "deferral_request";
+      if (v17Has(qNorm, [
+        /kann nicht auf einmal zahlen/, /kann nicht zahlen/, /ratenzahlung/, /in raten/, /monatlich zahlen/, /zahlungsvereinbarung/, /kleine raten/,
+        /birden odeyemem/, /birden ödeyemem/, /hepsini odeyemem/, /hepsini ödeyemem/, /taksit/, /taksitli odeme/, /taksitli ödeme/, /aylik odemek/, /aylık ödemek/, /odeme plani/, /ödeme planı/, /az az odemek/, /az az ödemek/,
+        /не мога да платя наведнъж/, /не мога да платя всичко/, /на вноски/, /разсрочено плащане/, /месечно плащане/, /малки вноски/,
+        /nu pot plati tot odata/, /nu pot plăti tot odată/, /nu pot plati integral/, /nu pot plăti integral/, /in rate/, /în rate/, /plata in rate/, /plată în rate/, /rate lunare/, /plan de plata/, /plan de plată/, /rate mici/,
+        /i cannot pay all at once/, /i can't pay in full/, /installments/, /payment plan/, /monthly payments/, /small payments/,
+        /لا أستطيع الدفع دفعة واحدة/, /لا أستطيع دفع المبلغ كامل/, /أريد الدفع بالتقسيط/, /تقسيط/, /أقساط/, /دفعات شهرية/, /خطة دفع/, /أدفع شهريًا/
+      ])) return "installment_request";
+      return "understand";
+    };
+
     const detectPendingField = (assistantText = "") => {
       const t = v17Norm(assistantText || "");
       if (!t) return "";
@@ -3122,6 +3205,11 @@ app.post("/api/frage", async (req, res) => {
     };
     const pendingField = detectPendingField(lastAssistantAnswer);
     const pendingNameRequested = pendingField === "name";
+
+    let substantiveGoalFromCurrent = detectSubstantiveUserGoalFromText(frage);
+    const writeFollowUpOnly = isWriteOnlyFollowUpQuestion() && substantiveGoalFromCurrent === "understand";
+    const inheritedWriteGoal = writeFollowUpOnly ? extractStoredGoalFromUserHistory() : "";
+
     const isLikelyOnlyName = (() => {
       const trimmed = cleanText(frage);
       if (!trimmed) return false;
@@ -3140,7 +3228,11 @@ app.post("/api/frage", async (req, res) => {
       meta.person_name ||
       ((briefText.match(/\b([A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+)\b/) || [])[1] || "")
     );
-    const pendingName = pendingNameRequested && isLikelyOnlyName ? cleanText(frage) : "";
+    const allowPendingResume = substantiveGoalFromCurrent === "understand"
+      && !writeFollowUpOnly
+      && !isMessyFollowUpNotPurePending(frage);
+
+    const pendingName = pendingNameRequested && isLikelyOnlyName && allowPendingResume ? cleanText(frage) : "";
     const emailAnswerMatch = (cleanText(frage).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [])[0] || "";
     const isLikelyInstallmentAmount = /(\d+[.,]?\d*)\s*(€|eur|euro)|monatlich|pro monat|aylik|aylık|monthly|شهريا|شهريًا/i.test(frage);
     const installmentCountMatch = (cleanText(frage).match(/\b(\d{1,2})\b/) || [])[1] || "";
@@ -3162,7 +3254,7 @@ app.post("/api/frage", async (req, res) => {
       clarification_goal: cleanText(frage)
     };
     const pendingFieldValue = pendingField ? (pendingFieldValueMap[pendingField] || "") : "";
-    const hasValidPendingFieldValue = Boolean(pendingField && pendingFieldValue);
+    const hasValidPendingFieldValue = Boolean(pendingField && pendingFieldValue && allowPendingResume);
     const previousAnswerType = v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]) ? "draft_pdf" : (v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e-?mail|email|mail|e-?posta/]) ? "draft_email" : "");
     const previousGoal = v17Has(pendingDraftContext, [/schon bezahlt|bereits bezahlt|zahlungsnachweis|uberwiesen|überwiesen|dekont|i paid|payment made|am platit|платих|دفعت/]) ? "payment_proof"
       : v17Has(pendingDraftContext, [/stimmt nicht|falsch|widerspruch|einspruch|itiraz|not correct|i dispute|nu este corect|не е вярно|غير صحيح|اعتراض/]) ? "dispute_or_objection"
@@ -3208,57 +3300,35 @@ app.post("/api/frage", async (req, res) => {
       answerType = previousAnswerType;
     }
 
+    if (writeFollowUpOnly && inheritedWriteGoal) {
+      if (v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/])) answerType = "draft_pdf";
+      else answerType = "draft_email";
+    }
+
     const paymentDemandDetected = v17Has(currentContext, [
       /zahlung/, /nachzahlung/, /ruckforderung/, /rückforderung/, /mahnung/, /offene forderung/, /rechnung/, /gebuhr/, /gebühr/, /beitrag/, /rate/, /kosten/, /vollstreckung/, /pfandung/, /pfändung/, /zahlungsfrist/, /zahlungsaufforderung/, /forderungsaufstellung/
     ]);
 
-    let userGoal = "understand";
-    if (v17Has(currentQuestion, [
-      /schon bezahlt/, /bereits bezahlt/, /habe bezahlt/, /uberwiesen/, /überwiesen/, /zahlungsnachweis/, /uberweisungsbeleg/, /überweisungsbeleg/, /beleg/, /kontoauszug/,
-      /odedim/, /ödedim/, /odeme yaptim/, /ödeme yaptım/, /zaten odedim/, /zaten ödedim/, /havale yaptim/, /havale yaptım/, /dekont/, /odeme belgesi/, /ödeme belgesi/, /para gonderdim/, /para gönderdim/,
-      /платих/, /вече платих/, /направих плащане/, /преведох парите/, /имам платежно/, /документ за плащане/, /платежно нареждане/,
-      /am platit/, /deja am platit/, /am facut plata/, /am transferat banii/, /dovada platii/, /chitanta/, /ordin de plata/,
-      /\bi paid\b/, /already paid/, /i have paid/, /payment made/, /transferred the money/, /proof of payment/, /receipt/,
-      /دفعت/, /لقد دفعت/, /دفعت بالفعل/, /تم الدفع/, /حولت المبلغ/, /أرسلت المال/, /عندي إيصال/, /عندي وصل/, /إثبات الدفع/, /وصل الدفع/, /حوالة/
-    ])) userGoal = "payment_proof";
-    else if (v17Has(currentQuestion, [
-      /stimmt nicht/, /falsch/, /forderung falsch/, /kenne ich nicht/, /widerspruch/, /einspruch/, /bestreiten/, /nicht nachvollziehbar/, /ich erkenne das nicht an/,
-      /yanlis/, /yanlış/, /borc dogru degil/, /borç doğru değil/, /kabul etmiyorum/, /itiraz/, /tanimiyorum/, /tanımıyorum/, /anlamiyorum/, /anlamıyorum/, /bu borcu kabul etmiyorum/,
-      /не е вярно/, /грешно е/, /не признавам/, /не съм съгласен/, /възражение/, /не познавам това задължение/,
-      /nu este corect/, /este gresit/, /este greșit/, /nu recunosc/, /nu sunt de acord/, /contestatie/, /contestație/, /nu cunosc aceasta datorie/, /nu cunosc această datorie/,
-      /this is wrong/, /not correct/, /i dispute this/, /i do not agree/, /objection/, /appeal/, /i don't recognize this debt/,
-      /هذا خطأ/, /غير صحيح/, /المبلغ غير صحيح/, /لا أوافق/, /لا أعترف بهذا الدين/, /لا أعرف هذه المطالبة/, /أريد الاعتراض/, /اعتراض/
-    ])) userGoal = "dispute_or_objection";
-    else if (v17Has(currentQuestion, [
-      /spater zahlen/, /später zahlen/, /zahlungsaufschub/, /stundung/, /fristverlangerung/, /fristverlängerung/, /noch zeit/,
-      /sonra odemek/, /sonra ödemek/, /erteleme/, /odeme erteleme/, /ödeme erteleme/, /biraz zaman lazim/, /biraz zaman lazım/, /sure uzatma/, /süre uzatma/,
-      /да платя по късно/, /отсрочка/, /отлагане на плащането/, /трябва ми още време/, /удължаване на срока/,
-      /sa platesc mai tarziu/, /să plătesc mai târziu/, /amanare la plata/, /amânare la plată/, /imi trebuie timp/, /îmi trebuie timp/, /prelungirea termenului/,
-      /pay later/, /payment deferral/, /need more time/, /extend the deadline/, /postpone payment/,
-      /أريد الدفع لاحقًا/, /أحتاج وقتًا أكثر/, /تأجيل الدفع/, /مهلة إضافية/, /تمديد المهلة/, /لا أستطيع الدفع الآن/
-    ])) userGoal = "deferral_request";
-    else if (v17Has(currentQuestion, [
-      /kann nicht auf einmal zahlen/, /kann nicht zahlen/, /ratenzahlung/, /in raten/, /monatlich zahlen/, /zahlungsvereinbarung/, /kleine raten/,
-      /birden odeyemem/, /birden ödeyemem/, /hepsini odeyemem/, /hepsini ödeyemem/, /taksit/, /taksitli odeme/, /taksitli ödeme/, /aylik odemek/, /aylık ödemek/, /odeme plani/, /ödeme planı/, /az az odemek/, /az az ödemek/,
-      /не мога да платя наведнъж/, /не мога да платя всичко/, /на вноски/, /разсрочено плащане/, /месечно плащане/, /малки вноски/,
-      /nu pot plati tot odata/, /nu pot plăti tot odată/, /nu pot plati integral/, /nu pot plăti integral/, /in rate/, /în rate/, /plata in rate/, /plată în rate/, /rate lunare/, /plan de plata/, /plan de plată/, /rate mici/,
-      /i cannot pay all at once/, /i can't pay in full/, /installments/, /payment plan/, /monthly payments/, /small payments/,
-      /لا أستطيع الدفع دفعة واحدة/, /لا أستطيع دفع المبلغ كامل/, /أريد الدفع بالتقسيط/, /تقسيط/, /أقساط/, /دفعات شهرية/, /خطة دفع/, /أدفع شهريًا/
-    ])) userGoal = "installment_request";
-    else if (v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/]) || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])) ) userGoal = "reimbursement_request";
-    else if (v17Has(currentQuestion, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
-    else if (v17Has(currentQuestion, [/anwalt/, /beratungshilfe/, /pflichtverteidiger/, /rechtsantragstelle/, /avukat/])) userGoal = "legal_aid_request";
-    else if (v17Has(currentQuestion, [/unterlagen nachreichen/, /bescheid geschickt/, /nachweis senden/, /unterlagen senden/])) userGoal = "submit_documents";
-    else if (v17Has(currentQuestion, [/schon bezahlt/, /zahlungsnachweis/, /uberwiesen/, /überwiesen/, /dekont/])) userGoal = "payment_proof";
-    else if (v17Has(currentQuestion, [/widerspruch/, /einspruch/, /stimmt nicht/, /bestreiten/, /itiraz/])) userGoal = "dispute_or_objection";
-    if (pendingName && userGoal === "understand") {
+    let userGoal = substantiveGoalFromCurrent;
+
+    if (userGoal === "understand" && (v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/])
+      || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])))) {
+      userGoal = "reimbursement_request";
+    }
+    if (userGoal === "understand" && v17Has(currentQuestion, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
+    if (userGoal === "understand" && v17Has(currentQuestion, [/anwalt/, /beratungshilfe/, /pflichtverteidiger/, /rechtsantragstelle/, /avukat/])) userGoal = "legal_aid_request";
+    if (userGoal === "understand" && v17Has(currentQuestion, [/unterlagen nachreichen/, /bescheid geschickt/, /nachweis senden/, /unterlagen senden/])) userGoal = "submit_documents";
+
+    if (writeFollowUpOnly && inheritedWriteGoal) userGoal = inheritedWriteGoal;
+
+    if (allowPendingResume && pendingName && userGoal === "understand") {
       if (v17Has(pendingDraftContext, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
       else if (v17Has(pendingDraftContext, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
       else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_request";
       else if (v17Has(pendingDraftContext, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
       else if (pendingNeedsInstallmentDraft) userGoal = "installment_request";
     }
-    if (hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
+    if (allowPendingResume && hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
       userGoal = previousGoal;
     }
 
@@ -3373,6 +3443,7 @@ app.post("/api/frage", async (req, res) => {
       meta.unterschrift ||
       ""
     );
+    if (!signatureName && briefNameMatch) signatureName = briefNameMatch;
     if (pendingName) signatureName = pendingName;
     if (pendingField === "name" && pendingFieldValueMap.name) signatureName = pendingFieldValueMap.name;
     if (!signatureName && saysNameInLetter && briefNameMatch) signatureName = briefNameMatch;
@@ -3417,9 +3488,9 @@ app.post("/api/frage", async (req, res) => {
       draftBody = `anbei reiche ich die angeforderten Unterlagen/Nachweise ein.\nBitte bestätigen Sie mir den Eingang schriftlich.`;
     } else if (userGoal === "dispute_or_objection") {
       const pendingDateInfo = pendingField === "date_or_deadline" && pendingFieldValueMap.date_or_deadline
-        ? `\nAls Bezug nenne ich den Termin/die Frist: ${pendingFieldValueMap.date_or_deadline}.`
+        ? `\n\nAls Bezug nenne ich den Termin/die Frist: ${pendingFieldValueMap.date_or_deadline}.`
         : "";
-      draftBody = `${debtNoAck}${noGuiltCourt}ich widerspreche der Forderung in der vorliegenden Form und bitte um schriftliche Klärung.\nBitte senden Sie mir eine nachvollziehbare Begründung und die zugehörigen Nachweise.${pendingDateInfo}`;
+      draftBody = `${debtNoAck}${noGuiltCourt}ich beziehe mich auf Ihr Schreiben.\n\nDie Forderung ist für mich derzeit nicht nachvollziehbar. Ich bitte daher um Prüfung und um eine verständliche schriftliche Aufstellung, wie sich der Betrag zusammensetzt.\n\nBitte senden Sie mir die zugrunde liegenden Unterlagen und Nachweise zur Forderung zu.\n\nBis zur Klärung bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.${pendingDateInfo}`;
     } else {
       draftBody = "bitte teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.";
     }
@@ -3509,17 +3580,15 @@ app.post("/api/frage", async (req, res) => {
         ? "Du hast bereits gezahlt: Sende den Zahlungsnachweis, bitte um Zuordnungsprüfung und frage, ob noch ein offener Betrag besteht."
         : userGoal === "dispute_or_objection"
           ? "Wenn die Forderung unklar oder falsch ist, verlange eine schriftliche Aufstellung und Nachweise, bevor weitere Schritte laufen."
-        : userGoal === "deferral_request"
-          ? "Du kannst schriftlich Zahlungsaufschub/Stundung beantragen und um Rückmeldung bitten, welche Unterlagen dafür nötig sind."
-        : userGoal === "installment_request"
-        ? "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest."
-        : userGoal === "reimbursement_request"
-          ? "Du kannst Erstattung/Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein."
-          : userGoal === "payment_proof"
-            ? "Nicht doppelt zahlen. Sende den Zahlungsnachweis und bitte um schriftliche Zuordnungsbestätigung."
-            : paymentDemandDetected
-              ? "Bei einer Zahlungsforderung: zuerst Fakten prüfen (Betrag, Frist, Referenz), dann schriftlich bei der zuständigen Stelle klären."
-              : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
+          : userGoal === "deferral_request"
+            ? "Du kannst schriftlich Zahlungsaufschub/Stundung beantragen und um Rückmeldung bitten, welche Unterlagen dafür nötig sind."
+            : userGoal === "installment_request"
+              ? "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest."
+              : userGoal === "reimbursement_request"
+                ? "Du kannst Erstattung/Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein."
+                : paymentDemandDetected
+                  ? "Bei einer Zahlungsforderung: zuerst Fakten prüfen (Betrag, Frist, Referenz), dann schriftlich bei der zuständigen Stelle klären."
+                  : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
       return res.json({ ok: true, antwort: cleanText(short) });
     }
 
