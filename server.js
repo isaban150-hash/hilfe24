@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v15.4-accepted-overpayment-ultrashort" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v16.1-case-routing-answer-types-template-guard-checked" });
 });
 
 function getTodayGerman() {
@@ -3218,7 +3218,7 @@ app.post("/api/tts", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v14 multilingual logic");
+  console.log("Server läuft auf Port " + PORT + " | Hilfe24 v16.1 case routing");
 });
 
 
@@ -4683,4 +4683,538 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
   }
 
   return buildForcedChatAnswer_V154({ frage, frageMode, meta, briefText, kurz, details, historyText });
+}
+
+
+
+// ============================================================
+// HILFE24 V16 FINAL ROUTER - CASE RELATION + ANSWER TYPES + TEMPLATE GUARD
+// Purpose:
+// 1) decide same_case/new_case/uncertain_case before answering
+// 2) choose one of 8 answer types
+// 3) block wrong templates
+// 4) keep follow-up answers short
+// Keep this block at the very end of server.js.
+// ============================================================
+
+function v16Norm(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9äöüßçğışİ\s@.\-\/]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function v16Has(text = "", patterns = []) {
+  const q = v16Norm(text);
+  return patterns.some((p) => typeof p === "string" ? q.includes(v16Norm(p)) : p.test(q));
+}
+
+function v16Lang(frage = "", fallback = "de") {
+  return detectUserLanguageFromQuestion(frage, fallback || "de");
+}
+
+function v16CurrentContext(meta = {}, briefText = "", kurz = "", details = "") {
+  return [
+    JSON.stringify(meta || {}),
+    briefText || "",
+    kurz || "",
+    details || ""
+  ].join("\n").slice(0, 25000);
+}
+
+function v16IsPureFormatOrVagueWrite(frage = "") {
+  const q = v16Norm(frage);
+  return /^(pdf|brief|mektup|dilekce|dilekçe|email|e mail|mail|antwort|cevap|schreib mir eine antwort|schreib antwort|benim icin cevap yaz|bana cevap yaz|yaz|hazirla|hazırla)$/.test(q);
+}
+
+function v16DetectCaseRelation({ frage = "", meta = {}, briefText = "", kurz = "", details = "", historyText = "" }) {
+  const q = v16Norm(frage);
+  const current = v16Norm(v16CurrentContext(meta, briefText, kurz, details));
+
+  if (v16Has(q, [
+    /neuer brief|neues schreiben|anderer brief|anderes thema|anderer fall|neuer fall|neues anliegen|jetzt geht es um|jetzt habe ich|başka|baska|simdi baska|şimdi başka|bu baska|bu başka|new case|another case/
+  ])) {
+    return {
+      caseRelation: "new_case",
+      confidence: 0.95,
+      reason: "Nutzer signalisiert neues Thema oder neuen Brief.",
+      useOldCaseData: false,
+      ignoreOldChatHistory: true,
+      needsClarification: false,
+      clarificationQuestion: ""
+    };
+  }
+
+  if (v16Has(q, [/mein freund hat auch|meine freundin hat auch|arkadasimda|arkadasim da|başka biri|baska biri|anderer person|andere person|für meinen freund|fur meinen freund/])) {
+    return {
+      caseRelation: "new_case",
+      confidence: 0.85,
+      reason: "Andere Person oder anderer Fall wird erwähnt.",
+      useOldCaseData: false,
+      ignoreOldChatHistory: true,
+      needsClarification: false,
+      clarificationQuestion: ""
+    };
+  }
+
+  if (v16Has(q, [/fehler|falsch|stimmt nicht|yanlis|yanlış|ich verstehe nicht|anlamadim|anlamadım|kannst du mir helfen|hilf mir$/]) && q.length < 45) {
+    const lang = v16Lang(frage);
+    return {
+      caseRelation: "uncertain_case",
+      confidence: 0.45,
+      reason: "Kurze unklare Aussage ohne klare Fallzuordnung.",
+      useOldCaseData: false,
+      ignoreOldChatHistory: true,
+      needsClarification: true,
+      clarificationQuestion: lang === "tr" ? "Bu soru önceki mektupla mı ilgili, yoksa yeni bir konu mu?" : "Geht es noch um den vorherigen Brief oder ist das ein neuer Fall?"
+    };
+  }
+
+  if (v16Has(q, [
+    /was soll ich|was muss ich|wie geht es weiter|welche unterlagen|schreib mir|mach mir|ich kann das nicht zahlen|nicht zahlen|tamam dogru|tamam doğru|bunu odedim|bunu ödedim|evet|danke|ok|okay|an wen|hangi belgeler|simdi ne yapayim|şimdi ne yapayım/
+  ])) {
+    return {
+      caseRelation: "same_case",
+      confidence: 0.8,
+      reason: "Typische Folgefrage oder Bestätigung zum aktuellen Fall.",
+      useOldCaseData: true,
+      ignoreOldChatHistory: false,
+      needsClarification: false,
+      clarificationQuestion: ""
+    };
+  }
+
+  if (current.length > 20) {
+    return {
+      caseRelation: "same_case",
+      confidence: 0.65,
+      reason: "Aktueller Briefkontext ist vorhanden und kein Fallwechsel-Signal erkannt.",
+      useOldCaseData: true,
+      ignoreOldChatHistory: false,
+      needsClarification: false,
+      clarificationQuestion: ""
+    };
+  }
+
+  const lang = v16Lang(frage);
+  return {
+    caseRelation: "uncertain_case",
+    confidence: 0.4,
+    reason: "Kein sicherer aktueller Fall erkennbar.",
+    useOldCaseData: false,
+    ignoreOldChatHistory: true,
+    needsClarification: true,
+    clarificationQuestion: lang === "tr" ? "Bu soru önceki mektupla mı ilgili, yoksa yeni bir konu mu?" : "Geht es um den vorherigen Brief oder um einen neuen Fall?"
+  };
+}
+
+function v16DetectCaseGroupAndType(currentContext = "", frage = "") {
+  const t = v16Norm(`${frage}\n${currentContext}`);
+
+  const result = { caseGroup: "unknown", caseType: "unknown_document", riskLevel: "medium" };
+
+  if (v16Has(t, [/amtsgericht|landgericht|gericht|staatsanwaltschaft|polizei|anklage|straf|ladung|umladung|hauptverhandlung|strafbefehl|bussgeld|bußgeld|mahkeme|savcilik|savcılık|duruşma|durusma|avukat|anwalt|pflichtverteidiger|beratungshilfe/])) return { caseGroup: "court_police", caseType: v16Has(t, [/avukat|anwalt|beratungshilfe|pflichtverteidiger/]) ? "legal_aid" : "court_letter", riskLevel: "high" };
+  if (v16Has(t, [/inkasso|mahnung|forderung|glaubiger|gläubiger|gerichtsvollzieher|vollstreckung|vermogensauskunft|vermögensauskunft|mahnbescheid|pfandung|pfändung/])) return { caseGroup: "debt_collection", caseType: "debt_collection_letter", riskLevel: "high" };
+  if (v16Has(t, [/p konto|p-konto|pfandungsschutzkonto|pfändungsschutzkonto|kontopfandung|kontopfändung|bank|sparkasse|postbank|lastschrift zuruck|lastschrift zurück|konto gesperrt/])) return { caseGroup: "banking", caseType: "bank_garnishment_or_account", riskLevel: "high" };
+  if (v16Has(t, [/finanzamt|steuernummer|einkommensteuer|steuerbescheid|saumniszuschlag|säumniszuschlag|steuer|zoll/])) return { caseGroup: "tax_office", caseType: "tax_letter", riskLevel: "high" };
+  if (v16Has(t, [/jobcenter|burgergeld|buergergeld|bürgergeld|sgb ii|aufrechnung|rueckforderung|rückforderung|bedarfsgemeinschaft|sozialamt|wohngeld|grundsicherung|mitwirkung/])) return { caseGroup: "social_benefits", caseType: v16Has(t, [/rueckforderung|rückforderung|aufrechnung|zu viel|fazla/]) ? "jobcenter_overpayment" : "social_benefit_letter", riskLevel: "medium" };
+  if (v16Has(t, [/pflegekasse|pflegegrad|pflegegeld|mdk|medizinischer dienst|entlastungsbetrag|verhinderungspflege|kurzzeitpflege/])) return { caseGroup: "care_insurance", caseType: "care_level_or_care_benefit", riskLevel: "medium" };
+  if (v16Has(t, [/rentenversicherung|rentenkasse|erwerbsminderung|erwerbsminderungsrente|reha|kontenklarung|kontenklärung|versicherungsverlauf/])) return { caseGroup: "pension_insurance", caseType: "pension_or_rehab", riskLevel: "medium" };
+  if (v16Has(t, [/schwerbehindert|gdb|grad der behinderung|merkzeichen|versorgungsamt|behindertenausweis/])) return { caseGroup: "disability_office", caseType: "gdb_or_disability_card", riskLevel: "medium" };
+  if (v16Has(t, [/krankenkasse|krankenversicherung|zahnarzt|zahn|dzr|rechnung|pzr|goz|bema|zuzahlung|krankengeld|hilfsmittel|medizin|arzt|doktor|sigorta|geri odeme|geri ödeme|fatura/])) return { caseGroup: "health_insurance", caseType: v16Has(t, [/dzr|zahnarzt|zahn|pzr|goz|bema/]) ? "dental_or_dzr_invoice" : "health_insurance_letter", riskLevel: "low" };
+  if (v16Has(t, [/finanz schutzbrief|finanz-schutzbrief|versicherungsschein|kreditanfrage|kredit|kredi|schutzbrief|vertrag|widerruf|kundigung|kündigung|abo|sepa|lastschrift|sigorta iptal/])) return { caseGroup: "contracts", caseType: "insurance_or_contract", riskLevel: "medium" };
+  if (v16Has(t, [/vermieter|miete|nebenkosten|kaution|raumung|räumung|wohnung|hausverwaltung|heizung|mietschulden/])) return { caseGroup: "housing", caseType: "housing_or_rent", riskLevel: v16Has(t, [/raumung|räumung|kündigung|kundigung/]) ? "high" : "medium" };
+  if (v16Has(t, [/arbeitgeber|arbeitnehmer|lohn|gehalt|abmahnung|arbeitszeugnis|krankmeldung|schuldanerkenntnis|lohnabtretung|personalabteilung|kündigung|kundigung/])) return { caseGroup: "employment", caseType: "employment_letter", riskLevel: v16Has(t, [/kündigung|kundigung|schuldanerkenntnis|lohnabtretung/]) ? "high" : "medium" };
+  if (v16Has(t, [/familienkasse|kindergeld|kinderzuschlag|unterhaltsvorschuss|jugendamt|kita|schule|klassenfahrt|bildung und teilhabe|but|schulessen/])) return { caseGroup: "family_school", caseType: "family_or_school_benefit", riskLevel: "low" };
+  if (v16Has(t, [/auslanderbehorde|ausländerbehörde|aufenthalt|visum|duldung|arbeitserlaubnis|einburgerung|einbürgerung|abschiebung|bamf/])) return { caseGroup: "immigration", caseType: "immigration_letter", riskLevel: v16Has(t, [/abschiebung|frist|ablehnung/]) ? "high" : "medium" };
+  if (v16Has(t, [/bussgeld|bußgeld|blitzer|fahrverbot|punkt|kfz|zulassungsstelle|tuv|tüv|unfall|werkstatt|fahrzeugsteuer/])) return { caseGroup: "vehicle_traffic", caseType: "vehicle_or_traffic", riskLevel: v16Has(t, [/fahrverbot|frist|einspruch/]) ? "high" : "medium" };
+  if (v16Has(t, [/bestellung|retoure|rucksendung|rücksendung|reklamation|garantie|gewahrleistung|gewährleistung|online shop|rückerstattung|ruckerstattung|fitnessstudio|streaming/])) return { caseGroup: "consumer_contracts", caseType: "consumer_contract", riskLevel: "low" };
+
+  return result;
+}
+
+function v16DetectUserGoal(frage = "", currentContext = "", caseGroup = "") {
+  const q = v16Norm(frage);
+  const all = v16Norm(`${frage}\n${currentContext}`);
+
+  if (v16Has(q, [/tamam dogru|tamam doğru|evet dogru|evet doğru|stimmt|ja richtig|zu viel bekommen|fazla para aldik|fazla para aldık|fazla odeme|fazla ödeme|ueberzahlung|überzahlung/]) && caseGroup === "social_benefits") return "accepted_overpayment";
+  if (v16Has(q, [/geri al|geri odeme|geri ödeme|erstattung|zuruckbekommen|zurückbekommen|kostenubernahme|kostenübernahme|sigortadan|krankenkasse|versicherung.*zahlen|refund|reimburse/])) return "reimbursement";
+  if (v16Has(q, [/taksit|ratenzahlung|rate|stundung|nicht zahlen|nicht bezahlen|kann das nicht zahlen|odeyemem|ödeyemem|para yok/])) return "payment_problem";
+  if (v16Has(q, [/bunu odedim|bunu ödedim|schon bezahlt|bereits bezahlt|zahlungsnachweis|dekont|uberwiesen|überwiesen/])) return "paid_proof";
+  if (v16Has(q, [/widerruf|kundigen|kündigen|kündigung|kundigung|iptal|fesih|vertrag los|sigortayi sil|sigortayı sil|kredi olmadi|kredi olmadı/])) return "contract_cancel";
+  if (v16Has(q, [/avukat|anwalt|beratungshilfe|pflichtverteidiger|para odemeden|para ödemeden|rechtliche hilfe/])) return "legal_aid";
+  if (v16Has(q, [/widerspruch|einspruch|itiraz|stimmt nicht|falsch|bestreiten|ablehnung|abgelehnt/])) return "appeal_or_dispute";
+  if (v16Has(q, [/welche unterlagen|hangi belgeler|was brauche ich|mitnehmen|checkliste|liste|tek tek/])) return "documents_checklist";
+  if (v16Has(q, [/was soll ich|was muss ich|ne yapayim|ne yapayım|nasil yapayim|nasıl yapayım|wie weiter|nächster schritt|nachster schritt/])) return "guidance";
+  if (v16Has(q, [/frist|termin|bis wann|deadline|duruşma|durusma/])) return "deadline_or_appointment";
+  if (v16Has(q, [/was passiert|wenn ich nichts|folge|konsequenz|ne olur/])) return "consequence";
+  if (v16Has(q, [/was bedeutet|ne demek|anlami|anlamı|erklare|erklär|verstehe nicht/])) return "understand";
+  if (v16Has(all, [/pflegegrad|pflegegeld|rente|reha|schwerbehindert|gdb|kinderzuschlag|unterhaltsvorschuss|wohngeld|was kann ich bekommen|steht mir zu/])) return "benefit_check";
+  return "answer_question";
+}
+
+function v16RequestedFormat(frage = "", frageMode = "") {
+  if (wantsBothEmailAndPdf(frage, frageMode)) return "both";
+  if (wantsPdfOutput(frage, frageMode)) return "pdf";
+  if (wantsEmailOutput(frage, frageMode)) return "email";
+  return "none";
+}
+
+function v16IsWriteRequest(frage = "", frageMode = "") {
+  const q = v16Norm(`${frage} ${frageMode}`);
+  return v16RequestedFormat(frage, frageMode) !== "none" || v16Has(q, [/schreib|formuliere|erstelle|mach mir|vorlage|antwort schreiben|dilekce|dilekçe|mektup|hazirla|hazırla|e posta|eposta|mail|yaz/]);
+}
+
+function v16DetectAnswerType({ frage = "", caseRelation = {}, userGoal = "", riskLevel = "medium", requestedFormat = "none", isWriteRequest = false, caseGroup = "" }) {
+  const q = v16Norm(frage);
+
+  if (caseRelation.caseRelation === "uncertain_case" && caseRelation.needsClarification) return "clarification";
+
+  if (v16Has(q, [/nein|hayir|hayır|falsch|yanlis|yanlış|ich bin|ben .* annesiyim|mutter|vater|tochter|sohn|adresse raus|name falsch|nicht der|nicht die|korrigier/])) return "correction_confirmed";
+
+  if (isWriteRequest && requestedFormat === "email") return "draft_email";
+  if (isWriteRequest && requestedFormat === "pdf") return "draft_pdf";
+  if (isWriteRequest && requestedFormat === "both") return "draft_email";
+  if (isWriteRequest && requestedFormat === "none") return "clarification";
+
+  if (riskLevel === "high" && userGoal === "deadline_or_appointment") return "warning";
+  if (userGoal === "consequence" || v16Has(q, [/frist lauft|frist läuft|morgen ab|haftbefehl|raumung|räumung|vollstreckung|pfandung|pfändung/])) return "warning";
+
+  if (userGoal === "documents_checklist" || v16Has(q, [/checkliste|hangi belgeler|welche unterlagen|was brauche ich|tek tek/])) return "checklist";
+  if (userGoal === "guidance" || userGoal === "payment_problem" || userGoal === "paid_proof" || userGoal === "contract_cancel") return "next_steps";
+  return "short_answer";
+}
+
+function v16TemplateRules(caseGroup = "unknown", caseType = "unknown_document", userGoal = "answer_question") {
+  const base = {
+    allowedTemplates: ["general_answer"],
+    forbiddenTemplates: [],
+    targetParty: "Stelle aus dem Schreiben",
+    selectedTemplate: "general_answer"
+  };
+
+  const set = (targetParty, selectedTemplate, allowedTemplates, forbiddenTemplates) => ({ targetParty, selectedTemplate, allowedTemplates, forbiddenTemplates });
+
+  if (caseGroup === "social_benefits") return set("Jobcenter / Sozialamt / zuständige Leistungsstelle", userGoal === "accepted_overpayment" ? "lower_deduction_request" : userGoal === "payment_problem" ? "stundung_request" : userGoal === "appeal_or_dispute" ? "objection_request" : "social_review_request", ["lower_deduction_request", "stundung_request", "payment_plan_request", "objection_request", "submit_documents", "deadline_extension", "social_review_request", "general_answer"], ["insurance_reimbursement", "dzr_installment", "legal_aid_request", "contract_cancellation"]);
+  if (caseGroup === "health_insurance") {
+    const reimbursement = userGoal === "reimbursement" || v16Has(userGoal, ["reimbursement"]);
+    return set(reimbursement ? "Krankenkasse / Versicherung" : "Krankenkasse / Rechnungssteller", reimbursement ? "insurance_reimbursement" : userGoal === "payment_problem" ? "medical_installment_request" : "health_review_request", ["insurance_reimbursement", "cost_coverage_request", "submit_payment_proof", "medical_installment_request", "invoice_clarification", "health_review_request", "general_answer"], ["legal_aid_request", "contract_cancellation", "court_response"]);
+  }
+  if (caseGroup === "care_insurance") return set("Pflegekasse", "care_request", ["care_level_application", "care_level_objection", "upgrade_request", "care_aid_request", "submit_documents", "general_answer"], ["dzr_installment", "contract_cancellation", "legal_aid_request"]);
+  if (caseGroup === "pension_insurance") return set("Deutsche Rentenversicherung", "pension_request", ["pension_objection", "rehab_application", "disability_pension_application", "submit_documents", "account_clarification", "general_answer"], ["insurance_reimbursement", "dzr_installment", "contract_cancellation"]);
+  if (caseGroup === "disability_office") return set("Versorgungsamt / zuständige Behörde", "gdb_request", ["disability_application", "gdb_objection", "gdb_increase_request", "merkzeichen_request", "submit_documents", "general_answer"], ["pflegegrad_application", "insurance_reimbursement", "dzr_installment"]);
+  if (caseGroup === "court_police") return set("Gericht / Rechtsantragstelle / zuständige Stelle", userGoal === "legal_aid" ? "legal_aid_request" : "court_clarification", ["legal_aid_request", "public_defender_check", "appointment_reschedule", "sickness_notice_to_court", "neutral_court_response", "court_clarification", "general_answer"], ["insurance_reimbursement", "dzr_installment", "contract_cancellation", "debt_acknowledgement", "confession_template"]);
+  if (caseGroup === "debt_collection") return set("Inkassobüro / Gläubiger", userGoal === "payment_problem" ? "installment_offer" : userGoal === "appeal_or_dispute" ? "dispute_debt" : "request_debt_breakdown", ["request_debt_breakdown", "request_proof", "dispute_debt", "installment_offer", "stundung_request", "submit_payment_proof", "without_admission_response", "general_answer"], ["debt_acknowledgement", "insurance_reimbursement", "legal_aid_request"]);
+  if (caseGroup === "contracts") return set("Vertragspartner / Versicherung / Anbieter", "contract_cancellation", ["withdrawal_request", "contract_cancellation", "proof_of_contract_request", "stop_direct_debit_request", "refund_request", "contract_copy_request", "general_answer"], ["insurance_reimbursement", "dzr_installment", "jobcenter_objection", "legal_aid_request"]);
+  if (caseGroup === "banking") return set("Bank / Gläubiger / Vollstreckungsgericht", "bank_clarification", ["p_account_clarification", "garnishment_clarification", "chargeback_request", "bank_contact_request", "submit_proof", "general_answer"], ["insurance_reimbursement", "dzr_installment", "contract_cancellation"]);
+  if (caseGroup === "tax_office") return set("Finanzamt", userGoal === "payment_problem" ? "tax_stundung_request" : "tax_clarification", ["tax_objection_check", "tax_stundung_request", "tax_installment_request", "submit_tax_documents", "tax_clarification", "general_answer"], ["jobcenter_objection", "insurance_reimbursement", "dzr_installment"]);
+  if (caseGroup === "housing") return set("Vermieter / Hausverwaltung / zuständige Stelle", "housing_request", ["utility_bill_review_request", "request_receipts_inspection", "deposit_return_request", "defect_notice", "rent_debt_installment", "housing_help_request", "general_answer"], ["insurance_reimbursement", "dzr_installment", "court_criminal_response"]);
+  if (caseGroup === "employment") return set("Arbeitgeber / Personalabteilung", "employment_request", ["request_payslip", "request_employment_certificate", "sick_note_submission", "repayment_review_request", "neutral_employer_response", "general_answer"], ["automatic_debt_acknowledgement", "wage_assignment_confirmation", "insurance_reimbursement", "dzr_installment"]);
+  if (caseGroup === "family_school") return set("Jobcenter / Kommune / Schule / Familienkasse / Jugendamt", "family_benefit_request", ["but_cost_coverage_request", "school_trip_cost_request", "kita_fee_reduction_request", "child_benefit_request", "child_supplement_request", "advance_maintenance_request", "submit_documents", "general_answer"], ["insurance_reimbursement", "dzr_installment", "court_criminal_response"]);
+  if (caseGroup === "immigration") return set("Ausländerbehörde / BAMF / zuständige Stelle", "immigration_request", ["submit_immigration_documents", "appointment_reschedule", "deadline_extension", "residence_request", "work_permit_request", "request_clarification", "general_answer"], ["insurance_reimbursement", "dzr_installment", "jobcenter_objection"]);
+  if (caseGroup === "vehicle_traffic") return set("Bußgeldstelle / Versicherung / Zulassungsstelle", "traffic_vehicle_request", ["traffic_fine_objection_check", "installment_request", "insurance_claim_report", "submit_vehicle_documents", "request_clarification", "general_answer"], ["insurance_reimbursement", "dzr_installment", "jobcenter_objection"]);
+  if (caseGroup === "consumer_contracts") return set("Unternehmen / Kundenservice", "consumer_request", ["withdrawal_request", "cancellation_request", "refund_request", "complaint_request", "warranty_claim", "proof_of_contract_request", "general_answer"], ["jobcenter_objection", "insurance_reimbursement", "dzr_installment", "court_criminal_response"]);
+
+  return base;
+}
+
+function v16BuildRoute({ frage = "", frageMode = "", meta = {}, briefText = "", kurz = "", details = "", historyText = "" }) {
+  const currentContext = v16CurrentContext(meta, briefText, kurz, details);
+  const caseRelation = v16DetectCaseRelation({ frage, meta, briefText, kurz, details, historyText });
+  const caseInfo = v16DetectCaseGroupAndType(currentContext, frage);
+  const userGoal = v16DetectUserGoal(frage, currentContext, caseInfo.caseGroup);
+  const requestedFormat = v16RequestedFormat(frage, frageMode);
+  const isWriteRequest = v16IsWriteRequest(frage, frageMode);
+  const answerType = v16DetectAnswerType({ frage, caseRelation, userGoal, riskLevel: caseInfo.riskLevel, requestedFormat, isWriteRequest, caseGroup: caseInfo.caseGroup });
+  const rules = v16TemplateRules(caseInfo.caseGroup, caseInfo.caseType, userGoal);
+
+  let selectedTemplate = rules.selectedTemplate;
+  if (answerType === "draft_email" || answerType === "draft_pdf") {
+    if (userGoal === "reimbursement") selectedTemplate = "insurance_reimbursement";
+    if (userGoal === "payment_problem") selectedTemplate = caseInfo.caseGroup === "social_benefits" ? "lower_deduction_request" : "stundung_request";
+    if (userGoal === "legal_aid") selectedTemplate = "legal_aid_request";
+    if (userGoal === "contract_cancel") selectedTemplate = "contract_cancellation";
+    if (userGoal === "paid_proof") selectedTemplate = "submit_payment_proof";
+  }
+
+  const templateAllowed = !rules.forbiddenTemplates.includes(selectedTemplate) && (rules.allowedTemplates.includes(selectedTemplate) || selectedTemplate === "general_answer");
+  const needsClarification = caseRelation.needsClarification || answerType === "clarification" || ((answerType === "draft_email" || answerType === "draft_pdf") && (!templateAllowed || caseInfo.caseGroup === "unknown" || v16IsPureFormatOrVagueWrite(frage)));
+
+  const lang = v16Lang(frage, getLanguageMeta("de").code);
+  let clarificationQuestion = caseRelation.clarificationQuestion || "";
+  if (!clarificationQuestion && needsClarification) {
+    clarificationQuestion = lang === "tr"
+      ? "Bunu nereye göndermek istiyorsun: mektuptaki yere mi, yoksa başka bir kuruma mı?"
+      : "An wen soll die Antwort gehen: an die Stelle aus dem Brief oder an eine andere Stelle?";
+  }
+
+  return {
+    caseRelation: caseRelation.caseRelation,
+    caseConfidence: caseRelation.confidence,
+    useOldCaseData: caseRelation.useOldCaseData,
+    ignoreOldChatHistory: caseRelation.ignoreOldChatHistory,
+    answerType: needsClarification ? "clarification" : answerType,
+    caseGroup: caseInfo.caseGroup,
+    caseType: caseInfo.caseType,
+    userGoal,
+    shouldCreateDraft: !needsClarification && (answerType === "draft_email" || answerType === "draft_pdf"),
+    shouldAskClarification: needsClarification,
+    repeatCaseDetails: ["draft_email", "draft_pdf"].includes(answerType) || userGoal === "deadline_or_appointment",
+    requestedFormat,
+    targetParty: rules.targetParty,
+    selectedTemplate,
+    allowedTemplates: rules.allowedTemplates,
+    forbiddenTemplates: rules.forbiddenTemplates,
+    templateAllowed,
+    blockReason: templateAllowed ? "" : "Template passt nicht zu Falltyp und Nutzerziel.",
+    riskLevel: caseInfo.riskLevel,
+    maxLines: answerType === "warning" ? 2 : answerType === "checklist" ? 8 : answerType === "next_steps" ? 5 : answerType === "correction_confirmed" ? 3 : 5,
+    userLanguage: lang,
+    clarificationQuestion
+  };
+}
+
+function v16ShortFollowup(frage = "", route = {}) {
+  const lang = route.userLanguage || v16Lang(frage);
+  if (lang === "tr") {
+    if (route.userGoal === "accepted_overpayment") return acceptedOverpaymentUltraShortAnswerV155(frage);
+    if (route.userGoal === "payment_problem") return cleanText(`Tamam, anladım.
+
+Şimdi önemli olan ödeme şeklini yazılı istemek.
+
+Seçenekler:
+☐ Daha düşük taksit istemek
+☐ Stundung (ödemeyi erteleme) istemek
+☐ Önce borcun dökümünü istemek
+
+İstersen sana kısa Almanca yazı hazırlayayım.`);
+    if (route.userGoal === "paid_proof") return cleanText(`Tamam.
+
+Aynı borcu tekrar ödeme.
+
+Yapılacaklar:
+☐ Ödeme dekontunu gönder
+☐ Numara/Aktenzeichen yaz
+☐ Ödemenin hesaba işlendiğine dair yazılı onay iste
+
+İstersen sana kısa Almanca mesaj hazırlayayım.`);
+    if (route.userGoal === "contract_cancel") return cleanText(`Bu durumda konu para iadesi değil, sözleşme iptali olabilir.
+
+Yapılacaklar:
+☐ Widerruf iste
+☐ Hilfsweise Kündigung yaz
+☐ Yeni ödeme çekilmemesini iste
+☐ Yazılı onay iste
+
+İstersen Almanca e-posta hazırlayayım.`);
+    if (route.userGoal === "legal_aid") return cleanText(`Evet, Bürgergeld alıyorsanız avukat yardımı kontrol edilebilir.
+
+Yapılacaklar:
+☐ Mahkeme yazısı
+☐ Aktenzeichen
+☐ Güncel Jobcenter/Bürgergeld Bescheidi
+☐ Kimlik
+☐ Amtsgericht/Rechtsantragstelle’ye sor
+
+Özellikle Strafsache varsa Pflichtverteidiger de sorulmalı.`);
+    if (route.userGoal === "reimbursement") return cleanText(`Evet, sigortaya/Krankenkasse’ye gönderebilirsiniz. Geri ödeme garanti değildir; onlar kontrol eder.
+
+Gerekenler:
+☐ Fatura
+☐ Ödeme dekontu
+☐ Varsa detaylı Leistungsaufstellung
+
+İstersen Almanca e-posta hazırlayayım.`);
+  }
+
+  if (route.userGoal === "accepted_overpayment") return acceptedOverpaymentUltraShortAnswerV155(frage);
+  if (route.userGoal === "payment_problem") return cleanText(`Verstanden.
+
+Jetzt geht es um die Zahlungsform.
+
+Optionen:
+☐ niedrigere Rate beantragen
+☐ Stundung beantragen
+☐ Forderungsaufstellung verlangen
+
+Wenn du möchtest, schreibe ich dir einen kurzen deutschen Text.`);
+  if (route.userGoal === "paid_proof") return cleanText(`Dann nicht nochmal zahlen.
+
+Nächste Schritte:
+☐ Zahlungsnachweis senden
+☐ Nummer/Aktenzeichen nennen
+☐ schriftliche Bestätigung verlangen
+
+Wenn du möchtest, schreibe ich dir eine kurze Nachricht.`);
+  if (route.userGoal === "contract_cancel") return cleanText(`Das ist eher ein Vertrags-/Kündigungsthema.
+
+Nächste Schritte:
+☐ Widerruf erklären
+☐ hilfsweise kündigen
+☐ weitere Abbuchungen stoppen lassen
+☐ schriftliche Bestätigung verlangen`);
+  if (route.userGoal === "legal_aid") return cleanText(`Das kann möglich sein, ist aber nicht garantiert.
+
+Du brauchst:
+☐ Gerichtsschreiben
+☐ Aktenzeichen
+☐ aktuellen Bürgergeld-/Jobcenter-Bescheid
+☐ Ausweis
+
+Frage beim Amtsgericht/Rechtsantragstelle nach Beratungshilfe und ggf. Pflichtverteidiger.`);
+  if (route.userGoal === "reimbursement") return cleanText(`Das kann möglich sein, ist aber nicht sicher.
+
+Nächste Schritte:
+☐ Rechnung einreichen
+☐ Zahlungsnachweis beilegen
+☐ Erstattung/Kostenübernahme schriftlich prüfen lassen
+
+Wenn du möchtest, schreibe ich dir eine E-Mail.`);
+  return "";
+}
+
+function v16BuildChecklist(route = {}, meta = {}) {
+  const lang = route.userLanguage || "de";
+  const ref = getPrimaryReference(meta);
+  if (lang === "tr") {
+    const items = ["Mektup / belge", ref ? `Aktenzeichen/Numara: ${ref}` : "Aktenzeichen/Numara", "Kimlik", "Gelir belgesi veya Jobcenter Bescheidi varsa", "Ödeme dekontu varsa", "Eksik belgelerin kopyası"];
+    return cleanText(`Kontrol listesi:
+
+${items.slice(0, 6).map(x => `☐ ${x}`).join("\n")}
+
+Sonraki adım: Bu belgelerle yetkili yere yazılı başvur.`);
+  }
+  const items = ["Brief / Schreiben", ref ? `Aktenzeichen/Nummer: ${ref}` : "Aktenzeichen/Nummer", "Ausweis", "Bescheid/Nachweis über Einkommen falls nötig", "Zahlungsnachweis falls vorhanden", "fehlende Unterlagen als Kopie"];
+  return cleanText(`Checkliste:
+
+${items.slice(0, 6).map(x => `☐ ${x}`).join("\n")}
+
+Nächster Schritt: Mit diesen Unterlagen schriftlich bei der zuständigen Stelle melden.`);
+}
+
+function v16Warning(route = {}, meta = {}, frage = "") {
+  const lang = route.userLanguage || v16Lang(frage);
+  if (lang === "tr") return "Dikkat: Burada süre, mahkeme/termin, icra veya para riski olabilir. Bunu bekletmeyin; emin değilseniz yetkili yere veya danışma yerine hemen sorun.";
+  return "Achtung: Hier kann eine Frist, ein Termin, Vollstreckung oder ein Geldrisiko wichtig sein. Nicht liegen lassen; bei Unsicherheit sofort bei der zuständigen Stelle oder Beratung nachfragen.";
+}
+
+function v16CorrectionConfirmed(frage = "") {
+  const lang = v16Lang(frage);
+  if (lang === "tr") return cleanText(`Tamam, düzeltiyorum.
+
+Bu bilgiyi artık dikkate alacağım.
+
+İstersen metni buna göre yeniden hazırlayayım.`);
+  return cleanText(`Verstanden, ich korrigiere das.
+
+Diese Angabe wird jetzt berücksichtigt.
+
+Wenn du möchtest, erstelle ich den Text damit neu.`);
+}
+
+function v16BuildDraft(route = {}, meta = {}, context = "") {
+  const fmt = route.answerType === "draft_email" ? "email" : "pdf";
+  const group = route.caseGroup;
+  const goal = route.userGoal;
+
+  if (group === "court_police" && goal === "legal_aid") {
+    const pdf = buildLegalAidPdfOutputV15(meta, context);
+    if (fmt === "email") return cleanText(`Empfänger: Amtsgericht / Rechtsantragstelle
+
+${pdf.replace(/^PDF-BRIEF:\s*/i, "")}`);
+    return pdf;
+  }
+
+  if (group === "contracts" || goal === "contract_cancel") {
+    if (fmt === "email") return buildProfessionalOutput(meta, context, "vertrag_versicherung", "cancel");
+    return buildPdfOnlyOutput(meta, context, "vertrag_versicherung", "cancel");
+  }
+
+  if (goal === "reimbursement") {
+    if (fmt === "email") return buildProfessionalOutput(meta, context, "gesundheit", "reimbursement");
+    return buildPdfOnlyOutput(meta, context, "gesundheit", "reimbursement");
+  }
+
+  if (goal === "payment_problem") {
+    const domain = group === "tax_office" ? "finanzamt" : group === "debt_collection" ? "inkasso" : group === "employment" ? "arbeit" : detectDomain(context);
+    const intent = group === "health_insurance" && route.caseType === "dental_or_dzr_invoice" ? "installments" : "no_money";
+    if (fmt === "email") return buildProfessionalOutput(meta, context, domain, intent);
+    return buildPdfOnlyOutput(meta, context, domain, intent);
+  }
+
+  if (goal === "paid_proof") {
+    const domain = detectDomain(context);
+    if (fmt === "email") return buildProfessionalOutput(meta, context, domain, "paid");
+    return buildPdfOnlyOutput(meta, context, domain, "paid");
+  }
+
+  const domain = detectDomain(context);
+  if (fmt === "email") return buildProfessionalOutput(meta, context, domain, "reply");
+  return buildPdfOnlyOutput(meta, context, domain, "pdf");
+}
+
+function v16BuildAnswer(route = {}, meta = {}, context = "", frage = "") {
+  if (route.answerType === "clarification") return route.clarificationQuestion;
+  if (route.answerType === "correction_confirmed") return v16CorrectionConfirmed(frage);
+  if (route.answerType === "warning") return v16Warning(route, meta, frage);
+  if (route.answerType === "checklist") return v16BuildChecklist(route, meta);
+  if (route.answerType === "draft_email" || route.answerType === "draft_pdf") return v16BuildDraft(route, meta, context);
+
+  const follow = v16ShortFollowup(frage, route);
+  if (follow) return follow;
+
+  const lang = route.userLanguage || v16Lang(frage);
+  if (route.answerType === "next_steps") {
+    if (lang === "tr") return cleanText(`Yapılacaklar:
+☐ Önce yazıdaki süre/numara/bilgileri kontrol et
+☐ Yetkili yere yazılı sor
+☐ Cevabı sakla
+☐ Gerekirse belge ekle
+
+İstersen sana kısa Almanca mesaj hazırlayayım.`);
+    return cleanText(`Nächste Schritte:
+☐ Frist, Nummer und Betrag prüfen
+☐ zuständige Stelle schriftlich kontaktieren
+☐ Antwort/Nachweis aufbewahren
+☐ falls nötig Unterlagen beilegen
+
+Wenn du möchtest, schreibe ich dir einen kurzen Text.`);
+  }
+
+  if (lang === "tr") return cleanText(`Kısaca: Bu konuda kesin karar veremem, ama yazılı olarak kontrol ettirmek güvenli yoldur.
+
+Sonraki adım: Yetkili yere kısa bir mesaj gönderip yazılı cevap iste.
+
+İstersen sana Almanca metin hazırlayayım.`);
+  return cleanText(`Kurz gesagt: Das sollte schriftlich geprüft werden. Eine sichere Entscheidung kann nur die zuständige Stelle treffen.
+
+Nächster Schritt: Stelle kurz anschreiben und schriftliche Antwort verlangen.
+
+Wenn du möchtest, formuliere ich dir den Text.`);
+}
+
+// V16.1: Do not capture buildForcedChatAnswer here. Function declarations are hoisted, so capturing by name can capture this final wrapper itself.
+// Use the last legacy router explicitly as fallback to avoid accidental recursion.
+const buildForcedChatAnswer_BEFORE_V16 = (typeof buildForcedChatAnswer_LEGACY_5 === "function")
+  ? buildForcedChatAnswer_LEGACY_5
+  : function () { return ""; };
+function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+  const currentContext = v16CurrentContext(meta, briefText, kurz, details);
+  const route = v16BuildRoute({ frage, frageMode, meta, briefText, kurz, details, historyText });
+
+  // V16 owns all follow-up/guidance/draft/correction routes.
+  if (["clarification", "correction_confirmed", "warning", "checklist", "next_steps", "short_answer", "draft_email", "draft_pdf"].includes(route.answerType)) {
+    return v16BuildAnswer(route, meta, currentContext, frage);
+  }
+
+  return buildForcedChatAnswer_BEFORE_V16({ frage, frageMode, meta, briefText, kurz, details, historyText });
 }
