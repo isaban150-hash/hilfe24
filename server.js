@@ -3083,8 +3083,17 @@ app.post("/api/frage", async (req, res) => {
     const currentQuestion = v17Norm(frage);
     const lastAssistantAnswer = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "assistant" && e.text) || {}).text || "");
     const lastUserQuestion = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "user" && e.text) || {}).text || "");
-    const looksTurkish = /[ığüşöçİĞÜŞÖÇ]/.test(frage) || v17Has(currentQuestion, [/\bve\b/, /\bama\b/, /\bneden\b/, /\bniye\b/, /\bbana\b/, /\bisim\b/, /\bmektupta\b/, /\byaziyor\b/, /\byazıyor\b/, /\btaksit\b/]);
-    const userLang = looksTurkish ? "tr" : langMeta.code;
+    const detectUiLang = (text = "") => {
+      const raw = String(text || "");
+      const q = v17Norm(raw);
+      if (/[\u0600-\u06FF]/.test(raw)) return "ar";
+      if (/[\u0400-\u04FF]/.test(raw)) return "bg";
+      if (/[ığüşöçİĞÜŞÖÇ]/.test(raw) || v17Has(q, [/\bve\b/, /\bama\b/, /\bneden\b/, /\bniye\b/, /\bbana\b/, /\bisim\b/, /\btaksit\b/, /\be-?posta\b/])) return "tr";
+      if (v17Has(q, [/\bplata\b/, /\brate\b/, /\bcerere\b/, /\bdovada platii\b/, /\bchitanta\b/])) return "ro";
+      if (v17Has(q, [/\bi paid\b/, /\bpayment\b/, /\binstallment\b/, /\bobjection\b/, /\bproof of payment\b/])) return "en";
+      return langMeta.code;
+    };
+    const userLang = detectUiLang(`${frage}\n${lastUserQuestion}`);
 
     if (v17Has(currentQuestion, [/bana niye almanca yaziyorsun/, /bana niye almanca yazıyorsun/])) {
       return res.json({
@@ -3098,8 +3107,10 @@ app.post("/api/frage", async (req, res) => {
       const t = v17Norm(assistantText || "");
       if (!t) return "";
       if (v17Has(t, [/name fur die unterschrift/, /ich brauche nur noch den namen/, /imza icin/, /ad soyad/, /bitte namen angeben/, /bitte schreibe den namen/])) return "name";
+      if (v17Has(t, [/welcher betrag/, /welche summe/, /hangi tutar/, /payment amount/])) return "payment_amount";
       if (v17Has(t, [/wie hoch.*rate/, /monatlich/, /ratenhohe/, /ratenhöhe/, /taksit tutari/, /taksit miktari/])) return "installment_amount";
       if (v17Has(t, [/wie viele raten/, /anzahl raten/, /kac taksit/, /kaç taksit/])) return "installment_count";
+      if (v17Has(t, [/ab wann/, /starttermin/, /hangi tarihten/, /from when/, /payment start/])) return "payment_start";
       if (v17Has(t, [/e mail adresse/, /email adresse/, /empfanger email/, /empfänger email/, /e posta adresi/])) return "recipient_email";
       if (v17Has(t, [/an wen soll/, /welche stelle/, /empfanger/, /empfänger/, /zielstelle/, /hedef kurum/])) return "target_party";
       if (v17Has(t, [/aktenzeichen/, /kassenzeichen/, /rechnungsnummer/, /kundennummer/, /referenznummer/])) return "reference_number";
@@ -3131,14 +3142,17 @@ app.post("/api/frage", async (req, res) => {
     );
     const pendingName = pendingNameRequested && isLikelyOnlyName ? cleanText(frage) : "";
     const emailAnswerMatch = (cleanText(frage).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [])[0] || "";
-    const isLikelyInstallmentAmount = /(\d+[.,]?\d*)\s*(€|eur|euro)|monatlich|pro monat|aylik|aylık/i.test(frage);
+    const isLikelyInstallmentAmount = /(\d+[.,]?\d*)\s*(€|eur|euro)|monatlich|pro monat|aylik|aylık|monthly|شهريا|شهريًا/i.test(frage);
     const installmentCountMatch = (cleanText(frage).match(/\b(\d{1,2})\b/) || [])[1] || "";
     const isLikelyReference = /[A-Z0-9\-\/.]{4,}/i.test(frage) && !/\s/.test(cleanText(frage));
     const isLikelyDate = /\b\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?\b|\b\d{4}-\d{2}-\d{2}\b/.test(frage);
+    const isLikelyPaymentAmount = /(\d+[.,]?\d*)\s*(€|eur|euro)/i.test(frage);
     const pendingFieldValueMap = {
       name: pendingName,
+      payment_amount: isLikelyPaymentAmount ? cleanText(frage) : "",
       installment_amount: isLikelyInstallmentAmount ? cleanText(frage) : "",
       installment_count: installmentCountMatch ? installmentCountMatch : "",
+      payment_start: /ab|from|starting|nächst|next|sonra|بعد|başla|basla/i.test(frage) || isLikelyDate ? cleanText(frage) : "",
       recipient_email: emailAnswerMatch,
       target_party: cleanText(frage),
       reference_number: isLikelyReference ? cleanText(frage) : "",
@@ -3150,10 +3164,12 @@ app.post("/api/frage", async (req, res) => {
     const pendingFieldValue = pendingField ? (pendingFieldValueMap[pendingField] || "") : "";
     const hasValidPendingFieldValue = Boolean(pendingField && pendingFieldValue);
     const previousAnswerType = v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]) ? "draft_pdf" : (v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e-?mail|email|mail|e-?posta/]) ? "draft_email" : "");
-    const previousGoal = v17Has(pendingDraftContext, [/ratenzahlung|iki taksit|zwei raten|taksit|rate|raten/]) ? "installment_request"
+    const previousGoal = v17Has(pendingDraftContext, [/schon bezahlt|bereits bezahlt|zahlungsnachweis|uberwiesen|überwiesen|dekont|i paid|payment made|am platit|платих|دفعت/]) ? "payment_proof"
+      : v17Has(pendingDraftContext, [/stimmt nicht|falsch|widerspruch|einspruch|itiraz|not correct|i dispute|nu este corect|не е вярно|غير صحيح|اعتراض/]) ? "dispute_or_objection"
+      : v17Has(pendingDraftContext, [/spater zahlen|später zahlen|stundung|aufschub|pay later|deferral|amânare|отсрочка|تأجيل الدفع/]) ? "deferral_request"
+      : v17Has(pendingDraftContext, [/ratenzahlung|iki taksit|zwei raten|taksit|rate|raten|installment|plan de plata|вноски|تقسيط/]) ? "installment_request"
       : v17Has(pendingDraftContext, [/erstattung|kostenubernahme|kostenübernahme|zuruckbekommen|zurückbekommen/]) ? "reimbursement_request"
       : v17Has(pendingDraftContext, [/kundigung|kündigung|widerruf|iptal|fesih/]) ? "cancellation_request"
-      : v17Has(pendingDraftContext, [/widerspruch|einspruch|itiraz|bestreiten/]) ? "dispute_or_objection"
       : "";
 
     const correctionDetected = v17Has(currentQuestion, [
@@ -3192,9 +3208,43 @@ app.post("/api/frage", async (req, res) => {
       answerType = previousAnswerType;
     }
 
+    const paymentDemandDetected = v17Has(currentContext, [
+      /zahlung/, /nachzahlung/, /ruckforderung/, /rückforderung/, /mahnung/, /offene forderung/, /rechnung/, /gebuhr/, /gebühr/, /beitrag/, /rate/, /kosten/, /vollstreckung/, /pfandung/, /pfändung/, /zahlungsfrist/, /zahlungsaufforderung/, /forderungsaufstellung/
+    ]);
+
     let userGoal = "understand";
-    if (v17Has(currentQuestion, [/ratenzahlung/, /\brate\b/, /\braten\b/, /taksit/, /iki taksit/, /zwei raten/, /in raten/, /monatlich zahlen/])) userGoal = "installment_request";
-    else if (v17Has(currentQuestion, [/stundung/, /zahlungsaufschub/, /spater zahlen/, /später zahlen/])) userGoal = "deferral_request";
+    if (v17Has(currentQuestion, [
+      /schon bezahlt/, /bereits bezahlt/, /habe bezahlt/, /uberwiesen/, /überwiesen/, /zahlungsnachweis/, /uberweisungsbeleg/, /überweisungsbeleg/, /beleg/, /kontoauszug/,
+      /odedim/, /ödedim/, /odeme yaptim/, /ödeme yaptım/, /zaten odedim/, /zaten ödedim/, /havale yaptim/, /havale yaptım/, /dekont/, /odeme belgesi/, /ödeme belgesi/, /para gonderdim/, /para gönderdim/,
+      /платих/, /вече платих/, /направих плащане/, /преведох парите/, /имам платежно/, /документ за плащане/, /платежно нареждане/,
+      /am platit/, /deja am platit/, /am facut plata/, /am transferat banii/, /dovada platii/, /chitanta/, /ordin de plata/,
+      /\bi paid\b/, /already paid/, /i have paid/, /payment made/, /transferred the money/, /proof of payment/, /receipt/,
+      /دفعت/, /لقد دفعت/, /دفعت بالفعل/, /تم الدفع/, /حولت المبلغ/, /أرسلت المال/, /عندي إيصال/, /عندي وصل/, /إثبات الدفع/, /وصل الدفع/, /حوالة/
+    ])) userGoal = "payment_proof";
+    else if (v17Has(currentQuestion, [
+      /stimmt nicht/, /falsch/, /forderung falsch/, /kenne ich nicht/, /widerspruch/, /einspruch/, /bestreiten/, /nicht nachvollziehbar/, /ich erkenne das nicht an/,
+      /yanlis/, /yanlış/, /borc dogru degil/, /borç doğru değil/, /kabul etmiyorum/, /itiraz/, /tanimiyorum/, /tanımıyorum/, /anlamiyorum/, /anlamıyorum/, /bu borcu kabul etmiyorum/,
+      /не е вярно/, /грешно е/, /не признавам/, /не съм съгласен/, /възражение/, /не познавам това задължение/,
+      /nu este corect/, /este gresit/, /este greșit/, /nu recunosc/, /nu sunt de acord/, /contestatie/, /contestație/, /nu cunosc aceasta datorie/, /nu cunosc această datorie/,
+      /this is wrong/, /not correct/, /i dispute this/, /i do not agree/, /objection/, /appeal/, /i don't recognize this debt/,
+      /هذا خطأ/, /غير صحيح/, /المبلغ غير صحيح/, /لا أوافق/, /لا أعترف بهذا الدين/, /لا أعرف هذه المطالبة/, /أريد الاعتراض/, /اعتراض/
+    ])) userGoal = "dispute_or_objection";
+    else if (v17Has(currentQuestion, [
+      /spater zahlen/, /später zahlen/, /zahlungsaufschub/, /stundung/, /fristverlangerung/, /fristverlängerung/, /noch zeit/,
+      /sonra odemek/, /sonra ödemek/, /erteleme/, /odeme erteleme/, /ödeme erteleme/, /biraz zaman lazim/, /biraz zaman lazım/, /sure uzatma/, /süre uzatma/,
+      /да платя по късно/, /отсрочка/, /отлагане на плащането/, /трябва ми още време/, /удължаване на срока/,
+      /sa platesc mai tarziu/, /să plătesc mai târziu/, /amanare la plata/, /amânare la plată/, /imi trebuie timp/, /îmi trebuie timp/, /prelungirea termenului/,
+      /pay later/, /payment deferral/, /need more time/, /extend the deadline/, /postpone payment/,
+      /أريد الدفع لاحقًا/, /أحتاج وقتًا أكثر/, /تأجيل الدفع/, /مهلة إضافية/, /تمديد المهلة/, /لا أستطيع الدفع الآن/
+    ])) userGoal = "deferral_request";
+    else if (v17Has(currentQuestion, [
+      /kann nicht auf einmal zahlen/, /kann nicht zahlen/, /ratenzahlung/, /in raten/, /monatlich zahlen/, /zahlungsvereinbarung/, /kleine raten/,
+      /birden odeyemem/, /birden ödeyemem/, /hepsini odeyemem/, /hepsini ödeyemem/, /taksit/, /taksitli odeme/, /taksitli ödeme/, /aylik odemek/, /aylık ödemek/, /odeme plani/, /ödeme planı/, /az az odemek/, /az az ödemek/,
+      /не мога да платя наведнъж/, /не мога да платя всичко/, /на вноски/, /разсрочено плащане/, /месечно плащане/, /малки вноски/,
+      /nu pot plati tot odata/, /nu pot plăti tot odată/, /nu pot plati integral/, /nu pot plăti integral/, /in rate/, /în rate/, /plata in rate/, /plată în rate/, /rate lunare/, /plan de plata/, /plan de plată/, /rate mici/,
+      /i cannot pay all at once/, /i can't pay in full/, /installments/, /payment plan/, /monthly payments/, /small payments/,
+      /لا أستطيع الدفع دفعة واحدة/, /لا أستطيع دفع المبلغ كامل/, /أريد الدفع بالتقسيط/, /تقسيط/, /أقساط/, /دفعات شهرية/, /خطة دفع/, /أدفع شهريًا/
+    ])) userGoal = "installment_request";
     else if (v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/]) || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])) ) userGoal = "reimbursement_request";
     else if (v17Has(currentQuestion, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
     else if (v17Has(currentQuestion, [/anwalt/, /beratungshilfe/, /pflichtverteidiger/, /rechtsantragstelle/, /avukat/])) userGoal = "legal_aid_request";
@@ -3309,7 +3359,7 @@ app.post("/api/frage", async (req, res) => {
       : (cleanText(refFromBriefMatch && refFromBriefMatch[1] ? refFromBriefMatch[1] : "") || refCandidates[0] || cleanText(refMatch && refMatch[1] ? refMatch[1] : ""));
     const subjectRef = cleanRef ? ` – ${cleanRef}` : "";
     const salutation = "Sehr geehrte Damen und Herren,";
-    const explicitWrongClaimCue = /forderung.*falsch|ist falsch|stimmt nicht|bestreit|widerspruch|einspruch|itiraz/.test(currentQuestion);
+    const explicitWrongClaimCue = /forderung.*falsch|ist falsch|stimmt nicht|bestreit|widerspruch|einspruch|itiraz|this is wrong|not correct|i dispute|nu este corect|не е вярно|غير صحيح|اعتراض/.test(currentQuestion);
     const uncertainClaim = /unsicher|unklar|zweifel/.test(currentQuestion) || userGoal === "dispute_or_objection";
     const inkassoCue = /inkasso|glaeubiger|gläubiger|gerichtsvollzieher/.test(v17Norm(currentContext));
     const debtNoAck = (inkassoCue || uncertainClaim || explicitWrongClaimCue) ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
@@ -3336,20 +3386,27 @@ app.post("/api/frage", async (req, res) => {
     }
 
     let draftBody = "";
-    if (userGoal === "installment_request" || userGoal === "deferral_request") {
+    if (userGoal === "installment_request") {
       const fixedRateIntro = "ich beziehe mich auf Ihr Schreiben.";
       const fixedRateText = "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich darum, den Betrag in zwei Raten zahlen zu dürfen.";
       const fixedRateConfirm = "Bitte teilen Sie mir schriftlich mit, ob Sie damit einverstanden sind und zu welchen Terminen ich die Raten überweisen soll.";
-      const pendingInstallmentAmount = pendingField === "installment_amount" && pendingFieldValueMap.installment_amount
-        ? `\n\nAls Orientierung schlage ich vor: ${pendingFieldValueMap.installment_amount}.`
+      const pendingInstallmentAmount = (pendingField === "installment_amount" && pendingFieldValueMap.installment_amount)
+        ? `\n\nVorgeschlagene monatliche Rate: ${pendingFieldValueMap.installment_amount}.`
         : "";
-      const pendingInstallmentCount = pendingField === "installment_count" && pendingFieldValueMap.installment_count
-        ? `\n\nIch bitte um Zahlung in ${pendingFieldValueMap.installment_count} Raten.`
+      const pendingInstallmentCount = (pendingField === "installment_count" && pendingFieldValueMap.installment_count)
+        ? `\n\nGewünschte Anzahl der Raten: ${pendingFieldValueMap.installment_count}.`
         : "";
-      const pendingDateInfo = pendingField === "date_or_deadline" && pendingFieldValueMap.date_or_deadline
-        ? `\n\nAls Referenz nenne ich folgendes Datum/Frist: ${pendingFieldValueMap.date_or_deadline}.`
+      const pendingStartInfo = (pendingField === "payment_start" && pendingFieldValueMap.payment_start)
+        ? `\n\nGewünschter Beginn der Zahlung: ${pendingFieldValueMap.payment_start}.`
         : "";
-      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateIntro}\n\n${fixedRateText}\n\n${fixedRateConfirm}${pendingInstallmentAmount}${pendingInstallmentCount}${pendingDateInfo}`;
+      const dynamicInstallment = (!pendingInstallmentAmount && !pendingInstallmentCount && !pendingStartInfo && !/iki taksit|zwei raten/.test(currentQuestion))
+        ? "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich um eine Ratenzahlung, die meiner finanziellen Situation entspricht."
+        : fixedRateText;
+      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateIntro}\n\n${dynamicInstallment}\n\n${fixedRateConfirm}${pendingInstallmentAmount}${pendingInstallmentCount}${pendingStartInfo}`;
+    } else if (userGoal === "deferral_request") {
+      draftBody = `${debtNoAck}${noGuiltCourt}ich beziehe mich auf Ihr Schreiben.\n\nIch kann den genannten Betrag derzeit nicht sofort bezahlen. Deshalb bitte ich um Zahlungsaufschub bzw. Stundung.\n\nBitte teilen Sie mir schriftlich mit, ob ein Zahlungsaufschub möglich ist und welche Unterlagen Sie dafür benötigen.\n\nBis zur Entscheidung über meine Anfrage bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
+    } else if (userGoal === "payment_proof") {
+      draftBody = `ich beziehe mich auf Ihr Schreiben.\n\nDer genannte Betrag wurde nach meiner Kenntnis bereits bezahlt. Den Zahlungsnachweis füge ich bei bzw. reiche ich nach.\n\nBitte prüfen Sie, ob die Zahlung korrekt zugeordnet wurde und ob noch ein offener Betrag besteht.\n\nBis zur Klärung bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
     } else if (userGoal === "reimbursement_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung einer Erstattung/Kostenübernahme.\nIch habe die Kosten bereits bezahlt und reiche die Nachweise ein.\nBitte teilen Sie mir schriftlich mit, ob und in welcher Höhe eine Erstattung möglich ist.`;
     } else if (userGoal === "cancellation_request") {
@@ -3358,8 +3415,6 @@ app.post("/api/frage", async (req, res) => {
       draftBody = `${noGuiltCourt}ich bitte um Information zur Beratungshilfe bzw. zur Möglichkeit einer anwaltlichen Unterstützung.\nBitte teilen Sie mir mit, welche Unterlagen ich einreichen soll.`;
     } else if (userGoal === "submit_documents") {
       draftBody = `anbei reiche ich die angeforderten Unterlagen/Nachweise ein.\nBitte bestätigen Sie mir den Eingang schriftlich.`;
-    } else if (userGoal === "payment_proof") {
-      draftBody = `${debtNoAck}${noGuiltCourt}ich habe bereits gezahlt und sende den Zahlungsnachweis.\nBitte prüfen Sie die Zuordnung und bestätigen Sie mir den Ausgleich schriftlich.`;
     } else if (userGoal === "dispute_or_objection") {
       const pendingDateInfo = pendingField === "date_or_deadline" && pendingFieldValueMap.date_or_deadline
         ? `\nAls Bezug nenne ich den Termin/die Frist: ${pendingFieldValueMap.date_or_deadline}.`
@@ -3418,9 +3473,11 @@ app.post("/api/frage", async (req, res) => {
           antwort: cleanText(userLang === "tr" ? "İmza için sadece ismi yazman gerekiyor." : "Ich brauche nur noch den Namen für die Unterschrift.")
         });
       }
-      const emailSubject = userGoal === "installment_request" || userGoal === "deferral_request"
-        ? `Bitte um Ratenzahlung in zwei Raten – Ihr Schreiben${subjectRef}`
-        : `Anliegen zu Ihrem Schreiben${subjectRef}`;
+      let emailSubject = `Anliegen zu Ihrem Schreiben${subjectRef}`;
+      if (userGoal === "installment_request") emailSubject = `Bitte um Ratenzahlung${subjectRef || " – Ihr Schreiben"}`;
+      if (userGoal === "deferral_request") emailSubject = `Bitte um Zahlungsaufschub / Stundung${subjectRef || " – Ihr Schreiben"}`;
+      if (userGoal === "payment_proof") emailSubject = `Zahlungsnachweis / Bitte um Prüfung${subjectRef || " – Ihr Schreiben"}`;
+      if (userGoal === "dispute_or_objection") emailSubject = `Bitte um Prüfung der Forderung${subjectRef || " – Ihr Schreiben"}`;
       const emailDraft = cleanText(
         `Empfänger: ${targetParty}\n` +
         `Betreff: ${emailSubject}\n\n` +
@@ -3448,13 +3505,21 @@ app.post("/api/frage", async (req, res) => {
     }
 
     if (answerType === "short_answer") {
-      const short = userGoal === "installment_request"
+      const short = userGoal === "payment_proof"
+        ? "Du hast bereits gezahlt: Sende den Zahlungsnachweis, bitte um Zuordnungsprüfung und frage, ob noch ein offener Betrag besteht."
+        : userGoal === "dispute_or_objection"
+          ? "Wenn die Forderung unklar oder falsch ist, verlange eine schriftliche Aufstellung und Nachweise, bevor weitere Schritte laufen."
+        : userGoal === "deferral_request"
+          ? "Du kannst schriftlich Zahlungsaufschub/Stundung beantragen und um Rückmeldung bitten, welche Unterlagen dafür nötig sind."
+        : userGoal === "installment_request"
         ? "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest."
         : userGoal === "reimbursement_request"
           ? "Du kannst Erstattung/Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein."
           : userGoal === "payment_proof"
             ? "Nicht doppelt zahlen. Sende den Zahlungsnachweis und bitte um schriftliche Zuordnungsbestätigung."
-            : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
+            : paymentDemandDetected
+              ? "Bei einer Zahlungsforderung: zuerst Fakten prüfen (Betrag, Frist, Referenz), dann schriftlich bei der zuständigen Stelle klären."
+              : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
       return res.json({ ok: true, antwort: cleanText(short) });
     }
 
