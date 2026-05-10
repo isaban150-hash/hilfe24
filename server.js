@@ -4374,6 +4374,27 @@ function makeRouteV152({ frage = "", frageMode = "", meta = {}, briefText = "", 
   const fmt = requestedFormatV151(frage, frageMode);
   const writeReq = isWriteRequestV151(frage, frageMode) || fmt !== "none";
 
+  if (strongAcceptedOverpaymentQuestionV153(frage, currentContext)) {
+    route.caseType = "authority_social";
+    route.currentUserGoal = "accepted_overpayment";
+    route.currentUserIntent = "answer";
+    route.isWriteRequest = writeReq;
+    route.requestedFormat = fmt;
+    route.wantsGuidance = false;
+    route.wantsChecklist = false;
+    route.wantsStepByStep = false;
+    route.userLanguage = "tr";
+    route.targetParty = "Jobcenter";
+    route.selectedTemplate = "accepted_overpayment";
+    route.allowedTemplates = ["accepted_overpayment", "payment_plan", "document_request", "general_answer"];
+    route.forbiddenTemplates = ["legal_aid", "contract_cancel", "reimbursement"];
+    route.templateBlocked = false;
+    route.riskLevel = "medium";
+    route.requiredDocuments = ["Jobcenter-Bescheid", "Aktenzeichen/Bedarfsgemeinschaftsnummer", "Nachweise zu Einkommen und Ausgaben falls niedrigere Rate gewünscht ist"];
+    route.possibleRights = ["Berechnung prüfen lassen", "niedrigere Aufrechnung beantragen", "Stundung oder Ratenzahlung prüfen"];
+    return route;
+  }
+
   // Current user intent wins. This is the main cleanup fix.
   if (strongReimbursementQuestionV152(frage)) {
     route.caseType = /krankenkasse|kasse|versicherung|sigorta/i.test(normCleanV152(frage)) ? "invoice_medical" : (route.caseType === "health_insurance" ? "health_insurance" : "invoice_medical");
@@ -4515,6 +4536,52 @@ Wenn du möchtest, schreibe ich dir daraus eine E-Mail oder einen PDF-Brief.`);
   return buildShortAnswerV151(route, meta, context, frage);
 }
 
+
+
+// ===============================
+// V15.3 ACCEPTED OVERPAYMENT SHORT ANSWER FIX
+// Reason:
+// - If user says Jobcenter overpayment is correct / they received too much,
+//   the chat must not write a long legal explanation.
+// - Do not claim "rechtlich korrekt" or cite fixed percentages as certainty.
+// - Give a short, safe next-step answer.
+// ===============================
+function strongAcceptedOverpaymentQuestionV153(frage = "", context = "") {
+  const q = normCleanV152(`${frage}\n${context}`);
+  const acceptedCue = /(tamam\s+dogru|tamam\s+doğru|dogru|doğru|stimmt|ist\s+richtig|hakli|haklı|kabul|fazla\s+para\s+ald|fazla\s+odeme|fazla\s+ödeme|zu\s+viel\s+bekommen|zu\s+viel\s+geld\s+bekommen|ueberzahlung|überzahlung)/i.test(q);
+  const socialDebtCue = /(jobcenter|burgergeld|buergergeld|sgb|rueckforderung|rückforderung|aufrechnung|bescheid|bedarfsgemeinschaft|jc|sozialamt|regelleistung)/i.test(q);
+  return acceptedCue && socialDebtCue;
+}
+
+function buildAcceptedOverpaymentShortAnswerV153(route = {}, meta = {}, context = "", frage = "") {
+  const lang = route.userLanguage || detectUserLanguageFromQuestion(frage, "de");
+  const amount = getAmount(meta);
+  const ref = getPrimaryReference(meta);
+  if (lang === "tr") {
+    return cleanText(`Tamam, anladım. Fazla ödeme doğruysa artık en önemli konu ödeme şeklidir.
+
+Seçenekler:
+☐ Kesintiyi kabul etmek
+☐ Aylık kesinti fazla geliyorsa daha düşük kesinti istemek
+☐ Mümkünse tek seferde ödeme yapmak
+
+Önemli: Bunun kesin doğru olduğunu ben garanti edemem. Jobcenter hesabı yine de kontrol edilebilir. Aylık kesinti sizi zorluyorsa yazılı olarak daha düşük Aufrechnung/Ratenzahlung veya Stundung isteyin.${amount ? `\n\nTutar: ${amount}` : ""}${ref ? `\nNumara: ${ref}` : ""}
+
+İstersen sana Jobcenter için kısa Almanca dilekçe hazırlayayım.`);
+  }
+  return cleanText(`Verstanden. Wenn die Überzahlung stimmt, geht es jetzt vor allem um die Zahlungsart.
+
+Optionen:
+☐ Aufrechnung akzeptieren
+☐ niedrigere monatliche Aufrechnung beantragen
+☐ Stundung/Ratenzahlung beantragen
+☐ einmalig zahlen, falls möglich
+
+Wichtig: Ich kann nicht sicher bestätigen, dass alles korrekt berechnet wurde. Das Jobcenter entscheidet. Wenn die monatliche Kürzung zu hoch ist, solltest du schriftlich eine niedrigere Aufrechnung oder Stundung beantragen.${amount ? `\n\nBetrag: ${amount}` : ""}${ref ? `\nNummer: ${ref}` : ""}
+
+Wenn du möchtest, schreibe ich dir einen kurzen deutschen Antrag an das Jobcenter.`);
+}
+
 function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
   const currentContext = contextCurrentOnlyV151(meta, briefText, kurz, details);
   const route = makeRouteV152({ frage, frageMode, meta, briefText, kurz, details, historyText });
@@ -4546,6 +4613,10 @@ Der offizielle Text wird in der Sprache der empfangenden Stelle erstellt.`);
     const fmt = route.requestedFormat === "none" ? "pdf" : route.requestedFormat;
     const draft = makeOfficialDraftV151(route, meta, currentContext, fmt);
     return wrapAsEmailOrPdfV151(draft, route, fmt);
+  }
+
+  if (route.currentUserGoal === "accepted_overpayment") {
+    return buildAcceptedOverpaymentShortAnswerV153(route, meta, currentContext, frage);
   }
 
   if (["reimbursement", "payment_plan", "contract_cancel", "legal_aid", "benefit_check", "paid_proof"].includes(route.currentUserGoal)) {
