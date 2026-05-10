@@ -3003,7 +3003,31 @@ app.post("/api/frage", async (req, res) => {
     else if (v17Has(currentContext, [/vermieter/, /miete/, /wohnung/])) caseGroup = "housing";
 
     const metaEmail = cleanText(meta.email_adresse || "");
-    const emailInTextMatch = (currentContext.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])[0] || "";
+    const allContextEmails = Array.from(new Set((currentContext.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []).map((x) => x.toLowerCase())));
+    const v17ChooseBestEmail = (text = "", emails = []) => {
+      if (!emails.length) return "";
+      const lines = String(text || "").split(/\r?\n/);
+      let best = "";
+      let bestScore = -999;
+      for (const email of emails) {
+        const emailLower = email.toLowerCase();
+        const generic = /^(info|kontakt|contact|office|service|support|hello|mail|post|admin|team)@/.test(emailLower);
+        let score = generic ? 0 : 2;
+        lines.forEach((line) => {
+          const l = String(line || "").toLowerCase();
+          if (!l.includes(emailLower)) return;
+          if (/ansprechpartner|sachbearbeitung|mahnung|forderung|kontakt|zustandig|zuständig/.test(l)) score += 8;
+          if (/inkasso|aktenzeichen|kassenzeichen|rechnungsnummer|kundennummer/.test(l)) score += 4;
+        });
+        if (!generic) score += 1;
+        if (score > bestScore) {
+          bestScore = score;
+          best = email;
+        }
+      }
+      return best || emails[0];
+    };
+    const emailInTextMatch = v17ChooseBestEmail(currentContext, allContextEmails);
     const senderCandidate = cleanText(
       meta.absender ||
       meta.absender_name ||
@@ -3043,16 +3067,37 @@ app.post("/api/frage", async (req, res) => {
     }
 
     const twoRatesRequested = v17Has(currentQuestion, [/zwei raten/, /iki taksit/]);
-    const cleanRef = cleanText(meta.aktenzeichen || meta.referenz || meta.nummer || "");
+    const refCandidates = [
+      meta.mahnungsnummer,
+      meta.aktenzeichen,
+      meta.kassenzeichen,
+      meta.rechnungsnummer,
+      meta.kundennummer,
+      meta.referenz,
+      meta.nummer
+    ].map((x) => cleanText(x || "")).filter(Boolean);
+    const refMatch = currentContext.match(/\b(Mahnungsnummer|Aktenzeichen|Kassenzeichen|Rechnungsnummer|Kundennummer)\s*[:\-]?\s*([A-Z0-9\-\/.]{3,})/i);
+    const cleanRef = refCandidates[0] || cleanText(refMatch && refMatch[2] ? refMatch[2] : "");
     const subjectRef = cleanRef ? ` – ${cleanRef}` : "";
     const salutation = "Sehr geehrte Damen und Herren,";
-    const debtNoAck = cautiousDebtPhrase ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
+    const uncertainClaim = userGoal === "dispute_or_objection" || /unsicher|unklar|zweifel|bestreit|widerspruch|einspruch|itiraz/.test(currentQuestion);
+    const debtNoAck = (cautiousDebtPhrase || uncertainClaim) ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
     const noGuiltCourt = cautiousCourtPhrase ? "Dies stellt kein Schuldeingeständnis dar.\n\n" : "";
+    const signatureName = cleanText(
+      meta.name ||
+      meta.vollname ||
+      meta.absender_name ||
+      meta.person_name ||
+      meta.user_name ||
+      meta.unterschrift ||
+      ""
+    );
 
     let draftBody = "";
     if (userGoal === "installment_request" || userGoal === "deferral_request") {
-      const rateSentence = twoRatesRequested ? "Ich bitte ausdrücklich um Zahlung in zwei Raten." : "Deshalb bitte ich um Ratenzahlung.";
-      draftBody = `${debtNoAck}${noGuiltCourt}ich kann den Betrag derzeit nicht auf einmal zahlen.\n${rateSentence}\nBitte teilen Sie mir schriftlich mit, ob Sie damit einverstanden sind.`;
+      const fixedRateText = "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich darum, den Betrag in zwei Raten zahlen zu dürfen.";
+      const fixedRateConfirm = "Bitte teilen Sie mir schriftlich mit, ob Sie damit einverstanden sind und zu welchen Terminen ich die Raten überweisen soll.";
+      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateText}\n${fixedRateConfirm}`;
     } else if (userGoal === "reimbursement_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung einer Erstattung/Kostenübernahme.\nIch habe die Kosten bereits bezahlt und reiche die Nachweise ein.\nBitte teilen Sie mir schriftlich mit, ob und in welcher Höhe eine Erstattung möglich ist.`;
     } else if (userGoal === "cancellation_request") {
@@ -3112,22 +3157,37 @@ app.post("/api/frage", async (req, res) => {
     }
 
     if (answerType === "draft_email") {
+      if (!signatureName) {
+        return res.json({
+          ok: true,
+          antwort: cleanText("Ich brauche nur noch den Namen für die Unterschrift.")
+        });
+      }
+      const emailSubject = userGoal === "installment_request" || userGoal === "deferral_request"
+        ? `Bitte um Ratenzahlung in zwei Raten – Ihr Schreiben${subjectRef}`
+        : `Anliegen zu Ihrem Schreiben${subjectRef}`;
       const emailDraft = cleanText(
         `Empfänger: ${targetParty}\n` +
-        `Betreff: Anliegen zu Ihrem Schreiben${subjectRef}\n\n` +
+        `Betreff: ${emailSubject}\n\n` +
         `${salutation}\n\n` +
         `${draftBody}\n\n` +
-        `Mit freundlichen Grüßen`
+        `Mit freundlichen Grüßen\n${signatureName}`
       );
       return res.json({ ok: true, antwort: emailDraft });
     }
 
     if (answerType === "draft_pdf") {
+      if (!signatureName) {
+        return res.json({
+          ok: true,
+          antwort: cleanText("Ich brauche nur noch den Namen für die Unterschrift.")
+        });
+      }
       const pdfDraft = cleanText(
         `PDF-BRIEF:\n\n` +
         `${salutation}\n\n` +
         `${draftBody}\n\n` +
-        `Mit freundlichen Grüßen`
+        `Mit freundlichen Grüßen\n${signatureName}`
       );
       return res.json({ ok: true, antwort: pdfDraft });
     }
