@@ -3393,18 +3393,17 @@ app.post("/api/frage", async (req, res) => {
       return best || emails[0];
     };
     const emailInTextMatch = v17ChooseBestEmail(currentContext, allContextEmails);
+    /* Official recipient org only — not empfaenger/betroffene Person (often the citizen). */
     const senderCandidate = cleanText(
       meta.absender_original ||
       meta.absender_kurz ||
-      meta.absender ||
-      meta.absender_name ||
-      meta.stelle ||
       meta.zustaendige_stelle ||
       meta["zustaendige_stelle"] ||
       meta.zuständige_stelle ||
       meta["zuständige_stelle"] ||
-      meta.empfaenger ||
+      meta.absender ||
       meta.firma ||
+      meta.stelle ||
       meta.sender ||
       ""
     );
@@ -3454,6 +3453,70 @@ app.post("/api/frage", async (req, res) => {
       ? pendingFieldValueMap.reference_number
       : (cleanText(refFromBriefMatch && refFromBriefMatch[1] ? refFromBriefMatch[1] : "") || refCandidates[0] || cleanText(refMatch && refMatch[1] ? refMatch[1] : ""));
     const subjectRef = cleanRef ? ` – ${cleanRef}` : "";
+
+    const isBareRefLabelToken = (s) => {
+      const t = cleanText(s || "").replace(/\.$/, "").trim();
+      return !t || /^\[.*\]$/.test(t) || /^(aktenzeichen|rechnungsnummer|rg-nummer|r\s*g[\s-]?nummer|kundennummer|mahnungsnummer|kassenzeichen|referenz|nummer|rg)$/i.test(t);
+    };
+    const sanitizePaymentProofRefValue = (val) => {
+      const v = cleanText(val || "");
+      if (!v || isBareRefLabelToken(v)) return "";
+      if (isUnsafeReference(v)) return "";
+      if (!/\d/.test(v) && !/^[A-ZÄÖÜ]{1,4}\d{2,}/i.test(v)) return "";
+      return v;
+    };
+    const secureLetterDateToken = (metaDatum, briefStr) => {
+      const md = cleanText(metaDatum || "");
+      if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(md)) return md;
+      const m = String(briefStr || "").match(/\b(?:vom|datum)\s+(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\b/i)
+        || String(briefStr || "").match(/\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\b/);
+      const d = m ? m[1] : "";
+      return /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(d) ? d : "";
+    };
+    const secureEuroAmountToken = (val) => {
+      const v = cleanText(val || "");
+      if (!v || isBareRefLabelToken(v)) return "";
+      if (!/\d/.test(v)) return "";
+      return v;
+    };
+    const looksLikeInstitutionStreetBlock = (addr = "") => {
+      const a = String(addr || "").toLowerCase();
+      if (!a.trim()) return false;
+      if (/inkasso|gmbh|\bag\b|\bug\b|versicherung|krankenkasse|amtsgericht|landgericht|finanzamt|stadt\s|landkreis|beh[oö]rde|beitrag|collections|kanzlei|rechtsanwalt|notar|zentrale|service|inkasso|personalmanagement|abrechnungsstelle/i.test(a)) return true;
+      return /\b\d{5}\s+[a-zäöüß]/i.test(a.trim());
+    };
+    const addressBlocksRoughlyEqual = (a, b) => {
+      const na = normalizeString(a || "").replace(/\s+/g, " ").toLowerCase().replace(/[^\da-zäöüß]/g, "");
+      const nb = normalizeString(b || "").replace(/\s+/g, " ").toLowerCase().replace(/[^\da-zäöüß]/g, "");
+      if (na.length < 8 || nb.length < 8) return false;
+      return na === nb || na.includes(nb) || nb.includes(na);
+    };
+    const buildPaymentProofBetreffSuffix = () => {
+      const labeled = [
+        ["Rechnungsnummer", sanitizePaymentProofRefValue(meta.rechnungsnummer)],
+        ["Aktenzeichen", sanitizePaymentProofRefValue(meta.aktenzeichen)],
+        ["Kassenzeichen", sanitizePaymentProofRefValue(meta.kassenzeichen)],
+        ["Kundennummer", sanitizePaymentProofRefValue(meta.kundennummer)],
+        ["Mahnungsnummer", sanitizePaymentProofRefValue(meta.mahnungsnummer)]
+      ];
+      for (const [label, val] of labeled) {
+        if (val) return `${label} ${val}`;
+      }
+      if (pendingField === "reference_number") {
+        const pv = sanitizePaymentProofRefValue(pendingFieldValueMap.reference_number);
+        if (pv) return pv;
+      }
+      const briefRef = refFromBriefMatch && refFromBriefMatch[1] ? sanitizePaymentProofRefValue(refFromBriefMatch[1]) : "";
+      if (briefRef) return briefRef;
+      const ctxRef = refMatch && refMatch[1] ? sanitizePaymentProofRefValue(refMatch[1]) : "";
+      if (ctxRef) return ctxRef;
+      const cr = sanitizePaymentProofRefValue(cleanRef);
+      if (cr) return cr;
+      const letterD = secureLetterDateToken(meta.datum_schreiben, briefText);
+      if (letterD) return `Ihr Schreiben vom ${letterD}`;
+      return "Ihr Schreiben";
+    };
+    const paymentProofBetreffSuffixOnly = userGoal === "payment_proof" ? buildPaymentProofBetreffSuffix() : "";
     const salutation = "Sehr geehrte Damen und Herren,";
     const explicitWrongClaimCue = /forderung.*falsch|ist falsch|stimmt nicht|bestreit|widerspruch|einspruch|itiraz|this is wrong|not correct|i dispute|nu este corect|не е вярно|غير صحيح|اعتراض/.test(currentQuestion);
     const uncertainClaim = /unsicher|unklar|zweifel/.test(currentQuestion) || userGoal === "dispute_or_objection";
@@ -3505,14 +3568,10 @@ app.post("/api/frage", async (req, res) => {
     } else if (userGoal === "deferral_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich beziehe mich auf Ihr Schreiben.\n\nIch kann den genannten Betrag derzeit nicht sofort bezahlen. Deshalb bitte ich um Zahlungsaufschub bzw. Stundung.\n\nBitte teilen Sie mir schriftlich mit, ob ein Zahlungsaufschub möglich ist und welche Unterlagen Sie dafür benötigen.\n\nBis zur Entscheidung über meine Anfrage bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
     } else if (userGoal === "payment_proof") {
-      const mb = cleanText(meta.betrag || "");
-      const md = cleanText(meta.datum_schreiben || "");
-      const dg = (String(briefText || "").match(/(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/) || [])[1] || "";
-      const dOut = md || dg;
+      const mb = secureEuroAmountToken(meta.betrag);
+      const md = secureLetterDateToken(meta.datum_schreiben, briefText);
       let openingFormal = "ich beziehe mich auf Ihr Schreiben.";
-      if (dOut && mb) openingFormal = `ich beziehe mich auf Ihr Schreiben vom ${dOut} über ${mb}.`;
-      else if (dOut) openingFormal = `ich beziehe mich auf Ihr Schreiben vom ${dOut}.`;
-      else if (mb) openingFormal = `ich beziehe mich auf Ihr Schreiben bezüglich des Betrags von ${mb}.`;
+      if (md && mb) openingFormal = `ich beziehe mich auf Ihr Schreiben vom ${md} über ${mb}.`;
       paymentProofFormalIntro = openingFormal;
       draftBody = `ich beziehe mich auf Ihr Schreiben.\n\n${paymentProofRest}`;
     } else if (userGoal === "reimbursement_request") {
@@ -3592,7 +3651,7 @@ app.post("/api/frage", async (req, res) => {
       let emailSubject = `Anliegen zu Ihrem Schreiben${subjectRef}`;
       if (userGoal === "installment_request") emailSubject = `Bitte um Ratenzahlung${subjectRef || " – Ihr Schreiben"}`;
       if (userGoal === "deferral_request") emailSubject = `Bitte um Zahlungsaufschub / Stundung${subjectRef || " – Ihr Schreiben"}`;
-      if (userGoal === "payment_proof") emailSubject = `Zahlungsnachweis / Bitte um Prüfung${subjectRef || " – Ihr Schreiben"}`;
+      if (userGoal === "payment_proof") emailSubject = `Zahlungsnachweis / Bitte um Prüfung – ${paymentProofBetreffSuffixOnly}`;
       if (userGoal === "dispute_or_objection") emailSubject = `Bitte um Prüfung der Forderung${subjectRef || " – Ihr Schreiben"}`;
       const emailDraft = cleanText(
         `Empfänger: ${targetParty}\n` +
@@ -3619,15 +3678,48 @@ app.post("/api/frage", async (req, res) => {
           en: "Here is a formal German PDF letter confirming your payment.",
           ar: "حسنًا، أُعدِّي نصًا ألمانيًا رسميًا بصيغة PDF يؤكد الدفع."
         })[userLang] || "";
-        const senderBlockFull = getSafeSenderBlockV1504(meta, currentContext);
+        const paymentPdfPersonName = cleanText(
+          meta.betroffene_person ||
+          meta.name ||
+          meta.vollname ||
+          meta.person_name ||
+          briefNameMatch ||
+          signatureName ||
+          ""
+        );
+        let paymentPdfPersonAddr = "";
+        const personAddrSources = [meta.user_adresse, meta.adresse, meta.betroffene_person_adresse, meta.anschrift];
+        for (const raw of personAddrSources) {
+          const c = normalizeDraftAddressBlockV1504(normalizePostalAddress(raw || ""));
+          if (!c) continue;
+          if (looksLikeInstitutionStreetBlock(c)) continue;
+          const looksPerson = /\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(c) && /\b\d{5}\s+[A-ZÄÖÜ]/.test(c);
+          if (looksPerson) {
+            paymentPdfPersonAddr = c;
+            break;
+          }
+        }
+        if (!paymentPdfPersonAddr && paymentPdfPersonName) {
+          const extracted = extractPersonAddressFromContextV1504(paymentPdfPersonName, currentContext);
+          if (extracted && !looksLikeInstitutionStreetBlock(extracted)) paymentPdfPersonAddr = extracted;
+        }
+        const senderBlockFull = paymentPdfPersonAddr
+          ? `${paymentPdfPersonName}\n${paymentPdfPersonAddr}`
+          : paymentPdfPersonName;
         const recipientOrgLine = cleanText(senderCandidate || targetParty || "");
-        const instAddr = cleanText(normalizePostalAddress(meta.absender_adresse || meta.empfaenger_adresse || ""));
-        const recipientBlock = [recipientOrgLine, instAddr].filter(Boolean).join("\n\n") || recipientOrgLine;
-        const addrOnly = senderBlockFull.split("\n").slice(1).join("\n");
-        const cityFromSender = getCityFromPostalAddress(addrOnly);
-        const placeLine = cityFromSender ? `${cityFromSender}, ${getTodayGerman()}` : `[Ort], ${getTodayGerman()}`;
+        const rawInstitutionAddr = normalizePostalAddress(meta.absender_adresse || "");
+        let recipientAddrSafe = "";
+        if (rawInstitutionAddr && looksLikeInstitutionStreetBlock(rawInstitutionAddr)) {
+          const personBundle = personAddrSources.map((x) => normalizePostalAddress(x || "")).filter(Boolean);
+          const clash = personBundle.some((p) => addressBlocksRoughlyEqual(p, rawInstitutionAddr));
+          if (!clash) recipientAddrSafe = cleanText(normalizeDraftAddressBlockV1504(rawInstitutionAddr));
+        }
+        const recipientBlock = recipientAddrSafe ? `${recipientOrgLine}\n\n${recipientAddrSafe}` : recipientOrgLine;
+        const cityFromSender = getCityFromPostalAddress(paymentPdfPersonAddr || "");
+        const dateOnly = getTodayGerman();
+        const placeLine = cityFromSender ? `${cityFromSender}, ${dateOnly}` : dateOnly;
         const pdfCore = `${paymentProofFormalIntro || "ich beziehe mich auf Ihr Schreiben."}\n\n${paymentProofRest}`;
-        const betreffPdf = `Betreff: Zahlungsnachweis / Bitte um Prüfung${subjectRef || ""}`;
+        const betreffPdf = `Betreff:\nZahlungsnachweis / Bitte um Prüfung – ${paymentProofBetreffSuffixOnly}`;
         const pdfDraft = cleanText(
           (pdfIntroUi ? `${pdfIntroUi}\n\n` : "") +
           `PDF-BRIEF:\n\n` +
@@ -3637,7 +3729,7 @@ app.post("/api/frage", async (req, res) => {
           `${betreffPdf}\n\n` +
           `${salutation}\n\n` +
           `${pdfCore}\n\n` +
-          `Mit freundlichen Grüßen\n${signatureName}`
+          `Mit freundlichen Grüßen\n${paymentPdfPersonName || signatureName}`
         );
         return res.json({ ok: true, antwort: pdfDraft });
       }
