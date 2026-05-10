@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/test", (req, res) => {
-  res.json({ ok: true, message: "Server läuft sauber", version: "v15.0-assistant-analysis-template-guard" });
+  res.json({ ok: true, message: "Server läuft sauber", version: "v15.0.2-final-router-guard-fix" });
 });
 
 function getTodayGerman() {
@@ -3220,3 +3220,130 @@ app.post("/api/tts", async (req, res) => {
 app.listen(PORT, () => {
   console.log("Server läuft auf Port " + PORT + " | Hilfe24 v14 multilingual logic");
 });
+
+
+// ===============================
+// V15.0.2 FINAL ROUTER OVERRIDE
+// Reason: an older buildForcedChatAnswer definition later in the file overrode the V15 router.
+// This final definition must stay at the very end so the assistant-analysis/template-guard router wins.
+// ===============================
+function isPureFormatChoiceV1502(text = "") {
+  const q = normalizeString(text).toLowerCase();
+  return /^(pdf|pdf brief|pdf-brief|brief|e-?mail|email|mail|beides|both|1|2|3|pdf hazırla|pdf hazirla|almanca pdf|almanca e-?mail)$/.test(q);
+}
+
+function hasLegalAidHistoryV1502(historyText = "", context = "") {
+  const t = `${historyText || ""}\n${context || ""}`;
+  return hasCourtCriminalCue(t) && (hasLegalAidCue(t) || /beratungshilfe|pflichtverteidiger|rechtsantragstelle|bürgergeld|buergergeld|jobcenter|avukat/i.test(t));
+}
+
+function hasInsuranceContractHistoryV1502(historyText = "", context = "") {
+  const t = `${historyText || ""}\n${context || ""}`;
+  return hasInsuranceContractCue(t) || /(finanz-schutzbrief|finanzschutzbrief|versicherungsschein|versicherungsscheinnummer|kreditanfrage|kredit.*nicht|kredi.*olmad|sigorta.*cik|sigorta.*çık|sepa-lastschrift|mandatsreferenz)/i.test(t);
+}
+
+function buildContractPdfOutputV1502(meta = {}, context = "") {
+  return buildPdfOnlyOutput(meta, context, "vertrag_versicherung", "cancel");
+}
+
+function buildContractEmailOutputV1502(meta = {}, context = "") {
+  return buildProfessionalOutput(meta, context, "vertrag_versicherung", "cancel");
+}
+
+function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+  const context = buildContext(meta, briefText, kurz, details, frage, historyText);
+  const analysis = buildHilfe24AnalysisV15({ frage, frageMode, meta, briefText, kurz, details, historyText });
+  const outputChoice = isAnsweringOutputChoice(frage, historyText);
+  const intent = outputChoice ? inferIntentFromHistory(historyText || context) : detectCoreIntent(frage, frageMode);
+  const wantsPdf = outputChoice === "pdf" || (!outputChoice && wantsPdfOutput(frage, frageMode));
+  const wantsEmail = outputChoice === "email" || (!outputChoice && wantsEmailOutput(frage, frageMode));
+  const wantsBoth = outputChoice === "both" || (!outputChoice && wantsBothEmailAndPdf(frage, frageMode));
+  const explicitWrite = isExplicitWriteRequest(frage, frageMode) || Boolean(outputChoice) || /dilekçe|dilekce|mektup|brief|schreib|formuliere|hazırla|hazirla/i.test(String(frage || ""));
+  const pureFormatChoice = isPureFormatChoiceV1502(frage);
+  const legalAidContext = analysis.caseType === "court_legal_aid" || hasLegalAidHistoryV1502(historyText, context);
+  const insuranceContractContext = analysis.caseType === "insurance_contract" || hasInsuranceContractHistoryV1502(historyText, context);
+
+  if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
+
+  // 1) HIGH-RISK COURT/LAWYER/LEGAL-AID ROUTE WINS OVER EVERY OLD TEMPLATE.
+  if (legalAidContext) {
+    const directDraft = wantsPdf || wantsEmail || wantsBoth || (pureFormatChoice && /pdf|brief|mail|email|beides|both/i.test(String(frage || "")));
+    const asksForGuide = analysis.wantsGuidance || hasGuidanceCue(frage) || /avukat|anwalt|beratungshilfe|pflichtverteidiger|jobcenter|bürgergeld|buergergeld/i.test(String(frage || ""));
+
+    if (directDraft) {
+      if (wantsBoth) {
+        const email = buildLegalAidPdfOutputV15(meta, context).replace(/^PDF-BRIEF:\s*/i, "");
+        return cleanText(`E-MAIL:\n\nEmpfänger: Amtsgericht / Rechtsantragstelle\n\n${email}\n\nPDF-BRIEF:\n\n${email}`);
+      }
+      if (wantsEmail && !wantsPdf) {
+        const email = buildLegalAidPdfOutputV15(meta, context).replace(/^PDF-BRIEF:\s*/i, "");
+        return cleanText(`Empfänger: Amtsgericht / Rechtsantragstelle\n\n${email}`);
+      }
+      return buildLegalAidPdfOutputV15(meta, context);
+    }
+
+    // If the user asks for help/step-by-step, answer as assistant first, not as generator.
+    if (asksForGuide || !explicitWrite) return buildLegalAidChecklistAnswerV15(meta, context, analysis.userLanguage);
+
+    // If the user asks vaguely to write but no format is clear, keep it safe.
+    return cleanText(`${buildLegalAidChecklistAnswerV15(meta, context, analysis.userLanguage)}\n\nWenn du möchtest, schreibe ich dir daraus danach einen deutschen PDF-Brief an das Amtsgericht / die Rechtsantragstelle.`);
+  }
+
+  // 2) INSURANCE-AS-CONTRACT ROUTE. NEVER USE HEALTH-INSURANCE/REIMBURSEMENT HERE.
+  if (insuranceContractContext) {
+    const currentIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+    const asksCancelOrWrite = explicitWrite || wantsPdf || wantsEmail || wantsBoth || /widerruf|kündig|kuendig|kündigung|kuendigung|iptal|fesih|vertrag|sözleşme|sozlesme|dilekçe|dilekce|brief|mektup|hazırla|hazirla/i.test(String(frage || ""));
+
+    if (wantsBoth) return buildEmailAndPdfOutput(meta, context, "vertrag_versicherung", "cancel");
+    if (wantsPdf || (asksCancelOrWrite && /pdf|brief|mektup|dilekçe|dilekce/i.test(String(frage || "")))) return buildContractPdfOutputV1502(meta, context);
+    if (wantsEmail || (asksCancelOrWrite && /e-?mail|mail/i.test(String(frage || "")))) return buildContractEmailOutputV1502(meta, context);
+
+    if (asksCancelOrWrite && (currentIntent === "cancel" || /kredi|kredit|nicht bekommen|olmad|sigorta|versicherung/i.test(String(frage || "")))) {
+      return buildContractPdfOutputV1502(meta, context);
+    }
+
+    return buildInsuranceContractGuidanceV15(meta, context, analysis.userLanguage);
+  }
+
+  // 3) GENERAL GUIDANCE: checklist before draft when user asks for a plan.
+  if (analysis.wantsGuidance && !explicitWrite) {
+    const lines = [];
+    lines.push("Ich mache dir zuerst einen einfachen Leitfaden.");
+    lines.push("");
+    lines.push("Checkliste:");
+    const docs = analysis.requiredDocuments && analysis.requiredDocuments.length ? analysis.requiredDocuments : ["aktuelles Schreiben", "Nummer/Aktenzeichen", "Nachweise", "Ausweis falls Termin bei einer Stelle nötig ist"];
+    docs.slice(0, 6).forEach((d, i) => lines.push(`☐ ${i + 1}. ${d}`));
+    lines.push("");
+    if (analysis.possibleRights && analysis.possibleRights.length) lines.push(`Möglich zu prüfen: ${analysis.possibleRights.join(", ")}.`);
+    if (analysis.targetParty) lines.push(`Zuständige Stelle wahrscheinlich: ${analysis.targetParty}.`);
+    if (analysis.deadline) lines.push(`Wichtig: Frist/Termin beachten: ${analysis.deadline}.`);
+    lines.push("Die zuständige Stelle entscheidet. Ich kann dir den sicheren nächsten Schritt formulieren, aber keine Garantie geben.");
+    lines.push("");
+    lines.push("Wenn du möchtest, erstelle ich dir danach eine E-Mail oder einen PDF-Brief.");
+    return cleanText(lines.join("\n"));
+  }
+
+  // 4) NORMAL WRITE MODE WITH TEMPLATE GUARD.
+  const rememberedWriteIntent = inferIntentFromHistory(historyText || context);
+  let currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+  const costCarrierWriteNow = currentWriteIntent === "reimbursement";
+  let effectiveWriteIntent = currentWriteIntent
+    || ((intent === "erstattung_kostenuebernahme" || intent === "reimbursement" || costCarrierWriteNow) ? "reimbursement" : rememberedWriteIntent);
+
+  // Never allow reimbursement if this analysis forbids that template.
+  if ((effectiveWriteIntent === "reimbursement" || effectiveWriteIntent === "erstattung_kostenuebernahme")
+      && Array.isArray(analysis.forbiddenTemplates)
+      && (analysis.forbiddenTemplates.includes("krankenkasse_reimbursement") || analysis.forbiddenTemplates.includes("insurance_reimbursement"))) {
+    if (analysis.caseType === "insurance_contract") return buildInsuranceContractGuidanceV15(meta, context, analysis.userLanguage);
+    if (analysis.caseType === "court_legal_aid") return buildLegalAidChecklistAnswerV15(meta, context, analysis.userLanguage);
+    return "Das wäre hier wahrscheinlich die falsche Vorlage. Ich brauche zuerst die richtige Zielstelle: Soll es an den Absender aus dem Brief gehen oder an eine andere Stelle?";
+  }
+
+  const domain = detectDomain(context);
+  if (wantsBoth) return buildEmailAndPdfOutput(meta, context, domain, effectiveWriteIntent);
+  if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, context, domain, effectiveWriteIntent);
+  if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, context, domain, effectiveWriteIntent);
+  if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(effectiveWriteIntent || "reply");
+
+  return "";
+}
