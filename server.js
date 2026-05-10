@@ -3347,3 +3347,187 @@ function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, detail
 
   return "";
 }
+
+// ===============================
+// V15.0.3 FINAL CASE ISOLATION + PDF CLEAN FIX
+// Reason:
+// 1) Old legal-aid history could bleed into a new insurance/contract case.
+// 2) Legal-aid PDF sender block could contain explanatory/chat text.
+// This final override keeps current document context stronger than old chat history.
+// ===============================
+function currentCaseContextV1503(meta = {}, briefText = "", kurz = "", details = "", frage = "") {
+  return buildContext(meta, briefText, kurz, details, frage, "");
+}
+
+function isCurrentInsuranceContractCaseV1503(meta = {}, currentContext = "") {
+  const t = `${JSON.stringify(meta || {})}\n${currentContext || ""}`;
+  return hasInsuranceContractCue(t) || /(finanz-schutzbrief|finanzschutzbrief|versicherungsschein|versicherungsscheinnummer|kreditanfrage|kredit.*nicht|kredi.*olmad|sigorta.*cik|sigorta.*çık|sepa-lastschrift|mandatsreferenz|würzburger\s+versicher)/i.test(t);
+}
+
+function isCurrentCourtLegalAidCaseV1503(meta = {}, currentContext = "", frage = "") {
+  const t = `${JSON.stringify(meta || {})}\n${currentContext || ""}`;
+  const q = String(frage || "");
+  return (hasCourtCriminalCue(t) && (hasLegalAidCue(t) || hasLegalAidCue(q) || /beratungshilfe|pflichtverteidiger|rechtsantragstelle|bürgergeld|buergergeld|jobcenter|avukat/i.test(`${t}\n${q}`)))
+    || /(amtsgericht|jugendschöffengericht|straf(?:sache|verfahren)|hauptverhandlung|anklage|geschäftsnummer).*?(anwalt|avukat|beratungshilfe|pflichtverteidiger|jobcenter|bürgergeld|buergergeld)/i.test(`${t}\n${q}`);
+}
+
+function cleanPostalAddressLinesV1503(block = "") {
+  const lines = String(block || "")
+    .split(/\n+/)
+    .map(l => normalizeString(l))
+    .filter(Boolean)
+    .filter(l => !/^(ilgili\s+kişi|ilgili kisi|yazıdaki tarih|yazidaki tarih|süre|sure|frist|tarih|termin|duruşma|durusma|salonu|önemli|onemli|kurz erklärt|kısaca|kisaca|betreff|sehr geehrte|pdf-brief)/i.test(l));
+  const keep = [];
+  for (const l of lines) {
+    if (/\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(l) || /\b\d{5}\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+/.test(l) || /^\[Adresse bitte prüfen\/eintragen\]$/i.test(l)) keep.push(l);
+  }
+  return keep.slice(0, 3).join("\n");
+}
+
+function buildStrictSenderAddressV1503(meta = {}, context = "") {
+  const name = safeSignatureForDraft(meta, context);
+  let addr = "";
+  if (name && !/^\[/.test(name)) {
+    const after = findAddressBlockAfterLine(context, name);
+    if (addressLooksLikePersonAddress(after, name, getSender(meta))) addr = cleanPostalAddressLinesV1503(after);
+  }
+  if (!addr) {
+    const candidates = [meta.user_adresse, meta.adresse, meta.empfaenger_adresse]
+      .map(x => cleanPostalAddressLinesV1503(normalizePostalAddress(x)))
+      .filter(Boolean);
+    addr = candidates[0] || "[Adresse bitte prüfen/eintragen]";
+  }
+  return `${name || "[Name bitte prüfen/eintragen]"}\n${addr}`;
+}
+
+function buildLegalAidPdfOutputV15(meta = {}, context = "") {
+  const senderAddress = buildStrictSenderAddressV1503(meta, context);
+  const recipient = getLegalAidRecipientAddress(meta, context);
+  const date = getTodayGerman();
+  const city = getCityFromPostalAddress(senderAddress);
+  const placeLine = city ? `${city}, ${date}` : `[Ort], ${date}`;
+  const ref = getPrimaryReference(meta);
+  const subject = ref
+    ? `Bitte um Hilfe wegen anwaltlicher Vertretung / Beratungshilfe – ${formatReferenceForSubject(ref, "gericht") || ref}`
+    : "Bitte um Hilfe wegen anwaltlicher Vertretung / Beratungshilfe";
+  const name = safeSignatureForDraft(meta, context);
+  const body = `Sehr geehrte Damen und Herren,
+
+ich bitte um Hilfe, weil ich mir einen Rechtsanwalt finanziell nicht leisten kann.
+
+${ref ? `Ich beziehe mich auf das Verfahren mit dem Aktenzeichen ${cleanReferenceLabel(ref) || ref}.` : "Ich beziehe mich auf das aktuelle gerichtliche Schreiben."}
+
+Ich beziehe Bürgergeld bzw. habe nur geringe finanzielle Mittel. Deshalb bitte ich um Mitteilung, wie ich Beratungshilfe beantragen kann.
+
+Bitte teilen Sie mir außerdem mit, ob in diesem Verfahren die Beiordnung eines Pflichtverteidigers in Betracht kommt oder welche Schritte dafür erforderlich sind.
+
+Den Bürgergeld-/Jobcenter-Bescheid, meinen Ausweis und das gerichtliche Schreiben kann ich vorlegen.
+
+Bitte bestätigen Sie mir den Eingang dieses Schreibens und teilen Sie mir schriftlich mit, was ich als Nächstes tun muss.
+
+Mit freundlichen Grüßen
+
+${name}`;
+  return cleanText(`PDF-BRIEF:
+
+${senderAddress}
+
+${recipient}
+
+${placeLine}
+
+Betreff: ${subject}
+
+${body}`);
+}
+
+function buildForcedChatAnswer({ frage, frageMode, meta, briefText, kurz, details, historyText }) {
+  const currentContext = currentCaseContextV1503(meta, briefText, kurz, details, frage);
+  const fullContext = buildContext(meta, briefText, kurz, details, frage, historyText);
+  const analysis = buildHilfe24AnalysisV15({ frage, frageMode, meta, briefText, kurz, details, historyText: "" });
+  const outputChoice = isAnsweringOutputChoice(frage, historyText);
+  const intent = outputChoice ? inferIntentFromHistory(historyText || fullContext) : detectCoreIntent(frage, frageMode);
+  const wantsPdf = outputChoice === "pdf" || (!outputChoice && wantsPdfOutput(frage, frageMode));
+  const wantsEmail = outputChoice === "email" || (!outputChoice && wantsEmailOutput(frage, frageMode));
+  const wantsBoth = outputChoice === "both" || (!outputChoice && wantsBothEmailAndPdf(frage, frageMode));
+  const explicitWrite = isExplicitWriteRequest(frage, frageMode) || Boolean(outputChoice) || /dilekçe|dilekce|mektup|brief|schreib|formuliere|hazırla|hazirla/i.test(String(frage || ""));
+  const pureFormatChoice = isPureFormatChoiceV1502(frage);
+
+  const currentInsuranceContract = isCurrentInsuranceContractCaseV1503(meta, currentContext);
+  const currentLegalAid = isCurrentCourtLegalAidCaseV1503(meta, currentContext, frage);
+  const followUpLegalAid = !currentInsuranceContract && (analysis.caseType === "court_legal_aid" || hasLegalAidHistoryV1502(historyText, currentContext));
+  const legalAidContext = currentLegalAid || (pureFormatChoice && followUpLegalAid);
+  const insuranceContractContext = currentInsuranceContract || (!legalAidContext && (analysis.caseType === "insurance_contract" || hasInsuranceContractHistoryV1502(historyText, currentContext)));
+
+  if (intent === "smalltalk") return "Gerne. Schreib deine nächste Frage.";
+
+  // Current insurance/contract case wins over old legal-aid chat history.
+  if (insuranceContractContext && !currentLegalAid) {
+    const currentIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+    const asksCancelOrWrite = explicitWrite || wantsPdf || wantsEmail || wantsBoth || /widerruf|kündig|kuendig|kündigung|kuendigung|iptal|fesih|vertrag|sözleşme|sozlesme|dilekçe|dilekce|brief|mektup|hazırla|hazirla/i.test(String(frage || ""));
+
+    if (wantsBoth) return buildEmailAndPdfOutput(meta, currentContext, "vertrag_versicherung", "cancel");
+    if (wantsPdf || (asksCancelOrWrite && /pdf|brief|mektup|dilekçe|dilekce/i.test(String(frage || "")))) return buildContractPdfOutputV1502(meta, currentContext);
+    if (wantsEmail || (asksCancelOrWrite && /e-?mail|mail/i.test(String(frage || "")))) return buildContractEmailOutputV1502(meta, currentContext);
+    if (asksCancelOrWrite && (currentIntent === "cancel" || /kredi|kredit|nicht bekommen|olmad|sigorta|versicherung/i.test(String(frage || "")))) return buildContractPdfOutputV1502(meta, currentContext);
+    return buildInsuranceContractGuidanceV15(meta, currentContext, analysis.userLanguage);
+  }
+
+  if (legalAidContext) {
+    const directDraft = wantsPdf || wantsEmail || wantsBoth || (pureFormatChoice && /pdf|brief|mail|email|beides|both/i.test(String(frage || "")));
+    const asksForGuide = analysis.wantsGuidance || hasGuidanceCue(frage) || /avukat|anwalt|beratungshilfe|pflichtverteidiger|jobcenter|bürgergeld|buergergeld/i.test(String(frage || ""));
+
+    if (directDraft) {
+      const pdf = buildLegalAidPdfOutputV15(meta, currentContext);
+      if (wantsBoth) {
+        const email = pdf.replace(/^PDF-BRIEF:\s*/i, "");
+        return cleanText(`E-MAIL:\n\nEmpfänger: Amtsgericht / Rechtsantragstelle\n\n${email}\n\nPDF-BRIEF:\n\n${email}`);
+      }
+      if (wantsEmail && !wantsPdf) {
+        const email = pdf.replace(/^PDF-BRIEF:\s*/i, "");
+        return cleanText(`Empfänger: Amtsgericht / Rechtsantragstelle\n\n${email}`);
+      }
+      return pdf;
+    }
+
+    if (asksForGuide || !explicitWrite) return buildLegalAidChecklistAnswerV15(meta, currentContext, analysis.userLanguage);
+    return cleanText(`${buildLegalAidChecklistAnswerV15(meta, currentContext, analysis.userLanguage)}\n\nWenn du möchtest, schreibe ich dir daraus danach einen deutschen PDF-Brief an das Amtsgericht / die Rechtsantragstelle.`);
+  }
+
+  if (analysis.wantsGuidance && !explicitWrite) {
+    const lines = [];
+    lines.push("Ich mache dir zuerst einen einfachen Leitfaden.");
+    lines.push("");
+    lines.push("Checkliste:");
+    const docs = analysis.requiredDocuments && analysis.requiredDocuments.length ? analysis.requiredDocuments : ["aktuelles Schreiben", "Nummer/Aktenzeichen", "Nachweise", "Ausweis falls Termin bei einer Stelle nötig ist"];
+    docs.slice(0, 6).forEach((d, i) => lines.push(`☐ ${i + 1}. ${d}`));
+    lines.push("");
+    if (analysis.possibleRights && analysis.possibleRights.length) lines.push(`Möglich zu prüfen: ${analysis.possibleRights.join(", ")}.`);
+    if (analysis.targetParty) lines.push(`Zuständige Stelle wahrscheinlich: ${analysis.targetParty}.`);
+    if (analysis.deadline) lines.push(`Wichtig: Frist/Termin beachten: ${analysis.deadline}.`);
+    lines.push("Die zuständige Stelle entscheidet. Ich kann dir den sicheren nächsten Schritt formulieren, aber keine Garantie geben.");
+    lines.push("");
+    lines.push("Wenn du möchtest, erstelle ich dir danach eine E-Mail oder einen PDF-Brief.");
+    return cleanText(lines.join("\n"));
+  }
+
+  const rememberedWriteIntent = inferIntentFromHistory(historyText || fullContext);
+  let currentWriteIntent = inferCurrentWriteIntentFromUserQuestion(frage, frageMode);
+  let effectiveWriteIntent = currentWriteIntent || ((intent === "erstattung_kostenuebernahme" || intent === "reimbursement") ? "reimbursement" : rememberedWriteIntent);
+
+  if ((effectiveWriteIntent === "reimbursement" || effectiveWriteIntent === "erstattung_kostenuebernahme")
+      && Array.isArray(analysis.forbiddenTemplates)
+      && (analysis.forbiddenTemplates.includes("krankenkasse_reimbursement") || analysis.forbiddenTemplates.includes("insurance_reimbursement"))) {
+    if (analysis.caseType === "insurance_contract") return buildInsuranceContractGuidanceV15(meta, currentContext, analysis.userLanguage);
+    if (analysis.caseType === "court_legal_aid") return buildLegalAidChecklistAnswerV15(meta, currentContext, analysis.userLanguage);
+    return "Das wäre hier wahrscheinlich die falsche Vorlage. Ich brauche zuerst die richtige Zielstelle: Soll es an den Absender aus dem Brief gehen oder an eine andere Stelle?";
+  }
+
+  const domain = detectDomain(currentContext);
+  if (wantsBoth) return buildEmailAndPdfOutput(meta, currentContext, domain, effectiveWriteIntent);
+  if (wantsPdf && !wantsEmail) return buildPdfOnlyOutput(meta, currentContext, domain, effectiveWriteIntent);
+  if (wantsEmail && !wantsPdf) return buildProfessionalOutput(meta, currentContext, domain, effectiveWriteIntent);
+  if (intent === "schreibwunsch" || (explicitWrite && !wantsPdf && !wantsEmail)) return askOutputChoice(effectiveWriteIntent || "reply");
+
+  return "";
+}
