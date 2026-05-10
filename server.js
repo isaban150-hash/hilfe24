@@ -3302,14 +3302,17 @@ app.post("/api/frage", async (req, res) => {
       meta.referenz,
       meta.nummer
     ].map((x) => cleanText(x || "")).filter(Boolean);
-    const refMatch = currentContext.match(/\b(Mahnungsnummer|Aktenzeichen|Kassenzeichen|Rechnungsnummer|Kundennummer)\s*[:\-]?\s*([A-Z0-9\-\/.]{3,})/i);
+    const refFromBriefMatch = String(briefText || "").match(/\b(?:Mahnungsnummer|Aktenzeichen|Kassenzeichen|Rechnungsnummer|Kundennummer)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i);
+    const refMatch = currentContext.match(/\b(?:Mahnungsnummer|Aktenzeichen|Kassenzeichen|Rechnungsnummer|Kundennummer)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-\/.]{2,})/i);
     const cleanRef = (pendingField === "reference_number" && pendingFieldValueMap.reference_number)
       ? pendingFieldValueMap.reference_number
-      : (refCandidates[0] || cleanText(refMatch && refMatch[2] ? refMatch[2] : ""));
+      : (cleanText(refFromBriefMatch && refFromBriefMatch[1] ? refFromBriefMatch[1] : "") || refCandidates[0] || cleanText(refMatch && refMatch[1] ? refMatch[1] : ""));
     const subjectRef = cleanRef ? ` – ${cleanRef}` : "";
     const salutation = "Sehr geehrte Damen und Herren,";
-    const uncertainClaim = userGoal === "dispute_or_objection" || /unsicher|unklar|zweifel|bestreit|widerspruch|einspruch|itiraz/.test(currentQuestion);
-    const debtNoAck = (cautiousDebtPhrase || uncertainClaim) ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
+    const explicitWrongClaimCue = /forderung.*falsch|ist falsch|stimmt nicht|bestreit|widerspruch|einspruch|itiraz/.test(currentQuestion);
+    const uncertainClaim = /unsicher|unklar|zweifel/.test(currentQuestion) || userGoal === "dispute_or_objection";
+    const inkassoCue = /inkasso|glaeubiger|gläubiger|gerichtsvollzieher/.test(v17Norm(currentContext));
+    const debtNoAck = (inkassoCue || uncertainClaim || explicitWrongClaimCue) ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
     const noGuiltCourt = cautiousCourtPhrase ? "Dies stellt kein Schuldeingeständnis dar.\n\n" : "";
     let signatureName = cleanText(
       meta.name ||
