@@ -3083,17 +3083,20 @@ app.post("/api/frage", async (req, res) => {
     const currentQuestion = v17Norm(frage);
     const lastAssistantAnswer = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "assistant" && e.text) || {}).text || "");
     const lastUserQuestion = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "user" && e.text) || {}).text || "");
-    const detectUiLang = (text = "") => {
-      const raw = String(text || "");
-      const q = v17Norm(raw);
+    /** UI language from the current user message (current question beats older chat). */
+    const detectFrageUiLang = (text = "") => {
+      const raw = String(text || "").trim();
+      if (!raw) return langMeta.code;
       if (/[\u0600-\u06FF]/.test(raw)) return "ar";
       if (/[\u0400-\u04FF]/.test(raw)) return "bg";
-      if (/[ığüşöçİĞÜŞÖÇ]/.test(raw) || v17Has(q, [/\bve\b/, /\bama\b/, /\bneden\b/, /\bniye\b/, /\bbana\b/, /\bisim\b/, /\btaksit\b/, /\be-?posta\b/])) return "tr";
-      if (v17Has(q, [/\bplata\b/, /\brate\b/, /\bcerere\b/, /\bdovada platii\b/, /\bchitanta\b/])) return "ro";
-      if (v17Has(q, [/\bi paid\b/, /\bpayment\b/, /\binstallment\b/, /\bobjection\b/, /\bproof of payment\b/])) return "en";
+      if (/[ığüşöçİĞÜŞÖÇ]/.test(raw) || /\b(ödedim|bana|yazı|yazi|mektup|dilekçe|dilekce|taksit|neden|niye)\b/i.test(raw)) return "tr";
+      const q = v17Norm(raw);
+      if (v17Has(q, [/\bplata\b/, /\bplătit\b/, /\bnu\s+pot\b/, /\bcontestatie\b/, /\bcontestație\b/, /\bscrie\b/, /\braspuns\b/, /\brăspuns\b/]) || /[ăâîșțĂÂÎȘȚ]/.test(raw)) return "ro";
+      if (v17Has(q, [/\bi\s*paid\b/, /\balready\s*paid\b/, /\bproof\s*of\s*payment\b/, /\bwrite\s*a\s*reply\b/, /\bcreate\s*a\s*pdf\b/, /\bwrite\s*a\s*letter\b/, /\bmake\s*an\s*email\b/])) return "en";
+      if (/[äöüßÄÖÜ]/.test(raw) || v17Has(q, [/schon bezahlt/, /sehr geehrte/, /mahnung/, /aktenzeichen/, /widerspruch/, /ratenzahlung/])) return "de";
       return langMeta.code;
     };
-    const userLang = detectUiLang(`${frage}\n${lastUserQuestion}`);
+    const userLang = detectFrageUiLang(frage);
 
     if (v17Has(currentQuestion, [/bana niye almanca yaziyorsun/, /bana niye almanca yazıyorsun/])) {
       return res.json({
@@ -3136,6 +3139,7 @@ app.post("/api/frage", async (req, res) => {
       if (/اكتب\s+لي\s+رد|اكتب\s+لي\s+إيميل/i.test(raw) || /\bكتب.*?رد\b/.test(raw)) return true;
       const q = v17Norm(raw);
       if (v17Has(q, [/schreib.*antwort/, /mach.*antwort/, /antwort vorbereiten/, /mach mir eine e.?mail/, /schreib.*e.?mail/, /brief schreib/, /pdf erstellen/, /\bmake an email\b/, /\bwrite an email\b/, /\bwrite a reply\b/, /\bprepare a reply\b/, /bana cevap yaz/, /bana e.?posta yaz/, /napi[șs]i\s+otgovo/, /napi[șs]i\s+raspuns/, /scrie un raspuns/, /scrie\s+un\s+răspuns/])) return true;
+      if (/pdf\s+olarak\s+hazirla|pdf\s+olarak\s+hazırla|pdf\s+olarak/i.test(raw)) return true;
       return false;
     };
 
@@ -3274,14 +3278,34 @@ app.post("/api/frage", async (req, res) => {
       /das ist falsch/
     ]);
 
-    const wantsEmail = v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/]) || ((pendingNameRequested || hasValidPendingFieldValue) && v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
-    const wantsPdf = v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/]) || ((pendingNameRequested || hasValidPendingFieldValue) && v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]));
+    const frRaw = String(frage || "").trim();
+    const wantsPdfFromText = () => {
+      if (v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/, /als pdf/, /pdf erstellen/, /brief erstellen/, /brief schreib/]))
+        return true;
+      if (/напиши\s+писмо|\bписмо\b|\bдокумент\b|\bpdf\b/i.test(frRaw)) return true;
+      if (/pdf\s+olarak|olarak\s+pdf|yazı\s+yaz|yazi\s+yaz|dilekçe|dilekce|mektup\s+yaz|belge\s+hazırla|belge\s+hazirla|pdf\s+olarak\s+hazırla|pdf\s+olarak\s+hazirla/i.test(frRaw)) return true;
+      if (/scrisoare|document|fă-mi|fa-mi|fa\s+mi|pdf|într-un\s+pdf/i.test(frRaw)) return true;
+      if (/\bpdf\b|letter|write\s+a\s+letter|create\s+a\s+pdf/i.test(frRaw)) return true;
+      if (/خطاب|رسالة|pdf|اكتب\s+خطاب|اكتب\s+رسالة/i.test(frRaw)) return true;
+      return false;
+    };
+    const wantsEmailFromText = () => {
+      if (v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/, /antwort schreiben/, /schreib.*antwort/, /cevap yaz/, /bana cevap/]))
+        return true;
+      if (/имейл|отговор|напиши\s+отговор/i.test(frRaw)) return true;
+      if (/răspuns|scrie\s+un\s+răspuns|\bemail\b/i.test(frRaw)) return true;
+      if (/\breply\b|\bemail\b|write\s+a\s+reply/i.test(frRaw)) return true;
+      if (/بريد\s*إلكتروني|رد|اكتب\s+لي\s+رد/i.test(frRaw)) return true;
+      return false;
+    };
+    const wantsPdf = wantsPdfFromText() || ((pendingNameRequested || hasValidPendingFieldValue) && allowPendingResume && v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]));
+    const wantsEmail = wantsEmailFromText() || ((pendingNameRequested || hasValidPendingFieldValue) && allowPendingResume && v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
     const wantsChecklist = v17Has(currentQuestion, [/unterlagen/, /checkliste/, /welche dokumente/, /welche nachweise/, /hangi belge/]);
     const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/]);
 
     let answerType = "short_answer";
-    if (wantsEmail) answerType = "draft_email";
-    else if (wantsPdf) answerType = "draft_pdf";
+    if (wantsPdf) answerType = "draft_pdf";
+    else if (wantsEmail) answerType = "draft_email";
     else if (wantsChecklist) answerType = "checklist";
     else if (wantsNextSteps) answerType = "next_steps";
 
@@ -3301,7 +3325,7 @@ app.post("/api/frage", async (req, res) => {
     }
 
     if (writeFollowUpOnly && inheritedWriteGoal) {
-      if (v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/])) answerType = "draft_pdf";
+      if (wantsPdfFromText()) answerType = "draft_pdf";
       else answerType = "draft_email";
     }
 
@@ -3370,9 +3394,15 @@ app.post("/api/frage", async (req, res) => {
     };
     const emailInTextMatch = v17ChooseBestEmail(currentContext, allContextEmails);
     const senderCandidate = cleanText(
+      meta.absender_original ||
+      meta.absender_kurz ||
       meta.absender ||
       meta.absender_name ||
       meta.stelle ||
+      meta.zustaendige_stelle ||
+      meta["zustaendige_stelle"] ||
+      meta.zuständige_stelle ||
+      meta["zuständige_stelle"] ||
       meta.empfaenger ||
       meta.firma ||
       meta.sender ||
@@ -3382,12 +3412,13 @@ app.post("/api/frage", async (req, res) => {
     let targetParty = "";
     if (pendingField === "recipient_email" && pendingFieldValueMap.recipient_email) targetParty = pendingFieldValueMap.recipient_email;
     else if (pendingField === "target_party" && pendingFieldValueMap.target_party) targetParty = pendingFieldValueMap.target_party;
-    else if (answerType === "draft_email" && metaEmail) targetParty = metaEmail;
-    else if (emailInTextMatch) targetParty = emailInTextMatch;
-    else if (userGoal === "installment_request") targetParty = senderCandidate || "Stelle aus dem Brief";
     else if (userGoal === "reimbursement_request") targetParty = "Krankenkasse / Versicherung";
-    else if (userGoal === "cancellation_request") targetParty = senderCandidate || "Vertragspartner / Firma aus dem Brief";
     else if (userGoal === "legal_aid_request") targetParty = "Amtsgericht / Rechtsantragstelle oder Anwalt";
+    else if (metaEmail) targetParty = metaEmail;
+    else if (emailInTextMatch) targetParty = emailInTextMatch;
+    else if (senderCandidate) targetParty = senderCandidate;
+    else if (userGoal === "installment_request") targetParty = "Stelle aus dem Brief";
+    else if (userGoal === "cancellation_request") targetParty = "Vertragspartner / Firma aus dem Brief";
 
     if (!targetParty && answerType === "draft_email") {
       targetParty = "[E-Mail-Adresse der Stelle einfügen]";
@@ -3404,13 +3435,8 @@ app.post("/api/frage", async (req, res) => {
       caseGroup === "tax_office"
     );
     const forbidInstallmentTemplate = userGoal === "reimbursement_request";
-    const contractOnlyCancellation = caseGroup === "contracts" && userGoal !== "reimbursement_request";
     const cautiousDebtPhrase = caseGroup === "debt_collection";
     const cautiousCourtPhrase = caseGroup === "court_police";
-
-    if ((answerType === "draft_email" || answerType === "draft_pdf") && contractOnlyCancellation && userGoal !== "cancellation_request") {
-      answerType = "clarification";
-    }
 
     const twoRatesRequested = v17Has(currentQuestion, [/zwei raten/, /iki taksit/]);
     const refCandidates = [
@@ -3456,6 +3482,8 @@ app.post("/api/frage", async (req, res) => {
       });
     }
 
+    const paymentProofRest = `Der genannte Betrag wurde nach meiner Kenntnis bereits bezahlt. Den Zahlungsnachweis füge ich bei bzw. reiche ich nach.\n\nBitte prüfen Sie, ob die Zahlung korrekt zugeordnet wurde und ob noch ein offener Betrag besteht.\n\nBis zur Klärung bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
+    let paymentProofFormalIntro = "";
     let draftBody = "";
     if (userGoal === "installment_request") {
       const fixedRateIntro = "ich beziehe mich auf Ihr Schreiben.";
@@ -3477,7 +3505,16 @@ app.post("/api/frage", async (req, res) => {
     } else if (userGoal === "deferral_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich beziehe mich auf Ihr Schreiben.\n\nIch kann den genannten Betrag derzeit nicht sofort bezahlen. Deshalb bitte ich um Zahlungsaufschub bzw. Stundung.\n\nBitte teilen Sie mir schriftlich mit, ob ein Zahlungsaufschub möglich ist und welche Unterlagen Sie dafür benötigen.\n\nBis zur Entscheidung über meine Anfrage bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
     } else if (userGoal === "payment_proof") {
-      draftBody = `ich beziehe mich auf Ihr Schreiben.\n\nDer genannte Betrag wurde nach meiner Kenntnis bereits bezahlt. Den Zahlungsnachweis füge ich bei bzw. reiche ich nach.\n\nBitte prüfen Sie, ob die Zahlung korrekt zugeordnet wurde und ob noch ein offener Betrag besteht.\n\nBis zur Klärung bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
+      const mb = cleanText(meta.betrag || "");
+      const md = cleanText(meta.datum_schreiben || "");
+      const dg = (String(briefText || "").match(/(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/) || [])[1] || "";
+      const dOut = md || dg;
+      let openingFormal = "ich beziehe mich auf Ihr Schreiben.";
+      if (dOut && mb) openingFormal = `ich beziehe mich auf Ihr Schreiben vom ${dOut} über ${mb}.`;
+      else if (dOut) openingFormal = `ich beziehe mich auf Ihr Schreiben vom ${dOut}.`;
+      else if (mb) openingFormal = `ich beziehe mich auf Ihr Schreiben bezüglich des Betrags von ${mb}.`;
+      paymentProofFormalIntro = openingFormal;
+      draftBody = `ich beziehe mich auf Ihr Schreiben.\n\n${paymentProofRest}`;
     } else if (userGoal === "reimbursement_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung einer Erstattung/Kostenübernahme.\nIch habe die Kosten bereits bezahlt und reiche die Nachweise ein.\nBitte teilen Sie mir schriftlich mit, ob und in welcher Höhe eine Erstattung möglich ist.`;
     } else if (userGoal === "cancellation_request") {
@@ -3510,9 +3547,17 @@ app.post("/api/frage", async (req, res) => {
     }
 
     if (answerType === "clarification") {
+      const clarifyTarget = ({
+        de: "Ich sehe die Zielstelle nicht sicher. Soll die Antwort an die Stelle aus dem Brief gehen?",
+        tr: "Kime göndermek istediğini net göremiyorum. Yazı mektuptaki kuruma mı gitsin?",
+        bg: "Не виждам ясно към кого да е адресиран отговорът. Да е към институцията от писмото ли?",
+        ro: "Nu văd clar cui să fie adresat răspunsul. Să meargă la instituția din scrisoare?",
+        en: "I can't tell safely who this should go to. Should it go to the authority from the letter?",
+        ar: "لا أرى بوضوح إلى من يجب أن يُوجَّه الرد. هل إلى الجهة الواردة في الخطاب؟"
+      })[userLang] || "Ich sehe die Zielstelle nicht sicher. Soll die Antwort an die Stelle aus dem Brief gehen?";
       return res.json({
         ok: true,
-        antwort: cleanText("An wen soll die Antwort genau gehen: an die Stelle aus dem Brief oder an eine andere Stelle?")
+        antwort: cleanText(clarifyTarget)
       });
     }
 
@@ -3565,6 +3610,36 @@ app.post("/api/frage", async (req, res) => {
           ok: true,
           antwort: cleanText(userLang === "tr" ? "İmza için sadece ismi yazman gerekiyor." : "Ich brauche nur noch den Namen für die Unterschrift.")
         });
+      }
+      if (userGoal === "payment_proof") {
+        const pdfIntroUi = userLang === "de" ? "" : ({
+          tr: "Tamam, ödeme yaptığını bildiren Almanca bir PDF metni hazırlıyorum.",
+          bg: "Добре, подготвям кратък немски PDF текст за потвърждаване на плащането.",
+          ro: "Pregătesc un text PDF scurt în germană privind plata efectuată.",
+          en: "Here is a formal German PDF letter confirming your payment.",
+          ar: "حسنًا، أُعدِّي نصًا ألمانيًا رسميًا بصيغة PDF يؤكد الدفع."
+        })[userLang] || "";
+        const senderBlockFull = getSafeSenderBlockV1504(meta, currentContext);
+        const recipientOrgLine = cleanText(senderCandidate || targetParty || "");
+        const instAddr = cleanText(normalizePostalAddress(meta.absender_adresse || meta.empfaenger_adresse || ""));
+        const recipientBlock = [recipientOrgLine, instAddr].filter(Boolean).join("\n\n") || recipientOrgLine;
+        const addrOnly = senderBlockFull.split("\n").slice(1).join("\n");
+        const cityFromSender = getCityFromPostalAddress(addrOnly);
+        const placeLine = cityFromSender ? `${cityFromSender}, ${getTodayGerman()}` : `[Ort], ${getTodayGerman()}`;
+        const pdfCore = `${paymentProofFormalIntro || "ich beziehe mich auf Ihr Schreiben."}\n\n${paymentProofRest}`;
+        const betreffPdf = `Betreff: Zahlungsnachweis / Bitte um Prüfung${subjectRef || ""}`;
+        const pdfDraft = cleanText(
+          (pdfIntroUi ? `${pdfIntroUi}\n\n` : "") +
+          `PDF-BRIEF:\n\n` +
+          `${senderBlockFull}\n\n` +
+          `${recipientBlock}\n\n` +
+          `${placeLine}\n\n` +
+          `${betreffPdf}\n\n` +
+          `${salutation}\n\n` +
+          `${pdfCore}\n\n` +
+          `Mit freundlichen Grüßen\n${signatureName}`
+        );
+        return res.json({ ok: true, antwort: pdfDraft });
       }
       const pdfDraft = cleanText(
         `PDF-BRIEF:\n\n` +
