@@ -24,6 +24,14 @@ const MODEL = "gemini-2.5-flash";
 const ttsClient = createTtsClient();
 
 app.use(express.json({ limit: "70mb" }));
+app.use((err, req, res, next) => {
+  if (!err) return next();
+  if (req && req.path === "/api/brief-bild" && (err.type === "request.aborted" || /aborted/i.test(String(err.message || "")))) {
+    console.error("Fehler /api/brief-bild:", err);
+    return res.status(408).json({ ok: false, error: "Upload wurde abgebrochen. Bitte versuche es erneut." });
+  }
+  return next(err);
+});
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
@@ -2875,10 +2883,128 @@ app.post("/api/brief", async (req, res) => {
 
 app.post("/api/brief-bild", async (req, res) => {
   try {
-    const bilder = req.body.bilder || [];
+    const bilder = req.body && req.body.bilder;
     const lang = (req.body.lang || "de").toLowerCase();
-    const result = await buildFinalAnswerFromImages(bilder, lang);
-    return res.json(result);
+
+    if (!Array.isArray(bilder)) {
+      return res.status(400).json({ ok: false, error: "Kein Bild empfangen." });
+    }
+    if (!bilder.length) {
+      return res.status(400).json({ ok: false, error: "Kein Bild empfangen." });
+    }
+    if (bilder.length > 3) {
+      return res.status(400).json({ ok: false, error: "Maximal 3 Bilder möglich." });
+    }
+
+    const MAX_IMAGE_BASE64_LEN = 12 * 1024 * 1024;
+    for (const bild of bilder) {
+      if (!bild || typeof bild.imageData !== "string" || typeof bild.mimeType !== "string") {
+        return res.status(400).json({ ok: false, error: "Kein Bild empfangen." });
+      }
+      const normalizedImageData = String(bild.imageData).replace(/^data:[^;]+;base64,/, "");
+      if (!normalizedImageData || normalizedImageData.length > MAX_IMAGE_BASE64_LEN) {
+        return res.status(400).json({
+          ok: false,
+          error: "Das Foto ist zu groß. Bitte mache ein neues, schärferes Foto oder lade weniger Bilder hoch."
+        });
+      }
+    }
+
+    const withTimeout = async (promise, ms) => {
+      let timer;
+      try {
+        return await Promise.race([
+          promise,
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              const timeoutError = new Error("brief-bild-timeout");
+              timeoutError.code = "ETIMEDOUT";
+              reject(timeoutError);
+            }, ms);
+          })
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    };
+
+    const langCode = getLanguageMeta(lang).code;
+    let info;
+    try {
+      info = await withTimeout(buildInfoFromImages(bilder), 45000);
+    } catch (error) {
+      console.error("Gemini Fehler /api/brief-bild:", error);
+      if (error && (error.code === "ETIMEDOUT" || /timeout|timed out|brief-bild-timeout/i.test(String(error.message || "")))) {
+        return res.status(504).json({ ok: false, error: "Die Analyse dauert zu lange. Bitte versuche es mit einem klareren Foto oder weniger Seiten." });
+      }
+      throw error;
+    }
+
+    const kurzDe = buildCoreShortDe(info);
+    const detailsDe = buildCoreExplanationDe(info);
+    let kurz = cleanText(kurzDe);
+    const details = cleanText(detailsDe);
+
+    if (langCode !== "de") {
+      try {
+        kurz = await withTimeout(translateHelpTextIfNeeded(kurzDe, langCode), 12000);
+      } catch (error) {
+        console.error("Gemini Fehler /api/brief-bild:", error);
+        if (error && (error.code === "ETIMEDOUT" || /timeout|timed out|brief-bild-timeout/i.test(String(error.message || "")))) {
+          return res.status(504).json({ ok: false, error: "Die Analyse dauert zu lange. Bitte versuche es mit einem klareren Foto oder weniger Seiten." });
+        }
+      }
+    }
+
+    const refs = safeReferences(info);
+    const name = getDetectedPersonName(info);
+    return res.json({
+      ok: true,
+      quality_ok: true,
+      hinweis: "",
+      kurz,
+      details,
+      meta: {
+        briefart: info.briefart,
+        absender: getSender(info),
+        absender_kurz: info.absender_kurz,
+        absender_original: info.absender_original,
+        email_adresse: info.email_adresse,
+        absender_adresse: info.absender_adresse,
+        empfaenger_adresse: info.empfaenger_adresse,
+        person: name,
+        person_sicher: Boolean(name),
+        betroffene_person: info.betroffene_person,
+        empfaenger: info.empfaenger,
+        termin: info.termin,
+        frist: info.frist,
+        betrag: info.betrag,
+        datum_schreiben: info.datum_schreiben,
+        unterlagen: info.unterlagen,
+        referenzen: refs,
+        referenzen_erkannt_roh: info.referenzen,
+        referenzen_sicher: refs.length > 0,
+        dringlichkeit: info.dringlichkeit,
+        pflicht_oder_freiwillig: info.pflicht_oder_freiwillig,
+        naechster_schritt: info.naechster_schritt,
+        antwort_sprache: info.antwort_sprache,
+        passende_aktionen: info.passende_aktionen,
+        unsicherheiten: info.unsicherheiten,
+        worum_geht_es: info.worum_geht_es,
+        wichtigste_punkte: info.wichtigste_punkte,
+        was_ist_zu_tun: info.was_ist_zu_tun,
+        folge_wenn_nichts: info.folge_wenn_nichts,
+        versteckte_wichtige_info: info.versteckte_wichtige_info,
+        sourceMode: "image",
+        must_react: info.muss_handeln === "ja" ? "yes" : info.muss_handeln === "nein" ? "no" : "maybe",
+        money_affected: info.geld_betroffen === "ja" || info.betrag ? "yes" : info.geld_betroffen === "nein" ? "no" : "maybe",
+        brief_schwierigkeit: info.brief_schwierigkeit,
+        quality_type: detectDomain(buildContext(info)),
+        risiko_kurz: info.risiko_kurz,
+        erster_sicherer_schritt: info.erster_sicherer_schritt,
+        daten_unsicher: info.daten_unsicher
+      }
+    });
   } catch (error) {
     console.error("Fehler /api/brief-bild:", error);
     return res.status(500).json({ ok: false, error: error.message || "Serverfehler" });
