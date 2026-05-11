@@ -3232,6 +3232,65 @@ app.post("/api/frage", async (req, res) => {
       meta.person_name ||
       ((briefText.match(/\b([A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+)\b/) || [])[1] || "")
     );
+    /** Person addressed in the letter (minor or insured) — not the chatting parent. */
+    const representedChildName = cleanText(
+      meta.betroffene_person ||
+      meta.name ||
+      meta.vollname ||
+      meta.person_name ||
+      briefNameMatch ||
+      ""
+    );
+    const repUserLinesNewestFirst = chatHistory
+      .filter((e) => e && e.role === "user" && cleanText(e.text || ""))
+      .map((e) => cleanText(e.text))
+      .reverse();
+    const repScanOrdered = [cleanText(frage), ...repUserLinesNewestFirst].filter(Boolean);
+    const repScanFull = repScanOrdered.join("\n");
+    const repScanNorm = v17Norm(repScanFull);
+    const detectRepresentativeMinorContext = () => {
+      const raw = repScanFull;
+      const hasMinorAge = /minderj[aä]hrig|minderjaehrig|minderjährig|nicht vollj[aä]hrig|vollj[aä]hrig.*nicht|re[sş]it\s+de[gğ]il|reshit\s+degil|kucuk|küçük|çocuğum|çocugum|непълнолетн|nepalnolen|minor[aă]|este\s+minor|underage|قاصر|ابنتي|ابني|طفلي/i.test(raw)
+        || v17Has(repScanNorm, [/minderjahrig/, /minor/, /underage/]);
+      const hasRelation = /tochter|sohn|mein\s+kind|meine\s+tochter|meinen\s+sohn|kızım|oğlum|oğlumu|kızımı|fiica\s+mea|fiul\s+meu|copilul\s+meu|daughter|my\s+son|my\s+daughter|my\s+child|\bson\b|\bdaughter\b|schreib.*für.*(tochter|sohn|kind)|ich\s+schreibe\s+für|onun\s+adına|benim\s+adım|în\s+numele|scriu\s+[îi]n\s+numele|on\s+behalf|نيابة|ich\s+bin\s+(der\s+)?vater|ich\s+bin\s+die\s+mutter|ben\s+babasıyım|ben\s+annesiyim|sunt\s+(tatăl|mama|tatal|mama)|аз\s+съм\s+(бащата|майката)|أنا\s+الأب|أنا\s+الأم|i\s+am\s+the\s+father|i\s+am\s+the\s+mother|write\s+on\s+behalf/i.test(raw);
+      return Boolean(hasMinorAge && hasRelation);
+    };
+    const representativeMode = detectRepresentativeMinorContext();
+    const extractRepresentativeSignerFromChat = () => {
+      const tryLine = (line) => {
+        const s = String(line || "").trim();
+        if (!s || s.length > 120) return "";
+        const pats = [
+          /mein\s+name\s+ist\s+(.+?)(?:\.|,|$)/iu,
+          /ich\s+hei[sß]e\s+(.+?)(?:\.|,|$)/iu,
+          /ich\s+bin\s+(?:herr|frau)?\s*([A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+)(?:\.|,|\s|$)/u,
+          /benim\s+ad[ıi]m\s+(.+?)(?:\.|,|$)/iu,
+          /mă\s+numesc\s+(.+?)(?:\.|,|$)/iu,
+          /ma\s+numesc\s+(.+?)(?:\.|,|$)/iu,
+          /my\s+name\s+is\s+(.+?)(?:\.|,|$)/iu
+        ];
+        for (const rx of pats) {
+          const m = s.match(rx);
+          if (!m) continue;
+          let cand = cleanText(m[1]).replace(/\s+/g, " ").split(/\s+/).slice(0, 5).join(" ");
+          cand = cand.replace(/^(herr|frau|mr|mrs|ms)\s+/i, "").trim();
+          if (looksLikePersonName(cand)) return cand;
+        }
+        return "";
+      };
+      for (const line of repScanOrdered) {
+        const hit = tryLine(line);
+        if (hit) return hit;
+      }
+      return "";
+    };
+    const repSignerFromChat = representativeMode ? extractRepresentativeSignerFromChat() : "";
+    const namesLooselySame = (a, b) => {
+      const x = v17Norm(String(a || ""));
+      const y = v17Norm(String(b || ""));
+      if (!x || !y || x.length < 4 || y.length < 4) return false;
+      return x === y || x.includes(y) || y.includes(x);
+    };
     const allowPendingResume = substantiveGoalFromCurrent === "understand"
       && !writeFollowUpOnly
       && !isMessyFollowUpNotPurePending(frage);
@@ -3523,26 +3582,49 @@ app.post("/api/frage", async (req, res) => {
     const inkassoCue = /inkasso|glaeubiger|gläubiger|gerichtsvollzieher/.test(v17Norm(currentContext));
     const debtNoAck = (inkassoCue || uncertainClaim || explicitWrongClaimCue) ? "Ohne Anerkennung einer Rechtspflicht.\n\n" : "";
     const noGuiltCourt = cautiousCourtPhrase ? "Dies stellt kein Schuldeingeständnis dar.\n\n" : "";
-    let signatureName = cleanText(
-      meta.name ||
-      meta.vollname ||
-      meta.absender_name ||
-      meta.person_name ||
-      meta.user_name ||
-      meta.unterschrift ||
-      ""
-    );
-    if (!signatureName && briefNameMatch) signatureName = briefNameMatch;
+    let signatureName = "";
+    if (representativeMode) {
+      signatureName = repSignerFromChat || cleanText(meta.user_name || meta.unterschrift || "");
+      const an = cleanText(meta.absender_name || "");
+      if (!signatureName && an && looksLikePersonName(an) && !namesLooselySame(an, representedChildName)) signatureName = an;
+    } else {
+      signatureName = cleanText(
+        meta.name ||
+        meta.vollname ||
+        meta.absender_name ||
+        meta.person_name ||
+        meta.user_name ||
+        meta.unterschrift ||
+        ""
+      );
+      if (!signatureName && briefNameMatch) signatureName = briefNameMatch;
+      if (!signatureName && saysNameInLetter && briefNameMatch) signatureName = briefNameMatch;
+    }
     if (pendingName) signatureName = pendingName;
     if (pendingField === "name" && pendingFieldValueMap.name) signatureName = pendingFieldValueMap.name;
-    if (!signatureName && saysNameInLetter && briefNameMatch) signatureName = briefNameMatch;
-    if (!signatureName && saysNameInLetter) {
+    if (!representativeMode && !signatureName && saysNameInLetter) {
       return res.json({
         ok: true,
         antwort: cleanText(userLang === "tr"
           ? "İsmi güvenli şekilde bulamıyorum. Lütfen adı bir kez kısa yaz."
           : "Ich finde den Namen nicht sicher. Bitte schreib den Namen einmal kurz.")
       });
+    }
+    const repGermanTochter = /tochter|kızım|fiica(\s+mea)?|daughter|ابنتي|дъщеря/i.test(repScanFull);
+    const repGermanSohn = /sohn|oğlum|fiul(\s+meu)?|son|ابني|синът/i.test(repScanFull);
+    let representativeGermanIntro = "";
+    if (representativeMode) {
+      if (representedChildName && repGermanTochter && !repGermanSohn) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meiner minderjährigen Tochter ${representedChildName}.`;
+      } else if (representedChildName && repGermanSohn && !repGermanTochter) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meines minderjährigen Sohnes ${representedChildName}.`;
+      } else if (representedChildName && (repGermanTochter || repGermanSohn || /kind|çocuğum|çocugum|copilul|child|طفل|детето/i.test(repScanFull))) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meines minderjährigen Kindes ${representedChildName}.`;
+      } else if (representedChildName) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter der minderjährigen betroffenen Person ${representedChildName}.`;
+      } else {
+        representativeGermanIntro = "ich schreibe Ihnen als gesetzlicher Vertreter der minderjährigen betroffenen Person.";
+      }
     }
 
     const paymentProofRest = `Der genannte Betrag wurde nach meiner Kenntnis bereits bezahlt. Den Zahlungsnachweis füge ich bei bzw. reiche ich nach.\n\nBitte prüfen Sie, ob die Zahlung korrekt zugeordnet wurde und ob noch ein offener Betrag besteht.\n\nBis zur Klärung bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
@@ -3589,6 +3671,10 @@ app.post("/api/frage", async (req, res) => {
       draftBody = `${debtNoAck}${noGuiltCourt}ich beziehe mich auf Ihr Schreiben.\n\nDie Forderung ist für mich derzeit nicht nachvollziehbar. Ich bitte daher um Prüfung und um eine verständliche schriftliche Aufstellung, wie sich der Betrag zusammensetzt.\n\nBitte senden Sie mir die zugrunde liegenden Unterlagen und Nachweise zur Forderung zu.\n\nBis zur Klärung bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.${pendingDateInfo}`;
     } else {
       draftBody = "bitte teilen Sie mir schriftlich mit, welche nächsten Schritte erforderlich sind.";
+    }
+
+    if (representativeMode && representativeGermanIntro && (answerType === "draft_email" || answerType === "draft_pdf")) {
+      draftBody = `${representativeGermanIntro}\n\n${draftBody}`;
     }
 
     if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidReimbursementTemplate && userGoal === "reimbursement_request") {
@@ -3641,11 +3727,22 @@ app.post("/api/frage", async (req, res) => {
       });
     }
 
+    const askSignerNameUi = representativeMode
+      ? ({
+          de: "Wie ist dein vollständiger Name für die Unterschrift?",
+          tr: "İmza için tam adın nedir?",
+          bg: "Как се казваш пълно за подписа?",
+          ro: "Care este numele tău complet pentru semnătură?",
+          en: "What is your full name for the signature?",
+          ar: "ما اسمك الكامل للتوقيع؟"
+        })[userLang] || "Wie ist dein vollständiger Name für die Unterschrift?"
+      : (userLang === "tr" ? "İmza için sadece ismi yazman gerekiyor." : "Ich brauche nur noch den Namen für die Unterschrift.");
+
     if (answerType === "draft_email") {
       if (!signatureName) {
         return res.json({
           ok: true,
-          antwort: cleanText(userLang === "tr" ? "İmza için sadece ismi yazman gerekiyor." : "Ich brauche nur noch den Namen für die Unterschrift.")
+          antwort: cleanText(askSignerNameUi)
         });
       }
       let emailSubject = `Anliegen zu Ihrem Schreiben${subjectRef}`;
@@ -3667,7 +3764,7 @@ app.post("/api/frage", async (req, res) => {
       if (!signatureName) {
         return res.json({
           ok: true,
-          antwort: cleanText(userLang === "tr" ? "İmza için sadece ismi yazman gerekiyor." : "Ich brauche nur noch den Namen für die Unterschrift.")
+          antwort: cleanText(askSignerNameUi)
         });
       }
       if (userGoal === "payment_proof") {
@@ -3678,34 +3775,63 @@ app.post("/api/frage", async (req, res) => {
           en: "Here is a formal German PDF letter confirming your payment.",
           ar: "حسنًا، أُعدِّي نصًا ألمانيًا رسميًا بصيغة PDF يؤكد الدفع."
         })[userLang] || "";
-        const paymentPdfPersonName = cleanText(
-          meta.betroffene_person ||
-          meta.name ||
-          meta.vollname ||
-          meta.person_name ||
-          briefNameMatch ||
-          signatureName ||
-          ""
-        );
-        let paymentPdfPersonAddr = "";
         const personAddrSources = [meta.user_adresse, meta.adresse, meta.betroffene_person_adresse, meta.anschrift];
-        for (const raw of personAddrSources) {
-          const c = normalizeDraftAddressBlockV1504(normalizePostalAddress(raw || ""));
-          if (!c) continue;
-          if (looksLikeInstitutionStreetBlock(c)) continue;
-          const looksPerson = /\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(c) && /\b\d{5}\s+[A-ZÄÖÜ]/.test(c);
-          if (looksPerson) {
-            paymentPdfPersonAddr = c;
-            break;
+        let senderBlockFull;
+        let cityFromSender;
+        let closingSigner;
+        if (representativeMode) {
+          let parentRepAddr = "";
+          const parentAddrSources = [meta.user_adresse, meta.adresse, meta.anschrift];
+          for (const raw of parentAddrSources) {
+            const c = normalizeDraftAddressBlockV1504(normalizePostalAddress(raw || ""));
+            if (!c || looksLikeInstitutionStreetBlock(c)) continue;
+            const looksPerson = /\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(c) && /\b\d{5}\s+[A-ZÄÖÜ]/.test(c);
+            if (looksPerson) {
+              parentRepAddr = c;
+              break;
+            }
           }
+          if (!parentRepAddr) {
+            const extracted = extractPersonAddressFromContextV1504(signatureName, currentContext);
+            if (extracted && !looksLikeInstitutionStreetBlock(extracted)) parentRepAddr = extracted;
+          }
+          const vBlock = representedChildName
+            ? `\n\nals gesetzlicher Vertreter von\n${representedChildName}`
+            : "\n\nals gesetzlicher Vertreter der minderjährigen betroffenen Person";
+          senderBlockFull = `${signatureName}${parentRepAddr ? `\n${parentRepAddr}` : ""}${vBlock}`;
+          cityFromSender = getCityFromPostalAddress(parentRepAddr || "");
+          closingSigner = signatureName;
+        } else {
+          const paymentPdfPersonName = cleanText(
+            meta.betroffene_person ||
+            meta.name ||
+            meta.vollname ||
+            meta.person_name ||
+            briefNameMatch ||
+            signatureName ||
+            ""
+          );
+          let paymentPdfPersonAddr = "";
+          for (const raw of personAddrSources) {
+            const c = normalizeDraftAddressBlockV1504(normalizePostalAddress(raw || ""));
+            if (!c) continue;
+            if (looksLikeInstitutionStreetBlock(c)) continue;
+            const looksPerson = /\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(c) && /\b\d{5}\s+[A-ZÄÖÜ]/.test(c);
+            if (looksPerson) {
+              paymentPdfPersonAddr = c;
+              break;
+            }
+          }
+          if (!paymentPdfPersonAddr && paymentPdfPersonName) {
+            const extracted = extractPersonAddressFromContextV1504(paymentPdfPersonName, currentContext);
+            if (extracted && !looksLikeInstitutionStreetBlock(extracted)) paymentPdfPersonAddr = extracted;
+          }
+          senderBlockFull = paymentPdfPersonAddr
+            ? `${paymentPdfPersonName}\n${paymentPdfPersonAddr}`
+            : paymentPdfPersonName;
+          cityFromSender = getCityFromPostalAddress(paymentPdfPersonAddr || "");
+          closingSigner = paymentPdfPersonName || signatureName;
         }
-        if (!paymentPdfPersonAddr && paymentPdfPersonName) {
-          const extracted = extractPersonAddressFromContextV1504(paymentPdfPersonName, currentContext);
-          if (extracted && !looksLikeInstitutionStreetBlock(extracted)) paymentPdfPersonAddr = extracted;
-        }
-        const senderBlockFull = paymentPdfPersonAddr
-          ? `${paymentPdfPersonName}\n${paymentPdfPersonAddr}`
-          : paymentPdfPersonName;
         const recipientOrgLine = cleanText(senderCandidate || targetParty || "");
         const rawInstitutionAddr = normalizePostalAddress(meta.absender_adresse || "");
         let recipientAddrSafe = "";
@@ -3715,7 +3841,6 @@ app.post("/api/frage", async (req, res) => {
           if (!clash) recipientAddrSafe = cleanText(normalizeDraftAddressBlockV1504(rawInstitutionAddr));
         }
         const recipientBlock = recipientAddrSafe ? `${recipientOrgLine}\n\n${recipientAddrSafe}` : recipientOrgLine;
-        const cityFromSender = getCityFromPostalAddress(paymentPdfPersonAddr || "");
         const dateOnly = getTodayGerman();
         const placeLine = cityFromSender ? `${cityFromSender}, ${dateOnly}` : dateOnly;
         const pdfCore = `${paymentProofFormalIntro || "ich beziehe mich auf Ihr Schreiben."}\n\n${paymentProofRest}`;
@@ -3729,12 +3854,35 @@ app.post("/api/frage", async (req, res) => {
           `${betreffPdf}\n\n` +
           `${salutation}\n\n` +
           `${pdfCore}\n\n` +
-          `Mit freundlichen Grüßen\n${paymentPdfPersonName || signatureName}`
+          `Mit freundlichen Grüßen\n${closingSigner}`
         );
         return res.json({ ok: true, antwort: pdfDraft });
       }
+      let pdfHeadPrefix = "";
+      if (representativeMode) {
+        let parentRepAddr = "";
+        const parentAddrSources = [meta.user_adresse, meta.adresse, meta.anschrift];
+        for (const raw of parentAddrSources) {
+          const c = normalizeDraftAddressBlockV1504(normalizePostalAddress(raw || ""));
+          if (!c || looksLikeInstitutionStreetBlock(c)) continue;
+          const looksPerson = /\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(c) && /\b\d{5}\s+[A-ZÄÖÜ]/.test(c);
+          if (looksPerson) {
+            parentRepAddr = c;
+            break;
+          }
+        }
+        if (!parentRepAddr) {
+          const extracted = extractPersonAddressFromContextV1504(signatureName, currentContext);
+          if (extracted && !looksLikeInstitutionStreetBlock(extracted)) parentRepAddr = extracted;
+        }
+        const vBlock = representedChildName
+          ? `\n\nals gesetzlicher Vertreter von\n${representedChildName}`
+          : "\n\nals gesetzlicher Vertreter der minderjährigen betroffenen Person";
+        pdfHeadPrefix = `${signatureName}${parentRepAddr ? `\n${parentRepAddr}` : ""}${vBlock}\n\n`;
+      }
       const pdfDraft = cleanText(
         `PDF-BRIEF:\n\n` +
+        `${pdfHeadPrefix}` +
         `${salutation}\n\n` +
         `${draftBody}\n\n` +
         `Mit freundlichen Grüßen\n${signatureName}`
