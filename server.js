@@ -3738,6 +3738,23 @@ ${briefSlice}`;
       userGoal = previousGoal;
     }
 
+    const planTargetPartyEarly = geminiValidatedPlan && cleanText(geminiValidatedPlan.targetParty);
+    const isGenericReimbursementTargetParty = (tp) => {
+      const s = cleanText(tp || "").toLowerCase();
+      return !s || /^an die versicherung\s*\/\s*krankenkasse$/i.test(s) || /^krankenkasse\s*\/\s*versicherung$/i.test(s);
+    };
+    const looksLikeReimbursementMoneyFollowUp = (() => {
+      const raw = cleanText(frage);
+      if (!raw) return false;
+      if (/bir\s+kism|kısmın|kismi|geri\s+al|iade|masraf|fatura|tutar|paranın|alinabilir|alabilir|sigorta|öded|oded|ne\s+kadar|kismi.*al|odenen/i.test(raw)) return true;
+      const q = v17Norm(raw);
+      return v17Has(q, [/teilweise/, /teil.*betrag/, /teil.*erstatt/, /ruckerstat/, /kopay/, /copay/, /partial.*refund/]);
+    })();
+    if (userGoal === "understand" && planTargetPartyEarly && !isGenericReimbursementTargetParty(planTargetPartyEarly)
+      && (extractStoredGoalFromUserHistory() === "reimbursement_or_coverage_request" || looksLikeReimbursementMoneyFollowUp)) {
+      userGoal = "reimbursement_or_coverage_request";
+    }
+
     let caseGroup = "unknown";
     if (v17Has(currentContext, [/mahnung/, /inkasso/, /forderung/, /vollstreckung/, /gerichtsvollzieher/])) caseGroup = "debt_collection";
     else if (v17Has(currentContext, [/\bbank\b/, /p-konto/, /pfandung/, /pfändung/, /\bkonto\b/, /freibetrag/])) caseGroup = "banking";
@@ -4069,6 +4086,11 @@ ${briefSlice}`;
     ]);
     if ((answerType === "draft_email" || answerType === "draft_pdf") && !supportedOfficialDraftIntents.has(userGoal)) {
       answerType = "short_answer";
+    }
+
+    if (answerType === "short_answer" || answerType === "next_steps" || answerType === "clarifying_question" || answerType === "checklist") {
+      userLang = gen.userLang;
+      chatLanguage = gen.chatLanguage;
     }
 
     /** (2) Fallplan: erst nach Ziel-, Ausgabe- und Rollenlogik, dann Antwort. */
@@ -4428,20 +4450,89 @@ ${briefSlice}`;
     }
 
     if (answerType === "short_answer") {
-      const geminiBlocksGenericPaymentHint = casePlanTrusted;
+      const planTpShort = cleanText((geminiValidatedPlan && geminiValidatedPlan.targetParty) || targetParty || "");
+      const geminiBlocksGenericPaymentHint = casePlanTrusted
+        || Boolean(planTpShort && !isGenericReimbursementTargetParty(planTpShort));
+      const uiPick = (m) => (m[userLang] || m.de || m.en || "").trim();
+      if (userGoal === "reimbursement_or_coverage_request" && planTpShort && !isGenericReimbursementTargetParty(planTpShort)) {
+        console.log("CASE_PLAN_CONTEXT_FOLLOWUP_USED", {
+          mainGoal: (geminiValidatedPlan && geminiValidatedPlan.mainGoal) || userGoal,
+          answerType,
+          targetParty: planTpShort,
+          chatLanguage: userLang
+        });
+        const reimbCtx = {
+          de: `Ja, eine teilweise Erstattung kann möglich sein. Reiche dafür Rechnung und Zahlungsnachweis bei ${planTpShort} ein und lass es prüfen. Die Entscheidung trifft ${planTpShort}.`,
+          tr: `Evet, bir kısmını geri alma ihtimali olabilir. Bunun için faturayı ve ödeme belgesini ${planTpShort} ile paylaşman gerekir. Kesin kararı ${planTpShort} verir.`,
+          bg: `Да, частично възстановяване е възможно. Изпрати фактура и доказателство за плащане към ${planTpShort} и поискай проверка. Решението взема ${planTpShort}.`,
+          ro: `Da, este posibilă o rambursare parțială. Trimite factura și dovada plății către ${planTpShort} și cere verificarea. Decizia o ia ${planTpShort}.`,
+          en: `Yes, a partial refund may be possible. Send the invoice and proof of payment to ${planTpShort} and ask them to review it. ${planTpShort} makes the final decision.`,
+          ar: `نعم، قد يكون الاسترداد الجزئي ممكنًا. أرسل الفاتورة وإثبات الدفع إلى ${planTpShort} واطلب المراجعة. القرار النهائي يصدر من ${planTpShort}.`
+        };
+        return res.json({ ok: true, antwort: cleanText(uiPick(reimbCtx)) });
+      }
       const short = userGoal === "payment_proof"
-        ? "Du hast bereits gezahlt: Sende den Zahlungsnachweis, bitte um Zuordnungsprüfung und frage, ob noch ein offener Betrag besteht."
+        ? uiPick({
+          de: "Du hast bereits gezahlt: Sende den Zahlungsnachweis, bitte um Zuordnungsprüfung und frage, ob noch ein offener Betrag besteht.",
+          tr: "Ödediysen: Ödeme belgesini gönder, eşleştirme kontrolü iste ve hâlâ açık bir tutar olup olmadığını sor.",
+          bg: "Ако вече си платил: изпрати доказателство за плащане, поискай проверка за съпоставяне и попитай дали има остатък.",
+          ro: "Dacă ai plătit deja: trimite dovada plății, cere verificarea alocării și întreabă dacă mai există sumă deschisă.",
+          en: "If you already paid: send proof of payment, ask for allocation review, and ask whether any balance remains.",
+          ar: "إذا دفعت بالفعل: أرسل إثبات الدفع، واطلب مراجعة التخصيص، واسأل عما إذا كان هناك رصيد متبقٍ."
+        })
         : userGoal === "dispute_or_objection"
-          ? "Wenn die Forderung unklar oder falsch ist, verlange eine schriftliche Aufstellung und Nachweise, bevor weitere Schritte laufen."
+          ? uiPick({
+            de: "Wenn die Forderung unklar oder falsch ist, verlange eine schriftliche Aufstellung und Nachweise, bevor weitere Schritte laufen.",
+            tr: "Talep belirsiz veya yanlışsa, sonraki adımlar öncesi yazılı döküm ve belgeler iste.",
+            bg: "Ако претенцията е неясна или грешна, поискай писмено разписване и доказателства преди следващи стъпки.",
+            ro: "Dacă cererea este neclară sau greșită, solicită o situație scrisă și probe înainte de pașii următori.",
+            en: "If the claim is unclear or wrong, request a written breakdown and evidence before further steps.",
+            ar: "إذا كانت المطالبة غير واضحة أو خاطئة، فاطلب تفصيلًا كتابيًا وأدلة قبل أي خطوات لاحقة."
+          })
           : userGoal === "deferral_request"
-            ? "Du kannst schriftlich Zahlungsaufschub/Stundung beantragen und um Rückmeldung bitten, welche Unterlagen dafür nötig sind."
+            ? uiPick({
+              de: "Du kannst schriftlich Zahlungsaufschub/Stundung beantragen und um Rückmeldung bitten, welche Unterlagen dafür nötig sind.",
+              tr: "Yazılı olarak ödeme erteleme/taksit erteleme talep edebilir ve hangi belgelerin gerekli olduğunu sorabilirsin.",
+              bg: "Можеш писмено да поискаш отсрочка/разсрочване и да попиташ кои документи са нужни.",
+              ro: "Poți solicita în scris amânare/eșalonare și să întrebi ce documente sunt necesare.",
+              en: "You can request a payment deferral/installment pause in writing and ask which documents are needed.",
+              ar: "يمكنك طلب تأجيل الدفع كتابيًا والاستفسار عن المستندات المطلوبة."
+            })
             : userGoal === "installment_request"
-              ? "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest."
+              ? uiPick({
+                de: "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest.",
+                tr: "Taksit talep edebilirsin. Şu an hepsini birden ödeyemediğini kısaca yaz ve yazılı onay iste.",
+                bg: "Можеш да поискаш вноски. Накратко обясни, че не можеш да платиш наведнъж, и поискай писмено потвърждение.",
+                ro: "Poți cere plata în rate. Explică pe scurt că nu poți plăti totul dintr-o dată și cere confirmare scrisă.",
+                en: "You can ask for installments. Briefly say you cannot pay everything at once and request written confirmation.",
+                ar: "يمكنك طلب التقسيط. اذكر باختصار أنك لا تستطيع الدفع دفعة واحدة واطلب تأكيدًا كتابيًا."
+              })
               : userGoal === "reimbursement_or_coverage_request"
-                ? "Du kannst Erstattung/Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein."
+                ? uiPick({
+                  de: "Du kannst eine Erstattung oder Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein. Eine Zahlung ist nicht garantiert; die Kasse/Versicherung entscheidet.",
+                  tr: "Kostenübernahme veya iadeyi sağlık sigortası/ek sigorta ile kontrol ettirebilirsin. Fatura ve ödeme belgesini birlikte gönder. Ödeme garanti değildir; kararı sigorta kurumu verir.",
+                  bg: "Можеш да поискаш проверка за възстановяване или покритие при здравна каса/застраховка. Подай фактура и доказателство за плащане. Няма гаранция за плащане; решава касата/застрахователят.",
+                  ro: "Poți cere verificare pentru rambursare sau acoperire la casă de asigurări/asigurător. Trimite factura și dovada plății. Nu există garanție; decide casa/asigurătorul.",
+                  en: "You can ask your health insurer to check reimbursement or coverage. Include the invoice and proof of payment. Payment is not guaranteed; the insurer decides.",
+                  ar: "يمكنك طلب مراجعة التعويض أو التغطية لدى التأمين الصحي. أرفق الفاتورة وإثبات الدفع. الدفع ليس مضمونًا؛ يقرر الصندوق/المؤمّن."
+                })
                 : userGoal === "understand" && paymentDemandDetected && !geminiBlocksGenericPaymentHint
-                  ? "Bei einer Zahlungsforderung: zuerst Fakten prüfen (Betrag, Frist, Referenz), dann schriftlich bei der zuständigen Stelle klären."
-                  : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
+                  ? uiPick({
+                    de: "Wenn es um eine Zahlungsforderung geht: prüfe sicher Betrag, Frist und Aktenzeichen, und kläre schriftlich bei der zuständigen Stelle.",
+                    tr: "Ödeme talebi söz konusuysa: tutarı, süreyi ve dosya numarasını kontrol et; yetkili kuruma yazılı netleştir.",
+                    bg: "При искане за плащане: провери сумата, срока и номера на делото и пиши официално до компетентната институция.",
+                    ro: "La o cerere de plată: verifică suma, termenul și referința și clarifică în scris la instituția competentă.",
+                    en: "For a payment demand: check amount, deadline, and reference, then clarify in writing with the responsible authority.",
+                    ar: "في حال مطالبة بالدفع: راجع المبلغ والموعد والمرجع، ثم وضّح كتابيًا مع الجهة المختصة."
+                  })
+                  : uiPick({
+                    de: "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.",
+                    tr: "Kısaca: yetkili kuruma yazılı netleştir ve sonraki adımları yazılı teyit et.",
+                    bg: "На кратко: пиши официално до компетентната институция и поискай потвърждение на следващите стъпки.",
+                    ro: "Pe scurt: clarifică în scris cu instituția competentă și cere confirmarea pașilor următori.",
+                    en: "In short: clarify in writing with the responsible authority and get the next steps confirmed.",
+                    ar: "باختصار: تواصل كتابيًا مع الجهة المختصة واطلب تأكيد الخطوات التالية."
+                  });
       return res.json({ ok: true, antwort: cleanText(short) });
     }
     return false;
