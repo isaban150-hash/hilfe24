@@ -3359,10 +3359,10 @@ ${briefSlice}`;
     /** Last clear payment-related goal from prior USER turns (excludes current message). */
     const extractStoredGoalFromUserHistory = () => {
       const paymentGoalPatterns = [
-        { goal: "reimbursement_or_coverage_request", rx: [/erstattung|kostenubernahme|kostenübernahme|krankenkasse|versicherung|sigorta|sigortaya|sigortadan|rambursare|reimbursement|insurance|застраховка|تأمين|تعويض/] },
+        { goal: "reimbursement_or_coverage_request", rx: [/erstattung|kostenubernahme|kostenübernahme|krankenkasse|versicherung|sigorta|sigortaya|sigortadan|rambursare|reimbursement|insurance|застраховка|تأمين|تعويض|teil.*zur[uü]ck|zur[uü]ckbekommen|bir\s+kism.*geri|part of the money back|will insurance cover|възстанов|acoper[ăa]|استرجاع\s*جزء/] },
         { goal: "dispute_or_objection", rx: [/stimmt nicht|forderung falsch|kenne ich nicht|widerspruch|einspruch|bestreiten|itiraz|kabul etmiyorum|nu recunosc|не признавам|не е вярно|this is wrong|i dispute|objection|لا أوافق|اعتراض/] },
         { goal: "deferral_request", rx: [/später zahlen|spater zahlen|zahlungsaufschub|stundung|mehr zeit|pay later|postpone payment|deferral|erteleme|отсрочка|amanare|أحتاج وقت|تأجيل الدفع/] },
-        { goal: "installment_request", rx: [/ratenzahlung|\bin raten\b|monatlich zahlen|kann nicht.*auf einmal|cannot pay all at once|can't pay in full|taksit|installments|payment plan|تقسيط|أقساط/] },
+        { goal: "installment_request", rx: [/ratenzahlung|\bin raten\b|monatlich zahlen|kann nicht.*auf einmal|cannot pay all at once|can't pay in full|taksitle|taksitli|ödeme planı|odeme plani|iki\s+taksit|kaç\s+taksit|installments|payment plan|на вноски|разсрочено|în rate|plată în rate|تقسيط|أقساط|لا أستطيع الدفع دفعة واحدة/] },
         { goal: "payment_proof", rx: [/schon bezahlt|bereits bezahlt|habe bezahlt|überwiesen|uberwiesen|zahlungsnachweis|überweisungsbeleg|iberweisungsbeleg|dekont|i paid|already paid|i have paid|payment made|am platit|am plătit|платих|вече платих|Ödedim|ödedim|دفعت|لقد دفعت/] }
       ];
       const normMsg = (m) => cleanText(m || "").trim();
@@ -3445,11 +3445,39 @@ ${briefSlice}`;
       if (/\b(zahlungsnachweis|nachweis)\b.*\b(an|zu)\b.*\b(inkasso|forderung|glaeubiger|gläubiger|mahnung)\b/i.test(qRaw)) return true;
       return false;
     };
+    /** Teilrückerstattung / Kostenübernahme / „zahlt die Versicherung?“ — nicht Ratenzahlung. */
+    const hasReimbursementCostOrRefundFollowUpSignals = (questionText = "") => {
+      const raw = String(questionText || "");
+      const q = v17Norm(raw);
+      if (!raw.trim() && !q) return false;
+      if (/teil(weise)?\s*(des|der)?\s*(betrags|geldes)?\s*zur[uü]ck|einen\s+teil\s+zur[uü]ck|zur[uü]ckbekommen|etwas\s+zur[uü]ck|bekomme\s+ich.*erstatt|ubernehmt\s+die\s+versicherung|übernimmt\s+die\s+versicherung|ubernehmt\s+die\s+krankenkasse|übernimmt\s+die\s+krankenkasse|krankenkasse.*zahlen|versicherung.*(zahlen|ubernimm|übernimm|deckt)/i.test(raw)) return true;
+      if (v17Has(q, [/teilweise.*zuruck/, /teilweise.*zurück/, /ubernehmt.*versicherung/, /krankenkasse.*zahl/, /versicherung.*(teil|deck)/, /kosten.*ubernahme/, /erstatt.*teil/])) return true;
+      if (/bir\s+kism.*geri|geri\s+al(abilir)?|sigorta.*\b(öder|oder)\b|krankenkasse|paranın\s+bir\s+kism|masraf.*sigorta|iade|kismi.*geri|sigortaya/i.test(raw)) return true;
+      if (/част.*сумата.*обратно|застраховката.*покрие|възстанов|частично/i.test(raw)) return true;
+      if (/parte.*bani.*[îi]napoi|asigurar(ea)?\s+acoper|acoperă|ramburs/i.test(raw)) return true;
+      if (/\b(part of the money back|get part of.{0,24}back|partially reimbursed|will insurance cover|does insurance cover)\b/i.test(raw)) return true;
+      if (/استرجاع جزء|تغطي التأمين|جزءًا من المبلغ|هل يغطي التأمين/i.test(raw)) return true;
+      return false;
+    };
+    /** Ratenzahlung nur bei eindeutigem Raten-/Zahlungsplan-Wunsch (nicht „Teil zurück“). */
+    const hasStrictInstallmentIntentSignals = (questionText = "") => {
+      const raw = String(questionText || "");
+      const qNorm = v17Norm(raw);
+      if (hasReimbursementCostOrRefundFollowUpSignals(raw)) return false;
+      if (!qNorm && !raw.trim()) return false;
+      if (v17Has(qNorm, [/ratenzahlung/, /\bin raten\b/, /monatlich zahlen/, /kann nicht auf einmal zahlen/, /zahlungsvereinbarung/, /kleine raten/])) return true;
+      if (/taksitle\s+öde|taksitle\s+ode|taksitli\s+ödeme|taksitli\s+odeme|aylık\s+öde|aylik\s+ode|birden\s+ödeyemem|birden\s+odeyemem|hepsini\s+ödeyemem|hepsini\s+odeyemem|ödeme\s+planı|odeme\s+plani|\b(iki|2)\s+taksit\b|\bkaç\s+taksit\b/i.test(raw)) return true;
+      if (/на\s+вноски|разсрочено\s+плащане|месечни\s+вноски/i.test(raw)) return true;
+      if (/în\s+rate|plată\s+în\s+rate|plata\s+în\s+rate|rate\s+lunare/i.test(raw)) return true;
+      if (/\binstallments\b|\bpayment plan\b|cannot pay all at once|i can't pay in full|i cannot pay in full|monthly payments|small payments/i.test(raw)) return true;
+      if (/تقسيط|أقساط|لا أستطيع الدفع دفعة واحدة|لا استطيع الدفع دفعة واحدة|خطة دفع|دفعات شهرية/i.test(raw)) return true;
+      return false;
+    };
     const resolveMainGoalFromUserText = (questionText = "") => {
       const qNorm = v17Norm(questionText || "");
       const qRaw = String(questionText || "");
       if (!qNorm) return "understand";
-      const reimb = hasReimbursementIntentSignals(questionText);
+      const reimb = hasReimbursementIntentSignals(questionText) || hasReimbursementCostOrRefundFollowUpSignals(questionText);
       const pay = hasPaymentProofIntentSignals(questionText);
       const explicitCreditorProof = wantsExplicitPaymentProofToDemandParty(questionText);
       if (reimb && pay && !explicitCreditorProof) return "reimbursement_or_coverage_request";
@@ -3471,14 +3499,7 @@ ${briefSlice}`;
         /pay later/, /payment deferral/, /need more time/, /extend the deadline/, /postpone payment/,
         /أريد الدفع لاحقًا/, /أحتاج وقتًا أكثر/, /تأجيل الدفع/, /مهلة إضافية/, /تمديد المهلة/, /لا أستطيع الدفع الآن/
       ])) return "deferral_request";
-      if (v17Has(qNorm, [
-        /kann nicht auf einmal zahlen/, /kann nicht zahlen/, /ratenzahlung/, /in raten/, /monatlich zahlen/, /zahlungsvereinbarung/, /kleine raten/,
-        /birden odeyemem/, /birden ödeyemem/, /hepsini odeyemem/, /hepsini ödeyemem/, /taksit/, /taksitli odeme/, /taksitli ödeme/, /aylik odemek/, /aylık ödemek/, /odeme plani/, /ödeme planı/, /az az odemek/, /az az ödemek/,
-        /не мога да платя наведнъж/, /не мога да платя всичко/, /на вноски/, /разсрочено плащане/, /месечно плащане/, /малки вноски/,
-        /nu pot plati tot odata/, /nu pot plăti tot odată/, /nu pot plati integral/, /nu pot plăti integral/, /in rate/, /în rate/, /plata in rate/, /plată în rate/, /rate lunare/, /plan de plata/, /plan de plată/, /rate mici/,
-        /i cannot pay all at once/, /i can't pay in full/, /installments/, /payment plan/, /monthly payments/, /small payments/,
-        /لا أستطيع الدفع دفعة واحدة/, /لا أستطيع دفع المبلغ كامل/, /أريد الدفع بالتقسيط/, /تقسيط/, /أقساط/, /دفعات شهرية/, /خطة دفع/, /أدفع شهريًا/
-      ])) return "installment_request";
+      if (hasStrictInstallmentIntentSignals(questionText)) return "installment_request";
       if (pay) return "payment_proof";
       return "understand";
     };
@@ -3639,8 +3660,8 @@ ${briefSlice}`;
     const previousGoal = v17Has(pendingDraftContext, [/schon bezahlt|bereits bezahlt|zahlungsnachweis|uberwiesen|überwiesen|dekont|i paid|payment made|am platit|платих|دفعت/]) ? "payment_proof"
       : v17Has(pendingDraftContext, [/stimmt nicht|falsch|widerspruch|einspruch|itiraz|not correct|i dispute|nu este corect|не е вярно|غير صحيح|اعتراض/]) ? "dispute_or_objection"
       : v17Has(pendingDraftContext, [/spater zahlen|später zahlen|stundung|aufschub|pay later|deferral|amânare|отсрочка|تأجيل الدفع/]) ? "deferral_request"
-      : v17Has(pendingDraftContext, [/ratenzahlung|iki taksit|zwei raten|taksit|rate|raten|installment|plan de plata|вноски|تقسيط/]) ? "installment_request"
-      : v17Has(pendingDraftContext, [/erstattung|kostenubernahme|kostenübernahme|zuruckbekommen|zurückbekommen/]) ? "reimbursement_or_coverage_request"
+      : v17Has(pendingDraftContext, [/erstattung|kostenubernahme|kostenübernahme|zuruckbekommen|zurückbekommen|krankenkasse|versicherung|sigorta|reimbursement|kostenubernahme|teilweise erstattung|teil.*erstatt|bitte um prufung einer kostenubernahme|bitte um prüfung einer kostenübernahme/i]) ? "reimbursement_or_coverage_request"
+      : v17Has(pendingDraftContext, [/ratenzahlung|\biki taksit\b|\bzwei raten\b|taksitle|taksitli|ödeme planı|odeme plani|installment|plan de plata|разсрочено|în rate|plată în rate|تقسيط|أقساط/]) ? "installment_request"
       : v17Has(pendingDraftContext, [/kundigung|kündigung|widerruf|iptal|fesih/]) ? "cancellation_request"
       : "";
 
@@ -3728,11 +3749,11 @@ ${briefSlice}`;
     if (!casePlanTrusted && writeFollowUpOnly && inheritedWriteGoal) userGoal = inheritedWriteGoal;
 
     if (!casePlanTrusted && allowPendingResume && pendingName && userGoal === "understand") {
-      if (v17Has(pendingDraftContext, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
+      if (v17Has(pendingDraftContext, [/erstattung|kostenubernahme|kostenübernahme|krankenkasse|versicherung|sigorta|reimbursement|teilweise erstattung|bitte um prufung einer kostenubernahme|bitte um prüfung einer kostenübernahme/i])) userGoal = "reimbursement_or_coverage_request";
+      else if (v17Has(pendingDraftContext, [/ratenzahlung/, /\bin raten\b/, /monatlich zahlen/, /taksitle/, /taksitli/, /ödeme planı|odeme plani/, /\biki taksit\b/, /\bzwei raten\b/, /kann nicht.*auf einmal/])) userGoal = "installment_request";
       else if (v17Has(pendingDraftContext, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
-      else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_or_coverage_request";
       else if (v17Has(pendingDraftContext, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
-      else if (pendingNeedsInstallmentDraft) userGoal = "installment_request";
+      else if (pendingNeedsInstallmentDraft && hasStrictInstallmentIntentSignals(frage)) userGoal = "installment_request";
     }
     if (!casePlanTrusted && allowPendingResume && hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
       userGoal = previousGoal;
@@ -3746,6 +3767,7 @@ ${briefSlice}`;
     const looksLikeReimbursementMoneyFollowUp = (() => {
       const raw = cleanText(frage);
       if (!raw) return false;
+      if (hasReimbursementCostOrRefundFollowUpSignals(raw)) return true;
       if (/bir\s+kism|kısmın|kismi|geri\s+al|iade|masraf|fatura|tutar|paranın|alinabilir|alabilir|sigorta|öded|oded|ne\s+kadar|kismi.*al|odenen/i.test(raw)) return true;
       const q = v17Norm(raw);
       return v17Has(q, [/teilweise/, /teil.*betrag/, /teil.*erstatt/, /ruckerstat/, /kopay/, /copay/, /partial.*refund/]);
@@ -3753,6 +3775,18 @@ ${briefSlice}`;
     if (userGoal === "understand" && planTargetPartyEarly && !isGenericReimbursementTargetParty(planTargetPartyEarly)
       && (extractStoredGoalFromUserHistory() === "reimbursement_or_coverage_request" || looksLikeReimbursementMoneyFollowUp)) {
       userGoal = "reimbursement_or_coverage_request";
+    }
+    if (userGoal === "installment_request") {
+      const casePlanMainReimb = geminiValidatedPlan && geminiValidatedPlan.mainGoal === "reimbursement_or_coverage_request";
+      const storedReimbThread = extractStoredGoalFromUserHistory() === "reimbursement_or_coverage_request" || previousGoal === "reimbursement_or_coverage_request";
+      const reimbFU = hasReimbursementCostOrRefundFollowUpSignals(frage) || looksLikeReimbursementMoneyFollowUp || hasReimbursementIntentSignals(frage);
+      if ((casePlanMainReimb || storedReimbThread) && reimbFU && !hasStrictInstallmentIntentSignals(frage)) {
+        console.log("CASE_PLAN_REIMBURSEMENT_FOLLOWUP_USED", {
+          targetParty: cleanText((geminiValidatedPlan && geminiValidatedPlan.targetParty) || ""),
+          chatLanguage: userLang
+        });
+        userGoal = "reimbursement_or_coverage_request";
+      }
     }
 
     let caseGroup = "unknown";
@@ -4455,21 +4489,38 @@ ${briefSlice}`;
         || Boolean(planTpShort && !isGenericReimbursementTargetParty(planTpShort));
       const uiPick = (m) => (m[userLang] || m.de || m.en || "").trim();
       if (userGoal === "reimbursement_or_coverage_request" && planTpShort && !isGenericReimbursementTargetParty(planTpShort)) {
-        console.log("CASE_PLAN_CONTEXT_FOLLOWUP_USED", {
-          mainGoal: (geminiValidatedPlan && geminiValidatedPlan.mainGoal) || userGoal,
-          answerType,
+        console.log("CASE_PLAN_REIMBURSEMENT_FOLLOWUP_USED", {
           targetParty: planTpShort,
           chatLanguage: userLang
         });
         const reimbCtx = {
           de: `Ja, eine teilweise Erstattung kann möglich sein. Reiche dafür Rechnung und Zahlungsnachweis bei ${planTpShort} ein und lass es prüfen. Die Entscheidung trifft ${planTpShort}.`,
-          tr: `Evet, bir kısmını geri alma ihtimali olabilir. Bunun için faturayı ve ödeme belgesini ${planTpShort} ile paylaşman gerekir. Kesin kararı ${planTpShort} verir.`,
+          tr: `Evet, bir kısmını geri alma ihtimali olabilir. Bunun için faturayı ve ödeme belgesini ${planTpShort}’ye göndermen gerekir. Kesin kararı ${planTpShort} verir.`,
           bg: `Да, частично възстановяване е възможно. Изпрати фактура и доказателство за плащане към ${planTpShort} и поискай проверка. Решението взема ${planTpShort}.`,
           ro: `Da, este posibilă o rambursare parțială. Trimite factura și dovada plății către ${planTpShort} și cere verificarea. Decizia o ia ${planTpShort}.`,
           en: `Yes, a partial refund may be possible. Send the invoice and proof of payment to ${planTpShort} and ask them to review it. ${planTpShort} makes the final decision.`,
           ar: `نعم، قد يكون الاسترداد الجزئي ممكنًا. أرسل الفاتورة وإثبات الدفع إلى ${planTpShort} واطلب المراجعة. القرار النهائي يصدر من ${planTpShort}.`
         };
         return res.json({ ok: true, antwort: cleanText(uiPick(reimbCtx)) });
+      }
+      const reimbFollowSignalsShort = hasReimbursementCostOrRefundFollowUpSignals(frage) || looksLikeReimbursementMoneyFollowUp;
+      const reimbThreadShort = (geminiValidatedPlan && geminiValidatedPlan.mainGoal === "reimbursement_or_coverage_request")
+        || previousGoal === "reimbursement_or_coverage_request"
+        || extractStoredGoalFromUserHistory() === "reimbursement_or_coverage_request";
+      if (userGoal === "reimbursement_or_coverage_request" && isGenericReimbursementTargetParty(planTpShort) && reimbFollowSignalsShort && reimbThreadShort) {
+        console.log("CASE_PLAN_REIMBURSEMENT_FOLLOWUP_USED", {
+          targetParty: planTpShort || "",
+          chatLanguage: userLang
+        });
+        const reimbNoTp = {
+          de: "Ja, eine teilweise Erstattung kann möglich sein. Reiche dafür Rechnung und Zahlungsnachweis bei deiner Krankenkasse oder Versicherung ein und lass es prüfen. Die zuständige Stelle entscheidet.",
+          tr: "Evet, bir kısmını geri alma ihtimali olabilir. Bunun için faturayı ve ödeme belgesini sigortaya veya Krankenkasse’ye göndermen gerekir. Kesin kararı ilgili kurum verir.",
+          bg: "Да, частично възстановяване е възможно. Изпрати фактура и доказателство за плащане към здравната каса или застрахователя и поискай проверка. Решението взема компетентната институция.",
+          ro: "Da, este posibilă o rambursare parțială. Trimite factura și dovada plății către casa de asigurări de sănătate sau asigurător și cere verificarea. Decizia o ia instituția competentă.",
+          en: "Yes, a partial refund may be possible. Send the invoice and proof of payment to your health insurer or insurance company and ask them to review it. The responsible institution makes the final decision.",
+          ar: "نعم، قد يكون الاسترداد الجزئي ممكنًا. أرسل الفاتورة وإثبات الدفع إلى التأمين الصحي أو شركة التأمين واطلب المراجعة. القرار النهائي للجهة المختصة."
+        };
+        return res.json({ ok: true, antwort: cleanText(uiPick(reimbNoTp)) });
       }
       const short = userGoal === "payment_proof"
         ? uiPick({
@@ -4509,12 +4560,12 @@ ${briefSlice}`;
               })
               : userGoal === "reimbursement_or_coverage_request"
                 ? uiPick({
-                  de: "Du kannst eine Erstattung oder Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein. Eine Zahlung ist nicht garantiert; die Kasse/Versicherung entscheidet.",
-                  tr: "Kostenübernahme veya iadeyi sağlık sigortası/ek sigorta ile kontrol ettirebilirsin. Fatura ve ödeme belgesini birlikte gönder. Ödeme garanti değildir; kararı sigorta kurumu verir.",
-                  bg: "Можеш да поискаш проверка за възстановяване или покритие при здравна каса/застраховка. Подай фактура и доказателство за плащане. Няма гаранция за плащане; решава касата/застрахователят.",
-                  ro: "Poți cere verificare pentru rambursare sau acoperire la casă de asigurări/asigurător. Trimite factura și dovada plății. Nu există garanție; decide casa/asigurătorul.",
-                  en: "You can ask your health insurer to check reimbursement or coverage. Include the invoice and proof of payment. Payment is not guaranteed; the insurer decides.",
-                  ar: "يمكنك طلب مراجعة التعويض أو التغطية لدى التأمين الصحي. أرفق الفاتورة وإثبات الدفع. الدفع ليس مضمونًا؛ يقرر الصندوق/المؤمّن."
+                  de: "Du kannst eine Erstattung oder Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein. Eine Zahlung ist nicht garantiert; die zuständige Stelle entscheidet.",
+                  tr: "Erstattung veya Kostenübernahme için sağlık sigortası veya ek sigorta ile kontrol ettirebilirsin. Fatura ve ödeme belgesini birlikte gönder. Ödeme garanti değildir; kararı ilgili kurum verir.",
+                  bg: "Можеш да поискаш проверка за възстановяване или покритие при здравна каса/застраховка. Подай фактура и доказателство за плащане. Няма гаранция за плащане; решава компетентната институция.",
+                  ro: "Poți cere verificare pentru rambursare sau acoperire la casă de asigurări de sănătate/asigurător. Trimite factura și dovada plății. Nu există garanție; decide instituția competentă.",
+                  en: "You can ask your health insurer to check reimbursement or coverage. Include the invoice and proof of payment. Payment is not guaranteed; the responsible institution decides.",
+                  ar: "يمكنك طلب مراجعة التعويض أو التغطية لدى التأمين الصحي. أرفق الفاتورة وإثبات الدفع. الدفع ليس مضمونًا؛ تقرر الجهة المختصة."
                 })
                 : userGoal === "understand" && paymentDemandDetected && !geminiBlocksGenericPaymentHint
                   ? uiPick({
