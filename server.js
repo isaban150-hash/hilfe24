@@ -3167,7 +3167,8 @@ app.post("/api/frage", async (req, res) => {
     const GEMINI_CP_MAIN_GOALS = new Set([
       "understand", "next_steps", "payment_proof", "installment_request", "deferral_request",
       "dispute_or_objection", "reimbursement_or_coverage_request", "submit_documents",
-      "appointment_reschedule", "sick_note_or_cannot_attend", "deadline_extension", "complaint_or_clarification"
+      "appointment_reschedule", "sick_note_or_cannot_attend", "deadline_extension", "complaint_or_clarification",
+      "general_question", "draft_response"
     ]);
     const GEMINI_CP_ANSWER_TYPES = new Set([
       "short_answer", "next_steps", "draft_email", "draft_pdf", "draft_letter", "checklist", "clarifying_question"
@@ -3234,7 +3235,7 @@ AUFGABE:
 - confidence: Zahl 0 bis 1 (wie sicher der Fallplan ist).
 
 ERLAUBTE mainGoal-Werte (exakt):
-understand, next_steps, payment_proof, installment_request, deferral_request, dispute_or_objection, reimbursement_or_coverage_request, submit_documents, appointment_reschedule, sick_note_or_cannot_attend, deadline_extension, complaint_or_clarification
+understand, next_steps, payment_proof, installment_request, deferral_request, dispute_or_objection, reimbursement_or_coverage_request, submit_documents, appointment_reschedule, sick_note_or_cannot_attend, deadline_extension, complaint_or_clarification, general_question, draft_response
 
 ERLAUBTE answerType-Werte (exakt):
 short_answer, next_steps, draft_email, draft_pdf, draft_letter, checklist, clarifying_question
@@ -3527,6 +3528,7 @@ ${briefSlice}`;
     let substantiveGoalFromCurrent = (casePlanTrusted && geminiValidatedPlan)
       ? geminiValidatedPlan.mainGoal
       : resolveMainGoalFromUserText(frage);
+    if (substantiveGoalFromCurrent === "general_question" || substantiveGoalFromCurrent === "draft_response") substantiveGoalFromCurrent = "understand";
     const writeFollowUpOnly = isWriteOnlyFollowUpQuestion() && substantiveGoalFromCurrent === "understand";
     const inheritedWriteGoal = writeFollowUpOnly ? extractStoredGoalFromUserHistory() : "";
 
@@ -3885,6 +3887,20 @@ ${briefSlice}`;
       }
     }
 
+    /** Kontext aus vorherigem Chat: genannte Zielstelle gewinnt vor generischem Erstattungs-Ziel. */
+    const mergeWithLastCasePlan = () => {
+      const reimbCtx = userGoal === "reimbursement_or_coverage_request"
+        || extractStoredGoalFromUserHistory() === "reimbursement_or_coverage_request"
+        || Boolean(geminiValidatedPlan && geminiValidatedPlan.mainGoal === "reimbursement_or_coverage_request");
+      if (!reimbCtx) return;
+      const bundle = [frage, chatHistoryText, lastUserQuestion].filter(Boolean).join("\n");
+      const named = extractUserNamedCoverageTarget(bundle);
+      if (named && !isGenericReimbursementTargetParty(named) && isGenericReimbursementTargetParty(targetParty)) {
+        targetParty = cleanText(named);
+      }
+    };
+    mergeWithLastCasePlan();
+
     const planTargetPartyLine = casePlanTrusted && geminiValidatedPlan ? cleanText(geminiValidatedPlan.targetParty) : "";
     if (!targetParty && answerType === "draft_email" && !planTargetPartyLine) {
       targetParty = "[E-Mail-Adresse der Stelle einfügen]";
@@ -4133,28 +4149,53 @@ ${briefSlice}`;
       chatLanguage = gen.chatLanguage;
     }
 
-    /** (2) Fallplan: erst nach Ziel-, Ausgabe- und Rollenlogik, dann Antwort. */
-    const buildCasePlan = () => ({
-      casePlan: {
-        mainGoal: userGoal,
-        answerType,
-        targetParty: cleanText(targetParty || ""),
-        affectedPerson: childForRepBlocks || representedChildName,
-        writerPerson: signatureName,
-        representativeRole: (geminiValidatedPlan && cleanText(geminiValidatedPlan.representativeRole))
-          || (representativeMode ? (/mutter|mutti|mama|mother|annesi|ich\s+bin\s+die\s+mutter/i.test(repScanFull) ? "Mutter" : /vater|baba|father|babası|ich\s+bin\s+der\s+vater/i.test(repScanFull) ? "Vater" : "") : ""),
-        representativeMode,
-        knownFacts: {
-          ...(geminiValidatedPlan && geminiValidatedPlan.knownFacts && typeof geminiValidatedPlan.knownFacts === "object" ? geminiValidatedPlan.knownFacts : {}),
-          reference: cleanRef || "",
-          betragSicher: Boolean(secureEuroAmountToken(meta.betrag))
-        },
-        missingFields: geminiValidatedPlan ? geminiValidatedPlan.missingFields : [],
-        chatLanguage,
-        officialTextLanguage,
-        confidence: geminiValidatedPlan ? geminiValidatedPlan.confidence : 0
-      }
+    /** (2)–(5) Fallplan: einheitliches Laufzeitmodell, Kontext-Merge, Pflichtfeld-Check. */
+    const buildRuntimeCasePlanObject = () => ({
+      mainGoal: userGoal,
+      answerType,
+      targetParty: cleanText(targetParty || ""),
+      affectedPerson: cleanText(childForRepBlocks || representedChildName || ""),
+      writerPerson: cleanText(signatureName || ""),
+      representativeRole: cleanText((geminiValidatedPlan && geminiValidatedPlan.representativeRole)
+        || (representativeMode ? (/mutter|mutti|mama|mother|annesi|ich\s+bin\s+die\s+mutter/i.test(repScanFull) ? "Mutter" : /vater|baba|father|babası|ich\s+bin\s+der\s+vater/i.test(repScanFull) ? "Vater" : "") : "")),
+      representativeMode,
+      caseGroup,
+      chatLanguage,
+      officialTextLanguage,
+      knownFacts: {
+        ...(geminiValidatedPlan && geminiValidatedPlan.knownFacts && typeof geminiValidatedPlan.knownFacts === "object" ? geminiValidatedPlan.knownFacts : {}),
+        reference: cleanRef || "",
+        betragSicher: Boolean(secureEuroAmountToken(meta.betrag))
+      },
+      missingFields: (geminiValidatedPlan && Array.isArray(geminiValidatedPlan.missingFields)) ? geminiValidatedPlan.missingFields.slice() : [],
+      confidence: geminiValidatedPlan ? geminiValidatedPlan.confidence : 0
     });
+    const detectMissingRequiredFields = (plan) => {
+      const missing = [];
+      const mg = plan.mainGoal;
+      const at = plan.answerType;
+      const tp = cleanText(plan.targetParty || "");
+      const wp = cleanText(plan.writerPerson || "");
+      const ap = cleanText(plan.affectedPerson || "");
+      if (!mg) missing.push("mainGoal");
+      if (!at) missing.push("answerType");
+      if ((at === "draft_email" || at === "draft_pdf") && plan.representativeMode && !ap) missing.push("affectedPerson");
+      if ((at === "draft_email" || at === "draft_pdf") && plan.representativeMode && !wp) missing.push("writerPerson");
+      if ((at === "draft_email" || at === "draft_pdf") && mg === "reimbursement_or_coverage_request"
+        && isGenericReimbursementTargetParty(tp) && !metaEmail && !emailInTextMatch && !emailAnswerMatch) {
+        missing.push("targetParty");
+      }
+      return missing;
+    };
+    const validateCasePlan = (plan) => {
+      const missing = detectMissingRequiredFields(plan);
+      return { ok: missing.length === 0, missing };
+    };
+    const runtimeCasePlan = buildRuntimeCasePlanObject();
+    console.log("CASE_PLAN_CREATED", runtimeCasePlan);
+    const casePlanValidation = validateCasePlan(runtimeCasePlan);
+    console.log("CASE_PLAN_MISSING_FIELDS", casePlanValidation.missing);
+    const buildCasePlan = () => ({ casePlan: runtimeCasePlan });
     const { casePlan } = buildCasePlan();
     void casePlan;
 
@@ -4634,13 +4675,12 @@ ${briefSlice}`;
       _hilfe24PlannedAnswer = false;
     }
     if (_hilfe24PlannedAnswer !== false) {
-      if (casePlanTrusted && geminiValidatedPlan) {
-        console.log("CASE_PLAN_ANSWER_USED", {
-          mainGoal: geminiValidatedPlan.mainGoal,
-          answerType,
-          targetParty: cleanText(targetParty || "")
-        });
-      }
+      console.log("CASE_PLAN_USED", {
+        mainGoal: userGoal,
+        answerType,
+        targetParty: cleanText(targetParty || ""),
+        chatLanguage: userLang
+      });
       return _hilfe24PlannedAnswer;
     }
     if (casePlanTrusted && geminiValidatedPlan) {
