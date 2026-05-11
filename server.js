@@ -3186,12 +3186,14 @@ app.post("/api/frage", async (req, res) => {
       const ol = cleanText(raw.officialTextLanguage || "").toLowerCase();
       const officialTextLanguage = ol === "de" ? "de" : "de";
       const confRaw = typeof raw.confidence === "number" ? raw.confidence : parseFloat(raw.confidence);
-      const confidence = Number.isFinite(confRaw) ? Math.max(0, Math.min(1, confRaw)) : 0;
+      const confidence = Number.isFinite(confRaw) ? Math.max(0, Math.min(1, confRaw)) : 0.9;
       let knownFacts = raw.knownFacts;
       if (!knownFacts || typeof knownFacts !== "object" || Array.isArray(knownFacts)) knownFacts = {};
       let missingFields = raw.missingFields;
       if (!Array.isArray(missingFields)) missingFields = [];
       missingFields = missingFields.map((x) => cleanText(String(x))).filter(Boolean).slice(0, 16);
+      const optionalMissing = /versichertennummer|zahlungsnachweis|zahlungsdatum|bankverbindung|beleg|belege|unterlagen|weitere unterlagen|payment proof|invoice date|rechnungsdatum/i;
+      missingFields = missingFields.filter((f) => !optionalMissing.test(f));
       return {
         mainGoal,
         answerType,
@@ -3294,7 +3296,17 @@ ${briefSlice}`;
     if (!geminiValidatedPlan) {
       console.log("CASE_PLAN_FALLBACK_USED", { reason: casePlanFallbackReason || "no_valid_plan" });
     }
-    if (geminiValidatedPlan && geminiValidatedPlan.chatLanguage) {
+    let casePlanTrusted = false;
+    if (geminiValidatedPlan) {
+      if (geminiValidatedPlan.confidence >= 0.75
+        && GEMINI_CP_MAIN_GOALS.has(geminiValidatedPlan.mainGoal)
+        && GEMINI_CP_ANSWER_TYPES.has(geminiValidatedPlan.answerType)) {
+        casePlanTrusted = true;
+      } else {
+        console.log("CASE_PLAN_FALLBACK_USED", { reason: "confidence_below_threshold_or_incomplete", casePlan: geminiValidatedPlan });
+      }
+    }
+    if (casePlanTrusted && geminiValidatedPlan.chatLanguage) {
       userLang = geminiValidatedPlan.chatLanguage;
       chatLanguage = geminiValidatedPlan.chatLanguage;
     }
@@ -3445,7 +3457,7 @@ ${briefSlice}`;
     const pendingField = detectPendingField(lastAssistantAnswer);
     const pendingNameRequested = pendingField === "name";
 
-    let substantiveGoalFromCurrent = geminiValidatedPlan
+    let substantiveGoalFromCurrent = (casePlanTrusted && geminiValidatedPlan)
       ? geminiValidatedPlan.mainGoal
       : resolveMainGoalFromUserText(frage);
     const writeFollowUpOnly = isWriteOnlyFollowUpQuestion() && substantiveGoalFromCurrent === "understand";
@@ -3508,9 +3520,9 @@ ${briefSlice}`;
       return Boolean(hasMinorAge && hasRelation);
     };
     let representativeMode = detectRepresentativeMinorContext();
-    if (geminiValidatedPlan && cleanText(geminiValidatedPlan.representativeRole)) representativeMode = true;
+    if (casePlanTrusted && geminiValidatedPlan && cleanText(geminiValidatedPlan.representativeRole)) representativeMode = true;
     const childForRepBlocks = cleanText(
-      (geminiValidatedPlan && cleanText(geminiValidatedPlan.affectedPerson)) ||
+      (casePlanTrusted && geminiValidatedPlan && cleanText(geminiValidatedPlan.affectedPerson)) ||
       meta.betroffene_person ||
       extractMinorAffectedFromChat() ||
       representedChildName
@@ -3612,7 +3624,7 @@ ${briefSlice}`;
     const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /was jetzt/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/, /simdi ne yapmaliyim/, /şimdi ne yapmalıyım/, /\bwhat should i do\b/]);
 
     let answerType = "short_answer";
-    if (!geminiValidatedPlan) {
+    if (!casePlanTrusted) {
       if (wantsPdf) answerType = "draft_pdf";
       else if (wantsEmail) answerType = "draft_email";
       else if (wantsChecklist) answerType = "checklist";
@@ -3621,25 +3633,25 @@ ${briefSlice}`;
 
     const contextUnclear = !briefText && !erklaerungKurz && !erklaerungDetails;
     const goalUnclear = currentQuestion.length < 5 || /^(ok|okay|ja|nein|hmm|hallo|hi)$/.test(currentQuestion);
-    if (!geminiValidatedPlan && answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarifying_question";
+    if (!casePlanTrusted && answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarifying_question";
     const pendingNeedsInstallmentDraft = pendingName && v17Has(
       pendingDraftContext,
       [/e-?posta/, /email/, /\bmail\b/, /taksit/, /iki taksit/, /zwei raten/, /ratenzahlung/]
     );
-    if (!geminiValidatedPlan && pendingName) {
+    if (!casePlanTrusted && pendingName) {
       answerType = wantsPdf ? "draft_pdf" : "draft_email";
       if (!wantsPdf && !wantsEmail && pendingNeedsInstallmentDraft) answerType = "draft_email";
     }
-    if (!geminiValidatedPlan && hasValidPendingFieldValue && previousAnswerType) {
+    if (!casePlanTrusted && hasValidPendingFieldValue && previousAnswerType) {
       answerType = previousAnswerType;
     }
 
-    if (!geminiValidatedPlan && writeFollowUpOnly && inheritedWriteGoal) {
+    if (!casePlanTrusted && writeFollowUpOnly && inheritedWriteGoal) {
       if (wantsPdfFromText()) answerType = "draft_pdf";
       else answerType = "draft_email";
     }
 
-    if (geminiValidatedPlan) {
+    if (casePlanTrusted && geminiValidatedPlan) {
       let at = geminiValidatedPlan.answerType;
       if (at === "draft_letter") at = "draft_pdf";
       answerType = at;
@@ -3652,7 +3664,7 @@ ${briefSlice}`;
 
     let userGoal = substantiveGoalFromCurrent;
 
-    if (!geminiValidatedPlan) {
+    if (!casePlanTrusted) {
       if (userGoal === "understand" && (hasReimbursementIntentSignals(frage)
         || v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/])
         || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])))) {
@@ -3667,16 +3679,16 @@ ${briefSlice}`;
       if (userGoal === "understand" && v17Has(currentQuestion, [/beschwerde/, /reklamation/, /missverstandnis/, /missverständnis/, /complaint/, /clarification request/])) userGoal = "complaint_or_clarification";
     }
 
-    if (!geminiValidatedPlan && writeFollowUpOnly && inheritedWriteGoal) userGoal = inheritedWriteGoal;
+    if (!casePlanTrusted && writeFollowUpOnly && inheritedWriteGoal) userGoal = inheritedWriteGoal;
 
-    if (!geminiValidatedPlan && allowPendingResume && pendingName && userGoal === "understand") {
+    if (!casePlanTrusted && allowPendingResume && pendingName && userGoal === "understand") {
       if (v17Has(pendingDraftContext, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
       else if (v17Has(pendingDraftContext, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
       else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_or_coverage_request";
       else if (v17Has(pendingDraftContext, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
       else if (pendingNeedsInstallmentDraft) userGoal = "installment_request";
     }
-    if (!geminiValidatedPlan && allowPendingResume && hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
+    if (!casePlanTrusted && allowPendingResume && hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
       userGoal = previousGoal;
     }
 
@@ -3769,17 +3781,18 @@ ${briefSlice}`;
     else if (userGoal === "installment_request") targetParty = "Stelle aus dem Brief";
     else if (userGoal === "cancellation_request") targetParty = "Vertragspartner / Firma aus dem Brief";
 
-    if (geminiValidatedPlan && cleanText(geminiValidatedPlan.targetParty)) {
+    if (casePlanTrusted && geminiValidatedPlan && cleanText(geminiValidatedPlan.targetParty)) {
       if (!(pendingField === "recipient_email" && pendingFieldValueMap.recipient_email)
         && !(pendingField === "target_party" && pendingFieldValueMap.target_party)) {
         targetParty = cleanText(geminiValidatedPlan.targetParty);
       }
     }
 
-    if (!targetParty && answerType === "draft_email") {
+    const planTargetPartyLine = casePlanTrusted && geminiValidatedPlan ? cleanText(geminiValidatedPlan.targetParty) : "";
+    if (!targetParty && answerType === "draft_email" && !planTargetPartyLine) {
       targetParty = "[E-Mail-Adresse der Stelle einfügen]";
     }
-    if (!targetParty && answerType === "draft_pdf") {
+    if (!targetParty && answerType === "draft_pdf" && !planTargetPartyLine) {
       answerType = "clarifying_question";
     }
 
@@ -3899,7 +3912,7 @@ ${briefSlice}`;
     }
     if (pendingName) signatureName = pendingName;
     if (pendingField === "name" && pendingFieldValueMap.name) signatureName = pendingFieldValueMap.name;
-    if (geminiValidatedPlan && !pendingName && cleanText(geminiValidatedPlan.writerPerson) && looksLikePersonName(geminiValidatedPlan.writerPerson)) {
+    if (casePlanTrusted && geminiValidatedPlan && !pendingName && cleanText(geminiValidatedPlan.writerPerson) && looksLikePersonName(geminiValidatedPlan.writerPerson)) {
       signatureName = cleanText(geminiValidatedPlan.writerPerson);
     }
     if (!representativeMode && !signatureName && saysNameInLetter) {
@@ -3910,8 +3923,11 @@ ${briefSlice}`;
           : "Ich finde den Namen nicht sicher. Bitte schreib den Namen einmal kurz.")
       });
     }
-    const repGermanTochter = /tochter|kızım|fiica(\s+mea)?|daughter|ابنتي|дъщеря/i.test(repScanFull);
-    const repGermanSohn = /sohn|oğlum|fiul(\s+meu)?|son|ابني|синът/i.test(repScanFull);
+    const repRoleFromPlan = casePlanTrusted && geminiValidatedPlan ? cleanText(geminiValidatedPlan.representativeRole || "") : "";
+    const repGermanTochter = /tochter|kızım|fiica(\s+mea)?|daughter|ابنتي|дъщеря/i.test(repScanFull)
+      || /parent_of_minor|mutter|mother|gesetzliche\s+vertreterin|mama|anne/i.test(repRoleFromPlan);
+    const repGermanSohn = /sohn|oğlum|fiul(\s+meu)?|son|ابني|синът/i.test(repScanFull)
+      || (/vater|father|gesetzlicher\s+vertreter|baba/i.test(repRoleFromPlan) && !/mutter|mother|gesetzliche\s+vertreterin|mama|anne|parent_of_minor/i.test(repRoleFromPlan));
     let representativeGermanIntro = "";
     if (representativeMode) {
       const ch = childForRepBlocks;
@@ -3963,12 +3979,17 @@ ${briefSlice}`;
       paymentProofFormalIntro = openingFormal;
       draftBody = `ich beziehe mich auf Ihr Schreiben.\n\n${paymentProofRest}`;
     } else if (userGoal === "reimbursement_or_coverage_request") {
-      const amt = secureEuroAmountToken(meta.betrag);
+      const kf = (casePlanTrusted && geminiValidatedPlan && geminiValidatedPlan.knownFacts) ? geminiValidatedPlan.knownFacts : {};
+      const amt = secureEuroAmountToken(meta.betrag) || secureEuroAmountToken(String(kf.amount ?? kf.betrag ?? kf.euroAmount ?? ""));
+      const invType = cleanText(String(kf.invoiceType || kf.invoice_type || kf.rechnungstyp || ""));
+      const billPhrase = invType ? `die beigefügte ${invType}` : "die beigefügte Rechnung";
       const amtLine = amt ? `\n\nEs handelt sich um eine Rechnung über ${amt}.` : "";
-      const billDate = secureLetterDateToken(meta.datum_schreiben, briefText);
+      const kfDate = cleanText(String(kf.invoiceDate || kf.invoice_date || kf.rechnungsdatum || ""));
+      const billDateFromMeta = secureLetterDateToken(meta.datum_schreiben, briefText);
+      const billDate = billDateFromMeta || (kfDate && /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(kfDate) ? kfDate : "");
       const dateLine = billDate ? `\n\nDie Rechnung stammt vom ${billDate}.` : "";
       const rp = reimbPartnerPhraseForGerman(targetParty);
-      draftBody = `${debtNoAck}${noGuiltCourt}Ich bitte um Prüfung, ob die beigefügte Rechnung ganz oder teilweise von ${rp} übernommen bzw. erstattet werden kann.${amtLine}${dateLine}\n\nBitte teilen Sie mir schriftlich mit, ob eine Kostenübernahme oder Erstattung möglich ist und welche Unterlagen Sie dafür benötigen.`;
+      draftBody = `${debtNoAck}${noGuiltCourt}Ich bitte um Prüfung, ob ${billPhrase} ganz oder teilweise von ${rp} übernommen bzw. erstattet werden kann.${amtLine}${dateLine}\n\nBitte teilen Sie mir schriftlich mit, ob eine Kostenübernahme oder Erstattung möglich ist und welche Unterlagen Sie dafür benötigen.`;
     } else if (userGoal === "cancellation_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}hiermit erkläre ich den Widerruf, hilfsweise die Kündigung des Vertrags.\nBitte stoppen Sie weitere Abbuchungen und bestätigen Sie mir die Vertragsbeendigung schriftlich.`;
     } else if (userGoal === "legal_aid_request") {
@@ -3988,10 +4009,10 @@ ${briefSlice}`;
       draftBody = `${representativeGermanIntro}\n\n${draftBody}`;
     }
 
-    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidReimbursementTemplate && userGoal === "reimbursement_or_coverage_request") {
+    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidReimbursementTemplate && userGoal === "reimbursement_or_coverage_request" && !casePlanTrusted) {
       answerType = "clarifying_question";
     }
-    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidInstallmentTemplate && userGoal === "installment_request") {
+    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidInstallmentTemplate && userGoal === "installment_request" && !casePlanTrusted) {
       answerType = "clarifying_question";
     }
 
@@ -4125,7 +4146,12 @@ ${briefSlice}`;
           ? `Bitte um Prüfung einer Kostenübernahme / Erstattung – Rechnung für ${childForRepBlocks}`
           : "Bitte um Prüfung einer Kostenübernahme / Erstattung";
       }
+      const tpLine = cleanText(targetParty);
+      const trReimbHint = userLang === "tr" && userGoal === "reimbursement_or_coverage_request" && tpLine && !/^\[E-Mail/i.test(tpLine)
+        ? `Tamam, ${tpLine} için Almanca bir e-posta hazırlıyorum.\n\n`
+        : "";
       const emailDraft = cleanText(
+        `${trReimbHint}` +
         `Empfänger: ${targetParty}\n` +
         `Betreff: ${emailSubject}\n\n` +
         `${salutation}\n\n` +
@@ -4356,12 +4382,7 @@ ${briefSlice}`;
     }
 
     if (answerType === "short_answer") {
-      const geminiBlocksGenericPaymentHint = Boolean(
-        geminiValidatedPlan &&
-        geminiValidatedPlan.confidence >= 0.35 &&
-        geminiValidatedPlan.mainGoal &&
-        geminiValidatedPlan.mainGoal !== "understand"
-      );
+      const geminiBlocksGenericPaymentHint = casePlanTrusted;
       const short = userGoal === "payment_proof"
         ? "Du hast bereits gezahlt: Sende den Zahlungsnachweis, bitte um Zuordnungsprüfung und frage, ob noch ein offener Betrag besteht."
         : userGoal === "dispute_or_objection"
@@ -4386,7 +4407,19 @@ ${briefSlice}`;
       console.error("CASE_PLAN_ANSWER_ERROR", answerErr.message, answerErr.stack);
       _hilfe24PlannedAnswer = false;
     }
-    if (_hilfe24PlannedAnswer !== false) return _hilfe24PlannedAnswer;
+    if (_hilfe24PlannedAnswer !== false) {
+      if (casePlanTrusted && geminiValidatedPlan) {
+        console.log("CASE_PLAN_ANSWER_USED", {
+          mainGoal: geminiValidatedPlan.mainGoal,
+          answerType,
+          targetParty: cleanText(targetParty || "")
+        });
+      }
+      return _hilfe24PlannedAnswer;
+    }
+    if (casePlanTrusted && geminiValidatedPlan) {
+      console.log("CASE_PLAN_FALLBACK_USED", { reason: "planned_answer_unavailable", casePlan: geminiValidatedPlan });
+    }
 
     const raw = await callGemini([{ text: `
 Du bist Hilfe24, ein einfacher Fall-Chat für schwierige Briefe.
