@@ -3310,6 +3310,52 @@ ${briefSlice}`;
       userLang = geminiValidatedPlan.chatLanguage;
       chatLanguage = geminiValidatedPlan.chatLanguage;
     }
+    if (casePlanTrusted && geminiValidatedPlan) {
+      const cp = geminiValidatedPlan;
+      if (cp.mainGoal === "reimbursement_or_coverage_request" && cp.answerType === "draft_email") {
+        const tpD = cleanText(cp.targetParty);
+        const wpD = cleanText(cp.writerPerson);
+        const apD = cleanText(cp.affectedPerson);
+        if (tpD && wpD && apD && looksLikePersonName(wpD) && looksLikePersonName(apD)) {
+          console.log("CASE_PLAN_DIRECT_RETURN_USED", {
+            mainGoal: cp.mainGoal,
+            answerType: cp.answerType,
+            targetParty: cp.targetParty
+          });
+          const kfD = cp.knownFacts && typeof cp.knownFacts === "object" && !Array.isArray(cp.knownFacts) ? cp.knownFacts : {};
+          const invTypeD = cleanText(String(kfD.invoiceType || kfD.invoice_type || kfD.rechnungstyp || ""));
+          const billPhraseD = invTypeD ? `die beigefügte ${invTypeD}` : "die beigefügte Rechnung";
+          const amtRawD = cleanText(String(kfD.amount ?? kfD.betrag ?? kfD.euroAmount ?? meta.betrag ?? ""));
+          const amtLineD = (amtRawD && /\d/.test(amtRawD)) ? `\n\nEs handelt sich um eine Rechnung über ${amtRawD}.` : "";
+          const kfDateD = cleanText(String(kfD.invoiceDate || kfD.invoice_date || kfD.rechnungsdatum || ""));
+          const dateLineD = (kfDateD && /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(kfDateD)) ? `\n\nDie Rechnung stammt vom ${kfDateD}.` : "";
+          const roleD = cleanText(cp.representativeRole || "").toLowerCase();
+          let introD;
+          if (/mutter|mother|gesetzliche vertreterin|mama|anne/i.test(roleD)) {
+            introD = `ich schreibe Ihnen als gesetzliche Vertreterin meiner minderjährigen Tochter ${apD}.`;
+          } else if (/vater|father|gesetzlicher vertreter|baba|papa/i.test(roleD)) {
+            introD = `ich schreibe Ihnen als gesetzlicher Vertreter meines minderjährigen Sohnes ${apD}.`;
+          } else if (/parent_of_minor/i.test(roleD)) {
+            introD = `ich schreibe Ihnen als gesetzliche Vertretung meines minderjährigen Kindes ${apD}.`;
+          } else {
+            introD = `ich schreibe Ihnen im Namen der betroffenen Person ${apD}.`;
+          }
+          const sTp = cleanText(String(tpD || "").replace(/^An die\s+/i, "")).trim();
+          let rpD;
+          if (!sTp || /^versicherung\s*\/\s*krankenkasse$/i.test(sTp)) rpD = "der Versicherung / Krankenkasse";
+          else {
+            const w0 = sTp.split(/\s+/)[0];
+            rpD = (sTp.split(/\s+/).length === 1 && /^[A-ZÄÖÜ0-9.\-]{2,24}$/.test(w0)) ? `der ${w0}` : sTp;
+          }
+          const betreffD = `Bitte um Prüfung einer Kostenübernahme / Erstattung – Rechnung für ${apD}`;
+          const clD = cleanText(String(cp.chatLanguage || "").toLowerCase());
+          const turkHintD = (clD === "tr" || userLang === "tr") ? `Tamam, ${tpD} için Almanca bir e-posta hazırlıyorum.\n\n` : "";
+          const bodyCoreD = `Ich bitte um Prüfung, ob ${billPhraseD} ganz oder teilweise von ${rpD} übernommen bzw. erstattet werden kann.${amtLineD}${dateLineD}\n\nBitte teilen Sie mir schriftlich mit, ob eine Kostenübernahme oder Erstattung möglich ist und welche Unterlagen Sie dafür benötigen.`;
+          const antwortD = `${turkHintD}Empfänger: ${tpD}\nBetreff: ${betreffD}\n\nSehr geehrte Damen und Herren,\n\n${introD}\n\n${bodyCoreD}\n\nMit freundlichen Grüßen\n${wpD}`;
+          return res.json({ ok: true, antwort: cleanText(antwortD) });
+        }
+      }
+    }
     /** Last clear payment-related goal from prior USER turns (excludes current message). */
     const extractStoredGoalFromUserHistory = () => {
       const paymentGoalPatterns = [
