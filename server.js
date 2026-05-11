@@ -3073,50 +3073,104 @@ app.post("/api/frage", async (req, res) => {
       return patterns.some((p) => (p instanceof RegExp ? p.test(q) : q.includes(v17Norm(p))));
     };
 
-    const currentContext = cleanText([
-      briefText,
-      erklaerungKurz,
-      erklaerungDetails,
-      frage,
-      JSON.stringify(meta || {})
-    ].filter(Boolean).join("\n\n")).slice(0, 30000);
-    const currentQuestion = v17Norm(frage);
-    const lastAssistantAnswer = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "assistant" && e.text) || {}).text || "");
-    const lastUserQuestion = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "user" && e.text) || {}).text || "");
-    /** UI language from the current user message (current question beats older chat). */
-    const detectFrageUiLang = (text = "") => {
-      const raw = String(text || "").trim();
-      if (!raw) return langMeta.code;
-      if (/[\u0600-\u06FF]/.test(raw)) return "ar";
-      if (/[\u0400-\u04FF]/.test(raw)) return "bg";
-      if (/[ığüşöçİĞÜŞÖÇ]/.test(raw) || /\b(ödedim|bana|yazı|yazi|mektup|dilekçe|dilekce|taksit|neden|niye)\b/i.test(raw)) return "tr";
-      const q = v17Norm(raw);
-      if (v17Has(q, [/\bplata\b/, /\bplătit\b/, /\bnu\s+pot\b/, /\bcontestatie\b/, /\bcontestație\b/, /\bscrie\b/, /\braspuns\b/, /\brăspuns\b/]) || /[ăâîșțĂÂÎȘȚ]/.test(raw)) return "ro";
-      if (v17Has(q, [/\bi\s*paid\b/, /\balready\s*paid\b/, /\bproof\s*of\s*payment\b/, /\bwrite\s*a\s*reply\b/, /\bcreate\s*a\s*pdf\b/, /\bwrite\s*a\s*letter\b/, /\bmake\s*an\s*email\b/])) return "en";
-      if (/[äöüßÄÖÜ]/.test(raw) || v17Has(q, [/schon bezahlt/, /sehr geehrte/, /mahnung/, /aktenzeichen/, /widerspruch/, /ratenzahlung/])) return "de";
-      return langMeta.code;
+    /** Allgemeines Verständnis: Kontext, Sprache, Leitprinzipien (kein Stichwort-Mapping). */
+    const buildGeneralUnderstanding = () => {
+      const currentContext = cleanText([
+        briefText,
+        erklaerungKurz,
+        erklaerungDetails,
+        frage,
+        JSON.stringify(meta || {})
+      ].filter(Boolean).join("\n\n")).slice(0, 30000);
+      const currentQuestion = v17Norm(frage);
+      const lastAssistantAnswer = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "assistant" && e.text) || {}).text || "");
+      const lastUserQuestion = cleanText((chatHistory.slice().reverse().find((e) => e && e.role === "user" && e.text) || {}).text || "");
+      /** UI language from the current user message (current question beats older chat). */
+      const detectFrageUiLang = (text = "") => {
+        const raw = String(text || "").trim();
+        if (!raw) return langMeta.code;
+        if (/[\u0600-\u06FF]/.test(raw)) return "ar";
+        if (/[\u0400-\u04FF]/.test(raw)) return "bg";
+        if (/[ığüşöçİĞÜŞÖÇ]/.test(raw) || /\b(ödedim|bana|yazı|yazi|mektup|dilekçe|dilekce|taksit|neden|niye)\b/i.test(raw)) return "tr";
+        const q = v17Norm(raw);
+        if (v17Has(q, [/\bplata\b/, /\bplătit\b/, /\bnu\s+pot\b/, /\bcontestatie\b/, /\bcontestație\b/, /\bscrie\b/, /\braspuns\b/, /\brăspuns\b/]) || /[ăâîșțĂÂÎȘȚ]/.test(raw)) return "ro";
+        if (v17Has(q, [/\bi\s*paid\b/, /\balready\s*paid\b/, /\bproof\s*of\s*payment\b/, /\bwrite\s*a\s*reply\b/, /\bcreate\s*a\s*pdf\b/, /\bwrite\s*a\s*letter\b/, /\bmake\s*an\s*email\b/])) return "en";
+        if (/[äöüßÄÖÜ]/.test(raw) || v17Has(q, [/schon bezahlt/, /sehr geehrte/, /mahnung/, /aktenzeichen/, /widerspruch/, /ratenzahlung/])) return "de";
+        return langMeta.code;
+      };
+      const userLang = detectFrageUiLang(frage);
+      const chatLanguage = userLang;
+      const officialTextLanguage = "de";
+      const pendingDraftContext = `${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`;
+      return {
+        principles: {
+          usersBringMixedOfficialMail: true,
+          messagesOftenChaotic: true,
+          languages: ["de", "tr", "bg", "ro", "en", "ar"],
+          targetMayDifferFromLetterSender: true,
+          appUserNotAlwaysSigner: true,
+          affectedNotAlwaysSigner: true,
+          minorCasesUsuallyParentOrGuardian: true,
+          paidMentionPlusInsuranceContext: "often_background_for_reimbursement",
+          mainGoalBeatsSingleKeyword: true,
+          currentQuestionBeatsOldChat: true,
+          userCorrectionBeatsAll: true,
+          preferShortClarifyingQuestionOverWrongDraft: true,
+          noFabricatedFacts: true,
+          noVisiblePlaceholders: true
+        },
+        currentContext,
+        currentQuestion,
+        lastAssistantAnswer,
+        lastUserQuestion,
+        userLang,
+        chatLanguage,
+        officialTextLanguage,
+        pendingDraftContext
+      };
     };
-    const userLang = detectFrageUiLang(frage);
-    const chatLanguage = userLang;
-    const officialTextLanguage = "de";
 
-    if (v17Has(currentQuestion, [/bana niye almanca yaziyorsun/, /bana niye almanca yazıyorsun/])) {
+    const gen = buildGeneralUnderstanding();
+
+    if (v17Has(gen.currentQuestion, [/bana niye almanca yaziyorsun/, /bana niye almanca yazıyorsun/])) {
       return res.json({
         ok: true,
         antwort: cleanText("Haklısın. Sana Türkçe açıklıyorum. Resmi e-postayı Almanca hazırlıyorum.")
       });
     }
 
-    const pendingDraftContext = `${lastAssistantAnswer}\n${lastUserQuestion}\n${chatHistoryText}\n${currentContext}`;
+    const pendingDraftContext = gen.pendingDraftContext;
+    const currentContext = gen.currentContext;
+    const currentQuestion = gen.currentQuestion;
+    const lastAssistantAnswer = gen.lastAssistantAnswer;
+    const lastUserQuestion = gen.lastUserQuestion;
+    const userLang = gen.userLang;
+    const chatLanguage = gen.chatLanguage;
+    const officialTextLanguage = gen.officialTextLanguage;
+
+    const correctionDetected = v17Has(gen.currentQuestion, [
+      /nein falsch/,
+      /falsch/,
+      /yok yanlis/,
+      /yanlis/,
+      /nicht so/,
+      /das ist falsch/
+    ]);
+    if (correctionDetected) {
+      return res.json({
+        ok: true,
+        antwort: cleanText("Verstanden, danke für die Korrektur. Ich berücksichtige das ab jetzt.")
+      });
+    }
 
     /** Last clear payment-related goal from prior USER turns (excludes current message). */
     const extractStoredGoalFromUserHistory = () => {
       const paymentGoalPatterns = [
-        { goal: "payment_proof", rx: [/schon bezahlt|bereits bezahlt|habe bezahlt|überwiesen|uberwiesen|zahlungsnachweis|überweisungsbeleg|iberweisungsbeleg|dekont|i paid|already paid|i have paid|payment made|am platit|am plătit|платих|вече платих|Ödedim|ödedim|دفعت|لقد دفعت/] },
+        { goal: "reimbursement_or_coverage_request", rx: [/erstattung|kostenubernahme|kostenübernahme|krankenkasse|versicherung|sigorta|sigortaya|sigortadan|rambursare|reimbursement|insurance|застраховка|تأمين|تعويض/] },
         { goal: "dispute_or_objection", rx: [/stimmt nicht|forderung falsch|kenne ich nicht|widerspruch|einspruch|bestreiten|itiraz|kabul etmiyorum|nu recunosc|не признавам|не е вярно|this is wrong|i dispute|objection|لا أوافق|اعتراض/] },
         { goal: "deferral_request", rx: [/später zahlen|spater zahlen|zahlungsaufschub|stundung|mehr zeit|pay later|postpone payment|deferral|erteleme|отсрочка|amanare|أحتاج وقت|تأجيل الدفع/] },
-        { goal: "reimbursement_or_coverage_request", rx: [/erstattung|kostenubernahme|kostenübernahme|krankenkasse|versicherung|sigorta|sigortaya|rambursare|reimbursement|insurance|застраховка|تأمين|تعويض/] },
-        { goal: "installment_request", rx: [/ratenzahlung|\bin raten\b|monatlich zahlen|kann nicht.*auf einmal|cannot pay all at once|can't pay in full|taksit|installments|payment plan|تقسيط|أقساط/] }
+        { goal: "installment_request", rx: [/ratenzahlung|\bin raten\b|monatlich zahlen|kann nicht.*auf einmal|cannot pay all at once|can't pay in full|taksit|installments|payment plan|تقسيط|أقساط/] },
+        { goal: "payment_proof", rx: [/schon bezahlt|bereits bezahlt|habe bezahlt|überwiesen|uberwiesen|zahlungsnachweis|überweisungsbeleg|iberweisungsbeleg|dekont|i paid|already paid|i have paid|payment made|am platit|am plătit|платих|вече платих|Ödedim|ödedim|دفعت|لقد دفعت/] }
       ];
       const normMsg = (m) => cleanText(m || "").trim();
       const currentTrim = normMsg(frage);
@@ -3155,18 +3209,59 @@ app.post("/api/frage", async (req, res) => {
       return false;
     };
 
-    const detectSubstantiveUserGoalFromText = (questionText = "") => {
+    /** Erstattungs-/Kostenübernahme-Signale (Hauptziel schlägt isolierte „bezahlt“-Wörter). */
+    const hasReimbursementIntentSignals = (questionText = "") => {
       const qNorm = v17Norm(questionText || "");
       const qRaw = String(questionText || "");
-      if (!qNorm) return "understand";
-      if (v17Has(qNorm, [
+      if (!qNorm) return false;
+      return v17Has(qNorm, [
+        /versicherung/, /krankenkasse/, /zusatzversicherung/, /kostenubernahme/, /kostenübernahme/, /erstattung/, /zuruckbekommen/, /zurückbekommen/, /rechnung einreichen/, /ubernehmt die versicherung/, /ubernehmt die krankenkasse/,
+        /sigorta/, /sigortaya/, /sigortadan/, /saglik sigortasi/, /saglık sigortası/, /ek sigorta/, /faturayi sigortaya/, /faturayı sigortaya/, /sigortaya yollayacagim/, /sigortaya yollayacağım/, /geri alabilir miyim/, /masrafi karsilar mi/, /masrafı karşılar mı/,
+        /paranin.*sigortad/, /fatura.*sigorta/, /doktorda.*sigorta/, /kismi.*sigortad/, /kısmı.*sigortad/,
+        /застраховка/, /здравна каса/, /възстановяване/, /покриване на разходи/, /изпратя фактурата/,
+        /asigurare/, /casa de sanatate/, /casa de sănătate/, /rambursare/, /acoperire costuri/, /trimit factura/, /să trimit factura/,
+        /\binsurance\b/, /\bhealth insurance\b/, /\breimbursement\b/, /\bcost coverage\b/, /\bsubmit the invoice\b/, /\bwill insurance pay\b/,
+        /تأمين/, /التأمين الصحي/, /تعويض/, /تغطية التكاليف/, /إرسال الفاتورة/
+      ]) || /\bsigortaya\b/i.test(qRaw) || /sigorta.*(yolla|gonder|gönder)/i.test(qRaw);
+    };
+    const hasPaymentProofIntentSignals = (questionText = "") => {
+      const qNorm = v17Norm(questionText || "");
+      const qRaw = String(questionText || "");
+      if (!qNorm) return false;
+      return v17Has(qNorm, [
         /schon bezahlt/, /bereits bezahlt/, /habe bezahlt/, /uberwiesen/, /überwiesen/, /zahlungsnachweis/, /uberweisungsbeleg/, /überweisungsbeleg/, /beleg/, /kontoauszug/,
         /odedim/, /ödedim/, /odeme yaptim/, /ödeme yaptım/, /zaten odedim/, /zaten ödedim/, /havale yaptim/, /havale yaptım/, /dekont/, /odeme belgesi/, /ödeme belgesi/, /para gonderdim/, /para gönderdim/,
         /платих/, /вече платих/, /направих плащане/, /преведох парите/, /имам платежно/, /документ за плащане/, /платежно нареждане/,
         /am platit/, /deja am platit/, /am facut plata/, /am transferat banii/, /dovada platii/, /chitanta/, /ordin de plata/, /am plătit/, /am platit/,
         /\bi paid\b/, /already paid/, /i have paid/, /payment made/, /transferred the money/, /proof of payment/, /receipt/,
         /دفعت/, /لقد دفعت/, /دفعت بالفعل/, /تم الدفع/, /حولت المبلغ/, /أرسلت المال/, /عندي إيصال/, /عندي وصل/, /إثبات الدفع/, /وصل الدفع/, /حوالة/
-      ]) || /\b(ge)?zahlt\b/i.test(qRaw)) return "payment_proof";
+      ]) || /\b(ge)?zahlt\b/i.test(qRaw);
+    };
+    /** Nur wenn ausdrücklich ein Nachweis an die fordernde Stelle / den genannten Gläubiger gemeint ist. */
+    const wantsExplicitPaymentProofToDemandParty = (questionText = "") => {
+      const qNorm = v17Norm(questionText || "");
+      const qRaw = String(questionText || "");
+      if (!qNorm) return false;
+      if (v17Has(qNorm, [
+        /zahlungsnachweis.*(send|schick|mail|email)/, /nachweis.*(send|schick|mail)/, /beleg.*(send|schick)/,
+        /odeme kaniti|ödeme kanıtı/, /kanit.*gonder|kanıt.*gönder/, /dekont.*gonder|dekont.*gönder/,
+        /onlara.*(kanit|kanıt|dekont|nachweis)/, /bunlara.*(kanit|kanıt)/,
+        /proof.*send/, /send.*proof/, /send.*receipt/, /payment proof.*to/
+      ])) return true;
+      if (/\b(send|schick|schreib|mail|email)\b.*\b(proof|nachweis|beleg|receipt|kanit|kanıt|dekont)\b/i.test(qRaw)) return true;
+      if (/\b(zahlungsnachweis|nachweis)\b.*\b(an|zu)\b.*\b(inkasso|forderung|glaeubiger|gläubiger|mahnung)\b/i.test(qRaw)) return true;
+      return false;
+    };
+    const resolveMainGoalFromUserText = (questionText = "") => {
+      const qNorm = v17Norm(questionText || "");
+      const qRaw = String(questionText || "");
+      if (!qNorm) return "understand";
+      const reimb = hasReimbursementIntentSignals(questionText);
+      const pay = hasPaymentProofIntentSignals(questionText);
+      const explicitCreditorProof = wantsExplicitPaymentProofToDemandParty(questionText);
+      if (reimb && pay && !explicitCreditorProof) return "reimbursement_or_coverage_request";
+      if (explicitCreditorProof && pay) return "payment_proof";
+      if (reimb) return "reimbursement_or_coverage_request";
       if (v17Has(qNorm, [
         /stimmt nicht/, /falsch/, /forderung falsch/, /kenne ich nicht/, /widerspruch/, /einspruch/, /bestreiten/, /nicht nachvollziehbar/, /ich erkenne das nicht an/,
         /yanlis/, /yanlış/, /borc dogru degil/, /borç doğru değil/, /kabul etmiyorum/, /itiraz/, /tanimiyorum/, /tanımıyorum/, /anlamiyorum/, /anlamıyorum/, /bu borcu kabul etmiyorum/,
@@ -3175,14 +3270,6 @@ app.post("/api/frage", async (req, res) => {
         /this is wrong/, /not correct/, /i dispute this/, /i do not agree/, /objection/, /appeal/, /i don't recognize this debt/,
         /هذا خطأ/, /غير صحيح/, /المبلغ غير صحيح/, /لا أوافق/, /لا أعترف بهذا الدين/, /لا أعرف هذه المطالبة/, /أريد الاعتراض/, /اعتراض/
       ])) return "dispute_or_objection";
-      if (v17Has(qNorm, [
-        /versicherung/, /krankenkasse/, /zusatzversicherung/, /kostenubernahme/, /kostenübernahme/, /erstattung/, /zuruckbekommen/, /zurückbekommen/, /rechnung einreichen/, /ubernehmt die versicherung/, /ubernehmt die krankenkasse/,
-        /sigorta/, /sigortaya/, /saglik sigortasi/, /saglık sigortası/, /ek sigorta/, /faturayi sigortaya/, /faturayı sigortaya/, /sigortaya yollayacagim/, /sigortaya yollayacağım/, /geri alabilir miyim/, /masrafi karsilar mi/, /masrafı karşılar mı/,
-        /застраховка/, /здравна каса/, /възстановяване/, /покриване на разходи/, /изпратя фактурата/,
-        /asigurare/, /casa de sanatate/, /casa de sănătate/, /rambursare/, /acoperire costuri/, /trimit factura/, /să trimit factura/,
-        /\binsurance\b/, /\bhealth insurance\b/, /\breimbursement\b/, /\bcost coverage\b/, /\bsubmit the invoice\b/, /\bwill insurance pay\b/,
-        /تأمين/, /التأمين الصحي/, /تعويض/, /تغطية التكاليف/, /إرسال الفاتورة/
-      ]) || /\bsigortaya\b/i.test(qRaw)) return "reimbursement_or_coverage_request";
       if (v17Has(qNorm, [
         /spater zahlen/, /später zahlen/, /zahlungsaufschub/, /stundung/, /fristverlangerung/, /fristverlängerung/, /noch zeit/,
         /sonra odemek/, /sonra ödemek/, /erteleme/, /odeme erteleme/, /ödeme erteleme/, /biraz zaman lazim/, /biraz zaman lazım/, /sure uzatma/, /süre uzatma/,
@@ -3199,6 +3286,7 @@ app.post("/api/frage", async (req, res) => {
         /i cannot pay all at once/, /i can't pay in full/, /installments/, /payment plan/, /monthly payments/, /small payments/,
         /لا أستطيع الدفع دفعة واحدة/, /لا أستطيع دفع المبلغ كامل/, /أريد الدفع بالتقسيط/, /تقسيط/, /أقساط/, /دفعات شهرية/, /خطة دفع/, /أدفع شهريًا/
       ])) return "installment_request";
+      if (pay) return "payment_proof";
       return "understand";
     };
 
@@ -3222,7 +3310,7 @@ app.post("/api/frage", async (req, res) => {
     const pendingField = detectPendingField(lastAssistantAnswer);
     const pendingNameRequested = pendingField === "name";
 
-    let substantiveGoalFromCurrent = detectSubstantiveUserGoalFromText(frage);
+    let substantiveGoalFromCurrent = resolveMainGoalFromUserText(frage);
     const writeFollowUpOnly = isWriteOnlyFollowUpQuestion() && substantiveGoalFromCurrent === "understand";
     const inheritedWriteGoal = writeFollowUpOnly ? extractStoredGoalFromUserHistory() : "";
 
@@ -3355,16 +3443,6 @@ app.post("/api/frage", async (req, res) => {
       : v17Has(pendingDraftContext, [/kundigung|kündigung|widerruf|iptal|fesih/]) ? "cancellation_request"
       : "";
 
-    const correctionDetected = v17Has(currentQuestion, [
-      /nein falsch/,
-      /falsch/,
-      /yok yanlis/,
-      /yanlis/,
-      /yanlis/,
-      /nicht so/,
-      /das ist falsch/
-    ]);
-
     const frRaw = String(frage || "").trim();
     const wantsPdfFromText = () => {
       if (v17Has(currentQuestion, [/\bpdf\b/, /pdf brief/, /pdf-brief/, /brief zum download/, /als pdf/, /pdf erstellen/, /brief erstellen/, /brief schreib/]))
@@ -3423,7 +3501,8 @@ app.post("/api/frage", async (req, res) => {
 
     let userGoal = substantiveGoalFromCurrent;
 
-    if (userGoal === "understand" && (v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/])
+    if (userGoal === "understand" && (hasReimbursementIntentSignals(frage)
+      || v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/])
       || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])))) {
       userGoal = "reimbursement_or_coverage_request";
     }
@@ -3500,10 +3579,36 @@ app.post("/api/frage", async (req, res) => {
       ""
     );
 
+    /** Generisch: in der Nutzerfrage genannte Zielstelle (z. B. Krankenkasse/Versicherung), ohne Einzelfirmen-Logik. */
+    const extractUserNamedCoverageTarget = (rawText = "") => {
+      const t = cleanText(rawText);
+      if (!t) return "";
+      const patterns = [
+        /sigorta(?:nın|nin|nın)\s+ismi\s+([^,.;\n]+)/iu,
+        /sigorta(?:ya|ya)\s+([A-Za-zÄÖÜäöüß0-9][^\s,;.]+)/u,
+        /\b(?:an|zu)\s+die\s+([A-Za-zÄÖÜ][A-Za-zÄÖÜa-zäöüß0-9\-]*(?:\s+[A-Za-zÄÖÜ][a-zäöüß]+)?)/u,
+        /ich\s+will\s+(?:es\s+)?(?:an|zu)\s+die\s+([^,.;\n]+)/iu,
+        /krankenkasse[:\s]+([^,.;\n]+)/iu,
+        /versicherung[^\n]{0,40}?(?:hei[sß]t|heisst|ist)[:\s]+([^,.;\n]+)/iu
+      ];
+      for (const rx of patterns) {
+        const m = t.match(rx);
+        if (m && m[1]) {
+          let cand = cleanText(m[1]).replace(/\s+/g, " ").split(/\s+/).slice(0, 6).join(" ");
+          cand = cand.replace(/^(die|der)\s+/i, "").trim();
+          if (cand.length < 2 || cand.length > 72) continue;
+          if (/^(versicherung|krankenkasse|sigorta)$/i.test(cand)) continue;
+          return cand;
+        }
+      }
+      return "";
+    };
+
     let targetParty = "";
+    const userNamedCoverageTarget = userGoal === "reimbursement_or_coverage_request" ? extractUserNamedCoverageTarget(frage) : "";
     if (pendingField === "recipient_email" && pendingFieldValueMap.recipient_email) targetParty = pendingFieldValueMap.recipient_email;
     else if (pendingField === "target_party" && pendingFieldValueMap.target_party) targetParty = pendingFieldValueMap.target_party;
-    else if (userGoal === "reimbursement_or_coverage_request") targetParty = "Krankenkasse / Versicherung";
+    else if (userGoal === "reimbursement_or_coverage_request") targetParty = userNamedCoverageTarget || "An die Versicherung / Krankenkasse";
     else if (userGoal === "legal_aid_request") targetParty = "Amtsgericht / Rechtsantragstelle oder Anwalt";
     else if (metaEmail) targetParty = metaEmail;
     else if (emailInTextMatch) targetParty = emailInTextMatch;
@@ -3660,6 +3765,14 @@ app.post("/api/frage", async (req, res) => {
       }
     }
 
+    const reimbPartnerPhraseForGerman = (tp) => {
+      const s = cleanText(String(tp || "").replace(/^An die\s+/i, "")).trim();
+      if (!s || /^versicherung\s*\/\s*krankenkasse$/i.test(s)) return "der Versicherung / Krankenkasse";
+      const w = s.split(/\s+/)[0];
+      if (s.split(/\s+/).length === 1 && /^[A-ZÄÖÜ0-9.\-]{2,24}$/.test(w)) return `der ${w}`;
+      return s;
+    };
+
     const paymentProofRest = `Der genannte Betrag wurde nach meiner Kenntnis bereits bezahlt. Den Zahlungsnachweis füge ich bei bzw. reiche ich nach.\n\nBitte prüfen Sie, ob die Zahlung korrekt zugeordnet wurde und ob noch ein offener Betrag besteht.\n\nBis zur Klärung bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
     let paymentProofFormalIntro = "";
     let draftBody = "";
@@ -3691,7 +3804,8 @@ app.post("/api/frage", async (req, res) => {
       const amtLine = amt ? `\n\nEs handelt sich um eine Rechnung über ${amt}.` : "";
       const billDate = secureLetterDateToken(meta.datum_schreiben, briefText);
       const dateLine = billDate ? `\n\nDie Rechnung stammt vom ${billDate}.` : "";
-      draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung, ob die beigefügte Rechnung ganz oder teilweise von meiner Versicherung übernommen bzw. erstattet werden kann.${amtLine}${dateLine}\n\nBitte teilen Sie mir schriftlich mit, ob eine Kostenübernahme oder Erstattung möglich ist und welche Unterlagen Sie dafür benötigen.`;
+      const rp = reimbPartnerPhraseForGerman(targetParty);
+      draftBody = `${debtNoAck}${noGuiltCourt}Ich bitte um Prüfung, ob die beigefügte Rechnung ganz oder teilweise von ${rp} übernommen bzw. erstattet werden kann.${amtLine}${dateLine}\n\nBitte teilen Sie mir schriftlich mit, ob eine Kostenübernahme oder Erstattung möglich ist und welche Unterlagen Sie dafür benötigen.`;
     } else if (userGoal === "cancellation_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}hiermit erkläre ich den Widerruf, hilfsweise die Kündigung des Vertrags.\nBitte stoppen Sie weitere Abbuchungen und bestätigen Sie mir die Vertragsbeendigung schriftlich.`;
     } else if (userGoal === "legal_aid_request") {
@@ -3718,13 +3832,6 @@ app.post("/api/frage", async (req, res) => {
       answerType = "clarifying_question";
     }
 
-    if (correctionDetected) {
-      return res.json({
-        ok: true,
-        antwort: cleanText("Verstanden, danke für die Korrektur. Ich berücksichtige das ab jetzt.")
-      });
-    }
-
     const supportedOfficialDraftIntents = new Set([
       "payment_proof", "dispute_or_objection", "installment_request", "deferral_request",
       "reimbursement_or_coverage_request", "cancellation_request", "legal_aid_request", "submit_documents"
@@ -3733,19 +3840,23 @@ app.post("/api/frage", async (req, res) => {
       answerType = "short_answer";
     }
 
-    const casePlan = {
-      intent: userGoal,
-      answerType,
-      targetParty: cleanText(targetParty || ""),
-      affectedPerson: childForRepBlocks || representedChildName,
-      writerPerson: signatureName,
-      representativeRole: representativeMode ? (/mutter|mutti|mama|mother|annesi|ich\s+bin\s+die\s+mutter/i.test(repScanFull) ? "Mutter" : /vater|baba|father|babası|ich\s+bin\s+der\s+vater/i.test(repScanFull) ? "Vater" : "") : "",
-      representativeMode,
-      knownFacts: { reference: cleanRef || "", betragSicher: Boolean(secureEuroAmountToken(meta.betrag)) },
-      missingFields: [],
-      chatLanguage,
-      officialTextLanguage
-    };
+    /** (2) Fallplan: erst nach Ziel-, Ausgabe- und Rollenlogik, dann Antwort. */
+    const buildCasePlan = () => ({
+      casePlan: {
+        mainGoal: userGoal,
+        answerType,
+        targetParty: cleanText(targetParty || ""),
+        affectedPerson: childForRepBlocks || representedChildName,
+        writerPerson: signatureName,
+        representativeRole: representativeMode ? (/mutter|mutti|mama|mother|annesi|ich\s+bin\s+die\s+mutter/i.test(repScanFull) ? "Mutter" : /vater|baba|father|babası|ich\s+bin\s+der\s+vater/i.test(repScanFull) ? "Vater" : "") : "",
+        representativeMode,
+        knownFacts: { reference: cleanRef || "", betragSicher: Boolean(secureEuroAmountToken(meta.betrag)) },
+        missingFields: [],
+        chatLanguage,
+        officialTextLanguage
+      }
+    });
+    const { casePlan } = buildCasePlan();
     void casePlan;
 
     const askInsuranceTargetUi = {
@@ -3757,7 +3868,11 @@ app.post("/api/frage", async (req, res) => {
       ar: "ما اسم شركة التأمين أو ما هو البريد الإلكتروني؟"
     };
 
-    if (answerType === "clarifying_question") {
+    /** (3) Antwort aus Fallplan: nur nach vollständigem Fallplan. */
+    const buildAnswerFromCasePlan = () => {
+      void gen.principles;
+      void casePlan;
+      if (answerType === "clarifying_question") {
       const clarifyTarget = ({
         de: "Ich sehe die Zielstelle nicht sicher. Soll die Antwort an die Stelle aus dem Brief gehen?",
         tr: "Kime göndermek istediğini net göremiyorum. Yazı mektuptaki kuruma mı gitsin?",
@@ -3830,6 +3945,11 @@ app.post("/api/frage", async (req, res) => {
       if (userGoal === "deferral_request") emailSubject = `Bitte um Zahlungsaufschub / Stundung – ${officialRefSuffixSubject}`;
       if (userGoal === "payment_proof") emailSubject = `Zahlungsnachweis / Bitte um Prüfung – ${officialRefSuffixSubject}`;
       if (userGoal === "dispute_or_objection") emailSubject = `Bitte um Prüfung der Forderung – ${officialRefSuffixSubject}`;
+      if (userGoal === "reimbursement_or_coverage_request") {
+        emailSubject = representativeMode && childForRepBlocks
+          ? `Bitte um Prüfung einer Kostenübernahme / Erstattung – Rechnung für ${childForRepBlocks}`
+          : "Bitte um Prüfung einer Kostenübernahme / Erstattung";
+      }
       const emailDraft = cleanText(
         `Empfänger: ${targetParty}\n` +
         `Betreff: ${emailSubject}\n\n` +
@@ -3943,6 +4063,86 @@ app.post("/api/frage", async (req, res) => {
         );
         return res.json({ ok: true, antwort: pdfDraft });
       }
+      if (userGoal === "reimbursement_or_coverage_request") {
+        const reimbPdfIntroUi = userLang === "de" ? "" : ({
+          tr: "Resmi Almanca PDF metnini (Krankenkasse/Versicherung) için hazırlıyorum. Kurum adı veya e-posta eksikse metne sonra ekleyebilirsin.",
+          bg: "Подготвям немски PDF текст до здравна каса/застраховател. При нужда добавете по-късно точно име или имейл.",
+          ro: "Pregătesc o scrisoare PDF în germană către casă de asigurări. Completează ulterior numele sau e-mailul dacă lipsește.",
+          en: "Here is a formal German PDF draft for your insurer or health fund. Add the exact institution name or email if it is still missing.",
+          ar: "هذا مسودة ألمانية رسمية بصيغة PDF لمرفق التأمين أو الصندوق الصحي. يمكنك إكمال الاسم أو البريد لاحقًا."
+        })[userLang] || "";
+        const personAddrSourcesReimb = [meta.user_adresse, meta.adresse, meta.betroffene_person_adresse, meta.anschrift];
+        let senderBlockFullReimb;
+        let cityFromSenderReimb;
+        let closingSignerReimb;
+        if (representativeMode) {
+          let parentRepAddr = "";
+          const parentAddrSources = [meta.user_adresse, meta.adresse, meta.anschrift];
+          for (const raw of parentAddrSources) {
+            const c = normalizeDraftAddressBlockV1504(normalizePostalAddress(raw || ""));
+            if (!c || looksLikeInstitutionStreetBlock(c)) continue;
+            const looksPerson = /\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(c) && /\b\d{5}\s+[A-ZÄÖÜ]/.test(c);
+            if (looksPerson) {
+              parentRepAddr = c;
+              break;
+            }
+          }
+          if (!parentRepAddr) {
+            const extracted = extractPersonAddressFromContextV1504(signatureName, currentContext);
+            if (extracted && !looksLikeInstitutionStreetBlock(extracted)) parentRepAddr = extracted;
+          }
+          const repFemale = /mutter|mutti|ich\s+bin\s+die\s+mutter|annesi|\banne\b|mama|mother|gesetzliche\s+vertreterin/i.test(repScanFull);
+          const repMale = /vater|ich\s+bin\s+der\s+vater|babası|baba|father|papa|gesetzlicher\s+vertreter/i.test(repScanFull);
+          let vBlock = "\n\nals gesetzliche Vertretung der minderjährigen betroffenen Person";
+          if (childForRepBlocks) {
+            if (repFemale && !repMale) vBlock = `\n\nals gesetzliche Vertreterin von\n${childForRepBlocks}`;
+            else if (repMale && !repFemale) vBlock = `\n\nals gesetzlicher Vertreter von\n${childForRepBlocks}`;
+            else vBlock = `\n\nals gesetzliche Vertretung von\n${childForRepBlocks}`;
+          }
+          senderBlockFullReimb = `${signatureName}${parentRepAddr ? `\n${parentRepAddr}` : ""}${vBlock}`;
+          cityFromSenderReimb = getCityFromPostalAddress(parentRepAddr || "");
+          closingSignerReimb = signatureName;
+        } else {
+          const reimbPersonName = cleanText(signatureName || meta.betroffene_person || meta.name || meta.vollname || meta.person_name || briefNameMatch || "");
+          let reimbPersonAddr = "";
+          for (const raw of personAddrSourcesReimb) {
+            const c = normalizeDraftAddressBlockV1504(normalizePostalAddress(raw || ""));
+            if (!c) continue;
+            if (looksLikeInstitutionStreetBlock(c)) continue;
+            const looksPerson = /\b(str\.?|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer)\b/i.test(c) && /\b\d{5}\s+[A-ZÄÖÜ]/.test(c);
+            if (looksPerson) {
+              reimbPersonAddr = c;
+              break;
+            }
+          }
+          if (!reimbPersonAddr && reimbPersonName) {
+            const extracted = extractPersonAddressFromContextV1504(reimbPersonName, currentContext);
+            if (extracted && !looksLikeInstitutionStreetBlock(extracted)) reimbPersonAddr = extracted;
+          }
+          senderBlockFullReimb = reimbPersonAddr ? `${reimbPersonName}\n${reimbPersonAddr}` : reimbPersonName;
+          cityFromSenderReimb = getCityFromPostalAddress(reimbPersonAddr || "");
+          closingSignerReimb = signatureName || reimbPersonName;
+        }
+        const recipientBlockReimb = cleanText(targetParty);
+        const dateOnlyReimb = getTodayGerman();
+        const placeLineReimb = cityFromSenderReimb ? `${cityFromSenderReimb}, ${dateOnlyReimb}` : dateOnlyReimb;
+        const betreffReimb = representativeMode && childForRepBlocks
+          ? `Bitte um Prüfung einer Kostenübernahme / Erstattung – Rechnung für ${childForRepBlocks}`
+          : "Bitte um Prüfung einer Kostenübernahme / Erstattung";
+        const betreffPdfReimb = `Betreff:\n${betreffReimb}`;
+        const pdfDraftReimb = cleanText(
+          (reimbPdfIntroUi ? `${reimbPdfIntroUi}\n\n` : "") +
+          `PDF-BRIEF:\n\n` +
+          `${senderBlockFullReimb}\n\n` +
+          `${recipientBlockReimb}\n\n` +
+          `${placeLineReimb}\n\n` +
+          `${betreffPdfReimb}\n\n` +
+          `${salutation}\n\n` +
+          `${draftBody}\n\n` +
+          `Mit freundlichen Grüßen\n${closingSignerReimb}`
+        );
+        return res.json({ ok: true, antwort: pdfDraftReimb });
+      }
       let pdfHeadPrefix = "";
       if (representativeMode) {
         let parentRepAddr = "";
@@ -3996,6 +4196,10 @@ app.post("/api/frage", async (req, res) => {
                   : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
       return res.json({ ok: true, antwort: cleanText(short) });
     }
+    return false;
+    };
+    const _hilfe24PlannedAnswer = buildAnswerFromCasePlan();
+    if (_hilfe24PlannedAnswer !== false) return _hilfe24PlannedAnswer;
 
     const raw = await callGemini([{ text: `
 Du bist Hilfe24, ein einfacher Fall-Chat für schwierige Briefe.
@@ -4017,7 +4221,7 @@ Arbeite immer in dieser Reihenfolge:
 
 2. Zielstelle erkennen
    Frage dich: Wer ist für dieses Ziel zuständig?
-   Beispiele: fordernde Stelle, Krankenkasse, Versicherung, Amtsgericht, Staatsanwaltschaft, Anwalt, Jobcenter, Zahnarzt/DZR, Arbeitgeber, Vermieter, Schule, Behörde.
+   Beispiele: fordernde Stelle, Krankenkasse, Versicherung, Amtsgericht, Staatsanwaltschaft, Anwalt, Jobcenter, Zahnarzt oder Abrechnungsstelle, Arbeitgeber, Vermieter, Schule, Behörde.
 
 3. Neue Nutzerinfo höher gewichten als den Brief
    Wenn der Nutzer neue Informationen nennt, musst du sie ernst nehmen.
