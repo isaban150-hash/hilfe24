@@ -3147,10 +3147,6 @@ app.post("/api/frage", async (req, res) => {
     let userLang = gen.userLang;
     let chatLanguage = gen.chatLanguage;
     const officialTextLanguage = gen.officialTextLanguage;
-    if (geminiValidatedPlan && geminiValidatedPlan.chatLanguage) {
-      userLang = geminiValidatedPlan.chatLanguage;
-      chatLanguage = geminiValidatedPlan.chatLanguage;
-    }
 
     const correctionDetected = v17Has(gen.currentQuestion, [
       /nein falsch/,
@@ -3211,7 +3207,10 @@ app.post("/api/frage", async (req, res) => {
       };
     };
     let geminiValidatedPlan = null;
+    let casePlanFallbackReason = null;
     try {
+      const history = chatHistory;
+      console.log("CASE_PLAN_INPUT", { frage, lang, hasMeta: !!meta, historyLength: Array.isArray(history) ? history.length : 0 });
       const briefSlice = briefText.slice(0, 9000);
       const metaSlice = JSON.stringify(meta || {}).slice(0, 8000);
       const casePlanPrompt = `${buildHilfe24CoreRules(langMeta.code)}
@@ -3270,12 +3269,34 @@ ${erklaerungDetails}
 
 BRIEFTEXT (Auszug):
 ${briefSlice}`;
-      const rawPlan = await callGemini([{ text: casePlanPrompt }]);
-      const parsed = extractJson(String(rawPlan || "").trim());
-      geminiValidatedPlan = normalizeGeminiCasePlan(parsed);
+      const rawCasePlanText = await callGemini([{ text: casePlanPrompt }]);
+      console.log("CASE_PLAN_RAW", rawCasePlanText);
+      let casePlan;
+      try {
+        casePlan = extractJson(String(rawCasePlanText || "").trim());
+        console.log("CASE_PLAN_PARSED", casePlan);
+      } catch (parseErr) {
+        console.error("CASE_PLAN_JSON_PARSE_ERROR", parseErr.message, rawCasePlanText);
+        casePlanFallbackReason = parseErr.message || "json_parse_error";
+        casePlan = null;
+      }
+      if (casePlan) {
+        geminiValidatedPlan = normalizeGeminiCasePlan(casePlan);
+        if (!geminiValidatedPlan) {
+          casePlanFallbackReason = casePlanFallbackReason || "normalize_rejected";
+        }
+      }
     } catch (e) {
       console.error("Hilfe24 Fallplan Gemini:", e && e.message ? e.message : e);
       geminiValidatedPlan = null;
+      casePlanFallbackReason = casePlanFallbackReason || (e && e.message) || "gemini_call_failed";
+    }
+    if (!geminiValidatedPlan) {
+      console.log("CASE_PLAN_FALLBACK_USED", { reason: casePlanFallbackReason || "no_valid_plan" });
+    }
+    if (geminiValidatedPlan && geminiValidatedPlan.chatLanguage) {
+      userLang = geminiValidatedPlan.chatLanguage;
+      chatLanguage = geminiValidatedPlan.chatLanguage;
     }
     /** Last clear payment-related goal from prior USER turns (excludes current message). */
     const extractStoredGoalFromUserHistory = () => {
@@ -4358,7 +4379,13 @@ ${briefSlice}`;
     }
     return false;
     };
-    const _hilfe24PlannedAnswer = buildAnswerFromCasePlan();
+    let _hilfe24PlannedAnswer = false;
+    try {
+      _hilfe24PlannedAnswer = buildAnswerFromCasePlan();
+    } catch (answerErr) {
+      console.error("CASE_PLAN_ANSWER_ERROR", answerErr.message, answerErr.stack);
+      _hilfe24PlannedAnswer = false;
+    }
     if (_hilfe24PlannedAnswer !== false) return _hilfe24PlannedAnswer;
 
     const raw = await callGemini([{ text: `
