@@ -4122,6 +4122,12 @@ ${briefSlice}`;
       answerType = "short_answer";
     }
 
+    if (wantsNextSteps && answerType === "short_answer"
+      && (userGoal === "reimbursement_or_coverage_request"
+        || Boolean(geminiValidatedPlan && geminiValidatedPlan.mainGoal === "reimbursement_or_coverage_request"))) {
+      answerType = "next_steps";
+    }
+
     if (answerType === "short_answer" || answerType === "next_steps" || answerType === "clarifying_question" || answerType === "checklist") {
       userLang = gen.userLang;
       chatLanguage = gen.chatLanguage;
@@ -4195,6 +4201,38 @@ ${briefSlice}`;
     }
 
     if (answerType === "next_steps") {
+      const reimbNextSteps = userGoal === "reimbursement_or_coverage_request"
+        || Boolean(geminiValidatedPlan && geminiValidatedPlan.mainGoal === "reimbursement_or_coverage_request");
+      const tpNs = cleanText((geminiValidatedPlan && geminiValidatedPlan.targetParty) || targetParty || "");
+      const hasConcreteTp = Boolean(tpNs && !isGenericReimbursementTargetParty(tpNs));
+      if (reimbNextSteps) {
+        const nextReimb = ({
+          de: hasConcreteTp
+            ? `Nächste Schritte:\n1) Rechnung vorbereiten.\n2) Zahlungsnachweis beifügen.\n3) Die vorbereitete E-Mail an ${tpNs} senden.\n4) Schriftliche Antwort von ${tpNs} abwarten.\n5) Antwort und Versandnachweis aufbewahren.`
+            : "Nächste Schritte:\n1) Rechnung vorbereiten.\n2) Zahlungsnachweis beifügen.\n3) Die vorbereitete E-Mail an deine Krankenkasse oder Versicherung senden.\n4) Schriftliche Antwort der zuständigen Stelle abwarten.\n5) Antwort und Versandnachweis aufbewahren.",
+          tr: hasConcreteTp
+            ? `Şimdi şunları yap:\n1) Faturayı hazırla.\n2) Ödeme belgesini ekle.\n3) Hazırlanan e-postayı ${tpNs}’e gönder.\n4) ${tpNs}’ten yazılı cevap bekle.\n5) Cevabı ve gönderim kanıtını sakla.`
+            : "Şimdi şunları yap:\n1) Faturayı hazırla.\n2) Ödeme belgesini ekle.\n3) Hazırlanan e-postayı sigorta / Krankenkasse’ye gönder.\n4) Sigorta / Krankenkasse’den yazılı cevap bekle.\n5) Cevabı ve gönderim kanıtını sakla.",
+          bg: hasConcreteTp
+            ? `Следващи стъпки:\n1) Подготви фактурата.\n2) Приложи доказателство за плащане.\n3) Изпрати подготвения имейл до ${tpNs}.\n4) Изчакай писмен отговор от ${tpNs}.\n5) Пази отговора и доказателството за изпращане.`
+            : "Следващи стъпки:\n1) Подготви фактурата.\n2) Приложи доказателство за плащане.\n3) Изпрати подготвения имейл до здравната каса или застрахователя.\n4) Изчакай писмен отговор от компетентната институция.\n5) Пази отговора и доказателството за изпращане.",
+          ro: hasConcreteTp
+            ? `Pașii următori:\n1) Pregătește factura.\n2) Atașează dovada plății.\n3) Trimite e-mailul pregătit către ${tpNs}.\n4) Așteaptă răspunsul scris de la ${tpNs}.\n5) Păstrează răspunsul și dovada trimiterii.`
+            : "Pașii următori:\n1) Pregătește factura.\n2) Atașează dovada plății.\n3) Trimite e-mailul pregătit către casa de asigurări de sănătate sau asigurător.\n4) Așteaptă răspunsul scris de la instituția competentă.\n5) Păstrează răspunsul și dovada trimiterii.",
+          en: hasConcreteTp
+            ? `Next steps:\n1) Prepare the invoice.\n2) Attach proof of payment.\n3) Send the prepared email to ${tpNs}.\n4) Wait for a written reply from ${tpNs}.\n5) Keep the reply and proof of sending.`
+            : "Next steps:\n1) Prepare the invoice.\n2) Attach proof of payment.\n3) Send the prepared email to your health insurer or insurance company.\n4) Wait for a written reply from the responsible institution.\n5) Keep the reply and proof of sending.",
+          ar: hasConcreteTp
+            ? `الخطوات التالية:\n1) أعد الفاتورة.\n2) أرفق إثبات الدفع.\n3) أرسل البريد الإلكتروني المُعد إلى ${tpNs}.\n4) انتظر ردًا كتابيًا من ${tpNs}.\n5) احتفظ بالرد وإثبات الإرسال.`
+            : "الخطوات التالية:\n1) أعد الفاتورة.\n2) أرفق إثبات الدفع.\n3) أرسل البريد الإلكتروني المُعد إلى التأمين الصحي أو شركة التأمين.\n4) انتظر ردًا كتابيًا من الجهة المختصة.\n5) احتفظ بالرد وإثبات الإرسال."
+        })[userLang] || (hasConcreteTp
+          ? `Nächste Schritte:\n1) Rechnung vorbereiten.\n2) Zahlungsnachweis beifügen.\n3) Die vorbereitete E-Mail an ${tpNs} senden.\n4) Schriftliche Antwort von ${tpNs} abwarten.\n5) Antwort und Versandnachweis aufbewahren.`
+          : "Nächste Schritte:\n1) Rechnung vorbereiten.\n2) Zahlungsnachweis beifügen.\n3) Die vorbereitete E-Mail an deine Krankenkasse oder Versicherung senden.\n4) Schriftliche Antwort der zuständigen Stelle abwarten.\n5) Antwort und Versandnachweis aufbewahren.");
+        return res.json({
+          ok: true,
+          antwort: cleanText(nextReimb)
+        });
+      }
       const nextUi = ({
         de: "Nächste Schritte: 1) Frist und Aktenzeichen prüfen, 2) zuständige Stelle schriftlich kontaktieren, 3) Nachweise beilegen, 4) schriftliche Antwort aufbewahren.",
         tr: "Sonraki adımlar: 1) Süre ve dosya numarasını kontrol et, 2) yetkili kuruma yazılı başvur, 3) belgeleri ekle, 4) yazılı yanıtı sakla.",
