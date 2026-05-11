@@ -3097,6 +3097,8 @@ app.post("/api/frage", async (req, res) => {
       return langMeta.code;
     };
     const userLang = detectFrageUiLang(frage);
+    const chatLanguage = userLang;
+    const officialTextLanguage = "de";
 
     if (v17Has(currentQuestion, [/bana niye almanca yaziyorsun/, /bana niye almanca yazıyorsun/])) {
       return res.json({
@@ -3113,6 +3115,7 @@ app.post("/api/frage", async (req, res) => {
         { goal: "payment_proof", rx: [/schon bezahlt|bereits bezahlt|habe bezahlt|überwiesen|uberwiesen|zahlungsnachweis|überweisungsbeleg|iberweisungsbeleg|dekont|i paid|already paid|i have paid|payment made|am platit|am plătit|платих|вече платих|Ödedim|ödedim|دفعت|لقد دفعت/] },
         { goal: "dispute_or_objection", rx: [/stimmt nicht|forderung falsch|kenne ich nicht|widerspruch|einspruch|bestreiten|itiraz|kabul etmiyorum|nu recunosc|не признавам|не е вярно|this is wrong|i dispute|objection|لا أوافق|اعتراض/] },
         { goal: "deferral_request", rx: [/später zahlen|spater zahlen|zahlungsaufschub|stundung|mehr zeit|pay later|postpone payment|deferral|erteleme|отсрочка|amanare|أحتاج وقت|تأجيل الدفع/] },
+        { goal: "reimbursement_or_coverage_request", rx: [/erstattung|kostenubernahme|kostenübernahme|krankenkasse|versicherung|sigorta|sigortaya|rambursare|reimbursement|insurance|застраховка|تأمين|تعويض/] },
         { goal: "installment_request", rx: [/ratenzahlung|\bin raten\b|monatlich zahlen|kann nicht.*auf einmal|cannot pay all at once|can't pay in full|taksit|installments|payment plan|تقسيط|أقساط/] }
       ];
       const normMsg = (m) => cleanText(m || "").trim();
@@ -3139,7 +3142,7 @@ app.post("/api/frage", async (req, res) => {
       if (/اكتب\s+لي\s+رد|اكتب\s+لي\s+إيميل/i.test(raw) || /\bكتب.*?رد\b/.test(raw)) return true;
       const q = v17Norm(raw);
       if (v17Has(q, [/schreib.*antwort/, /mach.*antwort/, /antwort vorbereiten/, /mach mir eine e.?mail/, /schreib.*e.?mail/, /brief schreib/, /pdf erstellen/, /\bmake an email\b/, /\bwrite an email\b/, /\bwrite a reply\b/, /\bprepare a reply\b/, /bana cevap yaz/, /bana e.?posta yaz/, /napi[șs]i\s+otgovo/, /napi[șs]i\s+raspuns/, /scrie un raspuns/, /scrie\s+un\s+răspuns/])) return true;
-      if (/pdf\s+olarak\s+hazirla|pdf\s+olarak\s+hazırla|pdf\s+olarak/i.test(raw)) return true;
+      if (/pdf\s+olarak\s+hazirla|pdf\s+olarak\s+hazırla|pdf\s+olarak|bana\s+pdf|fa\s+pdf|napravi\s+pdf|направи\s+pdf|scrie\s+un\s+răspuns|scrie\s+un\s+raspuns/i.test(raw)) return true;
       return false;
     };
 
@@ -3148,6 +3151,7 @@ app.post("/api/frage", async (req, res) => {
       if (!text || String(text).length > 140) return true;
       if (/\?/.test(text)) return true;
       if (/ich habe (das|es) schon bezahlt|ich hab es schon bezahlt|habe bereits bezahlt|die forderung stimmt nicht|forderung falsch|kenne ich diese forderung nicht|ich kenne diese forderung nicht|das ist falsch|will widersprechen|ich will widersprechen|überwiesen|zahlungsnachweis|Ödedim|ödedim|already paid|платих|Am plătit|am plătit|دفعت/i.test(text)) return true;
+      if (/versicherung|krankenkasse|sigorta|sigortaya|yollayaca|yollayacağım|schreib mir|mach pdf|mach\s+pdf|pdf machen|e-?mail schreib|bana cevap|meine tochter|mein sohn|minderj|reşit|ich bin (der|die)|ich schreibe für|ödedim|bunu ödedim|itiraz|widerspruch|ratenzahlung|stundung|aufschub|taksit/i.test(String(text || ""))) return true;
       return false;
     };
 
@@ -3171,6 +3175,14 @@ app.post("/api/frage", async (req, res) => {
         /this is wrong/, /not correct/, /i dispute this/, /i do not agree/, /objection/, /appeal/, /i don't recognize this debt/,
         /هذا خطأ/, /غير صحيح/, /المبلغ غير صحيح/, /لا أوافق/, /لا أعترف بهذا الدين/, /لا أعرف هذه المطالبة/, /أريد الاعتراض/, /اعتراض/
       ])) return "dispute_or_objection";
+      if (v17Has(qNorm, [
+        /versicherung/, /krankenkasse/, /zusatzversicherung/, /kostenubernahme/, /kostenübernahme/, /erstattung/, /zuruckbekommen/, /zurückbekommen/, /rechnung einreichen/, /ubernehmt die versicherung/, /ubernehmt die krankenkasse/,
+        /sigorta/, /sigortaya/, /saglik sigortasi/, /saglık sigortası/, /ek sigorta/, /faturayi sigortaya/, /faturayı sigortaya/, /sigortaya yollayacagim/, /sigortaya yollayacağım/, /geri alabilir miyim/, /masrafi karsilar mi/, /masrafı karşılar mı/,
+        /застраховка/, /здравна каса/, /възстановяване/, /покриване на разходи/, /изпратя фактурата/,
+        /asigurare/, /casa de sanatate/, /casa de sănătate/, /rambursare/, /acoperire costuri/, /trimit factura/, /să trimit factura/,
+        /\binsurance\b/, /\bhealth insurance\b/, /\breimbursement\b/, /\bcost coverage\b/, /\bsubmit the invoice\b/, /\bwill insurance pay\b/,
+        /تأمين/, /التأمين الصحي/, /تعويض/, /تغطية التكاليف/, /إرسال الفاتورة/
+      ]) || /\bsigortaya\b/i.test(qRaw)) return "reimbursement_or_coverage_request";
       if (v17Has(qNorm, [
         /spater zahlen/, /später zahlen/, /zahlungsaufschub/, /stundung/, /fristverlangerung/, /fristverlängerung/, /noch zeit/,
         /sonra odemek/, /sonra ödemek/, /erteleme/, /odeme erteleme/, /ödeme erteleme/, /biraz zaman lazim/, /biraz zaman lazım/, /sure uzatma/, /süre uzatma/,
@@ -3248,14 +3260,30 @@ app.post("/api/frage", async (req, res) => {
     const repScanOrdered = [cleanText(frage), ...repUserLinesNewestFirst].filter(Boolean);
     const repScanFull = repScanOrdered.join("\n");
     const repScanNorm = v17Norm(repScanFull);
+    const extractMinorAffectedFromChat = () => {
+      const raw = repScanFull;
+      const rx = [
+        /(?:meine|mein)\s+tochter\s+(?:hei[sß]t|heisst|ist)\s+([A-ZÄÖÜÇĞİÖŞÜ][^\n,.]{2,80})/iu,
+        /(?:mein|meinen)\s+sohn\s+(?:hei[sß]t|heisst|ist)\s+([A-ZÄÖÜÇĞİÖŞÜ][^\n,.]{2,80})/iu,
+        /(?:tochter|sohn|kind|kızım|oğlum)\s+(?:hei[sß]t|heisst|ist)\s*([A-ZÄÖÜÇĞİÖŞÜ][^\n,.]{2,80})/iu
+      ];
+      for (const r of rx) {
+        const m = raw.match(r);
+        if (!m) continue;
+        const cand = cleanText(m[1]).replace(/\s+/g, " ").split(/\s+/).slice(0, 5).join(" ");
+        if (looksLikePersonName(cand)) return cand;
+      }
+      return "";
+    };
     const detectRepresentativeMinorContext = () => {
       const raw = repScanFull;
-      const hasMinorAge = /minderj[aä]hrig|minderjaehrig|minderjährig|nicht vollj[aä]hrig|vollj[aä]hrig.*nicht|re[sş]it\s+de[gğ]il|reshit\s+degil|kucuk|küçük|çocuğum|çocugum|непълнолетн|nepalnolen|minor[aă]|este\s+minor|underage|قاصر|ابنتي|ابني|طفلي/i.test(raw)
+      const hasMinorAge = /minderj[aä]hrig|minderjaehrig|minderjährig|nicht vollj[aä]hrig|\b16\s+jahre\b|\b17\s+jahre\b|re[sş]it\s+de[gğ]il|reshit\s+degil|kucuk|küçük|çocuğum|çocugum|непълнолетн|nepalnolen|minor[aă]|este\s+minor|underage|قاصر|ابنتي|ابني|طفلي|\b16\s+yasında\b|\b17\s+yasında\b/i.test(raw)
         || v17Has(repScanNorm, [/minderjahrig/, /minor/, /underage/]);
-      const hasRelation = /tochter|sohn|mein\s+kind|meine\s+tochter|meinen\s+sohn|kızım|oğlum|oğlumu|kızımı|fiica\s+mea|fiul\s+meu|copilul\s+meu|daughter|my\s+son|my\s+daughter|my\s+child|\bson\b|\bdaughter\b|schreib.*für.*(tochter|sohn|kind)|ich\s+schreibe\s+für|onun\s+adına|benim\s+adım|în\s+numele|scriu\s+[îi]n\s+numele|on\s+behalf|نيابة|ich\s+bin\s+(der\s+)?vater|ich\s+bin\s+die\s+mutter|ben\s+babasıyım|ben\s+annesiyim|sunt\s+(tatăl|mama|tatal|mama)|аз\s+съм\s+(бащата|майката)|أنا\s+الأب|أنا\s+الأم|i\s+am\s+the\s+father|i\s+am\s+the\s+mother|write\s+on\s+behalf/i.test(raw);
+      const hasRelation = /tochter|sohn|mein\s+kind|meine\s+tochter|meinen\s+sohn|kızım|oğlum|oğlumu|kızımı|fiica\s+mea|fiul\s+meu|copilul\s+meu|daughter|my\s+son|my\s+daughter|my\s+child|\bson\b|\bdaughter\b|schreib.*für.*(tochter|sohn|kind)|ich\s+schreibe\s+für|über\s+meinen\s+namen|in\s+meinem\s+namen|onun\s+adına|benim\s+adım|în\s+numele|scriu\s+[îi]n\s+numele|on\s+behalf|نيابة|ich\s+bin\s+(der\s+)?vater|ich\s+bin\s+die\s+mutter|ben\s+babasıyım|ben\s+annesiyim|sunt\s+(tatăl|mama|tatal|mama)|аз\s+съм\s+(бащата|майката)|أنا\s+الأب|أنا\s+الأم|i\s+am\s+the\s+father|i\s+am\s+the\s+mother|write\s+on\s+behalf|unterschreibt\s+die\s+mutter|unterschreibt\s+der\s+vater|mutter\s+hei|vater\s+hei|annesinin\s+adi|babasinin\s+adi|anne\s+imza|baba\s+imza/i.test(raw);
       return Boolean(hasMinorAge && hasRelation);
     };
     const representativeMode = detectRepresentativeMinorContext();
+    const childForRepBlocks = cleanText(meta.betroffene_person || extractMinorAffectedFromChat() || representedChildName);
     const extractRepresentativeSignerFromChat = () => {
       const tryLine = (line) => {
         const s = String(line || "").trim();
@@ -3323,7 +3351,7 @@ app.post("/api/frage", async (req, res) => {
       : v17Has(pendingDraftContext, [/stimmt nicht|falsch|widerspruch|einspruch|itiraz|not correct|i dispute|nu este corect|не е вярно|غير صحيح|اعتراض/]) ? "dispute_or_objection"
       : v17Has(pendingDraftContext, [/spater zahlen|später zahlen|stundung|aufschub|pay later|deferral|amânare|отсрочка|تأجيل الدفع/]) ? "deferral_request"
       : v17Has(pendingDraftContext, [/ratenzahlung|iki taksit|zwei raten|taksit|rate|raten|installment|plan de plata|вноски|تقسيط/]) ? "installment_request"
-      : v17Has(pendingDraftContext, [/erstattung|kostenubernahme|kostenübernahme|zuruckbekommen|zurückbekommen/]) ? "reimbursement_request"
+      : v17Has(pendingDraftContext, [/erstattung|kostenubernahme|kostenübernahme|zuruckbekommen|zurückbekommen/]) ? "reimbursement_or_coverage_request"
       : v17Has(pendingDraftContext, [/kundigung|kündigung|widerruf|iptal|fesih/]) ? "cancellation_request"
       : "";
 
@@ -3349,7 +3377,7 @@ app.post("/api/frage", async (req, res) => {
       return false;
     };
     const wantsEmailFromText = () => {
-      if (v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/, /antwort schreiben/, /schreib.*antwort/, /cevap yaz/, /bana cevap/]))
+      if (v17Has(currentQuestion, [/e[\s-]?mail/, /\bmail\b/, /e[\s-]?posta/, /\beposta\b/, /\bemail\b/, /antwort schreiben/, /nachricht schreiben/, /schreib.*antwort/, /cevap yaz/, /bana cevap/, /mesaj yaz/]))
         return true;
       if (/имейл|отговор|напиши\s+отговор/i.test(frRaw)) return true;
       if (/răspuns|scrie\s+un\s+răspuns|\bemail\b/i.test(frRaw)) return true;
@@ -3360,7 +3388,7 @@ app.post("/api/frage", async (req, res) => {
     const wantsPdf = wantsPdfFromText() || ((pendingNameRequested || hasValidPendingFieldValue) && allowPendingResume && v17Has(pendingDraftContext, [/pdf-brief/, /\bpdf\b/]));
     const wantsEmail = wantsEmailFromText() || ((pendingNameRequested || hasValidPendingFieldValue) && allowPendingResume && v17Has(pendingDraftContext, [/empfanger:/, /empfänger:/, /e[\s-]?mail/, /\bmail\b/]));
     const wantsChecklist = v17Has(currentQuestion, [/unterlagen/, /checkliste/, /welche dokumente/, /welche nachweise/, /hangi belge/]);
-    const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/]);
+    const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /was jetzt/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/, /simdi ne yapmaliyim/, /şimdi ne yapmalıyım/, /\bwhat should i do\b/]);
 
     let answerType = "short_answer";
     if (wantsPdf) answerType = "draft_pdf";
@@ -3370,7 +3398,7 @@ app.post("/api/frage", async (req, res) => {
 
     const contextUnclear = !briefText && !erklaerungKurz && !erklaerungDetails;
     const goalUnclear = currentQuestion.length < 5 || /^(ok|okay|ja|nein|hmm|hallo|hi)$/.test(currentQuestion);
-    if (answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarification";
+    if (answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarifying_question";
     const pendingNeedsInstallmentDraft = pendingName && v17Has(
       pendingDraftContext,
       [/e-?posta/, /email/, /\bmail\b/, /taksit/, /iki taksit/, /zwei raten/, /ratenzahlung/]
@@ -3389,25 +3417,30 @@ app.post("/api/frage", async (req, res) => {
     }
 
     const paymentDemandDetected = v17Has(currentContext, [
-      /zahlung/, /nachzahlung/, /ruckforderung/, /rückforderung/, /mahnung/, /offene forderung/, /rechnung/, /gebuhr/, /gebühr/, /beitrag/, /rate/, /kosten/, /vollstreckung/, /pfandung/, /pfändung/, /zahlungsfrist/, /zahlungsaufforderung/, /forderungsaufstellung/
+      /zahlung/, /nachzahlung/, /ruckforderung/, /rückforderung/, /mahnung/, /offene forderung/, /rechnung/, /gebuhr/, /gebühr/, /beitrag/, /rate/, /kosten/, /vollstreckung/, /pfandung/, /pfändung/, /zahlungsfrist/, /zahlungsaufforderung/, /forderungsaufstellung/,
+      /inkasso/, /bussgeld/, /bußgeld/, /steuer/, /beitragsservice/, /zahnarztrechnung/, /krankenhausrechnung/, /krankenkasse/, /pflegekasse/, /vermieterforderung/, /nebenkosten/, /strom|gas/, /kredit/, /vertrag/, /\babo\b/
     ]);
 
     let userGoal = substantiveGoalFromCurrent;
 
     if (userGoal === "understand" && (v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/])
       || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])))) {
-      userGoal = "reimbursement_request";
+      userGoal = "reimbursement_or_coverage_request";
     }
     if (userGoal === "understand" && v17Has(currentQuestion, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
     if (userGoal === "understand" && v17Has(currentQuestion, [/anwalt/, /beratungshilfe/, /pflichtverteidiger/, /rechtsantragstelle/, /avukat/])) userGoal = "legal_aid_request";
     if (userGoal === "understand" && v17Has(currentQuestion, [/unterlagen nachreichen/, /bescheid geschickt/, /nachweis senden/, /unterlagen senden/])) userGoal = "submit_documents";
+    if (userGoal === "understand" && v17Has(currentQuestion, [/termin.*verschieben/, /termin verschieben/, /terminverlegung/, /umterminieren/, /appointment.*reschedul/])) userGoal = "appointment_reschedule";
+    if (userGoal === "understand" && v17Has(currentQuestion, [/krankmelden/, /krankschreiben/, /attest/, /sick note/, /cannot attend/, /nicht.*erscheinen/, /fehl.*termin/])) userGoal = "sick_note_or_cannot_attend";
+    if (userGoal === "understand" && v17Has(currentQuestion, [/fristverlangerung/, /fristverlängerung/, /frist.*verlangern/, /deadline extension/, /verlangerung der frist/])) userGoal = "deadline_extension";
+    if (userGoal === "understand" && v17Has(currentQuestion, [/beschwerde/, /reklamation/, /missverstandnis/, /missverständnis/, /complaint/, /clarification request/])) userGoal = "complaint_or_clarification";
 
     if (writeFollowUpOnly && inheritedWriteGoal) userGoal = inheritedWriteGoal;
 
     if (allowPendingResume && pendingName && userGoal === "understand") {
       if (v17Has(pendingDraftContext, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
       else if (v17Has(pendingDraftContext, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
-      else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_request";
+      else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_or_coverage_request";
       else if (v17Has(pendingDraftContext, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
       else if (pendingNeedsInstallmentDraft) userGoal = "installment_request";
     }
@@ -3420,7 +3453,7 @@ app.post("/api/frage", async (req, res) => {
     else if (v17Has(currentContext, [/\bbank\b/, /p-konto/, /pfandung/, /pfändung/, /\bkonto\b/, /freibetrag/])) caseGroup = "banking";
     else if (v17Has(currentContext, [/gericht/, /polizei/, /staatsanwaltschaft/, /strafsache/, /anklage/])) caseGroup = "court_police";
     else if (v17Has(currentContext, [/vertrag/, /versicherung/, /kredit/, /\babo\b/, /widerruf/, /kundigung/, /kündigung/])) caseGroup = "contracts";
-    else if (v17Has(currentContext, [/krankenkasse/, /zahnarzt/, /\bdzr\b/, /rechnung/, /medizin/])) caseGroup = "health_insurance";
+    else if (v17Has(currentContext, [/krankenkasse/, /zahnarzt/, /zahnarztrechnung/, /krankenhausrechnung/, /rechnung/, /medizin/])) caseGroup = "health_insurance";
     else if (v17Has(currentContext, [/jobcenter/, /burgergeld/, /buergergeld/, /bürgergeld/, /sozialamt/, /familienkasse/])) caseGroup = "social_benefits";
     else if (v17Has(currentContext, [/finanzamt/, /steuer/])) caseGroup = "tax_office";
     else if (v17Has(currentContext, [/arbeitgeber/, /lohn/, /ruckzahlung/, /rückzahlung/, /schuldanerkenntnis/])) caseGroup = "employment";
@@ -3470,7 +3503,7 @@ app.post("/api/frage", async (req, res) => {
     let targetParty = "";
     if (pendingField === "recipient_email" && pendingFieldValueMap.recipient_email) targetParty = pendingFieldValueMap.recipient_email;
     else if (pendingField === "target_party" && pendingFieldValueMap.target_party) targetParty = pendingFieldValueMap.target_party;
-    else if (userGoal === "reimbursement_request") targetParty = "Krankenkasse / Versicherung";
+    else if (userGoal === "reimbursement_or_coverage_request") targetParty = "Krankenkasse / Versicherung";
     else if (userGoal === "legal_aid_request") targetParty = "Amtsgericht / Rechtsantragstelle oder Anwalt";
     else if (metaEmail) targetParty = metaEmail;
     else if (emailInTextMatch) targetParty = emailInTextMatch;
@@ -3482,7 +3515,7 @@ app.post("/api/frage", async (req, res) => {
       targetParty = "[E-Mail-Adresse der Stelle einfügen]";
     }
     if (!targetParty && answerType === "draft_pdf") {
-      answerType = "clarification";
+      answerType = "clarifying_question";
     }
 
     const forbidReimbursementTemplate = (
@@ -3492,11 +3525,10 @@ app.post("/api/frage", async (req, res) => {
       caseGroup === "banking" ||
       caseGroup === "tax_office"
     );
-    const forbidInstallmentTemplate = userGoal === "reimbursement_request";
+    const forbidInstallmentTemplate = userGoal === "reimbursement_or_coverage_request";
     const cautiousDebtPhrase = caseGroup === "debt_collection";
     const cautiousCourtPhrase = caseGroup === "court_police";
 
-    const twoRatesRequested = v17Has(currentQuestion, [/zwei raten/, /iki taksit/]);
     const refCandidates = [
       meta.mahnungsnummer,
       meta.aktenzeichen,
@@ -3575,7 +3607,7 @@ app.post("/api/frage", async (req, res) => {
       if (letterD) return `Ihr Schreiben vom ${letterD}`;
       return "Ihr Schreiben";
     };
-    const paymentProofBetreffSuffixOnly = userGoal === "payment_proof" ? buildPaymentProofBetreffSuffix() : "";
+    const officialRefSuffixSubject = buildPaymentProofBetreffSuffix();
     const salutation = "Sehr geehrte Damen und Herren,";
     const explicitWrongClaimCue = /forderung.*falsch|ist falsch|stimmt nicht|bestreit|widerspruch|einspruch|itiraz|this is wrong|not correct|i dispute|nu este corect|не е вярно|غير صحيح|اعتراض/.test(currentQuestion);
     const uncertainClaim = /unsicher|unklar|zweifel/.test(currentQuestion) || userGoal === "dispute_or_objection";
@@ -3586,7 +3618,7 @@ app.post("/api/frage", async (req, res) => {
     if (representativeMode) {
       signatureName = repSignerFromChat || cleanText(meta.user_name || meta.unterschrift || "");
       const an = cleanText(meta.absender_name || "");
-      if (!signatureName && an && looksLikePersonName(an) && !namesLooselySame(an, representedChildName)) signatureName = an;
+      if (!signatureName && an && looksLikePersonName(an) && !namesLooselySame(an, childForRepBlocks)) signatureName = an;
     } else {
       signatureName = cleanText(
         meta.name ||
@@ -3614,14 +3646,15 @@ app.post("/api/frage", async (req, res) => {
     const repGermanSohn = /sohn|oğlum|fiul(\s+meu)?|son|ابني|синът/i.test(repScanFull);
     let representativeGermanIntro = "";
     if (representativeMode) {
-      if (representedChildName && repGermanTochter && !repGermanSohn) {
-        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meiner minderjährigen Tochter ${representedChildName}.`;
-      } else if (representedChildName && repGermanSohn && !repGermanTochter) {
-        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meines minderjährigen Sohnes ${representedChildName}.`;
-      } else if (representedChildName && (repGermanTochter || repGermanSohn || /kind|çocuğum|çocugum|copilul|child|طفل|детето/i.test(repScanFull))) {
-        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meines minderjährigen Kindes ${representedChildName}.`;
-      } else if (representedChildName) {
-        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter der minderjährigen betroffenen Person ${representedChildName}.`;
+      const ch = childForRepBlocks;
+      if (ch && repGermanTochter && !repGermanSohn) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meiner minderjährigen Tochter ${ch}.`;
+      } else if (ch && repGermanSohn && !repGermanTochter) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meines minderjährigen Sohnes ${ch}.`;
+      } else if (ch && (repGermanTochter || repGermanSohn || /kind|çocuğum|çocugum|copilul|child|طفل|детето/i.test(repScanFull))) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter meines minderjährigen Kindes ${ch}.`;
+      } else if (ch) {
+        representativeGermanIntro = `ich schreibe Ihnen als gesetzlicher Vertreter der minderjährigen betroffenen Person ${ch}.`;
       } else {
         representativeGermanIntro = "ich schreibe Ihnen als gesetzlicher Vertreter der minderjährigen betroffenen Person.";
       }
@@ -3631,9 +3664,6 @@ app.post("/api/frage", async (req, res) => {
     let paymentProofFormalIntro = "";
     let draftBody = "";
     if (userGoal === "installment_request") {
-      const fixedRateIntro = "ich beziehe mich auf Ihr Schreiben.";
-      const fixedRateText = "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich darum, den Betrag in zwei Raten zahlen zu dürfen.";
-      const fixedRateConfirm = "Bitte teilen Sie mir schriftlich mit, ob Sie damit einverstanden sind und zu welchen Terminen ich die Raten überweisen soll.";
       const pendingInstallmentAmount = (pendingField === "installment_amount" && pendingFieldValueMap.installment_amount)
         ? `\n\nVorgeschlagene monatliche Rate: ${pendingFieldValueMap.installment_amount}.`
         : "";
@@ -3643,10 +3673,10 @@ app.post("/api/frage", async (req, res) => {
       const pendingStartInfo = (pendingField === "payment_start" && pendingFieldValueMap.payment_start)
         ? `\n\nGewünschter Beginn der Zahlung: ${pendingFieldValueMap.payment_start}.`
         : "";
-      const dynamicInstallment = (!pendingInstallmentAmount && !pendingInstallmentCount && !pendingStartInfo && !/iki taksit|zwei raten/.test(currentQuestion))
-        ? "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich um eine Ratenzahlung, die meiner finanziellen Situation entspricht."
-        : fixedRateText;
-      draftBody = `${debtNoAck}${noGuiltCourt}${fixedRateIntro}\n\n${dynamicInstallment}\n\n${fixedRateConfirm}${pendingInstallmentAmount}${pendingInstallmentCount}${pendingStartInfo}`;
+      const rateCore = "Ich kann den Betrag derzeit nicht auf einmal bezahlen. Deshalb bitte ich um eine Ratenzahlung, die meiner finanziellen Situation entspricht.";
+      const rateConfirm = "Bitte teilen Sie mir schriftlich mit, ob Sie mit einer Ratenzahlung einverstanden sind und zu welchen Terminen ich die Raten überweisen soll.";
+      const rateMahn = "Falls bereits Mahn- oder Vollstreckungsmaßnahmen drohen, bitte ich darum, bis zur Klärung keine weiteren Maßnahmen einzuleiten.";
+      draftBody = `${debtNoAck}${noGuiltCourt}ich beziehe mich auf Ihr Schreiben.\n\n${rateCore}${pendingInstallmentAmount}${pendingInstallmentCount}${pendingStartInfo}\n\n${rateConfirm}\n\n${rateMahn}`;
     } else if (userGoal === "deferral_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}ich beziehe mich auf Ihr Schreiben.\n\nIch kann den genannten Betrag derzeit nicht sofort bezahlen. Deshalb bitte ich um Zahlungsaufschub bzw. Stundung.\n\nBitte teilen Sie mir schriftlich mit, ob ein Zahlungsaufschub möglich ist und welche Unterlagen Sie dafür benötigen.\n\nBis zur Entscheidung über meine Anfrage bitte ich darum, keine weiteren Mahn- oder Vollstreckungsmaßnahmen einzuleiten.`;
     } else if (userGoal === "payment_proof") {
@@ -3656,8 +3686,12 @@ app.post("/api/frage", async (req, res) => {
       if (md && mb) openingFormal = `ich beziehe mich auf Ihr Schreiben vom ${md} über ${mb}.`;
       paymentProofFormalIntro = openingFormal;
       draftBody = `ich beziehe mich auf Ihr Schreiben.\n\n${paymentProofRest}`;
-    } else if (userGoal === "reimbursement_request") {
-      draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung einer Erstattung/Kostenübernahme.\nIch habe die Kosten bereits bezahlt und reiche die Nachweise ein.\nBitte teilen Sie mir schriftlich mit, ob und in welcher Höhe eine Erstattung möglich ist.`;
+    } else if (userGoal === "reimbursement_or_coverage_request") {
+      const amt = secureEuroAmountToken(meta.betrag);
+      const amtLine = amt ? `\n\nEs handelt sich um eine Rechnung über ${amt}.` : "";
+      const billDate = secureLetterDateToken(meta.datum_schreiben, briefText);
+      const dateLine = billDate ? `\n\nDie Rechnung stammt vom ${billDate}.` : "";
+      draftBody = `${debtNoAck}${noGuiltCourt}ich bitte um Prüfung, ob die beigefügte Rechnung ganz oder teilweise von meiner Versicherung übernommen bzw. erstattet werden kann.${amtLine}${dateLine}\n\nBitte teilen Sie mir schriftlich mit, ob eine Kostenübernahme oder Erstattung möglich ist und welche Unterlagen Sie dafür benötigen.`;
     } else if (userGoal === "cancellation_request") {
       draftBody = `${debtNoAck}${noGuiltCourt}hiermit erkläre ich den Widerruf, hilfsweise die Kündigung des Vertrags.\nBitte stoppen Sie weitere Abbuchungen und bestätigen Sie mir die Vertragsbeendigung schriftlich.`;
     } else if (userGoal === "legal_aid_request") {
@@ -3677,11 +3711,11 @@ app.post("/api/frage", async (req, res) => {
       draftBody = `${representativeGermanIntro}\n\n${draftBody}`;
     }
 
-    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidReimbursementTemplate && userGoal === "reimbursement_request") {
-      answerType = "clarification";
+    if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidReimbursementTemplate && userGoal === "reimbursement_or_coverage_request") {
+      answerType = "clarifying_question";
     }
     if ((answerType === "draft_email" || answerType === "draft_pdf") && forbidInstallmentTemplate && userGoal === "installment_request") {
-      answerType = "clarification";
+      answerType = "clarifying_question";
     }
 
     if (correctionDetected) {
@@ -3691,7 +3725,39 @@ app.post("/api/frage", async (req, res) => {
       });
     }
 
-    if (answerType === "clarification") {
+    const supportedOfficialDraftIntents = new Set([
+      "payment_proof", "dispute_or_objection", "installment_request", "deferral_request",
+      "reimbursement_or_coverage_request", "cancellation_request", "legal_aid_request", "submit_documents"
+    ]);
+    if ((answerType === "draft_email" || answerType === "draft_pdf") && !supportedOfficialDraftIntents.has(userGoal)) {
+      answerType = "short_answer";
+    }
+
+    const casePlan = {
+      intent: userGoal,
+      answerType,
+      targetParty: cleanText(targetParty || ""),
+      affectedPerson: childForRepBlocks || representedChildName,
+      writerPerson: signatureName,
+      representativeRole: representativeMode ? (/mutter|mutti|mama|mother|annesi|ich\s+bin\s+die\s+mutter/i.test(repScanFull) ? "Mutter" : /vater|baba|father|babası|ich\s+bin\s+der\s+vater/i.test(repScanFull) ? "Vater" : "") : "",
+      representativeMode,
+      knownFacts: { reference: cleanRef || "", betragSicher: Boolean(secureEuroAmountToken(meta.betrag)) },
+      missingFields: [],
+      chatLanguage,
+      officialTextLanguage
+    };
+    void casePlan;
+
+    const askInsuranceTargetUi = {
+      de: "Wie heißt die Versicherung oder an welche E-Mail-Adresse soll der Text gehen?",
+      tr: "Sigortanın adı veya e-posta adresi nedir?",
+      bg: "Как се казва застраховката или какъв е имейл адресът?",
+      ro: "Cum se numește asigurarea sau care este adresa de email?",
+      en: "What is the name or email address of the insurance company?",
+      ar: "ما اسم شركة التأمين أو ما هو البريد الإلكتروني؟"
+    };
+
+    if (answerType === "clarifying_question") {
       const clarifyTarget = ({
         de: "Ich sehe die Zielstelle nicht sicher. Soll die Antwort an die Stelle aus dem Brief gehen?",
         tr: "Kime göndermek istediğini net göremiyorum. Yazı mektuptaki kuruma mı gitsin?",
@@ -3721,9 +3787,17 @@ app.post("/api/frage", async (req, res) => {
     }
 
     if (answerType === "next_steps") {
+      const nextUi = ({
+        de: "Nächste Schritte: 1) Frist und Aktenzeichen prüfen, 2) zuständige Stelle schriftlich kontaktieren, 3) Nachweise beilegen, 4) schriftliche Antwort aufbewahren.",
+        tr: "Sonraki adımlar: 1) Süre ve dosya numarasını kontrol et, 2) yetkili kuruma yazılı başvur, 3) belgeleri ekle, 4) yazılı yanıtı sakla.",
+        bg: "Следващи стъпки: 1) Провери срока и номера на делото, 2) пиши официално до компетентната институция, 3) приложи документи, 4) пази писмения отговор.",
+        ro: "Pașii următori: 1) verifică termenul și numărul dosarului, 2) contactează în scris instituția competentă, 3) atașează documentele, 4) păstrează răspunsul scris.",
+        en: "Next steps: 1) Check deadline and file reference, 2) contact the responsible authority in writing, 3) attach documents, 4) keep the written reply.",
+        ar: "الخطوات التالية: 1) راجع الموعد والمرجع، 2) تواصل كتابيًا مع الجهة المختصة، 3) أرفق المستندات، 4) احتفظ بالرد الكتابي."
+      })[userLang] || "Nächste Schritte: 1) Frist und Aktenzeichen prüfen, 2) zuständige Stelle schriftlich kontaktieren, 3) Nachweise beilegen, 4) schriftliche Antwort aufbewahren.";
       return res.json({
         ok: true,
-        antwort: cleanText("Nächste Schritte: 1) Frist und Aktenzeichen prüfen, 2) zuständige Stelle schriftlich kontaktieren, 3) Nachweise beilegen, 4) schriftliche Antwort aufbewahren.")
+        antwort: cleanText(nextUi)
       });
     }
 
@@ -3745,11 +3819,17 @@ app.post("/api/frage", async (req, res) => {
           antwort: cleanText(askSignerNameUi)
         });
       }
+      if (userGoal === "reimbursement_or_coverage_request" && !metaEmail && !emailInTextMatch && !emailAnswerMatch) {
+        return res.json({
+          ok: true,
+          antwort: cleanText(askInsuranceTargetUi[userLang] || askInsuranceTargetUi.de)
+        });
+      }
       let emailSubject = `Anliegen zu Ihrem Schreiben${subjectRef}`;
-      if (userGoal === "installment_request") emailSubject = `Bitte um Ratenzahlung${subjectRef || " – Ihr Schreiben"}`;
-      if (userGoal === "deferral_request") emailSubject = `Bitte um Zahlungsaufschub / Stundung${subjectRef || " – Ihr Schreiben"}`;
-      if (userGoal === "payment_proof") emailSubject = `Zahlungsnachweis / Bitte um Prüfung – ${paymentProofBetreffSuffixOnly}`;
-      if (userGoal === "dispute_or_objection") emailSubject = `Bitte um Prüfung der Forderung${subjectRef || " – Ihr Schreiben"}`;
+      if (userGoal === "installment_request") emailSubject = `Bitte um Ratenzahlung – ${officialRefSuffixSubject}`;
+      if (userGoal === "deferral_request") emailSubject = `Bitte um Zahlungsaufschub / Stundung – ${officialRefSuffixSubject}`;
+      if (userGoal === "payment_proof") emailSubject = `Zahlungsnachweis / Bitte um Prüfung – ${officialRefSuffixSubject}`;
+      if (userGoal === "dispute_or_objection") emailSubject = `Bitte um Prüfung der Forderung – ${officialRefSuffixSubject}`;
       const emailDraft = cleanText(
         `Empfänger: ${targetParty}\n` +
         `Betreff: ${emailSubject}\n\n` +
@@ -3795,9 +3875,14 @@ app.post("/api/frage", async (req, res) => {
             const extracted = extractPersonAddressFromContextV1504(signatureName, currentContext);
             if (extracted && !looksLikeInstitutionStreetBlock(extracted)) parentRepAddr = extracted;
           }
-          const vBlock = representedChildName
-            ? `\n\nals gesetzlicher Vertreter von\n${representedChildName}`
-            : "\n\nals gesetzlicher Vertreter der minderjährigen betroffenen Person";
+          const repFemale = /mutter|mutti|ich\s+bin\s+die\s+mutter|annesi|\banne\b|mama|mother|gesetzliche\s+vertreterin/i.test(repScanFull);
+          const repMale = /vater|ich\s+bin\s+der\s+vater|babası|baba|father|papa|gesetzlicher\s+vertreter/i.test(repScanFull);
+          let vBlock = "\n\nals gesetzliche Vertretung der minderjährigen betroffenen Person";
+          if (childForRepBlocks) {
+            if (repFemale && !repMale) vBlock = `\n\nals gesetzliche Vertreterin von\n${childForRepBlocks}`;
+            else if (repMale && !repFemale) vBlock = `\n\nals gesetzlicher Vertreter von\n${childForRepBlocks}`;
+            else vBlock = `\n\nals gesetzliche Vertretung von\n${childForRepBlocks}`;
+          }
           senderBlockFull = `${signatureName}${parentRepAddr ? `\n${parentRepAddr}` : ""}${vBlock}`;
           cityFromSender = getCityFromPostalAddress(parentRepAddr || "");
           closingSigner = signatureName;
@@ -3844,7 +3929,7 @@ app.post("/api/frage", async (req, res) => {
         const dateOnly = getTodayGerman();
         const placeLine = cityFromSender ? `${cityFromSender}, ${dateOnly}` : dateOnly;
         const pdfCore = `${paymentProofFormalIntro || "ich beziehe mich auf Ihr Schreiben."}\n\n${paymentProofRest}`;
-        const betreffPdf = `Betreff:\nZahlungsnachweis / Bitte um Prüfung – ${paymentProofBetreffSuffixOnly}`;
+        const betreffPdf = `Betreff:\nZahlungsnachweis / Bitte um Prüfung – ${officialRefSuffixSubject}`;
         const pdfDraft = cleanText(
           (pdfIntroUi ? `${pdfIntroUi}\n\n` : "") +
           `PDF-BRIEF:\n\n` +
@@ -3875,9 +3960,14 @@ app.post("/api/frage", async (req, res) => {
           const extracted = extractPersonAddressFromContextV1504(signatureName, currentContext);
           if (extracted && !looksLikeInstitutionStreetBlock(extracted)) parentRepAddr = extracted;
         }
-        const vBlock = representedChildName
-          ? `\n\nals gesetzlicher Vertreter von\n${representedChildName}`
-          : "\n\nals gesetzlicher Vertreter der minderjährigen betroffenen Person";
+        const repFemale = /mutter|mutti|ich\s+bin\s+die\s+mutter|annesi|\banne\b|mama|mother|gesetzliche\s+vertreterin/i.test(repScanFull);
+        const repMale = /vater|ich\s+bin\s+der\s+vater|babası|baba|father|papa|gesetzlicher\s+vertreter/i.test(repScanFull);
+        let vBlock = "\n\nals gesetzliche Vertretung der minderjährigen betroffenen Person";
+        if (childForRepBlocks) {
+          if (repFemale && !repMale) vBlock = `\n\nals gesetzliche Vertreterin von\n${childForRepBlocks}`;
+          else if (repMale && !repFemale) vBlock = `\n\nals gesetzlicher Vertreter von\n${childForRepBlocks}`;
+          else vBlock = `\n\nals gesetzliche Vertretung von\n${childForRepBlocks}`;
+        }
         pdfHeadPrefix = `${signatureName}${parentRepAddr ? `\n${parentRepAddr}` : ""}${vBlock}\n\n`;
       }
       const pdfDraft = cleanText(
@@ -3899,9 +3989,9 @@ app.post("/api/frage", async (req, res) => {
             ? "Du kannst schriftlich Zahlungsaufschub/Stundung beantragen und um Rückmeldung bitten, welche Unterlagen dafür nötig sind."
             : userGoal === "installment_request"
               ? "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest."
-              : userGoal === "reimbursement_request"
+              : userGoal === "reimbursement_or_coverage_request"
                 ? "Du kannst Erstattung/Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein."
-                : paymentDemandDetected
+                : userGoal === "understand" && paymentDemandDetected
                   ? "Bei einer Zahlungsforderung: zuerst Fakten prüfen (Betrag, Frist, Referenz), dann schriftlich bei der zuständigen Stelle klären."
                   : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
       return res.json({ ok: true, antwort: cleanText(short) });
