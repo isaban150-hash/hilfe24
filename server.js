@@ -3144,9 +3144,13 @@ app.post("/api/frage", async (req, res) => {
     const currentQuestion = gen.currentQuestion;
     const lastAssistantAnswer = gen.lastAssistantAnswer;
     const lastUserQuestion = gen.lastUserQuestion;
-    const userLang = gen.userLang;
-    const chatLanguage = gen.chatLanguage;
+    let userLang = gen.userLang;
+    let chatLanguage = gen.chatLanguage;
     const officialTextLanguage = gen.officialTextLanguage;
+    if (geminiValidatedPlan && geminiValidatedPlan.chatLanguage) {
+      userLang = geminiValidatedPlan.chatLanguage;
+      chatLanguage = geminiValidatedPlan.chatLanguage;
+    }
 
     const correctionDetected = v17Has(gen.currentQuestion, [
       /nein falsch/,
@@ -3163,6 +3167,116 @@ app.post("/api/frage", async (req, res) => {
       });
     }
 
+    /** KI-Fallplan (Gemini): einziges JSON, kein Stichwort-Router. Bei Fehler → null, dann Fallback-Logik. */
+    const GEMINI_CP_MAIN_GOALS = new Set([
+      "understand", "next_steps", "payment_proof", "installment_request", "deferral_request",
+      "dispute_or_objection", "reimbursement_or_coverage_request", "submit_documents",
+      "appointment_reschedule", "sick_note_or_cannot_attend", "deadline_extension", "complaint_or_clarification"
+    ]);
+    const GEMINI_CP_ANSWER_TYPES = new Set([
+      "short_answer", "next_steps", "draft_email", "draft_pdf", "draft_letter", "checklist", "clarifying_question"
+    ]);
+    const GEMINI_CP_LANGS = new Set(["de", "tr", "bg", "ro", "en", "ar"]);
+    const normalizeGeminiCasePlan = (raw) => {
+      if (!raw || typeof raw !== "object") return null;
+      const mainGoal = cleanText(raw.mainGoal || "").trim();
+      const answerTypeRaw = cleanText(raw.answerType || "").trim();
+      if (!GEMINI_CP_MAIN_GOALS.has(mainGoal)) return null;
+      if (!GEMINI_CP_ANSWER_TYPES.has(answerTypeRaw)) return null;
+      let answerType = answerTypeRaw === "draft_letter" ? "draft_pdf" : answerTypeRaw;
+      if (mainGoal === "next_steps" && answerType === "short_answer") answerType = "next_steps";
+      const cl = cleanText(raw.chatLanguage || "").toLowerCase();
+      const chatLanguage = GEMINI_CP_LANGS.has(cl) ? cl : null;
+      const ol = cleanText(raw.officialTextLanguage || "").toLowerCase();
+      const officialTextLanguage = ol === "de" ? "de" : "de";
+      const confRaw = typeof raw.confidence === "number" ? raw.confidence : parseFloat(raw.confidence);
+      const confidence = Number.isFinite(confRaw) ? Math.max(0, Math.min(1, confRaw)) : 0;
+      let knownFacts = raw.knownFacts;
+      if (!knownFacts || typeof knownFacts !== "object" || Array.isArray(knownFacts)) knownFacts = {};
+      let missingFields = raw.missingFields;
+      if (!Array.isArray(missingFields)) missingFields = [];
+      missingFields = missingFields.map((x) => cleanText(String(x))).filter(Boolean).slice(0, 16);
+      return {
+        mainGoal,
+        answerType,
+        targetParty: cleanText(raw.targetParty || ""),
+        affectedPerson: cleanText(raw.affectedPerson || ""),
+        writerPerson: cleanText(raw.writerPerson || ""),
+        representativeRole: cleanText(raw.representativeRole || ""),
+        chatLanguage,
+        officialTextLanguage,
+        knownFacts,
+        missingFields,
+        confidence
+      };
+    };
+    let geminiValidatedPlan = null;
+    try {
+      const briefSlice = briefText.slice(0, 9000);
+      const metaSlice = JSON.stringify(meta || {}).slice(0, 8000);
+      const casePlanPrompt = `${buildHilfe24CoreRules(langMeta.code)}
+
+Du bist der Hilfe24-Fallplaner. Deine EINZIGE Ausgabe ist genau EIN JSON-Objekt (kein Fließtext, kein Markdown, keine Codefences).
+
+AUFGABE:
+- Erkenne das echte Hauptziel des Nutzers (nicht nur einzelne Wörter).
+- „Bezahlt/ödedim“ kann Hintergrund sein, wenn es klar um Erstattung, Krankenkasse oder Versicherung geht.
+- Brief-Absender ist NICHT automatisch die Zielstelle (z. B. Versicherung/Krankenkasse/Jobcenter).
+- Wer tippt (App-Nutzer) ist nicht automatisch writerPerson oder Unterschrift.
+- affectedPerson: betroffene Person aus Brief/Meta oder Nutzerangabe (z. B. Kind).
+- writerPerson: wer offiziell unterschreibt (z. B. Mutter/Vater bei minderjährigem Kind).
+- targetParty: konkrete Zielstelle (z. B. „AOK NordWest“), sonst leer oder allgemein nur wenn unsicher.
+- chatLanguage: Sprache der Nutzerfrage: de, tr, bg, ro, en oder ar.
+- officialTextLanguage: für Schreiben an deutsche Stellen immer „de“.
+- knownFacts: nur sichere, kurze Fakten (Strings), keine erfundenen Daten.
+- missingFields: nur wenn wirklich nötig; sonst leeres Array [].
+- confidence: Zahl 0 bis 1 (wie sicher der Fallplan ist).
+
+ERLAUBTE mainGoal-Werte (exakt):
+understand, next_steps, payment_proof, installment_request, deferral_request, dispute_or_objection, reimbursement_or_coverage_request, submit_documents, appointment_reschedule, sick_note_or_cannot_attend, deadline_extension, complaint_or_clarification
+
+ERLAUBTE answerType-Werte (exakt):
+short_answer, next_steps, draft_email, draft_pdf, draft_letter, checklist, clarifying_question
+
+EXAKTE JSON-STRUKTUR (alle Schlüssel, Reihenfolge egal):
+{
+  "mainGoal": "",
+  "answerType": "",
+  "targetParty": "",
+  "affectedPerson": "",
+  "writerPerson": "",
+  "representativeRole": "",
+  "chatLanguage": "",
+  "officialTextLanguage": "",
+  "knownFacts": {},
+  "missingFields": [],
+  "confidence": 0
+}
+
+NUTZERFRAGE (aktuell, höchste Priorität):
+${frage}
+
+BISHERIGER CHAT (Auszug):
+${chatHistoryText || "(leer)"}
+
+META (JSON, Auszug):
+${metaSlice}
+
+KURZERKLÄRUNG:
+${erklaerungKurz}
+
+DETAILS:
+${erklaerungDetails}
+
+BRIEFTEXT (Auszug):
+${briefSlice}`;
+      const rawPlan = await callGemini([{ text: casePlanPrompt }]);
+      const parsed = extractJson(String(rawPlan || "").trim());
+      geminiValidatedPlan = normalizeGeminiCasePlan(parsed);
+    } catch (e) {
+      console.error("Hilfe24 Fallplan Gemini:", e && e.message ? e.message : e);
+      geminiValidatedPlan = null;
+    }
     /** Last clear payment-related goal from prior USER turns (excludes current message). */
     const extractStoredGoalFromUserHistory = () => {
       const paymentGoalPatterns = [
@@ -3310,7 +3424,9 @@ app.post("/api/frage", async (req, res) => {
     const pendingField = detectPendingField(lastAssistantAnswer);
     const pendingNameRequested = pendingField === "name";
 
-    let substantiveGoalFromCurrent = resolveMainGoalFromUserText(frage);
+    let substantiveGoalFromCurrent = geminiValidatedPlan
+      ? geminiValidatedPlan.mainGoal
+      : resolveMainGoalFromUserText(frage);
     const writeFollowUpOnly = isWriteOnlyFollowUpQuestion() && substantiveGoalFromCurrent === "understand";
     const inheritedWriteGoal = writeFollowUpOnly ? extractStoredGoalFromUserHistory() : "";
 
@@ -3370,8 +3486,14 @@ app.post("/api/frage", async (req, res) => {
       const hasRelation = /tochter|sohn|mein\s+kind|meine\s+tochter|meinen\s+sohn|kızım|oğlum|oğlumu|kızımı|fiica\s+mea|fiul\s+meu|copilul\s+meu|daughter|my\s+son|my\s+daughter|my\s+child|\bson\b|\bdaughter\b|schreib.*für.*(tochter|sohn|kind)|ich\s+schreibe\s+für|über\s+meinen\s+namen|in\s+meinem\s+namen|onun\s+adına|benim\s+adım|în\s+numele|scriu\s+[îi]n\s+numele|on\s+behalf|نيابة|ich\s+bin\s+(der\s+)?vater|ich\s+bin\s+die\s+mutter|ben\s+babasıyım|ben\s+annesiyim|sunt\s+(tatăl|mama|tatal|mama)|аз\s+съм\s+(бащата|майката)|أنا\s+الأب|أنا\s+الأم|i\s+am\s+the\s+father|i\s+am\s+the\s+mother|write\s+on\s+behalf|unterschreibt\s+die\s+mutter|unterschreibt\s+der\s+vater|mutter\s+hei|vater\s+hei|annesinin\s+adi|babasinin\s+adi|anne\s+imza|baba\s+imza/i.test(raw);
       return Boolean(hasMinorAge && hasRelation);
     };
-    const representativeMode = detectRepresentativeMinorContext();
-    const childForRepBlocks = cleanText(meta.betroffene_person || extractMinorAffectedFromChat() || representedChildName);
+    let representativeMode = detectRepresentativeMinorContext();
+    if (geminiValidatedPlan && cleanText(geminiValidatedPlan.representativeRole)) representativeMode = true;
+    const childForRepBlocks = cleanText(
+      (geminiValidatedPlan && cleanText(geminiValidatedPlan.affectedPerson)) ||
+      meta.betroffene_person ||
+      extractMinorAffectedFromChat() ||
+      representedChildName
+    );
     const extractRepresentativeSignerFromChat = () => {
       const tryLine = (line) => {
         const s = String(line || "").trim();
@@ -3469,29 +3591,37 @@ app.post("/api/frage", async (req, res) => {
     const wantsNextSteps = v17Has(currentQuestion, [/was soll ich tun/, /was jetzt/, /wie weiter/, /wie geht es weiter/, /ne yapmam/, /ne yapayim/, /ne yapayım/, /simdi ne yapmaliyim/, /şimdi ne yapmalıyım/, /\bwhat should i do\b/]);
 
     let answerType = "short_answer";
-    if (wantsPdf) answerType = "draft_pdf";
-    else if (wantsEmail) answerType = "draft_email";
-    else if (wantsChecklist) answerType = "checklist";
-    else if (wantsNextSteps) answerType = "next_steps";
+    if (!geminiValidatedPlan) {
+      if (wantsPdf) answerType = "draft_pdf";
+      else if (wantsEmail) answerType = "draft_email";
+      else if (wantsChecklist) answerType = "checklist";
+      else if (wantsNextSteps) answerType = "next_steps";
+    }
 
     const contextUnclear = !briefText && !erklaerungKurz && !erklaerungDetails;
     const goalUnclear = currentQuestion.length < 5 || /^(ok|okay|ja|nein|hmm|hallo|hi)$/.test(currentQuestion);
-    if (answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarifying_question";
+    if (!geminiValidatedPlan && answerType === "short_answer" && (contextUnclear || goalUnclear)) answerType = "clarifying_question";
     const pendingNeedsInstallmentDraft = pendingName && v17Has(
       pendingDraftContext,
       [/e-?posta/, /email/, /\bmail\b/, /taksit/, /iki taksit/, /zwei raten/, /ratenzahlung/]
     );
-    if (pendingName) {
+    if (!geminiValidatedPlan && pendingName) {
       answerType = wantsPdf ? "draft_pdf" : "draft_email";
       if (!wantsPdf && !wantsEmail && pendingNeedsInstallmentDraft) answerType = "draft_email";
     }
-    if (hasValidPendingFieldValue && previousAnswerType) {
+    if (!geminiValidatedPlan && hasValidPendingFieldValue && previousAnswerType) {
       answerType = previousAnswerType;
     }
 
-    if (writeFollowUpOnly && inheritedWriteGoal) {
+    if (!geminiValidatedPlan && writeFollowUpOnly && inheritedWriteGoal) {
       if (wantsPdfFromText()) answerType = "draft_pdf";
       else answerType = "draft_email";
+    }
+
+    if (geminiValidatedPlan) {
+      let at = geminiValidatedPlan.answerType;
+      if (at === "draft_letter") at = "draft_pdf";
+      answerType = at;
     }
 
     const paymentDemandDetected = v17Has(currentContext, [
@@ -3501,29 +3631,31 @@ app.post("/api/frage", async (req, res) => {
 
     let userGoal = substantiveGoalFromCurrent;
 
-    if (userGoal === "understand" && (hasReimbursementIntentSignals(frage)
-      || v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/])
-      || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])))) {
-      userGoal = "reimbursement_or_coverage_request";
+    if (!geminiValidatedPlan) {
+      if (userGoal === "understand" && (hasReimbursementIntentSignals(frage)
+        || v17Has(currentQuestion, [/erstattung/, /geld zuruck/, /geld zurück/, /zuruckbekommen/, /zurückbekommen/, /kostenubernahme/, /kostenübernahme/])
+        || (v17Has(currentQuestion, [/krankenkasse/, /versicherung/]) && v17Has(currentQuestion, [/bezahlt/, /einreichen/])))) {
+        userGoal = "reimbursement_or_coverage_request";
+      }
+      if (userGoal === "understand" && v17Has(currentQuestion, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
+      if (userGoal === "understand" && v17Has(currentQuestion, [/anwalt/, /beratungshilfe/, /pflichtverteidiger/, /rechtsantragstelle/, /avukat/])) userGoal = "legal_aid_request";
+      if (userGoal === "understand" && v17Has(currentQuestion, [/unterlagen nachreichen/, /bescheid geschickt/, /nachweis senden/, /unterlagen senden/])) userGoal = "submit_documents";
+      if (userGoal === "understand" && v17Has(currentQuestion, [/termin.*verschieben/, /termin verschieben/, /terminverlegung/, /umterminieren/, /appointment.*reschedul/])) userGoal = "appointment_reschedule";
+      if (userGoal === "understand" && v17Has(currentQuestion, [/krankmelden/, /krankschreiben/, /attest/, /sick note/, /cannot attend/, /nicht.*erscheinen/, /fehl.*termin/])) userGoal = "sick_note_or_cannot_attend";
+      if (userGoal === "understand" && v17Has(currentQuestion, [/fristverlangerung/, /fristverlängerung/, /frist.*verlangern/, /deadline extension/, /verlangerung der frist/])) userGoal = "deadline_extension";
+      if (userGoal === "understand" && v17Has(currentQuestion, [/beschwerde/, /reklamation/, /missverstandnis/, /missverständnis/, /complaint/, /clarification request/])) userGoal = "complaint_or_clarification";
     }
-    if (userGoal === "understand" && v17Has(currentQuestion, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
-    if (userGoal === "understand" && v17Has(currentQuestion, [/anwalt/, /beratungshilfe/, /pflichtverteidiger/, /rechtsantragstelle/, /avukat/])) userGoal = "legal_aid_request";
-    if (userGoal === "understand" && v17Has(currentQuestion, [/unterlagen nachreichen/, /bescheid geschickt/, /nachweis senden/, /unterlagen senden/])) userGoal = "submit_documents";
-    if (userGoal === "understand" && v17Has(currentQuestion, [/termin.*verschieben/, /termin verschieben/, /terminverlegung/, /umterminieren/, /appointment.*reschedul/])) userGoal = "appointment_reschedule";
-    if (userGoal === "understand" && v17Has(currentQuestion, [/krankmelden/, /krankschreiben/, /attest/, /sick note/, /cannot attend/, /nicht.*erscheinen/, /fehl.*termin/])) userGoal = "sick_note_or_cannot_attend";
-    if (userGoal === "understand" && v17Has(currentQuestion, [/fristverlangerung/, /fristverlängerung/, /frist.*verlangern/, /deadline extension/, /verlangerung der frist/])) userGoal = "deadline_extension";
-    if (userGoal === "understand" && v17Has(currentQuestion, [/beschwerde/, /reklamation/, /missverstandnis/, /missverständnis/, /complaint/, /clarification request/])) userGoal = "complaint_or_clarification";
 
-    if (writeFollowUpOnly && inheritedWriteGoal) userGoal = inheritedWriteGoal;
+    if (!geminiValidatedPlan && writeFollowUpOnly && inheritedWriteGoal) userGoal = inheritedWriteGoal;
 
-    if (allowPendingResume && pendingName && userGoal === "understand") {
+    if (!geminiValidatedPlan && allowPendingResume && pendingName && userGoal === "understand") {
       if (v17Has(pendingDraftContext, [/ratenzahlung/, /rate/, /raten/, /taksit/, /iki taksit/, /zwei raten/, /monatlich zahlen/])) userGoal = "installment_request";
       else if (v17Has(pendingDraftContext, [/stundung/, /zahlungsaufschub/])) userGoal = "deferral_request";
       else if (v17Has(pendingDraftContext, [/erstattung/, /kostenubernahme/, /kostenübernahme/, /krankenkasse/, /versicherung/])) userGoal = "reimbursement_or_coverage_request";
       else if (v17Has(pendingDraftContext, [/kundigung/, /kündigung/, /widerruf/, /iptal/, /fesih/])) userGoal = "cancellation_request";
       else if (pendingNeedsInstallmentDraft) userGoal = "installment_request";
     }
-    if (allowPendingResume && hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
+    if (!geminiValidatedPlan && allowPendingResume && hasValidPendingFieldValue && userGoal === "understand" && previousGoal) {
       userGoal = previousGoal;
     }
 
@@ -3615,6 +3747,13 @@ app.post("/api/frage", async (req, res) => {
     else if (senderCandidate) targetParty = senderCandidate;
     else if (userGoal === "installment_request") targetParty = "Stelle aus dem Brief";
     else if (userGoal === "cancellation_request") targetParty = "Vertragspartner / Firma aus dem Brief";
+
+    if (geminiValidatedPlan && cleanText(geminiValidatedPlan.targetParty)) {
+      if (!(pendingField === "recipient_email" && pendingFieldValueMap.recipient_email)
+        && !(pendingField === "target_party" && pendingFieldValueMap.target_party)) {
+        targetParty = cleanText(geminiValidatedPlan.targetParty);
+      }
+    }
 
     if (!targetParty && answerType === "draft_email") {
       targetParty = "[E-Mail-Adresse der Stelle einfügen]";
@@ -3739,6 +3878,9 @@ app.post("/api/frage", async (req, res) => {
     }
     if (pendingName) signatureName = pendingName;
     if (pendingField === "name" && pendingFieldValueMap.name) signatureName = pendingFieldValueMap.name;
+    if (geminiValidatedPlan && !pendingName && cleanText(geminiValidatedPlan.writerPerson) && looksLikePersonName(geminiValidatedPlan.writerPerson)) {
+      signatureName = cleanText(geminiValidatedPlan.writerPerson);
+    }
     if (!representativeMode && !signatureName && saysNameInLetter) {
       return res.json({
         ok: true,
@@ -3834,7 +3976,8 @@ app.post("/api/frage", async (req, res) => {
 
     const supportedOfficialDraftIntents = new Set([
       "payment_proof", "dispute_or_objection", "installment_request", "deferral_request",
-      "reimbursement_or_coverage_request", "cancellation_request", "legal_aid_request", "submit_documents"
+      "reimbursement_or_coverage_request", "cancellation_request", "legal_aid_request", "submit_documents",
+      "appointment_reschedule", "sick_note_or_cannot_attend", "deadline_extension", "complaint_or_clarification"
     ]);
     if ((answerType === "draft_email" || answerType === "draft_pdf") && !supportedOfficialDraftIntents.has(userGoal)) {
       answerType = "short_answer";
@@ -3848,12 +3991,18 @@ app.post("/api/frage", async (req, res) => {
         targetParty: cleanText(targetParty || ""),
         affectedPerson: childForRepBlocks || representedChildName,
         writerPerson: signatureName,
-        representativeRole: representativeMode ? (/mutter|mutti|mama|mother|annesi|ich\s+bin\s+die\s+mutter/i.test(repScanFull) ? "Mutter" : /vater|baba|father|babası|ich\s+bin\s+der\s+vater/i.test(repScanFull) ? "Vater" : "") : "",
+        representativeRole: (geminiValidatedPlan && cleanText(geminiValidatedPlan.representativeRole))
+          || (representativeMode ? (/mutter|mutti|mama|mother|annesi|ich\s+bin\s+die\s+mutter/i.test(repScanFull) ? "Mutter" : /vater|baba|father|babası|ich\s+bin\s+der\s+vater/i.test(repScanFull) ? "Vater" : "") : ""),
         representativeMode,
-        knownFacts: { reference: cleanRef || "", betragSicher: Boolean(secureEuroAmountToken(meta.betrag)) },
-        missingFields: [],
+        knownFacts: {
+          ...(geminiValidatedPlan && geminiValidatedPlan.knownFacts && typeof geminiValidatedPlan.knownFacts === "object" ? geminiValidatedPlan.knownFacts : {}),
+          reference: cleanRef || "",
+          betragSicher: Boolean(secureEuroAmountToken(meta.betrag))
+        },
+        missingFields: geminiValidatedPlan ? geminiValidatedPlan.missingFields : [],
         chatLanguage,
-        officialTextLanguage
+        officialTextLanguage,
+        confidence: geminiValidatedPlan ? geminiValidatedPlan.confidence : 0
       }
     });
     const { casePlan } = buildCasePlan();
@@ -3934,7 +4083,12 @@ app.post("/api/frage", async (req, res) => {
           antwort: cleanText(askSignerNameUi)
         });
       }
-      if (userGoal === "reimbursement_or_coverage_request" && !metaEmail && !emailInTextMatch && !emailAnswerMatch) {
+      const genericReimbTargetParty = (tp) => {
+        const s = cleanText(tp).toLowerCase();
+        return !s || /^an die versicherung\s*\/\s*krankenkasse$/i.test(s) || /^krankenkasse\s*\/\s*versicherung$/i.test(s);
+      };
+      if (userGoal === "reimbursement_or_coverage_request" && !metaEmail && !emailInTextMatch && !emailAnswerMatch
+        && genericReimbTargetParty(targetParty)) {
         return res.json({
           ok: true,
           antwort: cleanText(askInsuranceTargetUi[userLang] || askInsuranceTargetUi.de)
@@ -4181,6 +4335,12 @@ app.post("/api/frage", async (req, res) => {
     }
 
     if (answerType === "short_answer") {
+      const geminiBlocksGenericPaymentHint = Boolean(
+        geminiValidatedPlan &&
+        geminiValidatedPlan.confidence >= 0.35 &&
+        geminiValidatedPlan.mainGoal &&
+        geminiValidatedPlan.mainGoal !== "understand"
+      );
       const short = userGoal === "payment_proof"
         ? "Du hast bereits gezahlt: Sende den Zahlungsnachweis, bitte um Zuordnungsprüfung und frage, ob noch ein offener Betrag besteht."
         : userGoal === "dispute_or_objection"
@@ -4191,7 +4351,7 @@ app.post("/api/frage", async (req, res) => {
               ? "Du kannst um Ratenzahlung bitten. Formuliere kurz, dass du aktuell nicht auf einmal zahlen kannst und um schriftliche Bestätigung bittest."
               : userGoal === "reimbursement_or_coverage_request"
                 ? "Du kannst Erstattung/Kostenübernahme bei Krankenkasse oder Versicherung prüfen lassen. Reiche Rechnung und Zahlungsnachweis mit ein."
-                : userGoal === "understand" && paymentDemandDetected
+                : userGoal === "understand" && paymentDemandDetected && !geminiBlocksGenericPaymentHint
                   ? "Bei einer Zahlungsforderung: zuerst Fakten prüfen (Betrag, Frist, Referenz), dann schriftlich bei der zuständigen Stelle klären."
                   : "Kurz gesagt: kläre die zuständige Stelle schriftlich und lasse dir die nächsten Schritte bestätigen.";
       return res.json({ ok: true, antwort: cleanText(short) });
