@@ -1051,12 +1051,12 @@ en: {
       de: {
         title: "Analyse läuft",
         note: "Große oder wichtige Briefe können etwas dauern. Bitte nicht neu laden.",
-        steps: ["Fotos werden vorbereitet", "Text wird gelesen", "Wichtige Daten werden geprüft", "Erklärung wird erstellt", "Fast fertig"]
+        steps: ["Foto wird verkleinert...", "Foto wird hochgeladen...", "Brief wird gelesen...", "Erklärung wird erstellt", "Fast fertig"]
       },
       tr: {
         title: "Analiz yapılıyor",
         note: "Büyük veya önemli mektuplar biraz sürebilir. Lütfen sayfayı yenileme.",
-        steps: ["Fotoğraflar hazırlanıyor", "Metin okunuyor", "Önemli bilgiler kontrol ediliyor", "Açıklama hazırlanıyor", "Neredeyse bitti"]
+        steps: ["Foto küçültülüyor...", "Foto yükleniyor...", "Mektup okunuyor...", "Açıklama hazırlanıyor", "Neredeyse bitti"]
       },
       bg: {
         title: "Анализът се изпълнява",
@@ -2617,36 +2617,14 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹ Stopp";
         return { mimeType: "image/jpeg", imageData: "" };
       }
 
-      const mimeType = file.type || "image/jpeg";
-      const supportedOriginalTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-      const originalLimitBytes = 14 * 1024 * 1024;
-
-      // V8.5: Für Briefanalyse möglichst das Originalfoto senden.
-      // Canvas-Komprimierung wird nur genutzt, wenn das Bild zu groß ist
-      // oder das Format für die KI wahrscheinlich ungeeignet ist.
-      if (
-        mimeType &&
-        supportedOriginalTypes.includes(mimeType.toLowerCase()) &&
-        file.size > 0 &&
-        file.size <= originalLimitBytes
-      ) {
-        const imageData = await fileToBase64(file);
-        return {
-          mimeType: mimeType.toLowerCase() === "image/jpg" ? "image/jpeg" : mimeType,
-          imageData
-        };
-      }
-
+      const mimeType = (file.type || "image/jpeg").toLowerCase();
       if (!mimeType.startsWith("image/")) {
-        const imageData = await fileToBase64(file);
-        return {
-          mimeType: mimeType || "image/jpeg",
-          imageData
-        };
+        throw new Error("Das Foto ist zu groß. Bitte mache ein neues, klareres Foto oder wähle weniger Bilder.");
       }
 
-      const maxSize = 3000;
-      const quality = 0.92;
+      const maxSize = 1600;
+      const quality = 0.75;
+      const maxBase64Length = 4_200_000;
 
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -2665,13 +2643,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹ Stopp";
       const originalWidth = img.naturalWidth || img.width;
       const originalHeight = img.naturalHeight || img.height;
 
-      if (!originalWidth || !originalHeight) {
-        const imageData = await fileToBase64(file);
-        return {
-          mimeType: mimeType || "image/jpeg",
-          imageData
-        };
-      }
+      if (!originalWidth || !originalHeight) throw new Error("Das Foto ist zu groß. Bitte mache ein neues, klareres Foto oder wähle weniger Bilder.");
 
       const scale = Math.min(1, maxSize / Math.max(originalWidth, originalHeight));
       const width = Math.round(originalWidth * scale);
@@ -2682,23 +2654,22 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹ Stopp";
       canvas.height = height;
 
       const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Das Foto ist zu groß. Bitte mache ein neues, klareres Foto oder wähle weniger Bilder.");
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
+      // Orientierung wird beim Zeichnen in Canvas normalisiert.
       ctx.drawImage(img, 0, 0, width, height);
 
       const blob = await new Promise((resolve) => {
         canvas.toBlob(resolve, "image/jpeg", quality);
       });
 
-      if (!blob) {
-        const imageData = await fileToBase64(file);
-        return {
-          mimeType: mimeType || "image/jpeg",
-          imageData
-        };
-      }
+      if (!blob) throw new Error("Das Foto ist zu groß. Bitte mache ein neues, klareres Foto oder wähle weniger Bilder.");
 
       const imageData = await fileToBase64(blob);
+      if (!imageData || imageData.length > maxBase64Length) {
+        throw new Error("Das Foto ist zu groß. Bitte mache ein neues, klareres Foto oder wähle weniger Bilder.");
+      }
 
       return {
         mimeType: "image/jpeg",
@@ -3037,11 +3008,15 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹ Stopp";
     let response;
     let data;
 
-    if (files.length > 0) {
+      if (files.length > 0) {
+        setAnalysisProgressStep(0);
       const bilder = [];
 
       for (const file of files) {
         const compressed = await compressImageForUpload(file);
+          if (!compressed || !compressed.imageData) {
+            throw new Error("Das Foto ist zu groß. Bitte mache ein neues, klareres Foto oder wähle weniger Bilder.");
+          }
         bilder.push({
           mimeType: compressed.mimeType,
           imageData: compressed.imageData
@@ -3058,6 +3033,7 @@ if (stopAnswerBtnEl) stopAnswerBtnEl.textContent = u.stopAudio || "⏹ Stopp";
           bilder
         })
       });
+      setAnalysisProgressStep(2);
     } else {
       setAnalysisProgressStep(1);
       response = await fetch("/api/brief", {
